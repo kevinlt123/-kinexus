@@ -309,18 +309,46 @@ var TFM={wblt:{mobilite:3,reactivite:1,absorption:1,stabilisation:1},knee_ext:{f
 var SYSTEM_TESTS={'Quadriceps':['knee_ext'],'Ischio-jambiers':['knee_flex'],'Fléchisseurs de hanche':['hip_flex'],'Extenseurs de hanche':['hip_ext'],'Adducteurs':['hip_add'],'Abducteurs':['hip_abd'],'Cheville':['wblt','df_iso','inv_iso','ev_iso'],'Soléaire':['soleus_iso','heel_raise'],'Gastrocnémien':['gastro_iso'],'Sensoriel':['eo','ef','strobo']};
 var THRESHOLDS={wblt_distance:{vert:12,jaune:10,orange:8,dir:'max'},knee_ext_nkg:{vert:3.0,jaune:2.5,orange:2.0,dir:'max'},knee_flex_nkg:{vert:1.8,jaune:1.5,orange:1.2,dir:'max'},hip_ext_nkg:{vert:2.5,jaune:2.0,orange:1.5,dir:'max'},hip_flex_nkg:{vert:2.0,jaune:1.6,orange:1.2,dir:'max'},hip_abd_nkg:{vert:2.0,jaune:1.6,orange:1.2,dir:'max'},hip_add_nkg:{vert:1.8,jaune:1.4,orange:1.0,dir:'max'},soleus_iso_nkg:{vert:2.5,jaune:2.0,orange:1.5,dir:'max'},gastro_iso_nkg:{vert:2.0,jaune:1.6,orange:1.2,dir:'max'},sl_iso_push_nkg:{vert:2.5,jaune:2.0,orange:1.5,dir:'max'},cmj_height:{vert:35,jaune:28,orange:22,dir:'max'},cmj_rsi_mod:{vert:0.8,jaune:0.6,orange:0.4,dir:'max'},slcmj_height:{vert:30,jaune:24,orange:18,dir:'max'},dj_rsi:{vert:1.5,jaune:1.0,orange:0.7,dir:'max'},sldj_rsi:{vert:1.2,jaune:0.8,orange:0.5,dir:'max'},sldj_tts:{vert:0.8,jaune:1.2,orange:1.8,dir:'min'},landing_uni_tts:{vert:0.8,jaune:1.2,orange:1.8,dir:'min'},landing_bi_tts:{vert:0.6,jaune:1.0,orange:1.5,dir:'min'},ybt_composite:{vert:95,jaune:85,orange:75,dir:'max'},heel_raise_reps:{vert:25,jaune:20,orange:15,dir:'max'}};
 
-function applyThr(key,val){var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
+// ── NORMES POPULATIONNELLES (VALD Normative Data Reports) ────────────────────
+var NORM_POPULATIONS=[
+  {key:'foot_m_senior',label:'Football — Homme Senior (Premier League)'},
+  {key:'foot_f_senior',label:'Football — Femme Senior (WSL)'},
+  {key:'foot_f_youth',label:'Football — Femme Jeune 15-19 ans (WSL)'},
+  {key:'bball_m_ncaa',label:'Basketball — Homme NCAA'},
+  {key:'bball_f_ncaa',label:'Basketball — Femme NCAA'},
+  {key:'bball_m_pro',label:'Basketball — Homme Pro (NBL)'}
+];
+var NORM_SOURCES={
+  foot_m_senior:'VALD Normative Data Report — Premier League 2025/26 (in-season, hommes 19-40 ans)',
+  foot_f_senior:'VALD Normative Data Report — Women\'s Super League 2025/26 (senior 20-40 ans)',
+  foot_f_youth:'VALD Normative Data Report — Women\'s Super League 2025/26 (jeunes 15-19 ans)',
+  bball_m_ncaa:'VALD Normative Data Report — Basketball 2024/25 (NCAA hommes)',
+  bball_f_ncaa:'VALD Normative Data Report — Basketball 2024/25 (NCAA femmes)',
+  bball_m_pro:'VALD Normative Data Report — Basketball 2024/25 (Australian NBL)'
+};
+// Percentile bands [p5,p25,p50,p75,p95], toutes en "plus haut = mieux"
+var NORMS={
+  foot_m_senior:{hip_flex_n:[190,284,347,418,525],hip_add_n:[250,360,425,510,600],hip_abd_n:[260,370,430,500,590],sl_iso_push_n:[316,400,492,571,696],soleus_iso_n:[806,1258,1491,1710,2023],cmj_height:[29.0,35.3,38.9,42.4,47.3],slcmj_height:[14.3,18.4,20.7,23.2,26.5],dj_rsi:[2.12,2.60,2.93,3.22,3.68],sldj_rsi:[1.16,1.41,1.58,1.76,2.02]},
+  foot_f_senior:{hip_flex_n:[156,206,245,292,382],hip_add_n:[272,330,371,406,463],hip_abd_n:[264,315,345,378,432],sl_iso_push_n:[191,303,369,418,500],soleus_iso_n:[727,995,1169,1350,1617],cmj_height:[22.7,26.4,28.9,31.7,36.0],slcmj_height:[9.8,13.0,14.9,16.9,20.0],dj_rsi:[1.57,2.31,2.66,3.00,3.46],sldj_rsi:[0.97,1.22,1.37,1.52,1.75]},
+  foot_f_youth:{hip_flex_n:[153,193,231,281,381],hip_add_n:[235,310,362,389,426],hip_abd_n:[228,283,324,363,419],sl_iso_push_n:[214,295,337,401,514],soleus_iso_n:[523,758,974,1180,1404],cmj_height:[22.1,25.4,28.1,31.2,35.8],slcmj_height:[9.5,12.3,14.3,16.4,19.9],dj_rsi:[1.53,2.09,2.47,2.82,3.20],sldj_rsi:[0.90,1.14,1.34,1.47,1.63]},
+  bball_m_ncaa:{cmj_height:[29.8,35.6,39.5,44.0,51.1],slcmj_height:[13.5,18.6,21.8,23.6,26.5],dj_rsi:[1.14,1.65,2.28,2.85,3.57]},
+  bball_f_ncaa:{cmj_height:[19.3,24.2,28.0,31.5,37.0],dj_rsi:[0.87,1.24,1.69,2.54,3.59]},
+  bball_m_pro:{cmj_height:[26.6,33.5,36.3,39.5,47.9],slcmj_height:[11.9,15.7,18.1,19.8,25.9]}
+};
+function pctStatus(bands,val){if(val==null||!bands)return null;if(val>=bands[3])return'vert';if(val>=bands[2])return'jaune';if(val>=bands[1])return'orange';return'rouge';}
+
+function applyThr(key,val,pop){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var ps=pctStatus(NORMS[pop][key],val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
 function lsiSt(lsi){if(lsi==null)return null;if(lsi>=90)return'vert';if(lsi>=80)return'jaune';if(lsi>=70)return'orange';return'rouge';}
 function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=null&&x!=='';}).map(Number);if(!v.length)return null;return dir==='min'?Math.min.apply(null,v):Math.max.apply(null,v);}
 function autoLSI(D,G){if(D==null||G==null||D===0||G===0)return null;return Math.round((Math.min(D,G)/Math.max(D,G))*1000)/10;}
 function s2sc(s){return{vert:3,jaune:2,orange:1,rouge:0}[s];}
 function sc2s(s){if(s>=2.5)return'vert';if(s>=1.8)return'jaune';if(s>=1.0)return'orange';return'rouge';}
 
-function computeTestStatus(key,data){
+function computeTestStatus(key,data,pop){
   var test=TBK[key];if(!test||!data||!data.active)return null;
   var sts=[];
-  if(test.bilateral){test.kpis.forEach(function(kpi){var v=bestVal((data.trials||{})[kpi.key],kpi.dir);var s=applyThr(key+'_'+kpi.key,v);if(s)sts.push({w:3,s:s});});}
-  else{test.kpis.forEach(function(kpi){var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);if(lsi!=null)sts.push({w:3,s:lsiSt(lsi)});[vD,vG].forEach(function(v){var s=applyThr(key+'_'+kpi.key,v);if(s)sts.push({w:2,s:s});});});if(data.lsi!=null)sts.push({w:3,s:lsiSt(data.lsi)});}
+  if(test.bilateral){test.kpis.forEach(function(kpi){var v=bestVal((data.trials||{})[kpi.key],kpi.dir);var s=applyThr(key+'_'+kpi.key,v,pop);if(s)sts.push({w:3,s:s});});}
+  else{test.kpis.forEach(function(kpi){var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);if(lsi!=null)sts.push({w:3,s:lsiSt(lsi)});[vD,vG].forEach(function(v){var s=applyThr(key+'_'+kpi.key,v,pop);if(s)sts.push({w:2,s:s});});});if(data.lsi!=null)sts.push({w:3,s:lsiSt(data.lsi)});}
   if(!sts.length)return'jaune';
   var tw=0,ts=0,hasR=false,maj=0;
   sts.forEach(function(x){var sc=s2sc(x.s);if(sc!=null){tw+=x.w;ts+=sc*x.w;}if(x.s==='rouge'){hasR=true;maj++;}if(x.s==='orange')maj++;});
@@ -329,9 +357,9 @@ function computeTestStatus(key,data){
   return st;
 }
 
-function computeMoteur(testData,questData){
+function computeMoteur(testData,questData,normPop){
   testData=testData||{};questData=questData||{};
-  var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k]);});
+  var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop);});
   var fSc={};
   FUNCTIONS.forEach(function(fn){
     var fk=FN_KEY[fn];var tw=0,ts=0,hasR=false,maj=0,cov=0,poss=0;
@@ -803,7 +831,8 @@ function buildSportifReport(athlete,bilan,res){
     +'<div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#2A9D8F55,#1B4F6A88);border:2px solid #2A9D8F55;display:flex;align-items:center;justify-content:center;color:#1B4F6A;font-weight:800;font-size:15pt;flex-shrink:0">'+athlete.prenom[0]+athlete.nom[0]+'</div>'
     +'<div><div style="font-weight:800;font-size:12.5pt;color:#132B3A">'+athlete.prenom+' '+athlete.nom+'</div>'
     +'<div style="font-size:8.5pt;color:#5B7A8C;margin-top:2px">'+(athlete.sport||'—')+(athlete.poste?' · '+athlete.poste:'')+' · '+(athlete.niveau||'—')+'</div>'
-    +'<div style="font-size:8.5pt;color:#5B7A8C;margin-top:1px">'+bilan.type+' · '+bilan.sousType+(age?' · '+age+' ans':'')+'</div></div>'
+    +'<div style="font-size:8.5pt;color:#5B7A8C;margin-top:1px">'+bilan.type+' · '+bilan.sousType+(age?' · '+age+' ans':'')+'</div>'
+    +'<div style="font-size:7.5pt;color:#2A9D8F;font-weight:700;margin-top:4px">'+(athlete.normPopulation?'📊 Normes : '+((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):'Seuils génériques (aucune population de référence)')+'</div></div>'
     +'</div>',
     'flex:1.3;min-width:220px'
   );
@@ -938,7 +967,7 @@ function buildSportifReport(athlete,bilan,res){
     +statCol('NIVEAU',athlete.niveau||'—')
     +statCol('DATE DU BILAN',dateStr)
     +'</div></div>';
-  html+='<div style="text-align:center;color:#94a3b8;font-size:7.3pt;margin-top:6px">Ce rapport est confidentiel et destiné au sportif et aux professionnels de santé.</div>';
+  html+='<div style="text-align:center;color:#94a3b8;font-size:7.3pt;margin-top:6px">Ce rapport est confidentiel et destiné au sportif et aux professionnels de santé.'+(athlete.normPopulation&&NORM_SOURCES[athlete.normPopulation]?' — Source des normes : '+NORM_SOURCES[athlete.normPopulation]+'.':'')+'</div>';
 
   html+='</div>'; // end print-page
   return html;
@@ -1059,7 +1088,7 @@ function Dashboard(props){
 
 function AthleteForm(props){
   var init=props.initial||{};
-  var [form,setForm]=useState({prenom:init.prenom||'',nom:init.nom||'',sport:init.sport||'',niveau:init.niveau||'Amateur',poste:init.poste||'',poids:init.poids||'',taille:init.taille||'',dateNaissance:init.dateNaissance||'',sexe:init.sexe||''});
+  var [form,setForm]=useState({prenom:init.prenom||'',nom:init.nom||'',sport:init.sport||'',niveau:init.niveau||'Amateur',poste:init.poste||'',poids:init.poids||'',taille:init.taille||'',dateNaissance:init.dateNaissance||'',sexe:init.sexe||'',normPopulation:init.normPopulation||''});
   function set(k,v){setForm(function(p){var n=Object.assign({},p);n[k]=v;return n;});}
   var valid=form.prenom&&form.nom&&form.sport;
   return h('div',{style:{maxWidth:560,margin:'0 auto'}},
@@ -1076,6 +1105,9 @@ function AthleteForm(props){
         h(FldIn,{label:'Date de naissance',type:'date',value:form.dateNaissance,onChange:function(v){set('dateNaissance',v);}}),
         h(FldIn,{label:'Poids (kg)',type:'number',inputMode:'decimal',value:form.poids,onChange:function(v){set('poids',v);}}),
         h(FldIn,{label:'Taille (cm)',type:'number',inputMode:'decimal',value:form.taille,onChange:function(v){set('taille',v);}})
+      ),
+      h('div',{style:{marginTop:14}},
+        h(FldIn,{label:'Population de référence (normes)',value:form.normPopulation,onChange:function(v){set('normPopulation',v);},options:[{value:'',label:'— Seuils génériques —'}].concat(NORM_POPULATIONS.map(function(p){return{value:p.key,label:p.label};})),note:form.normPopulation?NORM_SOURCES[form.normPopulation]:'Sélectionnez une population VALD pour comparer ce sportif à des normes réelles (force, saut…) plutôt qu\'aux seuils génériques.'})
       ),
       h('div',{style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:18}},
         h(Btn,{onClick:props.onCancel},'Annuler'),
@@ -1094,7 +1126,8 @@ function AthleteProfile(props){
       h('div',{style:{flex:1}},
         h('h2',{style:{margin:'0 0 2px',fontSize:20,fontWeight:800,color:C.text}},a.prenom+' '+a.nom),
         h('div',{style:{color:C.muted,fontSize:12}},a.sport+(a.poste?' · '+a.poste:'')+' · '+a.niveau),
-        h('div',{style:{color:C.muted,fontSize:11,marginTop:1}},(age?age+' ans · ':'')+(a.poids?a.poids+' kg · ':'')+(a.taille?a.taille+' cm':''))
+        h('div',{style:{color:C.muted,fontSize:11,marginTop:1}},(age?age+' ans · ':'')+(a.poids?a.poids+' kg · ':'')+(a.taille?a.taille+' cm':'')),
+        a.normPopulation&&h('div',{style:{marginTop:5,display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.teal+'15',border:'1px solid '+C.teal+'40'}},h('span',{style:{color:C.teal,fontSize:10,fontWeight:700}},'📊 Normes : '+((NORM_POPULATIONS.find(function(p){return p.key===a.normPopulation;})||{}).label||a.normPopulation)))
       ),
       h('div',{style:{display:'flex',gap:8}},h(Btn,{small:true,onClick:props.onEdit},'✎'),h(Btn,{primary:true,small:true,onClick:props.onNewBilan},'+ Bilan'))
     ),
@@ -1228,7 +1261,7 @@ function AnalyseView(props){
   var [view,setView]=useState('synthese');
   var [validated,setValidated]=useState(bilan.statut==='Validé');
   var [showPrintMenu,setShowPrintMenu]=useState(false);
-  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData);},[bilan]);
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,athlete.normPopulation);},[bilan,athlete.normPopulation]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
 
   function doPrint(type){setShowPrintMenu(false);printReport(type,athlete,bilan,res);}
@@ -1250,7 +1283,10 @@ function AnalyseView(props){
         )
       ),
       h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:10,flexWrap:'wrap',gap:8}},
-        h('div',{style:{color:C.muted,fontSize:12}},new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})),
+        h('div',null,
+          h('div',{style:{color:C.muted,fontSize:12}},new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})),
+          h('div',{style:{color:C.teal,fontSize:10,fontWeight:600,marginTop:2}},athlete.normPopulation?'📊 Normes : '+((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):'Seuils génériques (aucune population de référence sélectionnée)')
+        ),
         h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border}},
           [['synthese','Synthèse'],['expert','Expert'],['historique','Historique']].map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
         )
@@ -1656,8 +1692,8 @@ function HistoriqueView(props){
   var [sel2,setSel2]=useState((bilans.filter(function(b){return b.id!==currentBilan.id;}).slice(-1)[0]||{}).id||'');
   var b1=bilans.find(function(b){return b.id==sel1;});
   var b2=bilans.find(function(b){return b.id==sel2;});
-  var r1=b1?computeMoteur(b1.testData,b1.questData):null;
-  var r2=b2?computeMoteur(b2.testData,b2.questData):null;
+  var r1=b1?computeMoteur(b1.testData,b1.questData,athlete.normPopulation):null;
+  var r2=b2?computeMoteur(b2.testData,b2.questData,athlete.normPopulation):null;
   function fmtD(d){return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'});}
   if(bilans.length<2)return h(Card,{pad:24,style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:13}},'Au moins 2 bilans sont nécessaires pour la comparaison.'));
   var opts=bilans.map(function(b){return{value:b.id,label:b.type+' · '+b.sousType+' ('+fmtD(b.date)+')'};});
