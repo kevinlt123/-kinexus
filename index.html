@@ -80,21 +80,21 @@ var IMG_BODY_FRONT='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGB
 // ── TESTS ────────────────────────────────────────────────────────────────────
 var TESTS=[
   {key:'wblt',label:'WBLT',cat:'Mobilité',bilateral:false,kpis:[{key:'distance',label:'Distance (cm)',step:0.1,dir:'max'}]},
-  {key:'knee_ext',label:'Knee Extension Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'knee_flex',label:'Knee Flexion Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'soleus_iso',label:'Soleus Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'gastro_iso',label:'Gastro Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'hip_flex',label:'Hip Flexion Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'hip_ext',label:'Hip Extension Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'hip_abd',label:'Hip Abduction Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'hip_add',label:'Hip Adduction Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'df_iso',label:'DF Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'inv_iso',label:'INV Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'ev_iso',label:'EV Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
+  {key:'knee_ext',label:'Knee Extension Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'knee_flex',label:'Knee Flexion Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'soleus_iso',label:'Soleus Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'gastro_iso',label:'Gastro Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'hip_flex',label:'Hip Flexion Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'hip_ext',label:'Hip Extension Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'hip_abd',label:'Hip Abduction Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'hip_add',label:'Hip Adduction Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'df_iso',label:'DF Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'inv_iso',label:'INV Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'ev_iso',label:'EV Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
   {key:'sh_iso_9020',label:'Hamstring Iso 90/20',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
   {key:'sh_iso_9090',label:'Hamstring Iso 90/90',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
-  {key:'hip_rot_int',label:'Hip Internal Rotation Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
-  {key:'hip_rot_ext',label:'Hip External Rotation Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'}]},
+  {key:'hip_rot_int',label:'Hip Internal Rotation Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
+  {key:'hip_rot_ext',label:'Hip External Rotation Iso',cat:'Force Segmentaire',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd50',label:'RFD 0-50ms (N/s)',step:1,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd150',label:'RFD 0-150ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
   {key:'iso_belt_squat',label:'Iso Belt Squat',cat:'Force Globale',bilateral:true,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
   {key:'sl_iso_push',label:'Single Leg Iso Push',cat:'Force Globale',bilateral:false,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
   {key:'imtp',label:'Isometric Mid-Thigh Pull',cat:'Force Globale',bilateral:true,kpis:[{key:'n',label:'Force absolue (N)',step:1,dir:'max'},{key:'nkg',label:'Peak Force (N/kg)',step:0.01,dir:'max'},{key:'rfd100',label:'RFD 0-100ms (N/s)',step:1,dir:'max'},{key:'rfd200',label:'RFD 0-200ms (N/s)',step:1,dir:'max'},{key:'ttpf',label:'Time to Peak Force (ms)',step:1,dir:'min'}]},
@@ -108,7 +108,7 @@ var TESTS=[
     {key:'braking_duration',label:'Braking Phase Duration (ms)',step:1,dir:'min'},{key:'braking_impulse',label:'Braking Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'braking_peak_force',label:'Braking Peak Force (N/kg)',step:0.01,dir:'max'},{key:'braking_rfd',label:'Braking Rate of Force (N/s)',step:1,dir:'max'},{key:'braking_power',label:'Braking Power (W/kg)',step:0.1,dir:'max'},{key:'propulsion_eff',label:'Propulsion Efficiency (%)',step:0.1,dir:'max'},{key:'braking_eff',label:'Braking Efficiency (%)',step:0.1,dir:'max'},{key:'ft_ct_ratio',label:'FT:CT Ratio',step:0.01,dir:'max'},{key:'conc_impulse_100',label:'Impulsion concentrique @100ms (Ns/kg)',step:0.01,dir:'max'},{key:'ecc_decel',label:'Eccentric Deceleration (m/s²)',step:0.1,dir:'max'},
     {key:'conc_peak_vel',label:'Concentric Peak Velocity (m/s)',step:0.01,dir:'max'},{key:'ecc_mean_force',label:'Eccentric Mean Force (N/kg)',step:0.01,dir:'max'},{key:'ecc_mean_power',label:'Eccentric Mean Power (W/kg)',step:0.1,dir:'max'},{key:'landing_peak_force',label:'Landing Peak Force (N/kg)',step:0.01,dir:'min'},{key:'landing_mean_force',label:'Landing Mean Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'landing_rfd',label:'Landing RFD (N/s)',step:1,dir:'min'},{key:'landing_duration',label:'Landing Phase Duration (ms)',step:1,dir:'max'},{key:'landing_mean_power',label:'Landing Mean Power (W/kg)',step:0.1,dir:'min'},{key:'time_to_stab',label:'Time to Stabilization (s)',step:0.01,dir:'min'},{key:'post_landing_stability',label:'Post Landing Stability',step:0.1,dir:'min'}
   ]},
-  {key:'slcmj',label:'SLCMJ',cat:'Sauts',bilateral:false,kpis:[{key:'height',label:'Height (cm)',step:0.1,dir:'max'},{key:'peak_conc_force',label:'Peak Concentric Force (N/kg)',step:0.01,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'peak_conc_vel',label:'Peak Concentric Velocity (m/s)',step:0.01,dir:'max'},{key:'edrfd_bm',label:'EDRFD / BM (N/s/kg)',step:0.1,dir:'max'},{key:'braking_rfd',label:'Braking RFD (N/s)',step:1,dir:'max'},{key:'peak_braking_force',label:'Peak Braking Force (N/kg)',step:0.01,dir:'max'},{key:'braking_impulse',label:'Braking Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'depth',label:'Countermovement Depth (cm)',step:0.1,dir:'max'},{key:'contraction_time',label:'Contraction Time (ms)',step:1,dir:'min'},{key:'ecc_duration',label:'Eccentric Duration (ms)',step:1,dir:'min'},{key:'conc_duration',label:'Concentric Duration (ms)',step:1,dir:'min'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'time_to_stab',label:'Time to Stabilization (s)',step:0.01,dir:'min'}]},
+  {key:'slcmj',label:'SLCMJ',cat:'Sauts',bilateral:false,kpis:[{key:'height',label:'Height (cm)',step:0.1,dir:'max'},{key:'rsi_mod',label:'RSI Mod',step:0.01,dir:'max'},{key:'peak_conc_force',label:'Peak Concentric Force (N/kg)',step:0.01,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'peak_conc_vel',label:'Peak Concentric Velocity (m/s)',step:0.01,dir:'max'},{key:'edrfd_bm',label:'EDRFD / BM (N/s/kg)',step:0.1,dir:'max'},{key:'braking_rfd',label:'Braking RFD (N/s)',step:1,dir:'max'},{key:'peak_braking_force',label:'Peak Braking Force (N/kg)',step:0.01,dir:'max'},{key:'braking_impulse',label:'Braking Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'depth',label:'Countermovement Depth (cm)',step:0.1,dir:'max'},{key:'contraction_time',label:'Contraction Time (ms)',step:1,dir:'min'},{key:'ecc_duration',label:'Eccentric Duration (ms)',step:1,dir:'min'},{key:'conc_duration',label:'Concentric Duration (ms)',step:1,dir:'min'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'time_to_stab',label:'Time to Stabilization (s)',step:0.01,dir:'min'}]},
   {key:'cmjr',label:'CMJ Rebound',cat:'Sauts',bilateral:true,kpis:[{key:'first_height',label:'First Jump Height (cm)',step:0.1,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'mean_ct',label:'Mean Contact Time (ms)',step:1,dir:'min'},{key:'mean_rebound_height',label:'Mean Rebound Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'mean_stiffness',label:'Mean Leg Stiffness (kN/m)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'rsi_decay',label:'RSI Decay (%)',step:0.1,dir:'min'},{key:'stiffness_decay',label:'Leg Stiffness Decay (%)',step:0.1,dir:'min'}]},
   {key:'dj',label:'DJ',cat:'Sauts',bilateral:true,kpis:[{key:'rsi',label:'RSI',step:0.01,dir:'max'},{key:'height',label:'Jump Height (cm)',step:0.1,dir:'max'},{key:'contact_time',label:'Contact Time (ms)',step:1,dir:'min'},{key:'peak_prop_force',label:'Peak Propulsive Force (N/kg)',step:0.01,dir:'max'},{key:'peak_prop_power',label:'Peak Propulsive Power (W/kg)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'leg_stiffness',label:'Leg Stiffness (kN/m)',step:0.1,dir:'max'}]},
   {key:'sldj',label:'SLDJ',cat:'Sauts',bilateral:false,kpis:[{key:'rsi',label:'RSI',step:0.01,dir:'max'},{key:'tts',label:'TTS (s)',step:0.01,dir:'min'},{key:'height',label:'Jump Height (cm)',step:0.1,dir:'max'},{key:'contact_time',label:'Contact Time (ms)',step:1,dir:'min'},{key:'peak_prop_force',label:'Peak Propulsive Force (N/kg)',step:0.01,dir:'max'},{key:'peak_prop_power',label:'Peak Propulsive Power (W/kg)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'leg_stiffness',label:'Leg Stiffness (kN/m)',step:0.1,dir:'max'}]},
@@ -172,10 +172,10 @@ function parseCSV(text){
   if(lines.length<2)return null;
   // Detect delimiter
   var delim=lines[0].includes(';')?';':',';
-  var headers=lines[0].split(delim).map(function(h){return h.trim().replace(/^"|"$/g,'');});
+  var headers=lines[0].split(delim).map(function(h){return h.trim().replace(/^"|"$/g,'').trim();});
   var rows=[];
   for(var i=1;i<lines.length;i++){
-    var cells=lines[i].split(delim).map(function(c){return c.trim().replace(/^"|"$/g,'');});
+    var cells=lines[i].split(delim).map(function(c){return c.trim().replace(/^"|"$/g,'').trim();});
     if(cells.length<2)continue;
     var row={};
     headers.forEach(function(h,j){row[h]=cells[j]||'';});
@@ -185,10 +185,166 @@ function parseCSV(text){
 }
 
 function detectSource(headers){
-  var h=headers.join(' ').toLowerCase();
+  var hl=headers.map(function(x){return x.toLowerCase();});
+  var h=hl.join(' ');
+  if(hl.indexOf('device')>=0&&hl.indexOf('movement')>=0&&hl.indexOf('body region')>=0)return'dynamo';
+  if(hl.indexOf('test type')>=0&&(h.indexOf('bw [kg]')>=0||h.indexOf('externalid')>=0))return'forcedecks';
   if(h.includes('symmetry')||h.includes('forcedeck')||h.includes('limb symmetry'))return'vald';
   if(h.includes('velocity')||h.includes('vitruve')||h.includes('mean velocity'))return'vitruve';
   return'unknown';
+}
+
+// ── VALD ForceDecks (real export) ───────────────────────────────────────────
+// Test Type column value -> KINEXUS test key. Export is one row per test
+// session with metrics as direct columns (unit in brackets, trailing space).
+var FD_TEST_TYPE_MAP={
+  'CMJ':'cmj','SLJ':'slcmj','SLCMJ':'slcmj','DJ':'dj','SLDJ':'sldj','SLHJ':'sldj',
+  'IMTP':'imtp','SLIMTP':'slimtp','ISOSQT':'iso_belt_squat','BSQ':'iso_belt_squat',
+  'SLBSQ':'sl_iso_push','PPU':'sl_iso_push','HJ':'repeated_hop','RSKIP':'repeated_hop'
+};
+// kpi key -> metric name prefix as it appears in the ForceDecks column header
+// (matched case-insensitively as a "starts with", ignoring the unit suffix)
+var FD_KPI_PATTERNS={
+  height:['Jump Height'],rsi_mod:['RSI-modified'],rsi:['RSI'],
+  peak_power:['Peak Power / BM','Peak Power/BM','Peak Power'],conc_impulse:['Concentric Impulse'],peak_vel:['Peak Velocity'],
+  tto:['Time To Take Off','Time to Take Off'],depth:['Countermovement Depth'],
+  contact_time:['Contact Time'],peak_prop_force:['Peak Propulsive Force'],
+  peak_prop_power:['Peak Propulsive Power'],landing_impulse:['Landing Impulse'],
+  leg_stiffness:['Leg Stiffness'],tts:['Time to Stabilise','Time to Stabilization'],
+  peak_landing_force:['Peak Landing Force'],landing_peak_force:['Peak Landing Force'],
+  n:['Peak Force'],nkg:['Peak Force / BM','Peak Force/BM'],
+  peak_conc_force:['Peak Concentric Force'],peak_conc_vel:['Peak Concentric Velocity'],
+  braking_rfd:['Braking RFD'],peak_braking_force:['Peak Braking Force'],
+  braking_impulse:['Braking Impulse'],contraction_time:['Contraction Time'],
+  ecc_duration:['Eccentric Duration'],conc_duration:['Concentric Duration'],
+  time_to_stab:['Time to Stabilization','Time to Stabilise']
+};
+function fdColSuffix(header){
+  var t=header.trim();
+  if(/\(asym\)/i.test(t))return'asym';
+  if(/\(l\)\s*$/i.test(t))return'L';
+  if(/\(r\)\s*$/i.test(t))return'R';
+  return null;
+}
+function fdFindCol(headers,patterns,side){
+  for(var i=0;i<patterns.length;i++){
+    var p=patterns[i].toLowerCase();
+    for(var j=0;j<headers.length;j++){
+      var hd=headers[j];
+      var hl=hd.toLowerCase();
+      if(hl.indexOf(p)!==0)continue;
+      // Require a real word boundary right after the pattern (space/bracket/end),
+      // so a bare pattern like "Peak Force" or "RSI" doesn't also swallow a more
+      // specific column like "Peak Force / BM" or "RSI-modified".
+      var boundary=hl.charAt(p.length);
+      if(boundary&&boundary!==' '&&boundary!=='('&&boundary!=='['&&boundary!=='/')continue;
+      var rest=hl.slice(p.length).replace(/^\s*/,'');
+      if(rest.charAt(0)==='/'&&p.indexOf('/')<0)continue;
+      var sfx=fdColSuffix(hd);
+      if(side===null&&sfx===null)return hd;
+      if(side==='L'&&sfx==='L')return hd;
+      if(side==='R'&&sfx==='R')return hd;
+    }
+  }
+  return null;
+}
+function fdVal(raw,kpiLabel,matchedHeader,bw){
+  var v=parseFloat(raw);
+  if(isNaN(v))return null;
+  if(kpiLabel.indexOf('N/kg')>=0&&matchedHeader&&!/\/\s*kg|\/\s*bm/i.test(matchedHeader)&&bw){
+    v=v/bw;
+  }
+  return v;
+}
+function importForceDecks(parsed){
+  var result={};
+  var headers=parsed.headers,rows=parsed.rows;
+  var typeCol=findCol(headers,['Test Type']);
+  var bwCol=findCol(headers,['BW [KG]','BW (KG)','Bodyweight']);
+  rows.forEach(function(row){
+    var typeVal=typeCol?(row[typeCol]||'').trim():'';
+    var testKey=FD_TEST_TYPE_MAP[typeVal.toUpperCase()];
+    if(!testKey)return;
+    var test=TBK[testKey];if(!test)return;
+    var bw=bwCol?parseFloat(row[bwCol]):null;if(isNaN(bw))bw=null;
+    if(test.bilateral){
+      if(!result[testKey])result[testKey]={active:true,trials:{}};
+      test.kpis.forEach(function(kpi){
+        var patterns=FD_KPI_PATTERNS[kpi.key];if(!patterns)return;
+        var col=fdFindCol(headers,patterns,null);if(!col)return;
+        var v=fdVal(row[col],kpi.label,col,bw);
+        if(v!=null){if(!result[testKey].trials[kpi.key])result[testKey].trials[kpi.key]=[];result[testKey].trials[kpi.key].push(v);}
+      });
+    }else{
+      if(!result[testKey])result[testKey]={active:true,D:{trials:{}},G:{trials:{}}};
+      test.kpis.forEach(function(kpi){
+        var patterns=FD_KPI_PATTERNS[kpi.key];if(!patterns)return;
+        var colL=fdFindCol(headers,patterns,'L');
+        var colR=fdFindCol(headers,patterns,'R');
+        if(colL){var vl=fdVal(row[colL],kpi.label,colL,bw);if(vl!=null){if(!result[testKey].G.trials[kpi.key])result[testKey].G.trials[kpi.key]=[];result[testKey].G.trials[kpi.key].push(vl);}}
+        if(colR){var vr=fdVal(row[colR],kpi.label,colR,bw);if(vr!=null){if(!result[testKey].D.trials[kpi.key])result[testKey].D.trials[kpi.key]=[];result[testKey].D.trials[kpi.key].push(vr);}}
+      });
+    }
+  });
+  return result;
+}
+
+// ── VALD DynaMo (isometric strength device) ─────────────────────────────────
+// Movement + Body Region (+ Position) -> KINEXUS test key.
+function dynamoTestKey(region,movement,position){
+  region=(region||'').toLowerCase();movement=(movement||'').toLowerCase();position=(position||'').toLowerCase();
+  if(region==='knee'){
+    if(movement.indexOf('extension')>=0)return'knee_ext';
+    if(movement.indexOf('flexion')>=0)return'knee_flex';
+  }
+  if(region==='hip'){
+    if(movement.indexOf('extension')>=0)return'hip_ext';
+    if(movement.indexOf('flexion')>=0)return'hip_flex';
+    if(movement.indexOf('abduction')>=0)return'hip_abd';
+    if(movement.indexOf('adduction')>=0)return'hip_add';
+    if(movement.indexOf('internal rotation')>=0)return'hip_rot_int';
+    if(movement.indexOf('external rotation')>=0)return'hip_rot_ext';
+  }
+  if(region==='ankle'){
+    if(movement.indexOf('dorsiflexion')>=0)return'df_iso';
+    if(movement.indexOf('inversion')>=0)return'inv_iso';
+    if(movement.indexOf('eversion')>=0)return'ev_iso';
+    if(movement.indexOf('plantarflexion')>=0)return position.indexOf('extend')>=0?'gastro_iso':'soleus_iso';
+  }
+  return null;
+}
+function importDynamo(parsed){
+  var result={};
+  var headers=parsed.headers,rows=parsed.rows;
+  var regionCol=findCol(headers,['Body Region']);
+  var moveCol=findCol(headers,['Movement']);
+  var posCol=findCol(headers,['Position']);
+  var lForceCol=findCol(headers,['L Max Force']);
+  var rForceCol=findCol(headers,['R Max Force']);
+  var lRfdCol=findCol(headers,['L RFD']);
+  var rRfdCol=findCol(headers,['R RFD']);
+  var lTtpfCol=findCol(headers,['L Time to Peak Force']);
+  var rTtpfCol=findCol(headers,['R Time to Peak Force']);
+  rows.forEach(function(row){
+    var testKey=dynamoTestKey(regionCol&&row[regionCol],moveCol&&row[moveCol],posCol&&row[posCol]);
+    if(!testKey)return;
+    var test=TBK[testKey];if(!test)return;
+    if(!result[testKey])result[testKey]={active:true,D:{trials:{}},G:{trials:{}}};
+    function push(side,kpiKey,raw,mult){
+      var v=parseFloat(raw);if(isNaN(v))return;
+      if(mult)v=v*mult;
+      var bucket=result[testKey][side];
+      if(!bucket.trials[kpiKey])bucket.trials[kpiKey]=[];
+      bucket.trials[kpiKey].push(v);
+    }
+    if(lForceCol&&row[lForceCol])push('G','n',row[lForceCol]);
+    if(rForceCol&&row[rForceCol])push('D','n',row[rForceCol]);
+    if(lRfdCol&&row[lRfdCol])push('G','rfd200',row[lRfdCol]);
+    if(rRfdCol&&row[rRfdCol])push('D','rfd200',row[rRfdCol]);
+    if(lTtpfCol&&row[lTtpfCol])push('G','ttpf',row[lTtpfCol],1000);
+    if(rTtpfCol&&row[rTtpfCol])push('D','ttpf',row[rTtpfCol],1000);
+  });
+  return result;
 }
 
 function findCol(headers,patterns){
@@ -283,17 +439,21 @@ function processCSV(text){
   if(!parsed||!parsed.rows.length)return{error:'Fichier CSV vide ou invalide.',data:null,source:null};
   var source=detectSource(parsed.headers);
   var data={};
-  if(source==='vald')data=importVALD(parsed);
+  if(source==='forcedecks')data=importForceDecks(parsed);
+  else if(source==='dynamo')data=importDynamo(parsed);
+  else if(source==='vald')data=importVALD(parsed);
   else if(source==='vitruve')data=importVitruve(parsed);
   else{
-    // Try generic: attempt both
+    // Try everything: attempt all known formats
+    var fd=importForceDecks(parsed);
+    var dm=importDynamo(parsed);
     var v=importVALD(parsed);
     var vi=importVitruve(parsed);
-    Object.assign(data,v,vi);
+    Object.assign(data,v,vi,fd,dm);
     source='generic';
   }
   var count=Object.keys(data).length;
-  if(count===0)return{error:'Aucun test reconnu dans ce CSV. Vérifiez le format VALD ou Vitruve.',data:null,source:source};
+  if(count===0)return{error:'Aucun test reconnu dans ce CSV. Vérifiez le format ForceDecks, DynaMo, VALD ou Vitruve.',data:null,source:source};
   return{error:null,data:data,source:source,count:count};
 }
 
@@ -732,7 +892,7 @@ function CSVImportModal(props){
       var text=ev.target.result;
       var res=processCSV(text);
       if(res.error){setStatus('error');setMsg(res.error);setPreview(null);}
-      else{setStatus('success');setMsg((res.source==='vald'?'VALD ForceDecks':res.source==='vitruve'?'Vitruve':'Source générique')+' détecté — '+res.count+' test(s) reconnu(s).');setPreview(res.data);}
+      else{var srcLabel={forcedecks:'VALD ForceDecks',dynamo:'VALD DynaMo',vald:'VALD (générique)',vitruve:'Vitruve',generic:'Source générique'}[res.source]||res.source;setStatus('success');setMsg(srcLabel+' détecté — '+res.count+' test(s) reconnu(s).');setPreview(res.data);}
     };
     reader.readAsText(file);
   }
@@ -748,7 +908,7 @@ function CSVImportModal(props){
       h('div',{style:{marginBottom:16}},
         h(Label,null,'Source compatible'),
         h('div',{style:{display:'flex',gap:8}},
-          ['VALD ForceDecks','Vitruve'].map(function(s){return h('span',{key:s,style:{padding:'4px 10px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.teal,fontSize:11,fontWeight:600}},s);})
+          ['VALD ForceDecks','VALD DynaMo','Vitruve'].map(function(s){return h('span',{key:s,style:{padding:'4px 10px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.teal,fontSize:11,fontWeight:600}},s);})
         )
       ),
       h('div',{style:{border:'2px dashed '+C.border,borderRadius:10,padding:'28px',textAlign:'center',cursor:'pointer',marginBottom:16},onClick:function(){fileRef.current&&fileRef.current.click();}},
