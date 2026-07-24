@@ -1019,9 +1019,14 @@ function buildSportifReport(athlete,bilan,res){
   TESTS.forEach(function(test){
     if(test.bilateral)return;
     var data=td[test.key];if(!data||!data.active)return;
-    var lsi=data.lsiAuto;
-    if(lsi==null){var kpi=test.kpis[0];var dV=bestVal(((data.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((data.G||{}).trials||{})[kpi.key]||[],kpi.dir);lsi=autoLSI(dV,gV);}
-    if(lsi!=null)lsiItems.push({label:test.label.replace(' Iso','').replace(' Test',''),lsi:lsi,status:lsiSt(lsi)});
+    var kpi=test.kpis[0];
+    var dV=bestVal(((data.D||{}).trials||{})[kpi.key]||[],kpi.dir);
+    var gV=bestVal(((data.G||{}).trials||{})[kpi.key]||[],kpi.dir);
+    var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(dV,gV);
+    if(lsi!=null&&dV!=null&&gV!=null){
+      var unitM=kpi.label.match(/\(([^)]+)\)/);
+      lsiItems.push({label:test.label,dV:dV,gV:gV,unit:unitM?unitM[1]:'',lsi:lsi,status:lsiSt(lsi)});
+    }
   });
 
   // ── Section 4 : chaîne causale ────────────────────────────────────────────
@@ -1150,16 +1155,28 @@ function buildSportifReport(athlete,bilan,res){
 
   // ── Section 3 : symétrie ──
   if(lsiItems.length>0){
-    html+='<div style="margin-bottom:18px">'+sectionTitle(3,'Symétrie (LSI)');
-    var barsHtml='';
+    html+='<div style="margin-bottom:18px">'+sectionTitle(3,'Comparaison Gauche / Droite — Tests unipodaux');
+    var barsHtml='<div style="display:flex;justify-content:space-between;padding:0 4px 8px;font-size:7pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5B7A8C">'
+      +'<span>◀ Gauche</span><span>Droite ▶</span></div>';
     lsiItems.forEach(function(item){
-      barsHtml+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">'
-        +'<div style="width:120px;font-size:8.3pt;color:#444;flex-shrink:0">'+item.label+'</div>'
-        +'<div style="flex:1;height:9px;background:#EEF2F5;border-radius:5px;overflow:hidden"><div style="height:100%;width:'+Math.min(item.lsi,100)+'%;background:'+colMap[item.status]+'"></div></div>'
-        +'<div style="width:42px;text-align:right;font-weight:800;font-size:9pt;color:'+colMap[item.status]+'">'+item.lsi+'%</div>'
-        +'<div style="width:95px;text-align:right">'+badge(item.status)+'</div>'
+      var mx=Math.max(item.gV,item.dV)||1;
+      var gPct=Math.max(Math.min(Math.abs(item.gV)/mx*100,100),2);
+      var dPct=Math.max(Math.min(Math.abs(item.dV)/mx*100,100),2);
+      var col=colMap[item.status];
+      barsHtml+='<div style="margin-bottom:12px">'
+        +'<div style="display:flex;align-items:center;gap:6px">'
+        +'<div style="width:64px;text-align:right;font-size:8.3pt;font-weight:700;color:#132B3A;flex-shrink:0">'+item.gV+'</div>'
+        +'<div style="flex:1;display:flex;justify-content:flex-end;height:13px"><div style="height:100%;width:'+gPct+'%;background:'+col+'CC;border-radius:4px 0 0 4px"></div></div>'
+        +'<div style="width:138px;text-align:center;flex-shrink:0"><div style="font-size:7.8pt;font-weight:700;color:#1B4F6A">'+item.label+'</div><div style="font-size:7pt;color:'+col+';font-weight:800">'+item.lsi+'% LSI</div></div>'
+        +'<div style="flex:1;display:flex;justify-content:flex-start;height:13px"><div style="height:100%;width:'+dPct+'%;background:'+col+'CC;border-radius:0 4px 4px 0"></div></div>'
+        +'<div style="width:64px;text-align:left;font-size:8.3pt;font-weight:700;color:#132B3A;flex-shrink:0">'+item.dV+'</div>'
+        +'</div>'
+        +(item.unit?'<div style="text-align:center;font-size:6.5pt;color:#8FAAB8;margin-top:1px">'+item.unit+'</div>':'')
         +'</div>';
     });
+    barsHtml+='<div style="display:flex;gap:12px;justify-content:center;margin-top:10px;padding-top:8px;border-top:1px solid #E1E8EE;font-size:7pt;color:#5B7A8C">'
+      +'<span>'+badge('vert','≥90% Optimal')+'</span><span>'+badge('jaune','80-89% À surveiller')+'</span><span>'+badge('orange','70-79% Déficitaire')+'</span><span>'+badge('rouge','<70% Critique')+'</span>'
+      +'</div>';
     html+=panel(barsHtml);
     html+='</div>';
   }
@@ -1476,8 +1493,43 @@ function TestEntry(props){
     });
   }
 
+  function mergeTrials(a,b){return (a||[]).concat(b||[]);}
   function onImport(importedData){
-    setTestData(function(prev){return Object.assign({},prev,importedData);});
+    setTestData(function(prev){
+      var next=Object.assign({},prev);
+      Object.keys(importedData).forEach(function(testKey){
+        var test=TBK[testKey];
+        var incoming=importedData[testKey];
+        var existing=next[testKey];
+        if(!existing){next[testKey]=incoming;return;}
+        if(test&&test.bilateral){
+          var merged=Object.assign({},existing,{active:true});
+          merged.trials=Object.assign({},existing.trials||{});
+          Object.keys(incoming.trials||{}).forEach(function(kpiKey){
+            merged.trials[kpiKey]=mergeTrials(merged.trials[kpiKey],incoming.trials[kpiKey]);
+          });
+          next[testKey]=merged;
+        }else{
+          var mergedU=Object.assign({},existing,{active:true});
+          ['D','G'].forEach(function(side){
+            var sd=Object.assign({},existing[side]||{});
+            sd.trials=Object.assign({},sd.trials||{});
+            Object.keys((incoming[side]||{}).trials||{}).forEach(function(kpiKey){
+              sd.trials[kpiKey]=mergeTrials(sd.trials[kpiKey],incoming[side].trials[kpiKey]);
+            });
+            mergedU[side]=sd;
+          });
+          if(test){
+            var kpi=test.kpis[0];
+            var vD=bestVal((mergedU.D.trials||{})[kpi.key],kpi.dir);
+            var vG=bestVal((mergedU.G.trials||{})[kpi.key],kpi.dir);
+            mergedU.lsiAuto=autoLSI(vD,vG);
+          }
+          next[testKey]=mergedU;
+        }
+      });
+      return next;
+    });
   }
 
   function setQA(qk,id,val){setQuestData(function(prev){var q=Object.assign({},prev[qk]||{});q.answers=Object.assign({},q.answers||{});q.answers[id]=val;var n=Object.assign({},prev);n[qk]=q;return n;});}
