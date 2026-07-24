@@ -329,7 +329,9 @@ var NORM_POPULATIONS=[
   {key:'fd_rugby_m',label:'Rugby — Homme (ForceDecks)'},
   {key:'fd_rugby_f',label:'Rugby — Femme (ForceDecks)'},
   {key:'fd_hockey_m',label:'Hockey sur glace — Homme (ForceDecks)'},
-  {key:'fd_hockey_f',label:'Hockey sur glace — Femme (ForceDecks)'}
+  {key:'fd_hockey_f',label:'Hockey sur glace — Femme (ForceDecks)'},
+  {key:'general_m',label:'Population générale — Homme (par âge)'},
+  {key:'general_f',label:'Population générale — Femme (par âge)'}
 ];
 var NORM_SOURCES={
   foot_m_senior:'VALD Normative Data Report — Premier League 2025/26 (in-season, hommes 19-40 ans)',
@@ -350,7 +352,9 @@ var NORM_SOURCES={
   fd_rugby_m:'VALD Practitioner\'s Intermediate Guide to Force Plates — ForceDecks Normative Data (Rugby Hommes)',
   fd_rugby_f:'VALD Practitioner\'s Intermediate Guide to Force Plates — ForceDecks Normative Data (Rugby Femmes)',
   fd_hockey_m:'VALD Practitioner\'s Intermediate Guide to Force Plates — ForceDecks Normative Data (Hockey sur glace Hommes)',
-  fd_hockey_f:'VALD Practitioner\'s Intermediate Guide to Force Plates — ForceDecks Normative Data (Hockey sur glace Femmes)'
+  fd_hockey_f:'VALD Practitioner\'s Intermediate Guide to Force Plates — ForceDecks Normative Data (Hockey sur glace Femmes)',
+  general_m:'VALD Practitioner\'s Intermediate Guide to Force Plates — Normative Data Population Générale par tranche d\'âge, hommes (IMTP, CMJ)',
+  general_f:'VALD Practitioner\'s Intermediate Guide to Force Plates — Normative Data Population Générale par tranche d\'âge, femmes (IMTP, CMJ)'
 };
 // Percentile bands [p5,p25,p50,p75,p95], toutes en "plus haut = mieux"
 var NORMS={
@@ -374,22 +378,39 @@ var NORMS={
   fd_rugby_m:{cmj_height:[29.6,34.5,39.5,44.6,49.3],cmj_rsi_mod:[0.38,0.48,0.58,0.67,0.75],iso_belt_squat_n:[2105,2619,3210,3810,4329],iso_belt_squat_nkg:[27.6,31.1,35.5,40.2,45.1],dj_rsi:[1.6,2.2,2.8,3.1,3.4]},
   fd_rugby_f:{cmj_height:[22.9,26.1,29.8,33.8,37.9],cmj_rsi_mod:[0.34,0.41,0.49,0.57,0.66],iso_belt_squat_n:[1486,1790,2087,2505,2820],iso_belt_squat_nkg:[23.7,26.5,30.4,34.3,37.8],dj_rsi:[1.1,1.3,1.7,2.1,2.5]},
   fd_hockey_m:{cmj_height:[31.3,35.5,39.5,43.4,47.3],cmj_rsi_mod:[0.41,0.48,0.57,0.66,0.73],iso_belt_squat_n:[1946,2303,2749,3300,4120],iso_belt_squat_nkg:[27.3,30.0,34.5,40.6,51.8],dj_rsi:[1.1,1.6,2.3,2.7,3.1]},
-  fd_hockey_f:{cmj_height:[22.1,25.1,27.9,31.2,35.6],cmj_rsi_mod:[0.27,0.32,0.39,0.46,0.53],iso_belt_squat_n:[1648,1924,2207,2504,2853],iso_belt_squat_nkg:[25.2,28.1,31.7,35.4,39.7],dj_rsi:[0.8,1.1,1.8,2.2,2.7]}
+  fd_hockey_f:{cmj_height:[22.1,25.1,27.9,31.2,35.6],cmj_rsi_mod:[0.27,0.32,0.39,0.46,0.53],iso_belt_squat_n:[1648,1924,2207,2504,2853],iso_belt_squat_nkg:[25.2,28.1,31.7,35.4,39.7],dj_rsi:[0.8,1.1,1.8,2.2,2.7]},
+  // Population générale par tranche d'âge (25e/50e/90e percentile ; le 75e est interpolé faute de donnée source).
+  // IMTP peak force (proxy iso_belt_squat) disponible pour 31 ans et plus ; CMJ jump height disponible dès <18 ans.
+  general_m:{
+    iso_belt_squat_n:[{maxAge:40,vals:[null,2233,2655,3137.0,3619]},{maxAge:50,vals:[null,2102,2459,2915.0,3371]},{maxAge:60,vals:[null,2095,2370,2681.0,2992]},{maxAge:70,vals:[null,1835,2140,2449.5,2759]},{maxAge:999,vals:[null,1626,1880,2111.0,2342]}],
+    cmj_height:[{maxAge:17,vals:[null,27.9,33.4,39.25,45.1]},{maxAge:25,vals:[null,31.8,37.1,42.6,48.1]},{maxAge:30,vals:[null,29.8,35.0,40.5,46.0]},{maxAge:35,vals:[null,27.4,32.6,38.3,44.0]},{maxAge:40,vals:[null,24.9,29.7,35.55,41.4]},{maxAge:999,vals:[null,22.4,26.7,31.85,37.0]}]
+  },
+  general_f:{
+    iso_belt_squat_n:[{maxAge:40,vals:[null,1453,1738,2141.5,2545]},{maxAge:50,vals:[null,1404,1637,2029.5,2422]},{maxAge:60,vals:[null,1353,1543,1887.0,2231]},{maxAge:70,vals:[null,1241,1440,1612.0,1784]},{maxAge:999,vals:[null,1123,1267,1454.0,1641]}],
+    cmj_height:[{maxAge:17,vals:[null,21.1,24.7,28.95,33.2]},{maxAge:25,vals:[null,21.6,25.9,29.7,33.5]},{maxAge:30,vals:[null,20.4,24.9,30.25,35.6]},{maxAge:35,vals:[null,17.9,21.9,28.3,34.7]},{maxAge:40,vals:[null,16.7,20.3,26.0,31.7]},{maxAge:999,vals:[null,14.8,18.1,22.1,26.1]}]
+  }
 };
+function resolveBands(entry,age){
+  if(!entry)return null;
+  if(typeof entry[0]==='number')return entry;
+  if(age==null)return entry[Math.floor(entry.length/2)].vals;
+  for(var i=0;i<entry.length;i++){if(age<=entry[i].maxAge)return entry[i].vals;}
+  return entry[entry.length-1].vals;
+}
 function pctStatus(bands,val){if(val==null||!bands)return null;if(val>=bands[3])return'vert';if(val>=bands[2])return'jaune';if(val>=bands[1])return'orange';return'rouge';}
 
-function applyThr(key,val,pop){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var ps=pctStatus(NORMS[pop][key],val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
+function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
 function lsiSt(lsi){if(lsi==null)return null;if(lsi>=90)return'vert';if(lsi>=80)return'jaune';if(lsi>=70)return'orange';return'rouge';}
 function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=null&&x!=='';}).map(Number);if(!v.length)return null;return dir==='min'?Math.min.apply(null,v):Math.max.apply(null,v);}
 function autoLSI(D,G){if(D==null||G==null||D===0||G===0)return null;return Math.round((Math.min(D,G)/Math.max(D,G))*1000)/10;}
 function s2sc(s){return{vert:3,jaune:2,orange:1,rouge:0}[s];}
 function sc2s(s){if(s>=2.5)return'vert';if(s>=1.8)return'jaune';if(s>=1.0)return'orange';return'rouge';}
 
-function computeTestStatus(key,data,pop){
+function computeTestStatus(key,data,pop,age){
   var test=TBK[key];if(!test||!data||!data.active)return null;
   var sts=[];
-  if(test.bilateral){test.kpis.forEach(function(kpi){var v=bestVal((data.trials||{})[kpi.key],kpi.dir);var s=applyThr(key+'_'+kpi.key,v,pop);if(s)sts.push({w:3,s:s});});}
-  else{test.kpis.forEach(function(kpi){var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);if(lsi!=null)sts.push({w:3,s:lsiSt(lsi)});[vD,vG].forEach(function(v){var s=applyThr(key+'_'+kpi.key,v,pop);if(s)sts.push({w:2,s:s});});});if(data.lsi!=null)sts.push({w:3,s:lsiSt(data.lsi)});}
+  if(test.bilateral){test.kpis.forEach(function(kpi){var v=bestVal((data.trials||{})[kpi.key],kpi.dir);var s=applyThr(key+'_'+kpi.key,v,pop,age);if(s)sts.push({w:3,s:s});});}
+  else{test.kpis.forEach(function(kpi){var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);if(lsi!=null)sts.push({w:3,s:lsiSt(lsi)});[vD,vG].forEach(function(v){var s=applyThr(key+'_'+kpi.key,v,pop,age);if(s)sts.push({w:2,s:s});});});if(data.lsi!=null)sts.push({w:3,s:lsiSt(data.lsi)});}
   if(!sts.length)return'jaune';
   var tw=0,ts=0,hasR=false,maj=0;
   sts.forEach(function(x){var sc=s2sc(x.s);if(sc!=null){tw+=x.w;ts+=sc*x.w;}if(x.s==='rouge'){hasR=true;maj++;}if(x.s==='orange')maj++;});
@@ -398,9 +419,9 @@ function computeTestStatus(key,data,pop){
   return st;
 }
 
-function computeMoteur(testData,questData,normPop){
+function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
-  var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop);});
+  var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
   var fSc={};
   FUNCTIONS.forEach(function(fn){
     var fk=FN_KEY[fn];var tw=0,ts=0,hasR=false,maj=0,cov=0,poss=0;
@@ -1302,7 +1323,8 @@ function AnalyseView(props){
   var [view,setView]=useState('synthese');
   var [validated,setValidated]=useState(bilan.statut==='Validé');
   var [showPrintMenu,setShowPrintMenu]=useState(false);
-  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,athlete.normPopulation);},[bilan,athlete.normPopulation]);
+  var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,athlete.normPopulation,athleteAge);},[bilan,athlete.normPopulation,athleteAge]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
 
   function doPrint(type){setShowPrintMenu(false);printReport(type,athlete,bilan,res);}
@@ -1733,8 +1755,9 @@ function HistoriqueView(props){
   var [sel2,setSel2]=useState((bilans.filter(function(b){return b.id!==currentBilan.id;}).slice(-1)[0]||{}).id||'');
   var b1=bilans.find(function(b){return b.id==sel1;});
   var b2=bilans.find(function(b){return b.id==sel2;});
-  var r1=b1?computeMoteur(b1.testData,b1.questData,athlete.normPopulation):null;
-  var r2=b2?computeMoteur(b2.testData,b2.questData,athlete.normPopulation):null;
+  var histAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
+  var r1=b1?computeMoteur(b1.testData,b1.questData,athlete.normPopulation,histAge):null;
+  var r2=b2?computeMoteur(b2.testData,b2.questData,athlete.normPopulation,histAge):null;
   function fmtD(d){return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'});}
   if(bilans.length<2)return h(Card,{pad:24,style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:13}},'Au moins 2 bilans sont nécessaires pour la comparaison.'));
   var opts=bilans.map(function(b){return{value:b.id,label:b.type+' · '+b.sousType+' ('+fmtD(b.date)+')'};});
