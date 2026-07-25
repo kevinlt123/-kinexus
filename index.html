@@ -785,6 +785,56 @@ function varRelHTML(testKey,kpiKey,testData,pop,age){
   return out;
 }
 
+// Moteur de raisonnement variable-à-variable : utilise VAR_REL pour calculer une cause probable,
+// un niveau de confiance basé sur les corrélats mesurés, et les conséquences attendues.
+function varReason(testKey,kpiKey,testData,pop,age){
+  var rel=VAR_REL[testKey+'_'+kpiKey];if(!rel)return null;
+  var status=kpiStatus(testKey,kpiKey,testData,pop,age);
+  if(!status||status==='vert')return null;
+  function withStatus(list){return (list||[]).map(function(t){return{test:t.test,kpi:t.kpi,status:kpiStatus(t.test,t.kpi,testData,pop,age)};});}
+  var evidence=withStatus(rel.liees).concat(withStatus(rel.confirmations));
+  var confirmedBy=evidence.filter(function(e){return e.status==='rouge'||e.status==='orange';});
+  var testedEvidence=evidence.filter(function(e){return e.status!=null;});
+  var rootCause=null;
+  (rel.verifications||[]).forEach(function(lvl){
+    if(rootCause)return;
+    lvl.tests.forEach(function(t){
+      if(rootCause)return;
+      var st=kpiStatus(t.test,t.kpi,testData,pop,age);
+      if(st==='rouge'||st==='orange')rootCause={test:t.test,kpi:t.kpi,status:st,category:lvl.category};
+    });
+  });
+  var confidence;
+  if(rootCause&&confirmedBy.length>0)confidence='elevee';
+  else if(rootCause||confirmedBy.length>0)confidence='moderee';
+  else confidence='faible';
+  var testLbl=TBK[testKey]?TBK[testKey].label:testKey;
+  var rootLbl=rootCause&&TBK[rootCause.test]?TBK[rootCause.test].label:(rootCause?rootCause.test:null);
+  var sevWord=function(s){return s==='rouge'?'critique':'déficitaire';};
+  var hyp=testLbl+' ('+(rel.label||kpiKey)+') '+sevWord(status)+'.';
+  if(rootCause){hyp+=' Cause probable : '+rootLbl+' également '+sevWord(rootCause.status)+(rootCause.category?' ('+rootCause.category+')':'')+'.';}
+  else{hyp+=' Aucune cause en amont mesurée n\'est actuellement déficitaire parmi les vérifications documentées.';}
+  if(confirmedBy.length>0){hyp+=' Confirmé par '+confirmedBy.length+' variable(s) corrélée(s) déficitaire(s) sur '+testedEvidence.length+' mesurée(s).';}
+  else if(testedEvidence.length>0){hyp+=' Aucune variable corrélée mesurée ne confirme ce déficit ('+testedEvidence.length+' testée(s), toutes normales) — possible facteur isolé.';}
+  var expectedConsequences=(rel.aval||[]).filter(function(a){return a.poids==='Majeure'||a.poids==='Modérée';}).map(function(a){return a.name;});
+  return{status:status,confidence:confidence,rootCause:rootCause,rootLabel:rootLbl,confirmedBy:confirmedBy,testedEvidenceCount:testedEvidence.length,hypothesis:hyp,expectedConsequences:expectedConsequences};
+}
+function varReasonHTML(vr){
+  if(!vr)return'';
+  var confCol={elevee:'#22C55E',moderee:'#EAB308',faible:'#94A3B8'}[vr.confidence]||'#94A3B8';
+  var confLbl={elevee:'Confiance élevée',moderee:'Confiance modérée',faible:'Confiance faible'}[vr.confidence]||vr.confidence;
+  var out='<div style="background:#F0F5F3;border:1px solid '+confCol+'55;border-radius:8px;padding:8px 10px;margin-bottom:8px">'
+    +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+    +'<span style="padding:1px 8px;border-radius:10px;background:'+confCol+';color:#fff;font-size:7pt;font-weight:700">'+confLbl+'</span>'
+    +'</div>'
+    +'<div style="font-size:8pt;color:#132B3A;line-height:1.5">'+vr.hypothesis+'</div>';
+  if(vr.expectedConsequences&&vr.expectedConsequences.length>0){
+    out+='<div style="font-size:7.3pt;color:#5B7A8C;margin-top:5px"><strong>Conséquences attendues si non traité : </strong>'+vr.expectedConsequences.join(', ')+'</div>';
+  }
+  out+='</div>';
+  return out;
+}
+
 function computeTestStatus(key,data,pop,age){
   var test=TBK[key];if(!test||!data||!data.active)return null;
   var sts=[];
@@ -801,6 +851,15 @@ function computeTestStatus(key,data,pop,age){
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
+  var varReasoning={};
+  Object.keys(testData).forEach(function(tk){
+    if(!testData[tk]||!testData[tk].active)return;
+    var test=TBK[tk];if(!test)return;
+    test.kpis.forEach(function(kpi){
+      var vr=varReason(tk,kpi.key,testData,normPop,normAge);
+      if(vr)varReasoning[tk+'_'+kpi.key]=vr;
+    });
+  });
   var fSc={};
   FUNCTIONS.forEach(function(fn){
     var fk=FN_KEY[fn];var tw=0,ts=0,hasR=false,maj=0,cov=0,poss=0;
@@ -837,14 +896,20 @@ function computeMoteur(testData,questData,normPop,normAge){
     var hFn=HYPO[fn];
     var cascade=null;
     for(var di=0;di<deficitTests.length&&!cascade;di++){cascade=findTestCascade(deficitTests[di].key,testData,normPop,normAge);}
-    return{rang:i+1,fonction:fn,status:fSc[fn].status,contributeurPrincipal:main,contributeurSecondaire:sec,deficitTests:deficitTests,okTests:okTests,hypothese:hFn?hFn(main):'Deficit de '+fn.toLowerCase()+' identifie.',orientation:ORI[fn]||'Travailler les qualites de '+fn.toLowerCase()+'.',compensations:main?SYS_COMPENSATIONS[main]:null,cascade:cascade};
+    var vr=null;
+    if(cascade){for(var dj=0;dj<deficitTests.length&&!vr;dj++){vr=varReasoning[deficitTests[dj].key+'_'+cascade.kpiKey];}}
+    for(var dk=0;dk<deficitTests.length&&!vr;dk++){
+      var dtest=TBK[deficitTests[dk].key];if(!dtest)continue;
+      for(var ki=0;ki<dtest.kpis.length&&!vr;ki++){vr=varReasoning[deficitTests[dk].key+'_'+dtest.kpis[ki].key];}
+    }
+    return{rang:i+1,fonction:fn,status:fSc[fn].status,contributeurPrincipal:main,contributeurSecondaire:sec,deficitTests:deficitTests,okTests:okTests,hypothese:hFn?hFn(main):'Deficit de '+fn.toLowerCase()+' identifie.',orientation:ORI[fn]||'Travailler les qualites de '+fn.toLowerCase()+'.',compensations:main?SYS_COMPENSATIONS[main]:null,cascade:cascade,varReasoning:vr};
   });
   // RTP
   var rtpKeys=['single_hop','triple_hop','crossover_hop','side_hop','slcmj','sldj'];
   var rtpActive=rtpKeys.filter(function(k){return testData[k]&&testData[k].active;});
   var rtpStatus=null;
   if(rtpActive.length>0){var pass=0;rtpActive.forEach(function(k){var d=testData[k];var test=TBK[k];if(!test)return;if(!test.bilateral){var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);if(lsi!=null&&lsi>=90)pass++;}else{var st=computeTestStatus(k,d);if(st==='vert'||st==='jaune')pass++;}});var aclScore=null;if(questData.acl_rsi&&questData.acl_rsi.answers)aclScore=QBK.acl_rsi.scoring(questData.acl_rsi.answers);var aclOk=aclScore==null||aclScore>=77;var ratio=rtpActive.length>0?pass/rtpActive.length:0;var rStatus,rLabel;if(ratio>=0.9&&aclOk){rStatus='vert';rLabel='Prêt au retour au sport';}else if(ratio>=0.7){rStatus='jaune';rLabel='À surveiller';}else{rStatus='rouge';rLabel='Non prêt';}rtpStatus={status:rStatus,label:rLabel,ratio:Math.round(ratio*100),passCount:pass,totalCount:rtpActive.length,aclScore:aclScore};}
-  return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus};
+  return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus,varReasoning:varReasoning};
 }
 
 
@@ -1378,7 +1443,8 @@ function buildSportifReport(athlete,bilan,res){
         if(p.okTests&&p.okTests.length>0){p.okTests.forEach(function(lbl){priHtml+='<span style="padding:2px 8px;border-radius:12px;background:#d1fae5;color:#065f46;font-size:7.5pt;font-weight:600;opacity:0.85">'+lbl+' &#10003;</span>';});}
         priHtml+='</div>';
       }
-      priHtml+='<div style="font-size:9pt;color:#444;font-style:italic;margin-bottom:6px">&#171; '+p.hypothese+' &#187;</div>'
+      priHtml+=varReasonHTML(p.varReasoning)
+        +'<div style="font-size:9pt;color:#444;font-style:italic;margin-bottom:6px">&#171; '+p.hypothese+' &#187;</div>'
         +'<div style="font-size:9pt;color:#333"><strong style="color:'+col+'">Orientation : </strong>'+p.orientation+'</div>'
         +(p.compensations&&p.compensations.length>0?'<div style="font-size:8.5pt;color:#666;margin-top:5px;padding-top:5px;border-top:1px solid #eee"><strong style="color:#9a3412">Compensations attendues : </strong>'+p.compensations.join(' ')+'</div>':'')
         +cascadeHTML(p.cascade,td,athlete.normPopulation,age)
@@ -2120,6 +2186,7 @@ function SyntheseView(props){
           p.deficitTests.map(function(dt){return h('span',{key:dt.key,style:{padding:'2px 7px',borderRadius:20,background:SBG[dt.status],border:'1px solid '+SC[dt.status]+'40',color:SC[dt.status],fontSize:9,fontWeight:600}},dt.label);}),
           p.okTests&&p.okTests.length>0&&p.okTests.map(function(lbl){return h('span',{key:lbl,style:{padding:'2px 7px',borderRadius:20,background:C.vertBg,border:'1px solid '+C.vert+'30',color:C.vert,fontSize:9,fontWeight:600,opacity:0.7}},lbl+' ok');})
         ),
+        p.varReasoning&&h('div',{dangerouslySetInnerHTML:{__html:varReasonHTML(p.varReasoning)}}),
         h('div',{style:{color:C.muted,fontSize:12,fontStyle:'italic',marginBottom:6,lineHeight:1.5}},''+p.hypothese+''),
         h('div',{style:{borderTop:'1px solid '+C.border,paddingTop:6,color:C.text,fontSize:12}},h('span',{style:{color:C.teal,fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em'}},'Orientation : '),p.orientation),
         p.compensations&&p.compensations.length>0&&h('div',{style:{borderTop:'1px solid '+C.border,marginTop:6,paddingTop:6,color:C.muted,fontSize:11,lineHeight:1.5}},h('span',{style:{color:C.orange,fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em'}},'Compensations attendues : '),p.compensations.join(' ')),
