@@ -624,6 +624,98 @@ function autoLSI(D,G){if(D==null||G==null||D===0||G===0)return null;return Math.
 function s2sc(s){return{vert:3,jaune:2,orange:1,rouge:0}[s];}
 function sc2s(s){if(s>=2.5)return'vert';if(s>=1.8)return'jaune';if(s>=1.0)return'orange';return'rouge';}
 
+// Cascades "tests à analyser en cas de déficit" extraites du document de raisonnement clinique (fiches JMP, priorités ordonnées).
+var CASCADES={
+  cmj_height:[
+    {priority:1,category:"Production de force",tests:[{test:'knee_ext',kpi:'nkg'},{test:'gastro_iso',kpi:'nkg'},{test:'soleus_iso',kpi:'nkg'},{test:'hip_ext',kpi:'nkg'}]},
+    {priority:2,category:"Développement rapide de force",tests:[{test:'knee_ext',kpi:'rfd150'},{test:'gastro_iso',kpi:'rfd150'},{test:'soleus_iso',kpi:'rfd150'}]},
+    {priority:3,category:"Mobilité",tests:[{test:'wblt',kpi:'distance'}]},
+    {priority:4,category:"Contrôle moteur",tests:[{test:'ybt',kpi:'composite'},{test:'ybt',kpi:'pm'}]}
+  ],
+  cmj_peak_power:[
+    {priority:1,category:"Production de force",tests:[{test:'knee_ext',kpi:'nkg'},{test:'gastro_iso',kpi:'nkg'},{test:'soleus_iso',kpi:'nkg'},{test:'hip_ext',kpi:'nkg'}]},
+    {priority:2,category:"Développement rapide de force",tests:[{test:'knee_ext',kpi:'rfd150'},{test:'gastro_iso',kpi:'rfd150'},{test:'soleus_iso',kpi:'rfd150'}]},
+    {priority:3,category:"Vitesse",tests:[{test:'cmj',kpi:'peak_vel'}]},
+    {priority:4,category:"Mobilité",tests:[{test:'wblt',kpi:'distance'}]}
+  ],
+  cmj_conc_impulse:[
+    {priority:1,category:"Production de force",tests:[{test:'knee_ext',kpi:'nkg'},{test:'gastro_iso',kpi:'nkg'},{test:'soleus_iso',kpi:'nkg'}]},
+    {priority:2,category:"Puissance",tests:[{test:'cmj',kpi:'peak_power'}]},
+    {priority:3,category:"Temps de poussée",tests:[{test:'cmj',kpi:'tto'}]},
+    {priority:4,category:"Vitesse",tests:[{test:'cmj',kpi:'peak_vel'}]},
+    {priority:5,category:"Mobilité",tests:[{test:'wblt',kpi:'distance'}]}
+  ],
+  cmj_peak_vel:[
+    {priority:1,category:"Développement rapide de force",tests:[{test:'knee_ext',kpi:'rfd150'},{test:'gastro_iso',kpi:'rfd150'},{test:'soleus_iso',kpi:'rfd150'}]},
+    {priority:2,category:"Impulsion concentrique",tests:[{test:'cmj',kpi:'conc_impulse'}]},
+    {priority:3,category:"Puissance",tests:[{test:'cmj',kpi:'peak_power'}]},
+    {priority:4,category:"Force maximale",tests:[{test:'knee_ext',kpi:'nkg'},{test:'gastro_iso',kpi:'nkg'},{test:'soleus_iso',kpi:'nkg'}]},
+    {priority:5,category:"Mobilité",tests:[{test:'wblt',kpi:'distance'}]}
+  ],
+  cmj_tto:[
+    {priority:1,category:"Développement rapide de force",tests:[{test:'knee_ext',kpi:'rfd150'},{test:'gastro_iso',kpi:'rfd150'},{test:'soleus_iso',kpi:'rfd150'}]},
+    {priority:2,category:"Impulsion concentrique",tests:[{test:'cmj',kpi:'conc_impulse'}]},
+    {priority:3,category:"Vitesse",tests:[{test:'cmj',kpi:'peak_vel'}]},
+    {priority:4,category:"Puissance",tests:[{test:'cmj',kpi:'peak_power'}]},
+    {priority:5,category:"Mobilité",tests:[{test:'wblt',kpi:'distance'}]}
+  ],
+  cmj_depth:[
+    {priority:1,category:"Mobilité",tests:[{test:'wblt',kpi:'distance'}]},
+    {priority:3,category:"Temps de poussée",tests:[{test:'cmj',kpi:'tto'}]},
+    {priority:4,category:"Force maximale",tests:[{test:'knee_ext',kpi:'nkg'},{test:'gastro_iso',kpi:'nkg'},{test:'hip_ext',kpi:'nkg'}]},
+    {priority:5,category:"Contrôle moteur",tests:[{test:'ybt',kpi:'composite'}]}
+  ]
+};
+function worstStatus(arr){arr=(arr||[]).filter(Boolean);if(!arr.length)return null;return arr.reduce(function(a,b){return s2sc(b)<s2sc(a)?b:a;});}
+function kpiStatus(testKey,kpiKey,testData,pop,age){
+  var test=TBK[testKey];var data=(testData||{})[testKey];
+  if(!test||!data||!data.active)return null;
+  var kpi=null;test.kpis.forEach(function(k){if(k.key===kpiKey)kpi=k;});
+  if(!kpi)return null;
+  if(test.bilateral){
+    var v=bestVal((data.trials||{})[kpiKey],kpi.dir);
+    return applyThr(testKey+'_'+kpiKey,v,pop,age);
+  }
+  var dT=((data.D||{}).trials||{})[kpiKey]||[];
+  var gT=((data.G||{}).trials||{})[kpiKey]||[];
+  var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);
+  var lsi=(kpiKey===test.kpis[0].key&&data.lsiAuto!=null)?data.lsiAuto:autoLSI(vD,vG);
+  return worstStatus([lsiSt(lsi),applyThr(testKey+'_'+kpiKey,vD,pop,age),applyThr(testKey+'_'+kpiKey,vG,pop,age)]);
+}
+function findTestCascade(testKey,testData,pop,age){
+  var test=TBK[testKey];if(!test)return null;
+  var matches=[];
+  test.kpis.forEach(function(kpi){
+    var cKey=testKey+'_'+kpi.key;
+    if(!CASCADES[cKey])return;
+    var st=kpiStatus(testKey,kpi.key,testData,pop,age);
+    if(st==='rouge'||st==='orange')matches.push({kpiKey:kpi.key,kpiLabel:kpi.label,status:st,levels:CASCADES[cKey]});
+  });
+  if(!matches.length)return null;
+  matches.sort(function(a,b){return s2sc(a.status)-s2sc(b.status);});
+  return matches[0];
+}
+function cascadeHTML(cascade,testData,pop,age){
+  if(!cascade)return'';
+  var out='<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cbd5c0">'
+    +'<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Cascade clinique — '+cascade.kpiLabel+'</div>';
+  cascade.levels.forEach(function(lvl){
+    out+='<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px">'
+      +'<span style="flex-shrink:0;width:16px;height:16px;border-radius:50%;background:#132B3A;color:#fff;font-size:7pt;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px">'+lvl.priority+'</span>'
+      +'<div><div style="font-size:7.8pt;color:#334155;font-weight:600;margin-bottom:2px">'+lvl.category+'</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
+    lvl.tests.forEach(function(t){
+      var test=TBK[t.test];var label=test?test.label:t.test;
+      var st=kpiStatus(t.test,t.kpi,testData,pop,age);
+      var col=st?SC[st]:'#CBD5C1';
+      var txt=st?'':' (non testé)';
+      out+='<span style="padding:1px 7px;border-radius:10px;background:'+col+'22;border:1px solid '+col+';color:#132B3A;font-size:7pt;font-weight:600">'+label+txt+'</span>';
+    });
+    out+='</div></div></div>';
+  });
+  out+='</div>';
+  return out;
+}
+
 function computeTestStatus(key,data,pop,age){
   var test=TBK[key];if(!test||!data||!data.active)return null;
   var sts=[];
@@ -674,7 +766,9 @@ function computeMoteur(testData,questData,normPop,normAge){
     var deficitTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]>=2&&tSt[tk]&&(tSt[tk]==='rouge'||tSt[tk]==='orange');}).map(function(tk){return{key:tk,label:TBK[tk]?TBK[tk].label:tk,status:tSt[tk],weight:TFM[tk][fk]};});
     var okTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]>=2&&tSt[tk]==='vert';}).map(function(tk){return TBK[tk]?TBK[tk].label:tk;});
     var hFn=HYPO[fn];
-    return{rang:i+1,fonction:fn,status:fSc[fn].status,contributeurPrincipal:main,contributeurSecondaire:sec,deficitTests:deficitTests,okTests:okTests,hypothese:hFn?hFn(main):'Deficit de '+fn.toLowerCase()+' identifie.',orientation:ORI[fn]||'Travailler les qualites de '+fn.toLowerCase()+'.',compensations:main?SYS_COMPENSATIONS[main]:null};
+    var cascade=null;
+    for(var di=0;di<deficitTests.length&&!cascade;di++){cascade=findTestCascade(deficitTests[di].key,testData,normPop,normAge);}
+    return{rang:i+1,fonction:fn,status:fSc[fn].status,contributeurPrincipal:main,contributeurSecondaire:sec,deficitTests:deficitTests,okTests:okTests,hypothese:hFn?hFn(main):'Deficit de '+fn.toLowerCase()+' identifie.',orientation:ORI[fn]||'Travailler les qualites de '+fn.toLowerCase()+'.',compensations:main?SYS_COMPENSATIONS[main]:null,cascade:cascade};
   });
   // RTP
   var rtpKeys=['single_hop','triple_hop','crossover_hop','side_hop','slcmj','sldj'];
@@ -1218,6 +1312,7 @@ function buildSportifReport(athlete,bilan,res){
       priHtml+='<div style="font-size:9pt;color:#444;font-style:italic;margin-bottom:6px">&#171; '+p.hypothese+' &#187;</div>'
         +'<div style="font-size:9pt;color:#333"><strong style="color:'+col+'">Orientation : </strong>'+p.orientation+'</div>'
         +(p.compensations&&p.compensations.length>0?'<div style="font-size:8.5pt;color:#666;margin-top:5px;padding-top:5px;border-top:1px solid #eee"><strong style="color:#9a3412">Compensations attendues : </strong>'+p.compensations.join(' ')+'</div>':'')
+        +cascadeHTML(p.cascade,td,athlete.normPopulation,age)
         +'</div>';
     });
     priHtml+=causalChainHtml();
@@ -1641,7 +1736,7 @@ function AnalyseView(props){
         )
       )
     ),
-    view==='synthese'&&h(SyntheseView,{res:res,evFns:evFns,bilan:bilan}),
+    view==='synthese'&&h(SyntheseView,{res:res,evFns:evFns,bilan:bilan,athlete:athlete,athleteAge:athleteAge}),
     view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData}),
     view==='historique'&&h(HistoriqueView,{athlete:athlete,currentBilan:bilan}),
     !validated&&h('div',{style:{marginTop:20,padding:'14px 18px',background:C.teal+'10',border:'1px solid '+C.teal+'40',borderRadius:12}},
@@ -1923,7 +2018,7 @@ function YBTEntry(props) {
 }
 
 function SyntheseView(props){
-  var res=props.res,evFns=props.evFns,bilan=props.bilan;
+  var res=props.res,evFns=props.evFns,bilan=props.bilan,athlete=props.athlete||{},athleteAge=props.athleteAge;
   var fSc=res.functionScores,pri=res.priorities,rtp=res.rtpStatus,sysSc=res.systemScores;
   var _vt=useState('radar');var vizTab=_vt[0];var setVizTab=_vt[1];
   return h('div',null,
@@ -1958,7 +2053,8 @@ function SyntheseView(props){
         ),
         h('div',{style:{color:C.muted,fontSize:12,fontStyle:'italic',marginBottom:6,lineHeight:1.5}},''+p.hypothese+''),
         h('div',{style:{borderTop:'1px solid '+C.border,paddingTop:6,color:C.text,fontSize:12}},h('span',{style:{color:C.teal,fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em'}},'Orientation : '),p.orientation),
-        p.compensations&&p.compensations.length>0&&h('div',{style:{borderTop:'1px solid '+C.border,marginTop:6,paddingTop:6,color:C.muted,fontSize:11,lineHeight:1.5}},h('span',{style:{color:C.orange,fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em'}},'Compensations attendues : '),p.compensations.join(' '))
+        p.compensations&&p.compensations.length>0&&h('div',{style:{borderTop:'1px solid '+C.border,marginTop:6,paddingTop:6,color:C.muted,fontSize:11,lineHeight:1.5}},h('span',{style:{color:C.orange,fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em'}},'Compensations attendues : '),p.compensations.join(' ')),
+        p.cascade&&h('div',{dangerouslySetInnerHTML:{__html:cascadeHTML(p.cascade,bilan.testData,athlete.normPopulation,athleteAge)}})
       );}))
     ),
     (bilan.type==='RTP'||rtp)&&h('div',{style:{marginBottom:18}},
