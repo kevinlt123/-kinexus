@@ -666,6 +666,9 @@ var CASCADES={
     {priority:5,category:"Contrôle moteur",tests:[{test:'ybt',kpi:'composite'}]}
   ]
 };
+// Relations variable-à-variable (7 catégories) extraites du référentiel de raisonnement clinique KINEXUS.
+// Pilote : Quadriceps (knee_ext, 5 kpis) + CMJ (height, peak_power). Poids/Sens proposés par KINEXUS à valider par l'équipe clinique.
+var VAR_REL={"knee_ext_nkg":{"label":"Peak Force","amont":[{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Contrôle moteur","kind":"capacite","sens":"+","poids":"Mineure"},{"name":"Quadriceps","kind":"structure","sens":"+","poids":"Majeure"}],"aval":[{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Puissance","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Propulsion","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Absorption","kind":"capacite","sens":"+","poids":"Mineure"}],"liees":[{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"},{"test":"cmj","kpi":"peak_power"},{"test":"cmj","kpi":"height"},{"test":"cmj","kpi":"conc_impulse"}],"confirmations":[{"test":"knee_ext","kpi":"rfd50"},{"test":"knee_ext","kpi":"rfd100"},{"test":"knee_ext","kpi":"rfd150"},{"test":"knee_ext","kpi":"rfd200"}],"complements":[{"test":"knee_flex","kpi":"nkg","note":"Vérifier le ratio Quadriceps / Ischio-jambiers."},{"test":"soleus_iso","kpi":"nkg","note":"Vérifier une compensation distale."},{"test":"wblt","kpi":"distance","note":"Vérifier une limitation de mobilité pouvant expliquer une baisse fonctionnelle."},{"test":"cmj","kpi":"time_to_stab","note":"Vérifier les conséquences fonctionnelles sur le contrôle de la réception."}],"verifications":[{"priority":1,"category":null,"tests":[{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"},{"test":"cmj","kpi":"height"},{"test":"slcmj","kpi":"height"}]}]},"knee_ext_rfd50":{"label":"RFD 0-50ms","amont":[{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Contrôle moteur","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Quadriceps","kind":"structure","sens":"+","poids":"Majeure"}],"aval":[{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Réactivité","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Puissance","kind":"capacite","sens":"+","poids":"Mineure"}],"liees":[{"test":"sl_iso_push","kpi":"rfd100"},{"test":"slimtp","kpi":"rfd100"}],"confirmations":[{"test":"knee_ext","kpi":"nkg"},{"test":"knee_ext","kpi":"rfd100"},{"test":"knee_ext","kpi":"rfd150"},{"test":"knee_ext","kpi":"rfd200"}],"complements":[{"test":"dj","kpi":"rsi","note":"Vérifier le transfert vers la réactivité."},{"test":"cmj","kpi":"peak_power","note":"Vérifier le transfert vers la puissance."},{"test":"sl_iso_push","kpi":"nkg","note":"Vérifier si le déficit est local ou global."}],"verifications":[{"priority":1,"category":null,"tests":[{"test":"sl_iso_push","kpi":"rfd100"},{"test":"slimtp","kpi":"rfd100"},{"test":"cmj","kpi":"height"},{"test":"dj","kpi":"rsi"},{"test":"repeated_hop","kpi":"mean_rsi"}]}]},"knee_ext_rfd100":{"label":"RFD 0-100ms","amont":[{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Contrôle moteur","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Quadriceps","kind":"structure","sens":"+","poids":"Majeure"}],"aval":[{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Puissance","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Réactivité","kind":"capacite","sens":"+","poids":"Modérée"}],"liees":[{"test":"sl_iso_push","kpi":"rfd100"},{"test":"slimtp","kpi":"rfd100"}],"confirmations":[{"test":"knee_ext","kpi":"nkg"},{"test":"knee_ext","kpi":"rfd50"},{"test":"knee_ext","kpi":"rfd150"},{"test":"knee_ext","kpi":"rfd200"}],"complements":[{"test":"cmj","kpi":"peak_power","note":"Vérifier le transfert vers la puissance."},{"test":"dj","kpi":"rsi","note":"Vérifier le transfert vers la réactivité."},{"test":"imtp","kpi":"nkg","note":"Vérifier si le déficit reste présent sur une tâche globale."}],"verifications":[{"priority":1,"category":null,"tests":[{"test":"sl_iso_push","kpi":"rfd100"},{"test":"slimtp","kpi":"rfd100"},{"test":"cmj","kpi":"height"},{"test":"dj","kpi":"rsi"},{"test":"repeated_hop","kpi":"mean_rsi"}]}]},"knee_ext_rfd150":{"label":"RFD 0-150ms","amont":[{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Puissance","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Quadriceps","kind":"structure","sens":"+","poids":"Majeure"}],"aval":[{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Puissance","kind":"capacite","sens":"+","poids":"Modérée"}],"liees":[{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"},{"test":"cmj","kpi":"peak_power"}],"confirmations":[{"test":"knee_ext","kpi":"nkg"},{"test":"knee_ext","kpi":"rfd50"},{"test":"knee_ext","kpi":"rfd100"},{"test":"knee_ext","kpi":"rfd200"}],"complements":[{"test":"cmj","kpi":"conc_impulse","note":"Vérifier le transfert vers l'impulsion concentrique."},{"test":"cmj","kpi":"peak_power","note":"Vérifier l'impact sur la puissance."},{"test":"imtp","kpi":"nkg","note":"Vérifier si le déficit est retrouvé lors d'un test global."}],"verifications":[{"priority":1,"category":null,"tests":[{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"},{"test":"cmj","kpi":"height"},{"test":"slcmj","kpi":"height"}]}]},"knee_ext_rfd200":{"label":"RFD 0-200ms","amont":[{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Puissance","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Quadriceps","kind":"structure","sens":"+","poids":"Majeure"}],"aval":[{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Puissance","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Propulsion","kind":"capacite","sens":"+","poids":"Modérée"}],"liees":[{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"},{"test":"cmj","kpi":"peak_power"},{"test":"cmj","kpi":"conc_impulse"}],"confirmations":[{"test":"knee_ext","kpi":"nkg"},{"test":"knee_ext","kpi":"rfd50"},{"test":"knee_ext","kpi":"rfd100"},{"test":"knee_ext","kpi":"rfd150"}],"complements":[{"test":"cmj","kpi":"height","note":"Vérifier le transfert vers la performance."},{"test":"imtp","kpi":"nkg","note":"Vérifier si le déficit est retrouvé sur une chaîne d'extension globale."},{"test":"knee_flex","kpi":"nkg","note":"Vérifier si un déficit des ischio-jambiers est associé."}],"verifications":[{"priority":1,"category":null,"tests":[{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"},{"test":"cmj","kpi":"height"},{"test":"slcmj","kpi":"height"}]}]},"cmj_height":{"label":"Jump Height","amont":[{"name":"Puissance","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Propulsion","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Mobilité","kind":"capacite","sens":"+","poids":"Mineure"},{"name":"Contrôle moteur","kind":"capacite","sens":"+","poids":"Mineure"},{"name":"Quadriceps","kind":"structure","sens":"+","poids":"Majeure"},{"name":"Grand fessier","kind":"structure","sens":"+","poids":"Modérée"},{"name":"Soléaire","kind":"structure","sens":"+","poids":"Modérée"},{"name":"Gastrocnémiens","kind":"structure","sens":"+","poids":"Mineure"},{"name":"Ischio-jambiers","kind":"structure","sens":"+","poids":"Mineure"},{"name":"Mobilité cheville","kind":"structure","sens":"+","poids":"Mineure"}],"aval":[{"name":"Puissance","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Propulsion","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Performance explosive","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Performance fonctionnelle","kind":"capacite","sens":"+","poids":"Modérée"}],"liees":[{"test":"cmj","kpi":"peak_power"},{"test":"cmj","kpi":"conc_impulse"},{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"}],"confirmations":[{"test":"knee_ext","kpi":"nkg"},{"test":"soleus_iso","kpi":"nkg"}],"complements":[],"verifications":[{"priority":1,"category":null,"tests":[{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"},{"test":"knee_ext","kpi":"nkg"},{"test":"soleus_iso","kpi":"nkg"},{"test":"slcmj","kpi":"height"}]}]},"cmj_peak_power":{"label":"Peak Power","amont":[{"name":"Puissance","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Force maximale","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Explosivité","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Propulsion","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Mobilité","kind":"capacite","sens":"+","poids":"Mineure"},{"name":"Contrôle moteur","kind":"capacite","sens":"+","poids":"Mineure"},{"name":"Quadriceps","kind":"structure","sens":"+","poids":"Majeure"},{"name":"Grand fessier","kind":"structure","sens":"+","poids":"Modérée"},{"name":"Soléaire","kind":"structure","sens":"+","poids":"Modérée"},{"name":"Gastrocnémiens","kind":"structure","sens":"+","poids":"Mineure"},{"name":"Ischio-jambiers","kind":"structure","sens":"+","poids":"Mineure"}],"aval":[{"name":"Puissance","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Propulsion","kind":"capacite","sens":"+","poids":"Majeure"},{"name":"Performance explosive","kind":"capacite","sens":"+","poids":"Modérée"},{"name":"Performance fonctionnelle","kind":"capacite","sens":"+","poids":"Modérée"}],"liees":[{"test":"cmj","kpi":"height"},{"test":"cmj","kpi":"conc_impulse"},{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"}],"confirmations":[{"test":"knee_ext","kpi":"nkg"},{"test":"soleus_iso","kpi":"nkg"}],"complements":[],"verifications":[{"priority":1,"category":null,"tests":[{"test":"iso_belt_squat","kpi":"nkg"},{"test":"sl_iso_push","kpi":"nkg"},{"test":"imtp","kpi":"nkg"},{"test":"knee_ext","kpi":"nkg"},{"test":"soleus_iso","kpi":"nkg"},{"test":"cmj","kpi":"height"}]}]}};
 function worstStatus(arr){arr=(arr||[]).filter(Boolean);if(!arr.length)return null;return arr.reduce(function(a,b){return s2sc(b)<s2sc(a)?b:a;});}
 function kpiStatus(testKey,kpiKey,testData,pop,age){
   var test=TBK[testKey];var data=(testData||{})[testKey];
@@ -712,6 +715,72 @@ function cascadeHTML(cascade,testData,pop,age){
     });
     out+='</div></div></div>';
   });
+  out+='</div>';
+  return out;
+}
+function varKpiChip(t,testData,pop,age){
+  var test=TBK[t.test];var label=test?test.label:t.test;
+  var st=kpiStatus(t.test,t.kpi,testData,pop,age);
+  var col=st?SC[st]:'#CBD5C1';
+  var txt=st?'':' (non testé)';
+  return '<span style="padding:1px 7px;border-radius:10px;background:'+col+'22;border:1px solid '+col+';color:#132B3A;font-size:7pt;font-weight:600">'+label+txt+'</span>';
+}
+function varRelChipsHTML(title,items,testData,pop,age){
+  if(!items||!items.length)return'';
+  var out='<div style="margin-bottom:8px"><div style="font-size:7.3pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">'+title+'</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
+  items.forEach(function(t){out+=varKpiChip(t,testData,pop,age);});
+  out+='</div></div>';
+  return out;
+}
+function varRelQualHTML(title,items){
+  if(!items||!items.length)return'';
+  var out='<div style="margin-bottom:8px"><div style="font-size:7.3pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">'+title+'</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
+  items.forEach(function(it){
+    var arrow=it.sens==='-'?'↓':'↑';
+    var tag=it.kind==='structure'?'Structure':'Capacité';
+    out+='<span style="padding:1px 8px;border-radius:10px;background:#EEF2F5;border:1px solid #CBD5C1;color:#132B3A;font-size:7pt;font-weight:600" title="'+tag+' · Poids '+it.poids+'">'+it.name+' '+arrow+'</span>';
+  });
+  out+='</div></div>';
+  return out;
+}
+function varRelComplementsHTML(items,testData,pop,age){
+  if(!items||!items.length)return'';
+  var out='<div style="margin-bottom:8px"><div style="font-size:7.3pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Compléments</div>';
+  items.forEach(function(it){
+    out+='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px">'+varKpiChip(it,testData,pop,age)+'<span style="font-size:7pt;color:#5B7A8C">'+it.note+'</span></div>';
+  });
+  out+='</div>';
+  return out;
+}
+function varRelTransfertsHTML(testKey){
+  var w=TFM[testKey];if(!w)return'';
+  var out='<div style="margin-bottom:0"><div style="font-size:7.3pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Transferts (fonctions)</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
+  Object.keys(w).sort(function(a,b){return w[b]-w[a];}).forEach(function(fk){
+    var fLabel=FN_LABEL_BY_KEY[fk]||fk;
+    var wl=w[fk]===3?'Direct':w[fk]===2?'Majeur':'Mineur';
+    out+='<span style="padding:1px 8px;border-radius:10px;background:#EEF2F5;border:1px solid #CBD5C1;color:#132B3A;font-size:7pt;font-weight:600">'+fLabel+' · '+wl+'</span>';
+  });
+  out+='</div></div>';
+  return out;
+}
+function varRelHTML(testKey,kpiKey,testData,pop,age){
+  var rel=VAR_REL[testKey+'_'+kpiKey];if(!rel)return'';
+  var out='<div>';
+  out+=varRelQualHTML('Variables amont',rel.amont);
+  out+=varRelQualHTML('Variables aval',rel.aval);
+  out+=varRelChipsHTML('Variables liées',rel.liees,testData,pop,age);
+  out+=varRelChipsHTML('Confirmations',rel.confirmations,testData,pop,age);
+  out+=varRelComplementsHTML(rel.complements,testData,pop,age);
+  if(rel.verifications&&rel.verifications.length){
+    out+='<div style="margin-bottom:8px"><div style="font-size:7.3pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Vérifications</div>';
+    rel.verifications.forEach(function(lvl){
+      out+='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:3px">';
+      lvl.tests.forEach(function(t){out+=varKpiChip(t,testData,pop,age);});
+      out+='</div>';
+    });
+    out+='</div>';
+  }
+  out+=varRelTransfertsHTML(testKey);
   out+='</div>';
   return out;
 }
@@ -1737,7 +1806,7 @@ function AnalyseView(props){
       )
     ),
     view==='synthese'&&h(SyntheseView,{res:res,evFns:evFns,bilan:bilan,athlete:athlete,athleteAge:athleteAge}),
-    view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData}),
+    view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge}),
     view==='historique'&&h(HistoriqueView,{athlete:athlete,currentBilan:bilan}),
     !validated&&h('div',{style:{marginTop:20,padding:'14px 18px',background:C.teal+'10',border:'1px solid '+C.teal+'40',borderRadius:12}},
       h('div',{style:{color:C.teal,fontWeight:700,fontSize:13,marginBottom:4}},'🔍 Validation expert requise'),
@@ -2069,11 +2138,31 @@ function ExpertView(props){
   var [tab,setTab]=useState('fonctions');
   var res=props.res,evFns=props.evFns,td=props.testData||{},qd=props.questData||{};
   var fSc=res.functionScores,sysSc=res.systemScores,tSt=res.testStatuses,pri=res.priorities;
+  var athlete=props.athlete||{},athleteAge=props.athleteAge;
+  var varRelKpis=[];
+  Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).forEach(function(tk){
+    var test=TBK[tk];if(!test)return;
+    test.kpis.forEach(function(kpi){if(VAR_REL[tk+'_'+kpi.key])varRelKpis.push({testKey:tk,testLabel:test.label,kpi:kpi});});
+  });
   return h('div',null,
-    h(TabBar,{tabs:[['fonctions','Fonctions'],['kpi','KPI'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Raisonnement']],active:tab,onChange:setTab}),
+    h(TabBar,{tabs:[['fonctions','Fonctions'],['kpi','KPI'],['variables','Variables'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Raisonnement']],active:tab,onChange:setTab}),
     tab==='fonctions'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},evFns.map(function(f){var sc=fSc[f];var fk=FN_KEY[f];var relTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]&&td[tk]&&td[tk].active;}).sort(function(a,b){return TFM[b][fk]-TFM[a][fk];});return h(Card,{key:f,pad:14,style:{borderLeft:'3px solid '+SC[sc.status]}},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}},h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},f),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+sc.confidence)),h(Badge,{status:sc.status})),h('div',{style:{display:'flex',gap:5,flexWrap:'wrap'}},relTests.map(function(tk){var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';return h('span',{key:tk,style:{padding:'2px 7px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:10}},(TBK[tk]?TBK[tk].label:tk)+' · ',h('span',{style:{color:C.teal}},wl));})));})),
     tab==='kpi'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).map(function(key){var test=TBK[key];if(!test)return null;var status=tSt[key];var data=td[key];return h(Card,{key:key,pad:12,style:{borderLeft:'3px solid '+(status?SC[status]:C.border)}},h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},h('span',{style:{color:C.text,fontWeight:700,fontSize:12}},test.label),status&&h(Badge,{status:status,small:true})),test.bilateral?h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},test.kpis.map(function(kpi){var trials=(data.trials||{})[kpi.key]||[];var best=bestVal(trials,kpi.dir);return best!=null?h('div',{key:kpi.key,style:{background:C.surface,border:'1px solid '+C.border,borderRadius:7,padding:'7px 11px',minWidth:90}},h('div',{style:{color:C.muted,fontSize:9,textTransform:'uppercase',marginBottom:2}},kpi.label),h('div',{style:{color:C.tealLight,fontWeight:700,fontSize:15}},best),trials.length>1&&h('div',{style:{color:C.muted,fontSize:9,marginTop:1}},trials.filter(function(v){return v!=null;}).join(' / '))):null;})):h('div',{className:'gh',style:{display:'grid',gap:8}},['D','G'].map(function(side){var sd=data[side]||{};return h('div',{key:side,style:{background:C.surface,borderRadius:7,padding:'8px 10px',border:'1px solid '+C.border}},h('div',{style:{color:side==='D'?C.teal:C.muted,fontWeight:700,fontSize:11,marginBottom:4}},side==='D'?'Droite':'Gauche'),test.kpis.map(function(kpi){var trials=((sd.trials||{})[kpi.key]||[]);var best=bestVal(trials,kpi.dir);return h('div',{key:kpi.key},h('div',{style:{color:C.muted,fontSize:9,textTransform:'uppercase',marginBottom:1}},kpi.label),h('div',{style:{color:best!=null?C.tealLight:C.muted,fontWeight:700,fontSize:14}},best!=null?best:'—'));}),data.lsiAuto!=null&&h('div',{style:{marginTop:4,color:SC[lsiSt(data.lsiAuto)]||C.text,fontWeight:700,fontSize:12}},'LSI : '+data.lsiAuto+'%'));})),h('div',null)
     );})),
+    tab==='variables'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+      h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:2}},'Relations variable-à-variable issues du référentiel de raisonnement clinique KINEXUS : variables amont/aval, variables corrélées, confirmations, compléments, vérifications en cas de déficit, et transferts vers les fonctions. Pilote limité au Quadriceps et au CMJ (Height, Peak Power) — les poids/sens proposés sont à valider par l\'équipe clinique.'),
+      varRelKpis.length===0&&h('div',{style:{color:C.muted,fontSize:12}},'Aucune variable active avec relations documentées dans ce pilote.'),
+      varRelKpis.map(function(v){
+        var st=kpiStatus(v.testKey,v.kpi.key,td,athlete.normPopulation,athleteAge);
+        return h(Card,{key:v.testKey+'_'+v.kpi.key,pad:14,style:{borderLeft:'3px solid '+(st?SC[st]:C.border)}},
+          h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},
+            h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},v.testLabel),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},v.kpi.label)),
+            st&&h(Badge,{status:st,small:true})
+          ),
+          h('div',{dangerouslySetInnerHTML:{__html:varRelHTML(v.testKey,v.kpi.key,td,athlete.normPopulation,athleteAge)}})
+        );
+      })
+    ),
     tab==='systemes'&&h('div',{className:'g2'},SYSTEMS.map(function(sys){var status=sysSc[sys];if(!status)return null;return h(Card,{key:sys,pad:'12px 14px'},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}},h('span',{style:{color:C.text,fontWeight:600,fontSize:12}},sys),h(Badge,{status:status,small:true})),h('div',{style:{color:C.muted,fontSize:10}},(SYSTEM_TESTS[sys]||[]).filter(function(t){return td[t]&&td[t].active;}).map(function(t){return TBK[t]?TBK[t].label:t;}).join(', ')||'—'));})),
     tab==='hypotheses'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},pri.length===0&&h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.'),pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h(Badge,{status:p.status,small:true}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},'« '+p.hypothese+' »'),p.contributeurPrincipal&&h('div',{style:{color:C.muted,fontSize:11,marginTop:6}},'Contributeur : ',h('span',{style:{color:C.tealLight}},p.contributeurPrincipal),p.contributeurSecondaire&&h('span',{style:{color:C.muted}},' · '+p.contributeurSecondaire)));})),
     tab==='orientations'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},pri.length===0&&h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.'),pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h('span',{style:{background:SC[p.status],color:'#000',fontWeight:800,fontSize:10,width:18,height:18,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}},p.rang),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},p.orientation));})),
