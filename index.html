@@ -618,7 +618,7 @@ function resolveBands(entry,age){
 function pctStatus(bands,val){if(val==null||!bands)return null;if(val>=bands[3])return'vert';if(val>=bands[2])return'jaune';if(val>=bands[1])return'orange';return'rouge';}
 
 function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
-function lsiSt(lsi){if(lsi==null)return null;if(lsi>=90)return'vert';if(lsi>=80)return'jaune';if(lsi>=70)return'orange';return'rouge';}
+function lsiSt(lsi){if(lsi==null)return null;if(lsi>=95)return'vert';if(lsi>=90)return'jaune';if(lsi>=80)return'orange';return'rouge';}
 function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=null&&x!=='';}).map(Number);if(!v.length)return null;return dir==='min'?Math.min.apply(null,v):Math.max.apply(null,v);}
 function autoLSI(D,G){if(D==null||G==null||D===0||G===0)return null;return Math.round((Math.min(D,G)/Math.max(D,G))*1000)/10;}
 function s2sc(s){return{vert:3,jaune:2,orange:1,rouge:0}[s];}
@@ -908,7 +908,7 @@ function computeMoteur(testData,questData,normPop,normAge){
   var rtpKeys=['single_hop','triple_hop','crossover_hop','side_hop','slcmj','sldj'];
   var rtpActive=rtpKeys.filter(function(k){return testData[k]&&testData[k].active;});
   var rtpStatus=null;
-  if(rtpActive.length>0){var pass=0;rtpActive.forEach(function(k){var d=testData[k];var test=TBK[k];if(!test)return;if(!test.bilateral){var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);if(lsi!=null&&lsi>=90)pass++;}else{var st=computeTestStatus(k,d);if(st==='vert'||st==='jaune')pass++;}});var aclScore=null;if(questData.acl_rsi&&questData.acl_rsi.answers)aclScore=QBK.acl_rsi.scoring(questData.acl_rsi.answers);var aclOk=aclScore==null||aclScore>=77;var ratio=rtpActive.length>0?pass/rtpActive.length:0;var rStatus,rLabel;if(ratio>=0.9&&aclOk){rStatus='vert';rLabel='Prêt au retour au sport';}else if(ratio>=0.7){rStatus='jaune';rLabel='À surveiller';}else{rStatus='rouge';rLabel='Non prêt';}rtpStatus={status:rStatus,label:rLabel,ratio:Math.round(ratio*100),passCount:pass,totalCount:rtpActive.length,aclScore:aclScore};}
+  if(rtpActive.length>0){var pass=0;rtpActive.forEach(function(k){var d=testData[k];var test=TBK[k];if(!test)return;if(!test.bilateral){var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);if(lsi!=null&&lsi>=95)pass++;}else{var st=computeTestStatus(k,d);if(st==='vert'||st==='jaune')pass++;}});var aclScore=null;if(questData.acl_rsi&&questData.acl_rsi.answers)aclScore=QBK.acl_rsi.scoring(questData.acl_rsi.answers);var aclOk=aclScore==null||aclScore>=77;var ratio=rtpActive.length>0?pass/rtpActive.length:0;var rStatus,rLabel;if(ratio>=0.9&&aclOk){rStatus='vert';rLabel='Prêt au retour au sport';}else if(ratio>=0.7){rStatus='jaune';rLabel='À surveiller';}else{rStatus='rouge';rLabel='Non prêt';}rtpStatus={status:rStatus,label:rLabel,ratio:Math.round(ratio*100),passCount:pass,totalCount:rtpActive.length,aclScore:aclScore};}
   return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus,varReasoning:varReasoning};
 }
 
@@ -1295,7 +1295,7 @@ function buildSportifReport(athlete,bilan,res){
       if(!test.bilateral){
         var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);
         var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);
-        if(lsi!=null)items.push({label:test.label+' — LSI ≥ 90%',state:lsi>=90?'ok':'ko'});
+        if(lsi!=null)items.push({label:test.label+' — LSI ≥ 95%',state:lsi>=95?'ok':'ko'});
       }else{
         var st=computeTestStatus(k,d);
         if(st)items.push({label:test.label,state:st==='vert'?'ok':st==='jaune'?'mid':'ko'});
@@ -1418,7 +1418,7 @@ function buildSportifReport(athlete,bilan,res){
         +'</div>';
     });
     barsHtml+='<div style="display:flex;gap:12px;justify-content:center;margin-top:10px;padding-top:8px;border-top:1px solid #E1E8EE;font-size:7pt;color:#5B7A8C">'
-      +'<span>'+badge('vert','≥90% Optimal')+'</span><span>'+badge('jaune','80-89% À surveiller')+'</span><span>'+badge('orange','70-79% Déficitaire')+'</span><span>'+badge('rouge','<70% Critique')+'</span>'
+      +'<span>'+badge('vert','≥95% Optimal')+'</span><span>'+badge('jaune','90-94,9% À surveiller')+'</span><span>'+badge('orange','80-89,9% Déficitaire')+'</span><span>'+badge('rouge','<80% Critique')+'</span>'
       +'</div>';
     html+=panel(barsHtml);
     html+='</div>';
@@ -2009,14 +2009,14 @@ function SymmetryChart(props) {
     var barW = Math.min(32, (chartW / lsiData.length) - 6);
     var barGap = chartW / lsiData.length;
 
-    // Background grid lines at 70, 80, 90, 100
-    [70, 80, 90, 100].forEach(function(v) {
+    // Background grid lines at 70, 80, 90, 95, 100
+    [70, 80, 90, 95, 100].forEach(function(v) {
       var y = padT + chartH - ((v - 60) / 50) * chartH;
       ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y);
-      ctx.strokeStyle = v === 90 ? 'rgba(42,157,143,0.4)' : 'rgba(27,79,106,0.10)';
-      ctx.lineWidth = v === 90 ? 1.5 : 1; ctx.setLineDash(v === 90 ? [4,3] : []);
+      ctx.strokeStyle = v === 95 ? 'rgba(42,157,143,0.4)' : 'rgba(27,79,106,0.10)';
+      ctx.lineWidth = v === 95 ? 1.5 : 1; ctx.setLineDash(v === 95 ? [4,3] : []);
       ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = v === 90 ? C.teal : C.muted;
+      ctx.fillStyle = v === 95 ? C.teal : C.muted;
       ctx.font = '9px Inter,sans-serif'; ctx.textAlign = 'right';
       ctx.fillText(v + '%', padL - 2, y + 3);
     });
@@ -2049,10 +2049,10 @@ function SymmetryChart(props) {
       ctx.restore();
     });
 
-    // 90% threshold label
+    // 95% threshold label
     ctx.fillStyle = C.teal; ctx.font = 'bold 9px Inter,sans-serif'; ctx.textAlign = 'left';
-    var y90 = padT + chartH - ((90 - 60) / 50) * chartH;
-    ctx.fillText('Seuil RTP 90%', padL + 4, y90 - 4);
+    var y95 = padT + chartH - ((95 - 60) / 50) * chartH;
+    ctx.fillText('Seuil RTP 95%', padL + 4, y95 - 4);
 
   }, [JSON.stringify(lsiData)]);
 
