@@ -619,15 +619,23 @@ function pctStatus(bands,val){if(val==null||!bands)return null;if(val>=bands[3])
 
 function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
 function lsiSt(lsi){if(lsi==null)return null;if(lsi>=95)return'vert';if(lsi>=90)return'jaune';if(lsi>=80)return'orange';return'rouge';}
-function normRefText(testKey,kpiKey,pop,age){
+function normRefValue(testKey,kpiKey,pop,age){
   var key=testKey+'_'+kpiKey;
   if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){
     var bands=resolveBands(NORMS[pop][key],age);
-    if(bands&&bands[3]!=null)return'≥ '+bands[3]+' (norme)';
+    if(bands&&bands[3]!=null)return bands[3];
   }
   var t=THRESHOLDS[key];
-  if(t)return(t.dir==='min'?'≤ ':'≥ ')+t.vert;
+  if(t)return t.vert;
   return null;
+}
+function normRefText(testKey,kpiKey,pop,age){
+  var key=testKey+'_'+kpiKey;
+  var v=normRefValue(testKey,kpiKey,pop,age);
+  if(v==null)return null;
+  if(pop&&NORMS[pop]&&NORMS[pop][key]!=null)return'≥ '+v+' (norme)';
+  var t=THRESHOLDS[key];
+  return(t&&t.dir==='min'?'≤ ':'≥ ')+v;
 }
 function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=null&&x!=='';}).map(Number);if(!v.length)return null;return dir==='min'?Math.min.apply(null,v):Math.max.apply(null,v);}
 function autoLSI(D,G){if(D==null||G==null||D===0||G===0)return null;return Math.round((Math.min(D,G)/Math.max(D,G))*1000)/10;}
@@ -2169,6 +2177,91 @@ function SyntheseView(props){
   );
 }
 
+function KpiResultCard(props){
+  var kpi=props.kpi,trials=props.trials||[],testKey=props.testKey,pop=props.pop,age=props.age;
+  var best=bestVal(trials,kpi.dir);
+  var status=applyThr(testKey+'_'+kpi.key,best,pop,age);
+  var normLabel=normRefText(testKey,kpi.key,pop,age);
+  var normVal=normRefValue(testKey,kpi.key,pop,age);
+  var vals=trials.filter(function(v){return v!=null;}).map(Number);
+  var maxScale=Math.max.apply(null,vals.concat(normVal!=null?[normVal]:[],[0.001]));
+  return h('div',{style:{background:C.surface,border:'1px solid '+(status?SC[status]+'50':C.border),borderLeft:'3px solid '+(status?SC[status]:C.border),borderRadius:8,padding:'9px 10px'}},
+    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:6,marginBottom:1}},
+      h('span',{style:{color:C.muted,fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em',lineHeight:1.3}},kpi.label),
+      best!=null&&h('span',{style:{color:status?SC[status]:C.tealLight,fontSize:13,fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}},best)
+    ),
+    normLabel&&h('div',{style:{color:C.muted,fontSize:8.5,marginBottom:6}},normLabel),
+    vals.length>0
+      ?h('div',{style:{display:'flex',alignItems:'flex-end',gap:4,height:34,marginTop:2}},
+          [0,1,2].map(function(i){
+            var v=trials[i];
+            if(v==null||v==='')return h('div',{key:i,style:{flex:1,height:'100%',display:'flex',alignItems:'flex-end'}},h('div',{style:{width:'100%',height:2,background:C.border,borderRadius:2}}));
+            var nv=Number(v);var isBest=nv===best;
+            var barH=Math.max(4,Math.round((nv/maxScale)*34));
+            return h('div',{key:i,title:'Essai '+(i+1)+' : '+v,style:{flex:1,height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',gap:2}},
+              h('div',{style:{width:'100%',height:barH,background:isBest?(status?SC[status]:C.teal):C.border,borderRadius:'3px 3px 1px 1px'}}),
+              h('span',{style:{fontSize:7,color:C.muted}},'E'+(i+1))
+            );
+          })
+        )
+      :h('div',{style:{color:C.muted,fontSize:9.5}},'Aucune donnée')
+  );
+}
+function ResultsBrowser(props){
+  var td=props.testData||{};var athlete=props.athlete||{};var athleteAge=props.athleteAge;var tSt=props.testStatuses||{};
+  var pop=athlete.normPopulation;
+  var activeTests=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];});
+  var [sel,setSel]=useState(activeTests[0]||null);
+  if(sel&&activeTests.indexOf(sel)<0)sel=activeTests[0]||null;
+  var test=sel?TBK[sel]:null;
+  var data=sel?td[sel]:null;
+  var [sideView,setSideView]=useState('detail');
+  return h('div',null,
+    h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}},
+      activeTests.map(function(k){
+        var t=TBK[k];var status=tSt[k];var active=sel===k;
+        return h('button',{key:k,onClick:function(){setSel(k);},style:{padding:'7px 12px',borderRadius:20,border:'1.5px solid '+(active?C.teal:(status?SC[status]+'70':C.border)),background:active?C.teal+'18':C.card,color:active?C.teal:C.text,fontSize:11.5,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:6}},
+          status&&h('span',{style:{width:7,height:7,borderRadius:'50%',background:SC[status],flexShrink:0}}),
+          t.label
+        );
+      })
+    ),
+    !test&&h('div',{style:{color:C.muted,fontSize:13}},'Aucun test actif.'),
+    test&&h('div',null,
+      h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}},
+        h('h3',{style:{margin:0,fontSize:15,fontWeight:800,color:C.text}},test.label),
+        !test.bilateral&&h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border}},
+          [['detail','Par côté'],['comparaison','Comparaison']].map(function(v){return h('button',{key:v[0],onClick:function(){setSideView(v[0]);},style:{padding:'5px 10px',borderRadius:6,border:'none',background:sideView===v[0]?C.petrol:'transparent',color:sideView===v[0]?C.text:C.muted,fontSize:10.5,fontWeight:600,cursor:'pointer'}},v[1]);})
+        )
+      ),
+      test.bilateral
+        ?h('div',{className:'g2'},test.kpis.map(function(kpi){return h(KpiResultCard,{key:kpi.key,kpi:kpi,trials:(data.trials||{})[kpi.key]||[],testKey:sel,pop:pop,age:athleteAge});}))
+        :sideView==='detail'
+          ?h('div',{className:'gh',style:{display:'grid',gap:14}},['D','G'].map(function(side){
+              var sd=data[side]||{};
+              return h('div',{key:side,style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:12}},
+                h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:10}},h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C.teal+'30':C.petrol+'60',border:'1.5px solid '+(side==='D'?C.teal:C.petrol),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C.teal:C.muted,fontSize:11,fontWeight:800,flexShrink:0}},side),h('span',{style:{color:side==='D'?C.text:C.muted,fontSize:12.5,fontWeight:700}},side==='D'?'Droite':'Gauche')),
+                h('div',{className:'g2'},test.kpis.map(function(kpi){return h(KpiResultCard,{key:kpi.key,kpi:kpi,trials:((sd.trials||{})[kpi.key])||[],testKey:sel,pop:pop,age:athleteAge});}))
+              );
+            }))
+          :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},test.kpis.map(function(kpi){
+              var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];
+              var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);
+              var stD=applyThr(sel+'_'+kpi.key,vD,pop,athleteAge);var stG=applyThr(sel+'_'+kpi.key,vG,pop,athleteAge);
+              var lsi=(kpi.key===test.kpis[0].key&&data.lsiAuto!=null)?data.lsiAuto:autoLSI(vD,vG);
+              var worse=(vD==null||vG==null)?null:(kpi.dir==='min'?(vD>vG?'D':'G'):(vD<vG?'D':'G'));
+              return h('div',{key:kpi.key,style:{background:C.card,border:'1px solid '+C.border,borderRadius:9,padding:'10px 12px'}},
+                h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em',marginBottom:6}},kpi.label),
+                h('div',{style:{display:'flex',alignItems:'center',gap:10}},
+                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6}},h('span',{style:{fontSize:10,fontWeight:800,color:C.petrol}},'G'),h('span',{style:{fontSize:15,fontWeight:800,color:stG?SC[stG]:C.text}},vG!=null?vG:'—'),worse==='G'&&h('span',{style:{fontSize:9,color:C.orange}},'▼ moins bon')),
+                  lsi!=null&&kpi.key===test.kpis[0].key&&h('span',{style:{fontSize:10,fontWeight:700,color:SC[lsiSt(lsi)],background:SC[lsiSt(lsi)]+'18',padding:'2px 8px',borderRadius:20,flexShrink:0}},'LSI '+lsi+'%'),
+                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end'}},worse==='D'&&h('span',{style:{fontSize:9,color:C.orange}},'moins bon ▼'),h('span',{style:{fontSize:15,fontWeight:800,color:stD?SC[stD]:C.text}},vD!=null?vD:'—'),h('span',{style:{fontSize:10,fontWeight:800,color:C.teal}},'D'))
+                )
+              );
+            }))
+    )
+  );
+}
 function ExpertView(props){
   var [tab,setTab]=useState('fonctions');
   var res=props.res,evFns=props.evFns,td=props.testData||{},qd=props.questData||{};
@@ -2180,10 +2273,9 @@ function ExpertView(props){
     test.kpis.forEach(function(kpi){if(VAR_REL3[tk+'_'+kpi.key])varRelKpis.push({testKey:tk,testLabel:test.label,kpi:kpi});});
   });
   return h('div',null,
-    h(TabBar,{tabs:[['fonctions','Fonctions'],['kpi','KPI'],['variables','Variables'],['capacites','Capacités'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Raisonnement']],active:tab,onChange:setTab}),
+    h(TabBar,{tabs:[['fonctions','Fonctions'],['kpi','Résultats'],['variables','Variables'],['capacites','Capacités'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Raisonnement']],active:tab,onChange:setTab}),
     tab==='fonctions'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},evFns.map(function(f){var sc=fSc[f];var fk=FN_KEY[f];var relTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]&&td[tk]&&td[tk].active;}).sort(function(a,b){return TFM[b][fk]-TFM[a][fk];});return h(Card,{key:f,pad:14,style:{borderLeft:'3px solid '+SC[sc.status]}},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}},h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},f),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+sc.confidence)),h(Badge,{status:sc.status})),h('div',{style:{display:'flex',gap:5,flexWrap:'wrap'}},relTests.map(function(tk){var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';return h('span',{key:tk,style:{padding:'2px 7px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:10}},(TBK[tk]?TBK[tk].label:tk)+' · ',h('span',{style:{color:C.teal}},wl));})));})),
-    tab==='kpi'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).map(function(key){var test=TBK[key];if(!test)return null;var status=tSt[key];var data=td[key];return h(Card,{key:key,pad:12,style:{borderLeft:'3px solid '+(status?SC[status]:C.border)}},h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},h('span',{style:{color:C.text,fontWeight:700,fontSize:12}},test.label),status&&h(Badge,{status:status,small:true})),test.bilateral?h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},test.kpis.map(function(kpi){var trials=(data.trials||{})[kpi.key]||[];var best=bestVal(trials,kpi.dir);return best!=null?h('div',{key:kpi.key,style:{background:C.surface,border:'1px solid '+C.border,borderRadius:7,padding:'7px 11px',minWidth:90}},h('div',{style:{color:C.muted,fontSize:9,textTransform:'uppercase',marginBottom:2}},kpi.label),h('div',{style:{color:C.tealLight,fontWeight:700,fontSize:15}},best),trials.length>1&&h('div',{style:{color:C.muted,fontSize:9,marginTop:1}},trials.filter(function(v){return v!=null;}).join(' / '))):null;})):h('div',{className:'gh',style:{display:'grid',gap:8}},['D','G'].map(function(side){var sd=data[side]||{};return h('div',{key:side,style:{background:C.surface,borderRadius:7,padding:'8px 10px',border:'1px solid '+C.border}},h('div',{style:{color:side==='D'?C.teal:C.muted,fontWeight:700,fontSize:11,marginBottom:4}},side==='D'?'Droite':'Gauche'),test.kpis.map(function(kpi){var trials=((sd.trials||{})[kpi.key]||[]);var best=bestVal(trials,kpi.dir);return h('div',{key:kpi.key},h('div',{style:{color:C.muted,fontSize:9,textTransform:'uppercase',marginBottom:1}},kpi.label),h('div',{style:{color:best!=null?C.tealLight:C.muted,fontWeight:700,fontSize:14}},best!=null?best:'—'));}),data.lsiAuto!=null&&h('div',{style:{marginTop:4,color:SC[lsiSt(data.lsiAuto)]||C.text,fontWeight:700,fontSize:12}},'LSI : '+data.lsiAuto+'%'));})),h('div',null)
-    );})),
+    tab==='kpi'&&h(ResultsBrowser,{testData:td,testStatuses:tSt,athlete:athlete,athleteAge:athleteAge}),
     tab==='variables'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
       h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:2}},'Relations variable-à-variable pour chacune des 283 variables du logiciel : variables amont/aval, variables corrélées, variables du même test, qualités mesurées/estimées et mécanismes biomécaniques impactés. Poids calculés automatiquement (TFM + hiérarchie des tests), sauf Measures/Estimates qui viennent du référentiel clinique fourni quand disponible — à valider par l\'équipe clinique.'),
       varRelKpis.length===0&&h('div',{style:{color:C.muted,fontSize:12}},'Aucune variable active.'),
