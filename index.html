@@ -130,7 +130,8 @@ var TESTS=[
   {key:'crossover_hop',label:'Crossover Hop',cat:'Tests Fonctionnels',bilateral:false,kpis:[{key:'distance',label:'Distance (cm)',step:0.1,dir:'max'}]},
   {key:'side_hop',label:'Side Hop',cat:'Tests Fonctionnels',bilateral:false,kpis:[{key:'reps',label:'Répétitions',step:1,dir:'max'}]},
   {key:'heel_raise',label:'Heel Raise',cat:'Tests Fonctionnels',bilateral:false,kpis:[{key:'reps',label:'Répétitions',step:1,dir:'max'}]},
-  {key:'repeated_hop',label:'Hop Test',cat:'Tests Fonctionnels',bilateral:false,kpis:[{key:'mean_height',label:'Mean Jump Height (cm)',step:0.1,dir:'max'},{key:'best_height',label:'Best Jump Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'best_rsi',label:'Best RSI',step:0.01,dir:'max'},{key:'mean_ct',label:'Mean Contact Time (ms)',step:1,dir:'min'},{key:'ct_drift',label:'Contact Time Drift (%)',step:0.1,dir:'min'},{key:'mean_stiffness',label:'Mean Leg Stiffness (kN/m)',step:0.1,dir:'max'},{key:'rsi_fatigue',label:'RSI Fatigue Index (%)',step:0.1,dir:'min'},{key:'height_fatigue',label:'Jump Height Fatigue Index (%)',step:0.1,dir:'min'},{key:'stiffness_fatigue',label:'Leg Stiffness Fatigue Index (%)',step:0.1,dir:'min'},{key:'height_cv',label:'Jump Height CV (%)',step:0.1,dir:'min'},{key:'ct_cv',label:'Contact Time CV (%)',step:0.1,dir:'min'},{key:'rsi_cv',label:'RSI CV (%)',step:0.1,dir:'min'}]},
+  {key:'repeated_hop',label:'Hop Test',cat:'Tests Fonctionnels',bilateral:false,kpis:[{key:'mean_height',label:'Mean Jump Height (cm)',step:0.1,dir:'max'},{key:'best_height',label:'Best Jump Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'best_rsi',label:'Best RSI',step:0.01,dir:'max'},{key:'mean_peak_force',label:'Mean Peak Force (N)',step:1,dir:'max'},{key:'n_hops',label:'Nombre de sauts',step:1,dir:'max'},{key:'mean_ct',label:'Mean Contact Time (ms)',step:1,dir:'min'},{key:'ct_drift',label:'Contact Time Drift (%)',step:0.1,dir:'min'},{key:'mean_stiffness',label:'Mean Leg Stiffness (kN/m)',step:0.1,dir:'max'},{key:'rsi_fatigue',label:'RSI Fatigue Index (%)',step:0.1,dir:'min'},{key:'height_fatigue',label:'Jump Height Fatigue Index (%)',step:0.1,dir:'min'},{key:'stiffness_fatigue',label:'Leg Stiffness Fatigue Index (%)',step:0.1,dir:'min'},{key:'height_cv',label:'Jump Height CV (%)',step:0.1,dir:'min'},{key:'ct_cv',label:'Contact Time CV (%)',step:0.1,dir:'min'},{key:'rsi_cv',label:'RSI CV (%)',step:0.1,dir:'min'}]},
+  {key:'repeated_hop_bi',label:'Hop Test Bilatéral',cat:'Tests Fonctionnels',bilateral:true,kpis:[{key:'mean_height',label:'Mean Jump Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'mean_peak_force',label:'Mean Peak Force (N)',step:1,dir:'max'},{key:'n_hops',label:'Nombre de sauts',step:1,dir:'max'}]},
 ];
 var TBK={};TESTS.forEach(function(t){TBK[t.key]=t;});
 
@@ -203,9 +204,9 @@ function detectSource(headers){
 // Test Type column value -> KINEXUS test key. Export is one row per test
 // session with metrics as direct columns (unit in brackets, trailing space).
 var FD_TEST_TYPE_MAP={
-  'CMJ':'cmj','SLJ':'slcmj','SLCMJ':'slcmj','DJ':'dj','SLDJ':'sldj','SLHJ':'sldj',
-  'IMTP':'imtp','SLIMTP':'slimtp','ISOSQT':'iso_belt_squat','BSQ':'iso_belt_squat',
-  'SLBSQ':'sl_iso_push','PPU':'sl_iso_push','HJ':'repeated_hop','RSKIP':'repeated_hop',
+  'CMJ':'cmj','SLJ':'slcmj','SLCMJ':'slcmj','DJ':'dj','SLDJ':'sldj','SLHJ':'repeated_hop',
+  'IMTP':'imtp','SLIMTP':'slimtp','ISOSQT':'iso_belt_squat','BSQ':'iso_belt_squat','IBSQT':'iso_belt_squat',
+  'SLBSQ':'sl_iso_push','PPU':'sl_iso_push','SLISOSQT':'sl_iso_push','HJ':'repeated_hop_bi','RSKIP':'repeated_hop_bi',
   'SLSEICR':'soleus_iso','SLSTICR':'gastro_iso','SLLAH':'sllt','LAH':'landing_bi','SLSB':'sls'
 };
 // kpi key -> metric name prefix as it appears in the ForceDecks column header
@@ -214,8 +215,8 @@ var FD_KPI_PATTERNS={
   height:['Jump Height'],rsi_mod:['RSI-modified'],rsi:['RSI'],
   peak_power:['Peak Power / BM','Peak Power/BM','Peak Power'],conc_impulse:['Concentric Impulse'],peak_vel:['Peak Velocity'],
   tto:['Time To Take Off','Time to Take Off'],depth:['Countermovement Depth'],
-  contact_time:['Contact Time'],peak_prop_force:['Peak Propulsive Force'],
-  peak_prop_power:['Peak Propulsive Power'],landing_impulse:['Landing Impulse'],
+  contact_time:['Contact Time'],peak_prop_force:['Peak Propulsive Force','Peak Drive-Off Force'],
+  peak_prop_power:['Peak Propulsive Power','Peak Instantaneous Power / BM','Peak Instantaneous Power/BM'],landing_impulse:['Landing Impulse'],
   leg_stiffness:['Leg Stiffness'],tts:['Time to Stabilise','Time to Stabilization','Time to Stabilisation'],
   peak_landing_force:['Peak Landing Force','Peak Drop Landing Force'],landing_peak_force:['Peak Landing Force','Peak Drop Landing Force'],
   n:['Peak Force','Peak Vertical Force'],nkg:['Peak Force / BM','Peak Force/BM','Peak Vertical Force / BM','Peak Vertical Force/BM'],
@@ -229,7 +230,9 @@ var FD_KPI_PATTERNS={
   ttpf:['Start Time to Peak Force','Time to Peak Force'],
   cop_range_ml:['CoP Range - Medial-Lateral','CoP Range Medial-Lateral'],
   cop_range_ap:['CoP Range - Anterior-Posterior','CoP Range Anterior-Posterior'],
-  mean_velocity:['Mean Velocity']
+  mean_velocity:['Mean Velocity'],
+  mean_height:['Mean Jump Height'],mean_rsi:['Mean RSI'],mean_peak_force:['Mean Peak Force'],
+  n_hops:['Number of Hops/Reps','Number of Hops','Number of Reps']
 };
 function fdColSuffix(header){
   var t=header.trim();
