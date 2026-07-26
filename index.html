@@ -619,6 +619,16 @@ function pctStatus(bands,val){if(val==null||!bands)return null;if(val>=bands[3])
 
 function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
 function lsiSt(lsi){if(lsi==null)return null;if(lsi>=95)return'vert';if(lsi>=90)return'jaune';if(lsi>=80)return'orange';return'rouge';}
+function normRefText(testKey,kpiKey,pop,age){
+  var key=testKey+'_'+kpiKey;
+  if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){
+    var bands=resolveBands(NORMS[pop][key],age);
+    if(bands&&bands[3]!=null)return'≥ '+bands[3]+' (norme)';
+  }
+  var t=THRESHOLDS[key];
+  if(t)return(t.dir==='min'?'≤ ':'≥ ')+t.vert;
+  return null;
+}
 function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=null&&x!=='';}).map(Number);if(!v.length)return null;return dir==='min'?Math.min.apply(null,v):Math.max.apply(null,v);}
 function autoLSI(D,G){if(D==null||G==null||D===0||G===0)return null;return Math.round((Math.min(D,G)/Math.max(D,G))*1000)/10;}
 function s2sc(s){return{vert:3,jaune:2,orange:1,rouge:0}[s];}
@@ -1022,23 +1032,26 @@ function FldIn(props){
 
 function TrialIn(props){
   var trials=props.trials||[];var best=bestVal(trials,props.dir);
+  var status=props.status;
   function add(){if(trials.length<3)props.onChange(trials.concat([null]));}
   function set(i,v){var n=trials.slice();n[i]=v===''||v==null?null:parseFloat(v);props.onChange(n);}
   function del(i){props.onChange(trials.filter(function(_,idx){return idx!==i;}));}
-  return h('div',null,
-    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}},
-      h('span',{style:{color:C.muted,fontSize:10,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.06em'}},props.label),
-      best!=null&&h('span',{style:{color:C.tealLight,fontSize:11,fontWeight:700}},'✓ '+best)
+  var accent=status?SC[status]:C.border;
+  return h('div',{style:{background:C.surface,border:'1px solid '+(status?accent+'45':C.border),borderLeft:'3px solid '+accent,borderRadius:7,padding:'8px 9px'}},
+    h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:6,marginBottom:3}},
+      h('span',{style:{color:C.muted,fontSize:9.5,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.03em',lineHeight:1.3}},props.label),
+      best!=null&&h('span',{style:{color:status?accent:C.tealLight,fontSize:12.5,fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}},best)
     ),
-    h('div',{style:{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}},
-      trials.map(function(v,i){return h('div',{key:i,style:{display:'flex',alignItems:'center',gap:3}},
+    props.normLabel&&h('div',{style:{color:C.muted,fontSize:8.5,marginBottom:5}},props.normLabel),
+    h('div',{style:{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}},
+      trials.map(function(v,i){return h('div',{key:i,style:{display:'flex',alignItems:'center',gap:2}},
         h('div',{style:{position:'relative'}},
-          h('span',{style:{position:'absolute',left:6,top:'50%',transform:'translateY(-50%)',color:C.muted,fontSize:8,fontWeight:700,pointerEvents:'none'}},'E'+(i+1)),
-          h('input',{type:'number',inputMode:'decimal',value:v!=null?v:'',onChange:function(e){set(i,e.target.value);},style:{width:70,background:C.surface,border:'1px solid '+C.border,borderRadius:6,padding:'7px 6px 7px 20px',color:C.text,fontSize:13}})
+          h('span',{style:{position:'absolute',left:5,top:'50%',transform:'translateY(-50%)',color:C.muted,fontSize:7.5,fontWeight:700,pointerEvents:'none'}},'E'+(i+1)),
+          h('input',{type:'number',inputMode:'decimal',value:v!=null?v:'',onChange:function(e){set(i,e.target.value);},style:{width:58,background:C.card,border:'1px solid '+C.border,borderRadius:5,padding:'6px 4px 6px 17px',color:C.text,fontSize:12}})
         ),
-        h('button',{onClick:function(){del(i);},style:{background:'transparent',border:'none',color:C.rouge,fontSize:14,cursor:'pointer',lineHeight:1}},'×')
+        h('button',{onClick:function(){del(i);},style:{background:'transparent',border:'none',color:C.rouge,fontSize:13,cursor:'pointer',lineHeight:1}},'×')
       );}),
-      trials.length<3&&h('button',{onClick:add,style:{padding:'5px 9px',borderRadius:6,border:'1px dashed '+C.teal+'60',background:'transparent',color:C.teal,fontSize:10,fontWeight:600,cursor:'pointer'}},'+ Essai')
+      trials.length<3&&h('button',{onClick:add,style:{padding:'4px 7px',borderRadius:5,border:'1px dashed '+C.teal+'60',background:'transparent',color:C.teal,fontSize:9,fontWeight:600,cursor:'pointer'}},'+ Essai')
     )
   );
 }
@@ -1673,6 +1686,9 @@ function BilanForm(props){
 
 function TestEntry(props){
   var bilan=props.bilan;
+  var athlete=props.athlete||{};
+  var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
+  var pop=athlete.normPopulation;
   var [testData,setTestData]=useState(bilan.testData||{});
   var [questData,setQuestData]=useState(bilan.questData||{});
   var [tab,setTab]=useState('tests');
@@ -1758,10 +1774,10 @@ function TestEntry(props){
               test.ybt
                 ?h(YBTEntry,{data:data,onChange:function(newData){setTestData(function(prev){var n=Object.assign({},prev);n[test.key]=newData;return n;});}})
                 :test.bilateral
-                ?h('div',{style:{display:'flex',flexDirection:'column',gap:10}},test.kpis.map(function(kpi){var trials=(data.trials||{})[kpi.key]||[];return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,trials:trials,onChange:function(t){updateTrials(test.key,null,kpi.key,t);}});}))
+                ?h('div',{className:'g2'},test.kpis.map(function(kpi){var trials=(data.trials||{})[kpi.key]||[];var v=bestVal(trials,kpi.dir);var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,trials:trials,status:status,normLabel:normLabel,onChange:function(t){updateTrials(test.key,null,kpi.key,t);}});}))
                 :h('div',{className:'gh',style:{display:'grid',gap:12}},['D','G'].map(function(side){return h('div',{key:side,style:{background:C.surface,borderRadius:8,padding:'10px 12px',border:'1px solid '+C.border}},
                     h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:8}},h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C.teal+'30':C.petrol+'60',border:'1.5px solid '+(side==='D'?C.teal:C.petrol),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C.teal:C.muted,fontSize:11,fontWeight:800,flexShrink:0}},side),h('span',{style:{color:side==='D'?C.text:C.muted,fontSize:12,fontWeight:600}},side==='D'?'Droite':'Gauche')),
-                    test.kpis.map(function(kpi){var trials=((data[side]||{}).trials||{})[kpi.key]||[];return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,trials:trials,onChange:function(t){updateTrials(test.key,side,kpi.key,t);}});})
+                    h('div',{style:{display:'flex',flexDirection:'column',gap:6}},test.kpis.map(function(kpi){var trials=((data[side]||{}).trials||{})[kpi.key]||[];var v=bestVal(trials,kpi.dir);var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,trials:trials,status:status,normLabel:normLabel,onChange:function(t){updateTrials(test.key,side,kpi.key,t);}});}))
                   );})),
               !test.bilateral&&data.lsiAuto!=null&&h('div',{style:{marginTop:8,padding:'5px 10px',borderRadius:6,background:C.teal+'10',display:'inline-flex',alignItems:'center',gap:8}},h('span',{style:{color:C.muted,fontSize:11}},'LSI auto :'),h('span',{style:{color:SC[lsiSt(data.lsiAuto)]||C.text,fontWeight:700,fontSize:14}},data.lsiAuto+'%'),h(Badge,{status:lsiSt(data.lsiAuto),small:true}))
             )
@@ -2422,7 +2438,7 @@ function App(){
       (screen==='newAthlete'||screen==='editAthlete')&&h(AthleteForm,{initial:screen==='editAthlete'?editAth:null,onSave:saveAth,onCancel:function(){setScreen(editAth?'athlete':'dashboard');}}),
       screen==='athlete'&&ca&&h(AthleteProfile,{athlete:ca,onNewBilan:function(){setScreen('newBilan');},onSelectBilan:function(b){setCurBilan(b);setScreen('analyse');},onDeleteBilan:delBilan,onEdit:function(){setEditAth(ca);setScreen('editAthlete');},onDuplicate:dupBilan}),
       screen==='newBilan'&&h(BilanForm,{onSave:function(b){setDraft(b);setScreen('testEntry');},onCancel:function(){setScreen('athlete');}}),
-      screen==='testEntry'&&draft&&h(TestEntry,{bilan:draft,onSave:saveTests,onCancel:function(){setScreen('athlete');}}),
+      screen==='testEntry'&&draft&&h(TestEntry,{bilan:draft,athlete:ca,onSave:saveTests,onCancel:function(){setScreen('athlete');}}),
       screen==='analyse'&&liveBilan&&ca&&h(AnalyseView,{bilan:liveBilan,athlete:ca,onValidate:validateBilan,onEdit:function(){setDraft(liveBilan);setScreen('testEntry');}})
     )
   );
