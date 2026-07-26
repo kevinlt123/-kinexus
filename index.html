@@ -117,10 +117,10 @@ var TESTS=[
   {key:'cmjr',label:'Countermovement Rebound Jump',cat:'Sauts',bilateral:true,kpis:[{key:'first_height',label:'First Jump Height (cm)',step:0.1,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'mean_ct',label:'Mean Contact Time (ms)',step:1,dir:'min'},{key:'mean_rebound_height',label:'Mean Rebound Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'mean_stiffness',label:'Mean Leg Stiffness (kN/m)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'rsi_decay',label:'RSI Decay (%)',step:0.1,dir:'min'},{key:'stiffness_decay',label:'Leg Stiffness Decay (%)',step:0.1,dir:'min'}]},
   {key:'dj',label:'Drop Jump',cat:'Sauts',bilateral:true,kpis:[{key:'rsi',label:'RSI',step:0.01,dir:'max'},{key:'height',label:'Jump Height (cm)',step:0.1,dir:'max'},{key:'contact_time',label:'Contact Time (ms)',step:1,dir:'min'},{key:'peak_prop_force',label:'Peak Propulsive Force (N/kg)',step:0.01,dir:'max'},{key:'peak_prop_power',label:'Peak Propulsive Power (W/kg)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'leg_stiffness',label:'Leg Stiffness (kN/m)',step:0.1,dir:'max'}]},
   {key:'sldj',label:'Single Leg Drop Jump',cat:'Sauts',bilateral:false,kpis:[{key:'rsi',label:'RSI',step:0.01,dir:'max'},{key:'tts',label:'TTS (s)',step:0.01,dir:'min'},{key:'height',label:'Jump Height (cm)',step:0.1,dir:'max'},{key:'contact_time',label:'Contact Time (ms)',step:1,dir:'min'},{key:'peak_prop_force',label:'Peak Propulsive Force (N/kg)',step:0.01,dir:'max'},{key:'peak_prop_power',label:'Peak Propulsive Power (W/kg)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'leg_stiffness',label:'Leg Stiffness (kN/m)',step:0.1,dir:'max'}]},
-  {key:'landing_bi',label:'Land and Hold',cat:'Landing',bilateral:true,kpis:[{key:'tts',label:'TTS (s)',step:0.01,dir:'min'}]},
+  {key:'landing_bi',label:'Land and Hold',cat:'Landing',bilateral:true,kpis:[{key:'tts',label:'TTS (s)',step:0.01,dir:'min'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'}]},
   {key:'landing_uni',label:'Landing Unilatéral',cat:'Landing',bilateral:false,kpis:[{key:'tts',label:'TTS (s)',step:0.01,dir:'min'}]},
   {key:'sllt',label:'Single Leg Land and Hold',cat:'Landing',bilateral:false,kpis:[{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'ttplf',label:'Time to Peak Landing Force (ms)',step:1,dir:'max'},{key:'loading_rate',label:'Loading Rate (N/s)',step:1,dir:'min'},{key:'tts',label:'Time to Stabilization (s)',step:0.01,dir:'min'},{key:'cop_path',label:'COP Path Length (mm)',step:1,dir:'min'}]},
-  {key:'sls',label:'Single Leg Stand',cat:'Sensoriel',bilateral:false,kpis:[{key:'ttf',label:'Time to Failure (s)',step:0.1,dir:'max'},{key:'cop_path',label:'COP Path Length (mm)',step:1,dir:'min'},{key:'cop_vel',label:'Mean COP Velocity (mm/s)',step:0.1,dir:'min'},{key:'ellipse_area',label:'95% Ellipse Area (mm²)',step:1,dir:'min'}]},
+  {key:'sls',label:'Single Leg Stand',cat:'Sensoriel',bilateral:false,kpis:[{key:'ttf',label:'Time to Failure (s)',step:0.1,dir:'max'},{key:'cop_path',label:'COP Path Length (mm)',step:1,dir:'min'},{key:'cop_vel',label:'Mean COP Velocity (mm/s)',step:0.1,dir:'min'},{key:'ellipse_area',label:'95% Ellipse Area (mm²)',step:1,dir:'min'},{key:'cop_range_ml',label:'CoP Range Médial-Latéral (mm)',step:0.1,dir:'min'},{key:'cop_range_ap',label:'CoP Range Antéro-Postérieur (mm)',step:0.1,dir:'min'},{key:'mean_velocity',label:'Vitesse Moyenne CoP (mm/s)',step:0.1,dir:'min'}]},
   {key:'eo',label:'Eyes Open',cat:'Sensoriel',bilateral:true,kpis:[{key:'surface',label:'Surface (mm²)',step:1,dir:'min'}]},
   {key:'ef',label:'Eyes Closed',cat:'Sensoriel',bilateral:true,kpis:[{key:'surface',label:'Surface (mm²)',step:1,dir:'min'}]},
   {key:'strobo',label:'Strobo',cat:'Sensoriel',bilateral:true,kpis:[{key:'surface',label:'Surface (mm²)',step:1,dir:'min'}]},
@@ -206,7 +206,7 @@ var FD_TEST_TYPE_MAP={
   'CMJ':'cmj','SLJ':'slcmj','SLCMJ':'slcmj','DJ':'dj','SLDJ':'sldj','SLHJ':'sldj',
   'IMTP':'imtp','SLIMTP':'slimtp','ISOSQT':'iso_belt_squat','BSQ':'iso_belt_squat',
   'SLBSQ':'sl_iso_push','PPU':'sl_iso_push','HJ':'repeated_hop','RSKIP':'repeated_hop',
-  'SLSEICR':'soleus_iso'
+  'SLSEICR':'soleus_iso','SLSTICR':'gastro_iso','SLLAH':'sllt','LAH':'landing_bi','SLSB':'sls'
 };
 // kpi key -> metric name prefix as it appears in the ForceDecks column header
 // (matched case-insensitively as a "starts with", ignoring the unit suffix)
@@ -216,17 +216,20 @@ var FD_KPI_PATTERNS={
   tto:['Time To Take Off','Time to Take Off'],depth:['Countermovement Depth'],
   contact_time:['Contact Time'],peak_prop_force:['Peak Propulsive Force'],
   peak_prop_power:['Peak Propulsive Power'],landing_impulse:['Landing Impulse'],
-  leg_stiffness:['Leg Stiffness'],tts:['Time to Stabilise','Time to Stabilization'],
-  peak_landing_force:['Peak Landing Force'],landing_peak_force:['Peak Landing Force'],
+  leg_stiffness:['Leg Stiffness'],tts:['Time to Stabilise','Time to Stabilization','Time to Stabilisation'],
+  peak_landing_force:['Peak Landing Force','Peak Drop Landing Force'],landing_peak_force:['Peak Landing Force','Peak Drop Landing Force'],
   n:['Peak Force','Peak Vertical Force'],nkg:['Peak Force / BM','Peak Force/BM','Peak Vertical Force / BM','Peak Vertical Force/BM'],
   peak_conc_force:['Peak Concentric Force'],peak_conc_vel:['Peak Concentric Velocity'],
   braking_rfd:['Braking RFD'],peak_braking_force:['Peak Braking Force'],
   braking_impulse:['Braking Impulse'],contraction_time:['Contraction Time'],
   ecc_duration:['Eccentric Duration'],conc_duration:['Concentric Duration'],
-  time_to_stab:['Time to Stabilization','Time to Stabilise'],
+  time_to_stab:['Time to Stabilization','Time to Stabilise','Time to Stabilisation'],
   rfd50:['RFD - 50ms','RFD 0-50ms','RFD50'],rfd100:['RFD - 100ms','RFD 0-100ms','RFD100'],
   rfd150:['RFD - 150ms','RFD 0-150ms','RFD150'],rfd200:['RFD - 200ms','RFD 0-200ms','RFD200'],
-  ttpf:['Start Time to Peak Force','Time to Peak Force']
+  ttpf:['Start Time to Peak Force','Time to Peak Force'],
+  cop_range_ml:['CoP Range - Medial-Lateral','CoP Range Medial-Lateral'],
+  cop_range_ap:['CoP Range - Anterior-Posterior','CoP Range Anterior-Posterior'],
+  mean_velocity:['Mean Velocity']
 };
 function fdColSuffix(header){
   var t=header.trim();
@@ -649,6 +652,7 @@ function normRefText(testKey,kpiKey,pop,age){
   return(t&&t.dir==='min'?'≤ ':'≥ ')+v;
 }
 function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=null&&x!=='';}).map(Number);if(!v.length)return null;return dir==='min'?Math.min.apply(null,v):Math.max.apply(null,v);}
+function roundStep(v,step){if(v==null)return v;var decimals=2;if(step!=null)decimals=step<1?Math.max(0,Math.round(-Math.log10(step))):0;var f=Math.pow(10,decimals);return Math.round(v*f)/f;}
 function autoLSI(D,G){if(D==null||G==null||D===0||G===0)return null;return Math.round((Math.min(D,G)/Math.max(D,G))*1000)/10;}
 function s2sc(s){return{vert:3,jaune:2,orange:1,rouge:0}[s];}
 function sc2s(s){if(s>=2.5)return'vert';if(s>=1.8)return'jaune';if(s>=1.0)return'orange';return'rouge';}
@@ -1059,7 +1063,7 @@ function TrialIn(props){
   return h('div',{style:{background:C.surface,border:'1px solid '+(status?accent+'45':C.border),borderLeft:'3px solid '+accent,borderRadius:7,padding:'8px 9px'}},
     h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:6,marginBottom:3}},
       h('span',{style:{color:C.muted,fontSize:9.5,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.03em',lineHeight:1.3}},props.label),
-      best!=null&&h('span',{style:{color:status?accent:C.tealLight,fontSize:12.5,fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}},best)
+      best!=null&&h('span',{style:{color:status?accent:C.tealLight,fontSize:12.5,fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}},roundStep(best,props.step))
     ),
     props.normLabel&&h('div',{style:{color:C.muted,fontSize:8.5,marginBottom:5}},props.normLabel),
     h('div',{style:{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}},
@@ -1793,10 +1797,10 @@ function TestEntry(props){
               test.ybt
                 ?h(YBTEntry,{data:data,onChange:function(newData){setTestData(function(prev){var n=Object.assign({},prev);n[test.key]=newData;return n;});}})
                 :test.bilateral
-                ?h('div',{className:'g2'},test.kpis.map(function(kpi){var trials=(data.trials||{})[kpi.key]||[];var v=bestVal(trials,kpi.dir);var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,trials:trials,status:status,normLabel:normLabel,onChange:function(t){updateTrials(test.key,null,kpi.key,t);}});}))
+                ?h('div',{className:'g2'},test.kpis.map(function(kpi){var trials=(data.trials||{})[kpi.key]||[];var v=bestVal(trials,kpi.dir);var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,step:kpi.step,trials:trials,status:status,normLabel:normLabel,onChange:function(t){updateTrials(test.key,null,kpi.key,t);}});}))
                 :h('div',{className:'gh',style:{display:'grid',gap:12}},['D','G'].map(function(side){return h('div',{key:side,style:{background:C.surface,borderRadius:8,padding:'10px 12px',border:'1px solid '+C.border}},
                     h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:8}},h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C.teal+'30':C.petrol+'60',border:'1.5px solid '+(side==='D'?C.teal:C.petrol),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C.teal:C.muted,fontSize:11,fontWeight:800,flexShrink:0}},side),h('span',{style:{color:side==='D'?C.text:C.muted,fontSize:12,fontWeight:600}},side==='D'?'Droite':'Gauche')),
-                    h('div',{style:{display:'flex',flexDirection:'column',gap:6}},test.kpis.map(function(kpi){var trials=((data[side]||{}).trials||{})[kpi.key]||[];var v=bestVal(trials,kpi.dir);var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,trials:trials,status:status,normLabel:normLabel,onChange:function(t){updateTrials(test.key,side,kpi.key,t);}});}))
+                    h('div',{style:{display:'flex',flexDirection:'column',gap:6}},test.kpis.map(function(kpi){var trials=((data[side]||{}).trials||{})[kpi.key]||[];var v=bestVal(trials,kpi.dir);var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,step:kpi.step,trials:trials,status:status,normLabel:normLabel,onChange:function(t){updateTrials(test.key,side,kpi.key,t);}});}))
                   );})),
               !test.bilateral&&data.lsiAuto!=null&&h('div',{style:{marginTop:8,padding:'5px 10px',borderRadius:6,background:C.teal+'10',display:'inline-flex',alignItems:'center',gap:8}},h('span',{style:{color:C.muted,fontSize:11}},'LSI auto :'),h('span',{style:{color:SC[lsiSt(data.lsiAuto)]||C.text,fontWeight:700,fontSize:14}},data.lsiAuto+'%'),h(Badge,{status:lsiSt(data.lsiAuto),small:true}))
             )
@@ -2199,7 +2203,7 @@ function KpiResultCard(props){
   return h('div',{style:{background:C.surface,border:'1px solid '+(status?SC[status]+'50':C.border),borderLeft:'3px solid '+(status?SC[status]:C.border),borderRadius:8,padding:'9px 10px'}},
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:6,marginBottom:1}},
       h('span',{style:{color:C.muted,fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em',lineHeight:1.3}},kpi.label),
-      best!=null&&h('span',{style:{color:status?SC[status]:C.tealLight,fontSize:13,fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}},best)
+      best!=null&&h('span',{style:{color:status?SC[status]:C.tealLight,fontSize:13,fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}},roundStep(best,kpi.step))
     ),
     normLabel&&h('div',{style:{color:C.muted,fontSize:8.5,marginBottom:6}},normLabel),
     vals.length>0
@@ -2264,9 +2268,9 @@ function ResultsBrowser(props){
               return h('div',{key:kpi.key,style:{background:C.card,border:'1px solid '+C.border,borderRadius:9,padding:'10px 12px'}},
                 h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em',marginBottom:6}},kpi.label),
                 h('div',{style:{display:'flex',alignItems:'center',gap:10}},
-                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6}},h('span',{style:{fontSize:10,fontWeight:800,color:C.petrol}},'G'),h('span',{style:{fontSize:15,fontWeight:800,color:stG?SC[stG]:C.text}},vG!=null?vG:'—'),worse==='G'&&h('span',{style:{fontSize:9,color:C.orange}},'▼ moins bon')),
+                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6}},h('span',{style:{fontSize:10,fontWeight:800,color:C.petrol}},'G'),h('span',{style:{fontSize:15,fontWeight:800,color:stG?SC[stG]:C.text}},vG!=null?roundStep(vG,kpi.step):'—'),worse==='G'&&h('span',{style:{fontSize:9,color:C.orange}},'▼ moins bon')),
                   lsi!=null&&kpi.key===test.kpis[0].key&&h('span',{style:{fontSize:10,fontWeight:700,color:SC[lsiSt(lsi)],background:SC[lsiSt(lsi)]+'18',padding:'2px 8px',borderRadius:20,flexShrink:0}},'LSI '+lsi+'%'),
-                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end'}},worse==='D'&&h('span',{style:{fontSize:9,color:C.orange}},'moins bon ▼'),h('span',{style:{fontSize:15,fontWeight:800,color:stD?SC[stD]:C.text}},vD!=null?vD:'—'),h('span',{style:{fontSize:10,fontWeight:800,color:C.teal}},'D'))
+                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end'}},worse==='D'&&h('span',{style:{fontSize:9,color:C.orange}},'moins bon ▼'),h('span',{style:{fontSize:15,fontWeight:800,color:stD?SC[stD]:C.text}},vD!=null?roundStep(vD,kpi.step):'—'),h('span',{style:{fontSize:10,fontWeight:800,color:C.teal}},'D'))
                 )
               );
             }))
