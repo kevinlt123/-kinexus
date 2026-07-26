@@ -1922,7 +1922,7 @@ function muscleMapHTML(systemScores,opts){
   var overlays='';
   MM_REGIONS.forEach(function(r){
     var c=col(r.sys);if(!c)return;
-    overlays+='<div style="position:absolute;left:'+r.left+'%;top:'+r.top+'%;width:'+r.width+'%;height:'+r.height+'%;border-radius:50%;filter:blur(7px);mix-blend-mode:screen;background:'+c+'"></div>';
+    overlays+='<div style="position:absolute;left:'+r.left+'%;top:'+r.top+'%;width:'+r.width+'%;height:'+r.height+'%;border-radius:50%;filter:blur(5px);mix-blend-mode:multiply;opacity:0.85;background:'+c+'"></div>';
   });
   return '<div style="width:100%;max-width:'+width+'px;margin:0 auto;background:#0F3040;border-radius:16px;padding:16px">'
     +'<div style="position:relative">'
