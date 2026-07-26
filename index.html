@@ -205,7 +205,8 @@ function detectSource(headers){
 var FD_TEST_TYPE_MAP={
   'CMJ':'cmj','SLJ':'slcmj','SLCMJ':'slcmj','DJ':'dj','SLDJ':'sldj','SLHJ':'sldj',
   'IMTP':'imtp','SLIMTP':'slimtp','ISOSQT':'iso_belt_squat','BSQ':'iso_belt_squat',
-  'SLBSQ':'sl_iso_push','PPU':'sl_iso_push','HJ':'repeated_hop','RSKIP':'repeated_hop'
+  'SLBSQ':'sl_iso_push','PPU':'sl_iso_push','HJ':'repeated_hop','RSKIP':'repeated_hop',
+  'SLSEICR':'soleus_iso'
 };
 // kpi key -> metric name prefix as it appears in the ForceDecks column header
 // (matched case-insensitively as a "starts with", ignoring the unit suffix)
@@ -217,12 +218,15 @@ var FD_KPI_PATTERNS={
   peak_prop_power:['Peak Propulsive Power'],landing_impulse:['Landing Impulse'],
   leg_stiffness:['Leg Stiffness'],tts:['Time to Stabilise','Time to Stabilization'],
   peak_landing_force:['Peak Landing Force'],landing_peak_force:['Peak Landing Force'],
-  n:['Peak Force'],nkg:['Peak Force / BM','Peak Force/BM'],
+  n:['Peak Force','Peak Vertical Force'],nkg:['Peak Force / BM','Peak Force/BM','Peak Vertical Force / BM','Peak Vertical Force/BM'],
   peak_conc_force:['Peak Concentric Force'],peak_conc_vel:['Peak Concentric Velocity'],
   braking_rfd:['Braking RFD'],peak_braking_force:['Peak Braking Force'],
   braking_impulse:['Braking Impulse'],contraction_time:['Contraction Time'],
   ecc_duration:['Eccentric Duration'],conc_duration:['Concentric Duration'],
-  time_to_stab:['Time to Stabilization','Time to Stabilise']
+  time_to_stab:['Time to Stabilization','Time to Stabilise'],
+  rfd50:['RFD - 50ms','RFD 0-50ms','RFD50'],rfd100:['RFD - 100ms','RFD 0-100ms','RFD100'],
+  rfd150:['RFD - 150ms','RFD 0-150ms','RFD150'],rfd200:['RFD - 200ms','RFD 0-200ms','RFD200'],
+  ttpf:['Start Time to Peak Force','Time to Peak Force']
 };
 function fdColSuffix(header){
   var t=header.trim();
@@ -258,6 +262,13 @@ function fdVal(raw,kpiLabel,matchedHeader,bw){
   if(isNaN(v))return null;
   if(kpiLabel.indexOf('N/kg')>=0&&matchedHeader&&!/\/\s*kg|\/\s*bm/i.test(matchedHeader)&&bw){
     v=v/bw;
+  }
+  var srcUnit=matchedHeader&&(matchedHeader.match(/\[([^\]]+)\]/)||[])[1];
+  var dstUnit=(kpiLabel.match(/\(([^)]+)\)/)||[])[1];
+  if(srcUnit&&dstUnit){
+    var su=srcUnit.trim().toLowerCase(),du=dstUnit.trim().toLowerCase();
+    if(su==='s'&&du==='ms')v=v*1000;
+    else if(su==='ms'&&du==='s')v=v/1000;
   }
   return v;
 }
