@@ -2383,23 +2383,33 @@ function SyntheseView(props){
             var hasRouge=p.deficitTests&&p.deficitTests.some(function(dt){return dt.status==='rouge';});
             var urgence=hasRouge?'Élevée':'Moyenne';
             var urgCol=hasRouge?C.rouge:C.orange;
-            return h('div',{key:p.rang,style:{background:SBG[p.status],border:'1px solid '+SC[p.status]+'35',borderTop:'3px solid '+SC[p.status],borderRadius:9,padding:'9px 12px',display:'flex',flexDirection:'column',gap:5}},
-              h('div',{style:{display:'flex',alignItems:'center',gap:6}},
-                h('span',{style:{fontSize:12,flexShrink:0}},FN_ICON[p.fonction]||'●'),
-                h('span',{style:{color:SC[p.status],fontSize:8,fontWeight:800,letterSpacing:'0.05em',textTransform:'uppercase',background:C.card,padding:'1px 7px',borderRadius:20,flexShrink:0}},'P'+p.rang),
-                h('span',{style:{color:C.text,fontWeight:800,fontSize:12,textTransform:'uppercase',letterSpacing:'0.01em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:''))
+            return h('div',{key:p.rang,style:{background:SBG[p.status],border:'1px solid '+SC[p.status]+'30',borderLeft:'4px solid '+SC[p.status],borderRadius:10,padding:'12px 14px'}},
+              h('div',{style:{display:'flex',alignItems:'flex-start',gap:10}},
+                h('div',{style:{width:30,height:30,borderRadius:8,background:C.card,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}},FN_ICON[p.fonction]||'●'),
+                h('div',{style:{flex:1,minWidth:0}},
+                  h('div',{style:{color:SC[p.status],fontSize:8,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:2}},'Priorité '+p.rang),
+                  h('div',{style:{color:C.text,fontWeight:800,fontSize:13,textTransform:'uppercase',letterSpacing:'0.01em'}},p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:''))
+                ),
+                h('div',{style:{display:'flex',gap:16,flexShrink:0}},
+                  h('div',{style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:7.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em'}},'Impact'),h('div',{style:{color:SC[p.status],fontWeight:800,fontSize:11.5,marginTop:1}},impact)),
+                  h('div',{style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:7.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em'}},'Urgence'),h('div',{style:{color:urgCol,fontWeight:800,fontSize:11.5,marginTop:1}},urgence))
+                )
               ),
-              h('div',{style:{color:C.muted,fontSize:10.5,lineHeight:1.4,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}},p.hypothese),
-              h('div',{style:{display:'flex',gap:14,marginTop:2,paddingTop:5,borderTop:'1px solid '+SC[p.status]+'25'}},
-                h('div',{style:{fontSize:10.5}},h('span',{style:{color:C.muted}},'Impact '),h('span',{style:{color:SC[p.status],fontWeight:800}},impact)),
-                h('div',{style:{fontSize:10.5}},h('span',{style:{color:C.muted}},'Urgence '),h('span',{style:{color:urgCol,fontWeight:800}},urgence))
-              )
+              h('div',{style:{color:C.muted,fontSize:10.5,lineHeight:1.4,marginTop:5,paddingLeft:40}},p.hypothese)
             );
           }))
         ),
         (bilan.type==='RTP'||rtp)&&h('div',null,
           h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'03 · Retour au sport'),
-          rtp?h(Card,{pad:14,style:{borderLeft:'3px solid '+SC[rtp.status]}},h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}},h('div',{style:{color:C.text,fontWeight:700,fontSize:16}},rtp.label),h(Badge,{status:rtp.status})),h('div',{style:{color:C.muted,fontSize:12}},'Tests RTP : ',h('span',{style:{color:C.text,fontWeight:600}},rtp.passCount+'/'+rtp.totalCount+' ('+rtp.ratio+'%)')),rtp.aclScore!=null&&h('div',{style:{color:C.muted,fontSize:12,marginTop:2}},'ACL-RSI : ',h('span',{style:{color:C.text,fontWeight:600}},rtp.aclScore+'/100'))):h(Card,{pad:14},h('div',{style:{color:C.muted,fontSize:12}},'Activez des tests fonctionnels pour le statut RTP.'))
+          rtp?h(Card,{pad:16},
+            h('div',{style:{display:'flex',alignItems:'baseline',gap:10,marginBottom:10}},
+              h('div',{style:{color:SC[rtp.status],fontWeight:900,fontSize:32,lineHeight:1}},rtp.ratio+'%'),
+              h('div',{style:{color:SC[rtp.status],fontWeight:800,fontSize:13,textTransform:'uppercase',letterSpacing:'0.03em'}},rtp.label)
+            ),
+            h('div',{style:{height:8,background:C.border,borderRadius:20,overflow:'hidden',marginBottom:10}},h('div',{style:{height:'100%',width:rtp.ratio+'%',background:SC[rtp.status],borderRadius:20}})),
+            h('div',{style:{color:C.muted,fontSize:11.5}},'Tests RTP : ',h('span',{style:{color:C.text,fontWeight:600}},rtp.passCount+'/'+rtp.totalCount)),
+            rtp.aclScore!=null&&h('div',{style:{color:C.muted,fontSize:11.5,marginTop:2}},'ACL-RSI : ',h('span',{style:{color:C.text,fontWeight:600}},rtp.aclScore+'/100'))
+          ):h(Card,{pad:14},h('div',{style:{color:C.muted,fontSize:12}},'Activez des tests fonctionnels pour le statut RTP.'))
         )
       ),
       evFns.length>0&&h('div',null,
