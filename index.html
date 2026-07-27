@@ -1716,8 +1716,13 @@ function TestKpiChart(props){
   var kpi=props.kpi,dTrials=props.dTrials||[],gTrials=props.gTrials,normVal=props.normVal;
   var ref=useRef(null);
   var bars=[];
-  dTrials.forEach(function(v,i){if(v==null||v==='')return;bars.push({label:(gTrials?'D':'E')+(i+1),value:Number(v),color:gTrials?C_D:C.tealLight});});
+  var dCount=0;
+  dTrials.forEach(function(v,i){if(v==null||v==='')return;dCount++;bars.push({label:(gTrials?'D':'E')+(i+1),value:Number(v),color:gTrials?C_D:C.tealLight});});
   if(gTrials)gTrials.forEach(function(v,i){if(v==null||v==='')return;bars.push({label:'G'+(i+1),value:Number(v),color:C_G});});
+  var vD=gTrials?bestVal(dTrials,kpi.dir):null,vG=gTrials?bestVal(gTrials,kpi.dir):null;
+  var lsi=(vD!=null&&vG!=null)?autoLSI(vD,vG):null;
+  var asym=lsi!=null?Math.round((100-lsi)*10)/10:null;
+  var worseSide=(vD==null||vG==null)?null:(kpi.dir==='min'?(vD>vG?'D':'G'):(vD<vG?'D':'G'));
   var barsKey=bars.map(function(b){return b.label+':'+b.value;}).join('|');
   var canvasH=bars.length?170:44;
   useEffect(function(){
@@ -1733,7 +1738,7 @@ function TestKpiChart(props){
       ctx.fillText('Aucune donnée',W/2,H/2+4);
       return;
     }
-    var padL=34,padR=10,padT=20,padB=26;
+    var padL=34,padR=10,padT=asym!=null?34:20,padB=26;
     var chartW=W-padL-padR,chartH=H-padT-padB;
     var maxV=Math.max.apply(null,bars.map(function(b){return b.value;}).concat(normVal!=null?[normVal]:[],[0.001]))*1.2;
     var barGap=chartW/bars.length;
@@ -1765,7 +1770,22 @@ function TestKpiChart(props){
       ctx.fillStyle=C.muted;ctx.font='9px Inter,sans-serif';
       ctx.fillText(b.label,x+barW/2,padT+chartH+14);
     });
-  },[barsKey,normVal,kpi.key,canvasH]);
+    if(asym!=null&&dCount>0&&dCount<bars.length){
+      var midX=padL+dCount*barGap;
+      ctx.beginPath();ctx.moveTo(midX,padT);ctx.lineTo(midX,padT+chartH);
+      ctx.strokeStyle='rgba(27,79,106,0.18)';ctx.lineWidth=1;ctx.setLineDash([2,3]);ctx.stroke();ctx.setLineDash([]);
+      var lbl=roundStep(asym,0.1)+'% asymétrie '+worseSide;
+      ctx.font='bold 10px Inter,sans-serif';
+      var lblW=ctx.measureText(lbl).width+16;
+      var lblY=4;
+      ctx.fillStyle='#fff';ctx.strokeStyle=C.border;ctx.lineWidth=1;
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(midX-lblW/2,lblY,lblW,16,8);else ctx.rect(midX-lblW/2,lblY,lblW,16);
+      ctx.fill();ctx.stroke();
+      ctx.fillStyle=worseSide==='D'?C_D:C_G;ctx.textAlign='center';
+      ctx.fillText(lbl,midX,lblY+11.5);
+    }
+  },[barsKey,normVal,kpi.key,canvasH,asym,worseSide,dCount]);
   return h('canvas',{ref:ref,style:{width:'100%',height:canvasH,display:'block'}});
 }
 
