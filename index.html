@@ -1710,6 +1710,111 @@ function BilanForm(props){
   );
 }
 
+function TestKpiChart(props){
+  var kpi=props.kpi,dTrials=props.dTrials||[],gTrials=props.gTrials,normVal=props.normVal;
+  var ref=useRef(null);
+  var bars=[];
+  dTrials.forEach(function(v,i){if(v==null||v==='')return;bars.push({label:(gTrials?'D':'E')+(i+1),value:Number(v),color:gTrials?C.teal:C.tealLight});});
+  if(gTrials)gTrials.forEach(function(v,i){if(v==null||v==='')return;bars.push({label:'G'+(i+1),value:Number(v),color:C.petrol});});
+  var barsKey=bars.map(function(b){return b.label+':'+b.value;}).join('|');
+  var canvasH=bars.length?170:44;
+  useEffect(function(){
+    var canvas=ref.current;if(!canvas)return;
+    var dpr=window.devicePixelRatio||1;
+    var W=canvas.offsetWidth||400,H=canvasH;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    canvas.style.width=W+'px';canvas.style.height=H+'px';
+    var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    ctx.clearRect(0,0,W,H);
+    if(!bars.length){
+      ctx.fillStyle=C.muted;ctx.font='11px Inter,sans-serif';ctx.textAlign='center';
+      ctx.fillText('Aucune donnée',W/2,H/2+4);
+      return;
+    }
+    var padL=34,padR=10,padT=20,padB=26;
+    var chartW=W-padL-padR,chartH=H-padT-padB;
+    var maxV=Math.max.apply(null,bars.map(function(b){return b.value;}).concat(normVal!=null?[normVal]:[],[0.001]))*1.2;
+    var barGap=chartW/bars.length;
+    var barW=Math.min(38,barGap-8);
+    [0,0.25,0.5,0.75,1].forEach(function(f){
+      var y=padT+chartH-(f*chartH);
+      ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);
+      ctx.strokeStyle='rgba(27,79,106,0.10)';ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle=C.muted;ctx.font='9px Inter,sans-serif';ctx.textAlign='right';
+      ctx.fillText(String(roundStep(f*maxV,kpi.step)),padL-6,y+3);
+    });
+    if(normVal!=null&&normVal<=maxV){
+      var ny=padT+chartH-(normVal/maxV)*chartH;
+      ctx.beginPath();ctx.moveTo(padL,ny);ctx.lineTo(W-padR,ny);
+      ctx.strokeStyle=C.orange;ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=C.orange;ctx.font='bold 9px Inter,sans-serif';ctx.textAlign='left';
+      ctx.fillText('Norme '+roundStep(normVal,kpi.step),padL+4,ny-4);
+    }
+    bars.forEach(function(b,i){
+      var x=padL+i*barGap+(barGap-barW)/2;
+      var barH=(b.value/maxV)*chartH;
+      var y=padT+chartH-barH;
+      ctx.fillStyle=b.color;
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(x,y,barW,barH,[3,3,0,0]);else ctx.rect(x,y,barW,barH);
+      ctx.fill();
+      ctx.fillStyle=C.text;ctx.font='bold 10px Inter,sans-serif';ctx.textAlign='center';
+      ctx.fillText(String(roundStep(b.value,kpi.step)),x+barW/2,y-5);
+      ctx.fillStyle=C.muted;ctx.font='9px Inter,sans-serif';
+      ctx.fillText(b.label,x+barW/2,padT+chartH+14);
+    });
+  },[barsKey,normVal,kpi.key,canvasH]);
+  return h('canvas',{ref:ref,style:{width:'100%',height:canvasH,display:'block'}});
+}
+
+function TestDetailPage(props){
+  var test=props.test,data=props.data||{active:true},pop=props.pop,athleteAge=props.athleteAge,onChange=props.onChange,onYBTChange=props.onYBTChange,onBack=props.onBack;
+  return h('div',null,
+    h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:16}},
+      h(Btn,{small:true,onClick:onBack},'← Retour'),
+      h('h2',{style:{margin:0,fontSize:17,fontWeight:800,color:C.text,flex:1}},test.label),
+      !test.bilateral&&h('span',{style:{fontSize:10,color:C.teal,fontWeight:600,background:C.teal+'15',padding:'2px 8px',borderRadius:10}},'D / G')
+    ),
+    test.ybt
+      ?h(YBTEntry,{data:data,onChange:onYBTChange})
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:14}},
+          test.kpis.map(function(kpi){
+            var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);
+            var normVal=normRefValue(test.key,kpi.key,pop,athleteAge);
+            if(test.bilateral){
+              var trials=(data.trials||{})[kpi.key]||[];
+              var v=bestVal(trials,kpi.dir);
+              var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);
+              return h(Card,{key:kpi.key,pad:14},
+                h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}},
+                  h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},kpi.label),
+                  status&&h(Badge,{status:status,small:true})
+                ),
+                normLabel&&h('div',{style:{color:C.muted,fontSize:10,marginBottom:8}},'Cible : '+normLabel),
+                h(TestKpiChart,{kpi:kpi,dTrials:trials,gTrials:null,normVal:normVal}),
+                h('div',{style:{marginTop:10}},h(TrialIn,{label:'Essais',dir:kpi.dir,step:kpi.step,trials:trials,onChange:function(t){onChange(null,kpi.key,t);}}))
+              );
+            }
+            var dT=((data.D||{}).trials||{})[kpi.key]||[];
+            var gT=((data.G||{}).trials||{})[kpi.key]||[];
+            var vD=bestVal(dT,kpi.dir),vG=bestVal(gT,kpi.dir);
+            var stD=applyThr(test.key+'_'+kpi.key,vD,pop,athleteAge);
+            var stG=applyThr(test.key+'_'+kpi.key,vG,pop,athleteAge);
+            return h(Card,{key:kpi.key,pad:14},
+              h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:2}},kpi.label),
+              normLabel&&h('div',{style:{color:C.muted,fontSize:10,marginBottom:8}},'Cible : '+normLabel),
+              h(TestKpiChart,{kpi:kpi,dTrials:dT,gTrials:gT,normVal:normVal}),
+              h('div',{className:'gh',style:{display:'grid',gap:10,marginTop:10}},
+                h(TrialIn,{label:'Droite',dir:kpi.dir,step:kpi.step,trials:dT,status:stD,onChange:function(t){onChange('D',kpi.key,t);}}),
+                h(TrialIn,{label:'Gauche',dir:kpi.dir,step:kpi.step,trials:gT,status:stG,onChange:function(t){onChange('G',kpi.key,t);}})
+              )
+            );
+          }),
+          !test.bilateral&&data.lsiAuto!=null&&h('div',{style:{padding:'8px 12px',borderRadius:8,background:C.teal+'10',display:'inline-flex',alignItems:'center',gap:8}},h('span',{style:{color:C.muted,fontSize:11}},'LSI auto :'),h('span',{style:{color:SC[lsiSt(data.lsiAuto)]||C.text,fontWeight:700,fontSize:14}},data.lsiAuto+'%'),h(Badge,{status:lsiSt(data.lsiAuto),small:true}))
+        )
+  );
+}
+
 function TestEntry(props){
   var bilan=props.bilan;
   var athlete=props.athlete||{};
@@ -1719,6 +1824,7 @@ function TestEntry(props){
   var [questData,setQuestData]=useState(bilan.questData||{});
   var [tab,setTab]=useState('tests');
   var [showCSV,setShowCSV]=useState(false);
+  var [openTest,setOpenTest]=useState(null);
   var cats=[...new Set(TESTS.map(function(t){return t.cat;}))];
   var cnt=Object.values(testData).filter(function(d){return d&&d.active;}).length;
 
@@ -1774,6 +1880,19 @@ function TestEntry(props){
 
   function setQA(qk,id,val){setQuestData(function(prev){var q=Object.assign({},prev[qk]||{});q.answers=Object.assign({},q.answers||{});q.answers[id]=val;var n=Object.assign({},prev);n[qk]=q;return n;});}
 
+  if(openTest){
+    var otTest=TBK[openTest];
+    return h(TestDetailPage,{
+      test:otTest,
+      data:testData[openTest]||{active:true},
+      pop:pop,
+      athleteAge:athleteAge,
+      onChange:function(side,kpiKey,trials){updateTrials(openTest,side,kpiKey,trials);},
+      onYBTChange:function(newData){setTestData(function(prev){var n=Object.assign({},prev);n[openTest]=newData;return n;});},
+      onBack:function(){setOpenTest(null);}
+    });
+  }
+
   return h('div',null,
     showCSV&&h(CSVImportModal,{onImport:onImport,onClose:function(){setShowCSV(false);}}),
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
@@ -1790,22 +1909,14 @@ function TestEntry(props){
         h(SecTitle,null,cat),
         h('div',{style:{display:'flex',flexDirection:'column',gap:6}},catTests.map(function(test){
           var data=testData[test.key];var active=data&&data.active;
+          var status=computeTestStatus(test.key,data,pop,athleteAge);
           return h('div',{key:test.key,style:{background:active?C.teal+'06':C.card,border:'1px solid '+(active?C.teal+'40':C.border),borderRadius:10,overflow:'hidden'}},
-            h('div',{style:{display:'flex',alignItems:'center',padding:'11px 14px',cursor:'pointer'},onClick:function(){toggle(test.key);}},
-              h('div',{style:{width:17,height:17,borderRadius:4,border:'2px solid '+(active?C.teal:C.border),background:active?C.teal:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginRight:10}},active&&h('span',{style:{color:'#fff',fontSize:10,fontWeight:800}},'✓')),
+            h('div',{style:{display:'flex',alignItems:'center',padding:'11px 14px',cursor:'pointer'},onClick:function(){if(!active)toggle(test.key);setOpenTest(test.key);}},
+              h('div',{onClick:function(e){e.stopPropagation();toggle(test.key);},style:{width:17,height:17,borderRadius:4,border:'2px solid '+(active?C.teal:C.border),background:active?C.teal:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginRight:10}},active&&h('span',{style:{color:'#fff',fontSize:10,fontWeight:800}},'✓')),
               h('span',{style:{color:active?C.text:C.muted,fontWeight:active?600:400,fontSize:13,flex:1}},test.label),
-              !test.bilateral&&h('span',{style:{fontSize:10,color:C.teal,fontWeight:600,background:C.teal+'15',padding:'2px 8px',borderRadius:10}},'D / G')
-            ),
-            active&&h('div',{style:{padding:'0 14px 14px'}},
-              test.ybt
-                ?h(YBTEntry,{data:data,onChange:function(newData){setTestData(function(prev){var n=Object.assign({},prev);n[test.key]=newData;return n;});}})
-                :test.bilateral
-                ?h('div',{className:'g2'},test.kpis.map(function(kpi){var trials=(data.trials||{})[kpi.key]||[];var v=bestVal(trials,kpi.dir);var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,step:kpi.step,trials:trials,status:status,normLabel:normLabel,onChange:function(t){updateTrials(test.key,null,kpi.key,t);}});}))
-                :h('div',{className:'gh',style:{display:'grid',gap:12}},['D','G'].map(function(side){return h('div',{key:side,style:{background:C.surface,borderRadius:8,padding:'10px 12px',border:'1px solid '+C.border}},
-                    h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:8}},h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C.teal+'30':C.petrol+'60',border:'1.5px solid '+(side==='D'?C.teal:C.petrol),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C.teal:C.muted,fontSize:11,fontWeight:800,flexShrink:0}},side),h('span',{style:{color:side==='D'?C.text:C.muted,fontSize:12,fontWeight:600}},side==='D'?'Droite':'Gauche')),
-                    h('div',{style:{display:'flex',flexDirection:'column',gap:6}},test.kpis.map(function(kpi){var trials=((data[side]||{}).trials||{})[kpi.key]||[];var v=bestVal(trials,kpi.dir);var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);return h(TrialIn,{key:kpi.key,label:kpi.label,dir:kpi.dir,step:kpi.step,trials:trials,status:status,normLabel:normLabel,onChange:function(t){updateTrials(test.key,side,kpi.key,t);}});}))
-                  );})),
-              !test.bilateral&&data.lsiAuto!=null&&h('div',{style:{marginTop:8,padding:'5px 10px',borderRadius:6,background:C.teal+'10',display:'inline-flex',alignItems:'center',gap:8}},h('span',{style:{color:C.muted,fontSize:11}},'LSI auto :'),h('span',{style:{color:SC[lsiSt(data.lsiAuto)]||C.text,fontWeight:700,fontSize:14}},data.lsiAuto+'%'),h(Badge,{status:lsiSt(data.lsiAuto),small:true}))
+              active&&status&&h('span',{style:{width:8,height:8,borderRadius:'50%',background:SC[status],flexShrink:0,marginRight:8}}),
+              !test.bilateral&&h('span',{style:{fontSize:10,color:C.teal,fontWeight:600,background:C.teal+'15',padding:'2px 8px',borderRadius:10,marginRight:8}},'D / G'),
+              h('span',{style:{color:C.muted,fontSize:15}},'›')
             )
           );
         }))
