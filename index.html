@@ -2081,6 +2081,18 @@ var MM_REGIONS=[
 var MM_SYSTEM_ORDER=['Quadriceps','Ischio-jambiers','Fléchisseurs de hanche','Extenseurs de hanche','Adducteurs','Abducteurs','Rotateurs de hanche','Cheville','Soléaire','Gastrocnémien'];
 var MM_SYSTEM_DISPLAY={'Extenseurs de hanche':'Fessiers'};
 
+// Approximate real muscle-belly silhouettes (clip-path polygons, percentages
+// within each region's own bounding box) so colored overlays read as the
+// actual muscle shape instead of a generic blurred blob. 'ellipse' falls
+// back to a rounded/oval shape via border-radius.
+var MM_SHAPE={
+  'Quadriceps':'polygon(50% 0%,78% 8%,94% 46%,80% 100%,20% 100%,6% 46%,22% 8%)',
+  'Ischio-jambiers':'polygon(50% 0%,82% 6%,96% 46%,80% 100%,20% 100%,4% 46%,18% 6%)',
+  'Gastrocnémien':'polygon(50% 0%,90% 20%,74% 66%,60% 100%,40% 100%,26% 66%,10% 20%)',
+  'Cheville':'polygon(36% 0%,64% 0%,70% 100%,30% 100%)',
+  'Soléaire':'polygon(34% 0%,66% 0%,74% 100%,26% 100%)'
+};
+
 function muscleMapHTML(systemScores,opts){
   opts=opts||{};
   systemScores=systemScores||{};
@@ -2089,7 +2101,9 @@ function muscleMapHTML(systemScores,opts){
   var overlays='';
   MM_REGIONS.forEach(function(r){
     var c=col(r.sys);if(!c)return;
-    overlays+='<div style="position:absolute;left:'+r.left+'%;top:'+r.top+'%;width:'+r.width+'%;height:'+r.height+'%;border-radius:50%;filter:blur(5px);mix-blend-mode:multiply;opacity:0.85;background:'+c+'"></div>';
+    var shape=MM_SHAPE[r.sys];
+    var shapeStyle=shape?('clip-path:'+shape+';'):'border-radius:50%;';
+    overlays+='<div style="position:absolute;left:'+r.left+'%;top:'+r.top+'%;width:'+r.width+'%;height:'+r.height+'%;'+shapeStyle+'opacity:0.8;background:'+c+'"></div>';
   });
   return '<div style="width:100%;max-width:'+width+'px;margin:0 auto;background:#fff;border:1px solid '+C.border+';border-radius:16px;padding:16px">'
     +'<div style="position:relative">'
