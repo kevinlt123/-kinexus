@@ -2344,7 +2344,18 @@ function FunctionGaugeCard(props){
 }
 function SyntheseView(props){
   var res=props.res,evFns=props.evFns,bilan=props.bilan,athlete=props.athlete||{},athleteAge=props.athleteAge;
-  var pri=res.priorities,rtp=res.rtpStatus;
+  var pri=res.priorities,rtp=res.rtpStatus,fSc=res.functionScores;
+  var forces=evFns.filter(function(f){return fSc[f].status==='vert';});
+  var limitations=evFns.filter(function(f){return fSc[f].status!=='vert';}).map(function(f){
+    var p=pri.filter(function(pp){return pp.fonction===f;})[0];
+    return{label:f+(p&&p.contributeurPrincipal?' · '+p.contributeurPrincipal:''),status:fSc[f].status};
+  });
+  var syntheseTxt;
+  if(limitations.length===0)syntheseTxt=evFns.length?"Profil équilibré : l'ensemble des qualités évaluées est dans les normes attendues.":'';
+  else{
+    syntheseTxt='Profil '+(limitations.length>=2?'hétérogène':'ciblé')+' avec '+limitations.length+' qualité'+(limitations.length>1?'s':'')+' déficitaire'+(limitations.length>1?'s':'')+' sur '+evFns.length+' évaluées : '+limitations.map(function(l){return l.label.toLowerCase();}).join(', ')+'.'
+      +(forces.length?' Les qualités de '+forces.join(', ').toLowerCase()+(forces.length>1?' sont satisfaisantes.':' est satisfaisante.'):'');
+  }
   return h('div',null,
     pri.length>0&&h('div',{style:{marginBottom:18}},
       h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:2}},'02 · Priorités d\'intervention'),
@@ -2369,8 +2380,22 @@ function SyntheseView(props){
       }))
     ),
     (bilan.type==='RTP'||rtp)&&h('div',{style:{marginBottom:18}},
-      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Statut RTP'),
+      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'03 · Retour au sport'),
       rtp?h(Card,{pad:14,style:{borderLeft:'3px solid '+SC[rtp.status]}},h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}},h('div',{style:{color:C.text,fontWeight:700,fontSize:16}},rtp.label),h(Badge,{status:rtp.status})),h('div',{style:{color:C.muted,fontSize:12}},'Tests RTP : ',h('span',{style:{color:C.text,fontWeight:600}},rtp.passCount+'/'+rtp.totalCount+' ('+rtp.ratio+'%)')),rtp.aclScore!=null&&h('div',{style:{color:C.muted,fontSize:12,marginTop:2}},'ACL-RSI : ',h('span',{style:{color:C.text,fontWeight:600}},rtp.aclScore+'/100'))):h(Card,{pad:14},h('div',{style:{color:C.muted,fontSize:12}},'Activez des tests fonctionnels pour le statut RTP.'))
+    ),
+    evFns.length>0&&h('div',{style:{marginBottom:18}},
+      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'04 · Synthèse clinique'),
+      syntheseTxt&&h(Card,{pad:14,style:{marginBottom:12}},h('div',{style:{color:C.text,fontSize:12.5,lineHeight:1.6}},syntheseTxt)),
+      h('div',{className:'gh'},
+        h(Card,{pad:14},
+          h('div',{style:{color:C.vert,fontSize:10,fontWeight:800,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}},'Forces'),
+          forces.length===0?h('div',{style:{color:C.muted,fontSize:12}},'Aucune qualité optimale identifiée.'):h('div',{style:{display:'flex',flexDirection:'column',gap:8}},forces.map(function(f){return h('div',{key:f,style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{color:C.vert,fontSize:13,flexShrink:0}},'✓'),h('span',{style:{color:C.text,fontSize:12.5}},f));}))
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.orange,fontSize:10,fontWeight:800,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}},'Limitations'),
+          limitations.length===0?h('div',{style:{color:C.muted,fontSize:12}},'Aucune limitation identifiée.'):h('div',{style:{display:'flex',flexDirection:'column',gap:8}},limitations.map(function(l){return h('div',{key:l.label,style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{color:SC[l.status],fontSize:13,flexShrink:0}},'⚠'),h('span',{style:{color:C.text,fontSize:12.5}},l.label));}))
+        )
+      )
     ),
     pri.length===0&&evFns.length>0&&h(Card,{pad:'24px',style:{textAlign:'center',borderLeft:'3px solid '+C.vert}},h('div',{style:{fontSize:22,marginBottom:6}},'OK'),h('div',{style:{color:C.vert,fontWeight:700,fontSize:14}},'Profil equilibre'),h('div',{style:{color:C.muted,fontSize:12,marginTop:3}},'Aucun deficit fonctionnel majeur identifie'))
   );
