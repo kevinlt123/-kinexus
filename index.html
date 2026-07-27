@@ -2347,22 +2347,28 @@ function SyntheseView(props){
   var pri=res.priorities,rtp=res.rtpStatus;
   return h('div',null,
     pri.length>0&&h('div',{style:{marginBottom:18}},
-      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'02 · Priorités d\'intervention'),
-      h('div',{style:{display:'flex',flexDirection:'column',gap:10}},pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},
-        h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},
-          h('span',{style:{background:SC[p.status],color:'#000',fontWeight:800,fontSize:10,width:19,height:19,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},p.rang),
-          h('span',{style:{color:C.text,fontWeight:700,fontSize:14}},p.fonction),
-          p.contributeurPrincipal&&h('span',{style:{color:C.teal,fontSize:11}},'- '+p.contributeurPrincipal)
-        ),
-        p.deficitTests&&p.deficitTests.length>0&&h('div',{style:{display:'flex',gap:5,flexWrap:'wrap',marginBottom:6}},
-          p.deficitTests.map(function(dt){return h('span',{key:dt.key,style:{padding:'2px 7px',borderRadius:20,background:SBG[dt.status],border:'1px solid '+SC[dt.status]+'40',color:SC[dt.status],fontSize:9,fontWeight:600}},dt.label);}),
-          p.okTests&&p.okTests.length>0&&p.okTests.map(function(lbl){return h('span',{key:lbl,style:{padding:'2px 7px',borderRadius:20,background:C.vertBg,border:'1px solid '+C.vert+'30',color:C.vert,fontSize:9,fontWeight:600,opacity:0.7}},lbl+' ok');})
-        ),
-        p.rootCauses&&p.rootCauses.length>0&&h('div',{dangerouslySetInnerHTML:{__html:rootCausesHTML(p.rootCauses,p.rootCauseTest,p.rootCauseKpi)}}),
-        h('div',{style:{color:C.muted,fontSize:12,fontStyle:'italic',marginBottom:6,lineHeight:1.5}},''+p.hypothese+''),
-        h('div',{style:{borderTop:'1px solid '+C.border,paddingTop:6,color:C.text,fontSize:12}},h('span',{style:{color:C.teal,fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em'}},'Orientation : '),p.orientation),
-        p.compensations&&p.compensations.length>0&&h('div',{style:{borderTop:'1px solid '+C.border,marginTop:6,paddingTop:6,color:C.muted,fontSize:11,lineHeight:1.5}},h('span',{style:{color:C.orange,fontWeight:600,fontSize:10,textTransform:'uppercase',letterSpacing:'0.05em'}},'Compensations attendues : '),p.compensations.join(' '))
-      );}))
+      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:2}},'02 · Priorités d\'intervention'),
+      h('div',{style:{color:C.muted,fontSize:11.5,marginBottom:12}},'Axes de travail recommandés'),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:10}},pri.map(function(p){
+        var impact=p.status==='rouge'?'Élevé':'Moyen';
+        var hasRouge=p.deficitTests&&p.deficitTests.some(function(dt){return dt.status==='rouge';});
+        var urgence=hasRouge?'Élevée':'Moyenne';
+        var urgCol=hasRouge?C.rouge:C.orange;
+        return h('div',{key:p.rang,style:{background:SBG[p.status],border:'1px solid '+SC[p.status]+'35',borderLeft:'4px solid '+SC[p.status],borderRadius:10,padding:'13px 16px',display:'flex',alignItems:'flex-start',gap:13,flexWrap:'wrap'}},
+          h('div',{style:{width:34,height:34,borderRadius:'50%',background:C.card,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,flexShrink:0}},FN_ICON[p.fonction]||'●'),
+          h('div',{style:{flex:1,minWidth:200}},
+            h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:4,flexWrap:'wrap'}},
+              h('span',{style:{color:SC[p.status],fontSize:9,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',background:C.card,padding:'2px 9px',borderRadius:20}},'Priorité '+p.rang),
+              h('span',{style:{color:C.text,fontWeight:800,fontSize:14,textTransform:'uppercase',letterSpacing:'0.01em'}},p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:''))
+            ),
+            h('div',{style:{color:C.muted,fontSize:12.5,lineHeight:1.5}},p.hypothese)
+          ),
+          h('div',{style:{display:'flex',gap:20,flexShrink:0}},
+            h('div',{style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:8.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em'}},'Impact'),h('div',{style:{color:SC[p.status],fontWeight:800,fontSize:12.5,marginTop:2}},impact)),
+            h('div',{style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:8.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em'}},'Urgence'),h('div',{style:{color:urgCol,fontWeight:800,fontSize:12.5,marginTop:2}},urgence))
+          )
+        );
+      }))
     ),
     (bilan.type==='RTP'||rtp)&&h('div',{style:{marginBottom:18}},
       h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Statut RTP'),
