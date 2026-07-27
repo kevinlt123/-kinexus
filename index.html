@@ -15,6 +15,7 @@ input,select,button,textarea{font-family:Inter,-apple-system,sans-serif;outline:
 input[type=number]::-webkit-inner-spin-button{opacity:.6;}
 ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:#C7D2DA;border-radius:2px;}
 .g2{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.g3{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:14px;}
 .gh{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 @media(max-width:600px){.g2,.gh{grid-template-columns:1fr!important;}}
 /* ── PRINT STYLES ─────────────────────────────────────────── */
@@ -69,7 +70,8 @@ input[type=number]::-webkit-inner-spin-button{opacity:.6;}
 var h=React.createElement,useState=React.useState,useEffect=React.useEffect,useRef=React.useRef,useMemo=React.useMemo;
 
 // ── TOKENS ──────────────────────────────────────────────────────────────────
-var C={bg:'#EEF2F5',surface:'#F3F6F8',card:'#FFFFFF',border:'#E1E8EE',petrol:'#1B4F6A',teal:'#2A9D8F',tealLight:'#12897C',text:'#132B3A',muted:'#5B7A8C',vert:'#22C55E',jaune:'#CA8A04',orange:'#F97316',rouge:'#EF4444',vertBg:'rgba(34,197,94,0.14)',jauneBg:'rgba(202,138,4,0.14)',orangeBg:'rgba(249,115,22,0.14)',rougeBg:'rgba(239,68,68,0.14)'};
+var C={bg:'#EEF2F5',surface:'#F3F6F8',card:'#FFFFFF',border:'#E1E8EE',petrol:'#1B4F6A',teal:'#2A9D8F',tealLight:'#12897C',text:'#132B3A',muted:'#5B7A8C',vert:'#22C55E',jaune:'#CA8A04',orange:'#F97316',rouge:'#EF4444',blue:'#2563EB',vertBg:'rgba(34,197,94,0.14)',jauneBg:'rgba(202,138,4,0.14)',orangeBg:'rgba(249,115,22,0.14)',rougeBg:'rgba(239,68,68,0.14)'};
+var C_D=C.orange,C_G=C.blue;
 var SC={vert:C.vert,jaune:C.jaune,orange:C.orange,rouge:C.rouge};
 var SBG={vert:C.vertBg,jaune:C.jauneBg,orange:C.orangeBg,rouge:C.rougeBg};
 var SL={vert:'Optimal',jaune:'À surveiller',orange:'Déficitaire',rouge:'Critique'};
@@ -1065,7 +1067,7 @@ function TrialIn(props){
   var accent=status?SC[status]:C.border;
   return h('div',{style:{background:C.surface,border:'1px solid '+(status?accent+'45':C.border),borderLeft:'3px solid '+accent,borderRadius:7,padding:'8px 9px'}},
     h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:6,marginBottom:3}},
-      h('span',{style:{color:C.muted,fontSize:9.5,fontWeight:600,textTransform:'uppercase',letterSpacing:'0.03em',lineHeight:1.3}},props.label),
+      h('span',{style:{color:props.labelColor||C.muted,fontSize:9.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em',lineHeight:1.3}},props.label),
       best!=null&&h('span',{style:{color:status?accent:C.tealLight,fontSize:12.5,fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}},roundStep(best,props.step))
     ),
     props.normLabel&&h('div',{style:{color:C.muted,fontSize:8.5,marginBottom:5}},props.normLabel),
@@ -1714,8 +1716,8 @@ function TestKpiChart(props){
   var kpi=props.kpi,dTrials=props.dTrials||[],gTrials=props.gTrials,normVal=props.normVal;
   var ref=useRef(null);
   var bars=[];
-  dTrials.forEach(function(v,i){if(v==null||v==='')return;bars.push({label:(gTrials?'D':'E')+(i+1),value:Number(v),color:gTrials?C.teal:C.tealLight});});
-  if(gTrials)gTrials.forEach(function(v,i){if(v==null||v==='')return;bars.push({label:'G'+(i+1),value:Number(v),color:C.petrol});});
+  dTrials.forEach(function(v,i){if(v==null||v==='')return;bars.push({label:(gTrials?'D':'E')+(i+1),value:Number(v),color:gTrials?C_D:C.tealLight});});
+  if(gTrials)gTrials.forEach(function(v,i){if(v==null||v==='')return;bars.push({label:'G'+(i+1),value:Number(v),color:C_G});});
   var barsKey=bars.map(function(b){return b.label+':'+b.value;}).join('|');
   var canvasH=bars.length?170:44;
   useEffect(function(){
@@ -1777,7 +1779,8 @@ function TestDetailPage(props){
     ),
     test.ybt
       ?h(YBTEntry,{data:data,onChange:onYBTChange})
-      :h('div',{style:{display:'flex',flexDirection:'column',gap:14}},
+      :h('div',null,
+        h('div',{className:'g3'},
           test.kpis.map(function(kpi){
             var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);
             var normVal=normRefValue(test.key,kpi.key,pop,athleteAge);
@@ -1805,13 +1808,14 @@ function TestDetailPage(props){
               normLabel&&h('div',{style:{color:C.muted,fontSize:10,marginBottom:8}},'Cible : '+normLabel),
               h(TestKpiChart,{kpi:kpi,dTrials:dT,gTrials:gT,normVal:normVal}),
               h('div',{className:'gh',style:{display:'grid',gap:10,marginTop:10}},
-                h(TrialIn,{label:'Droite',dir:kpi.dir,step:kpi.step,trials:dT,status:stD,onChange:function(t){onChange('D',kpi.key,t);}}),
-                h(TrialIn,{label:'Gauche',dir:kpi.dir,step:kpi.step,trials:gT,status:stG,onChange:function(t){onChange('G',kpi.key,t);}})
+                h(TrialIn,{label:'Droite',labelColor:C_D,dir:kpi.dir,step:kpi.step,trials:dT,status:stD,onChange:function(t){onChange('D',kpi.key,t);}}),
+                h(TrialIn,{label:'Gauche',labelColor:C_G,dir:kpi.dir,step:kpi.step,trials:gT,status:stG,onChange:function(t){onChange('G',kpi.key,t);}})
               )
             );
-          }),
-          !test.bilateral&&data.lsiAuto!=null&&h('div',{style:{padding:'8px 12px',borderRadius:8,background:C.teal+'10',display:'inline-flex',alignItems:'center',gap:8}},h('span',{style:{color:C.muted,fontSize:11}},'LSI auto :'),h('span',{style:{color:SC[lsiSt(data.lsiAuto)]||C.text,fontWeight:700,fontSize:14}},data.lsiAuto+'%'),h(Badge,{status:lsiSt(data.lsiAuto),small:true}))
-        )
+          })
+        ),
+        !test.bilateral&&data.lsiAuto!=null&&h('div',{style:{marginTop:14,padding:'8px 12px',borderRadius:8,background:C.teal+'10',display:'inline-flex',alignItems:'center',gap:8}},h('span',{style:{color:C.muted,fontSize:11}},'LSI auto :'),h('span',{style:{color:SC[lsiSt(data.lsiAuto)]||C.text,fontWeight:700,fontSize:14}},data.lsiAuto+'%'),h(Badge,{status:lsiSt(data.lsiAuto),small:true}))
+      )
   );
 }
 
@@ -2224,7 +2228,7 @@ function YBTEntry(props) {
         var composite = sd.composite;
         return h('div', {key:side, style:{background:C.surface,borderRadius:8,padding:'10px 12px',border:'1px solid '+C.border}},
           h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:10}},
-            h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C.teal+'30':C.petrol+'60',border:'1.5px solid '+(side==='D'?C.teal:C.petrol),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C.teal:C.muted,fontSize:11,fontWeight:800,flexShrink:0}},side),
+            h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C_D+'30':C_G+'30',border:'1.5px solid '+(side==='D'?C_D:C_G),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C_D:C_G,fontSize:11,fontWeight:800,flexShrink:0}},side),
             h('span',{style:{color:side==='D'?C.text:C.muted,fontSize:12,fontWeight:600}},side==='D'?'Droite':'Gauche')
           ),
           // Limb length
@@ -2369,7 +2373,7 @@ function ResultsBrowser(props){
           ?h('div',{className:'gh',style:{display:'grid',gap:14}},['D','G'].map(function(side){
               var sd=data[side]||{};
               return h('div',{key:side,style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:12}},
-                h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:10}},h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C.teal+'30':C.petrol+'60',border:'1.5px solid '+(side==='D'?C.teal:C.petrol),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C.teal:C.muted,fontSize:11,fontWeight:800,flexShrink:0}},side),h('span',{style:{color:side==='D'?C.text:C.muted,fontSize:12.5,fontWeight:700}},side==='D'?'Droite':'Gauche')),
+                h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:10}},h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C_D+'30':C_G+'30',border:'1.5px solid '+(side==='D'?C_D:C_G),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C_D:C_G,fontSize:11,fontWeight:800,flexShrink:0}},side),h('span',{style:{color:side==='D'?C.text:C.muted,fontSize:12.5,fontWeight:700}},side==='D'?'Droite':'Gauche')),
                 h('div',{className:'g2'},test.kpis.map(function(kpi){return h(KpiResultCard,{key:kpi.key,kpi:kpi,trials:((sd.trials||{})[kpi.key])||[],testKey:sel,pop:pop,age:athleteAge});}))
               );
             }))
@@ -2382,9 +2386,9 @@ function ResultsBrowser(props){
               return h('div',{key:kpi.key,style:{background:C.card,border:'1px solid '+C.border,borderRadius:9,padding:'10px 12px'}},
                 h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em',marginBottom:6}},kpi.label),
                 h('div',{style:{display:'flex',alignItems:'center',gap:10}},
-                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6}},h('span',{style:{fontSize:10,fontWeight:800,color:C.petrol}},'G'),h('span',{style:{fontSize:15,fontWeight:800,color:stG?SC[stG]:C.text}},vG!=null?roundStep(vG,kpi.step):'—'),worse==='G'&&h('span',{style:{fontSize:9,color:C.orange}},'▼ moins bon')),
+                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6}},h('span',{style:{fontSize:10,fontWeight:800,color:C_G}},'G'),h('span',{style:{fontSize:15,fontWeight:800,color:stG?SC[stG]:C.text}},vG!=null?roundStep(vG,kpi.step):'—'),worse==='G'&&h('span',{style:{fontSize:9,color:C.orange}},'▼ moins bon')),
                   lsi!=null&&kpi.key===test.kpis[0].key&&h('span',{style:{fontSize:10,fontWeight:700,color:SC[lsiSt(lsi)],background:SC[lsiSt(lsi)]+'18',padding:'2px 8px',borderRadius:20,flexShrink:0}},'LSI '+lsi+'%'),
-                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end'}},worse==='D'&&h('span',{style:{fontSize:9,color:C.orange}},'moins bon ▼'),h('span',{style:{fontSize:15,fontWeight:800,color:stD?SC[stD]:C.text}},vD!=null?roundStep(vD,kpi.step):'—'),h('span',{style:{fontSize:10,fontWeight:800,color:C.teal}},'D'))
+                  h('div',{style:{flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end'}},worse==='D'&&h('span',{style:{fontSize:9,color:C.orange}},'moins bon ▼'),h('span',{style:{fontSize:15,fontWeight:800,color:stD?SC[stD]:C.text}},vD!=null?roundStep(vD,kpi.step):'—'),h('span',{style:{fontSize:10,fontWeight:800,color:C_D}},'D'))
                 )
               );
             }))
