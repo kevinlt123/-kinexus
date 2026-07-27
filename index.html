@@ -2284,26 +2284,49 @@ function YBTEntry(props) {
   );
 }
 
+var FN_ICON={'Mobilité':'🤸','Force':'💪','Explosivité':'💥','Puissance':'⚡','Réactivité':'🏃','Absorption':'🌀','Stabilisation':'🧱','Contrôle Frontal':'🛡️','Contrôle Sensoriel':'👁️','Endurance':'❤️'};
+var FN_GAUGE_PCT={vert:92,jaune:66,orange:42,rouge:18};
+var FN_TIER={vert:1,jaune:2,orange:3,rouge:4};
+function FunctionGaugeCard(props){
+  var label=props.label,sc=props.sc;
+  var status=sc?sc.status:null;
+  var col=status?SC[status]:C.border;
+  var pct=status?FN_GAUGE_PCT[status]:0;
+  var r=42,cx=54,cy=58;
+  var arcLen=Math.PI*r;
+  var fillLen=arcLen*(pct/100);
+  var tier=status?FN_TIER[status]:0;
+  return h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:12,padding:'14px 12px 16px',display:'flex',flexDirection:'column',alignItems:'center',opacity:sc&&sc.confidence==='faible'?0.65:1}},
+    h('div',{style:{display:'flex',alignItems:'center',gap:7,marginBottom:6,alignSelf:'flex-start'}},
+      h('div',{style:{width:26,height:26,borderRadius:'50%',background:C.surface,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,flexShrink:0}},FN_ICON[label]||'●'),
+      h('span',{style:{fontSize:10,fontWeight:800,color:C.text,letterSpacing:'0.02em',textTransform:'uppercase',lineHeight:1.2}},label)
+    ),
+    h('svg',{width:108,height:62,viewBox:'0 0 108 64'},
+      h('path',{d:'M 12 '+cy+' A '+r+' '+r+' 0 0 1 96 '+cy,fill:'none',stroke:C.border,strokeWidth:9,strokeLinecap:'round'}),
+      status&&h('path',{d:'M 12 '+cy+' A '+r+' '+r+' 0 0 1 96 '+cy,fill:'none',stroke:col,strokeWidth:9,strokeLinecap:'round',strokeDasharray:fillLen+' '+(arcLen-fillLen)})
+    ),
+    h('div',{style:{color:status?col:C.muted,fontWeight:800,fontSize:11,letterSpacing:'0.02em',marginTop:2,marginBottom:7,textAlign:'center'}},status?SL[status]:'Non évalué'),
+    status&&h('div',{style:{display:'flex',gap:4,marginBottom:sc?4:0}},[1,2,3,4].map(function(i){return h('span',{key:i,style:{width:6,height:6,borderRadius:'50%',background:i<=tier?col:C.border}});})),
+    sc&&h('div',{style:{color:C.muted,fontSize:8,marginTop:2,textAlign:'center'}},'Couverture '+sc.coverage+'%')
+  );
+}
 function SyntheseView(props){
   var res=props.res,evFns=props.evFns,bilan=props.bilan,athlete=props.athlete||{},athleteAge=props.athleteAge;
   var fSc=res.functionScores,pri=res.priorities,rtp=res.rtpStatus,sysSc=res.systemScores;
-  var _vt=useState('radar');var vizTab=_vt[0];var setVizTab=_vt[1];
+  var _vt=useState('bodymap');var vizTab=_vt[0];var setVizTab=_vt[1];
   return h('div',null,
     h('div',{style:{marginBottom:18}},
+      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Profil fonctionnel'),
+      evFns.length===0&&h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction evaluee.')),
+      evFns.length>0&&h('div',{className:'g3',style:{gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))'}},evFns.map(function(f){return h(FunctionGaugeCard,{key:f,label:f,sc:fSc[f]});}))
+    ),
+    h('div',{style:{marginBottom:18}},
       h('div',{style:{display:'flex',gap:6,marginBottom:12}},
-        [['radar','Radar'],['bodymap','Body Map'],['symmetry','Symétrie']].map(function(v){return h('button',{key:v[0],onClick:function(){setVizTab(v[0]);},style:{padding:'5px 12px',borderRadius:20,border:'1px solid '+(vizTab===v[0]?C.teal:C.border),background:vizTab===v[0]?C.teal+'20':'transparent',color:vizTab===v[0]?C.teal:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        [['bodymap','Body Map'],['symmetry','Symétrie']].map(function(v){return h('button',{key:v[0],onClick:function(){setVizTab(v[0]);},style:{padding:'5px 12px',borderRadius:20,border:'1px solid '+(vizTab===v[0]?C.teal:C.border),background:vizTab===v[0]?C.teal+'20':'transparent',color:vizTab===v[0]?C.teal:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
-      h('div',{className:'gh',style:{display:'grid',gap:16}},
-        h(Card,{pad:16,style:{display:'flex',flexDirection:'column',alignItems:'center',minHeight:380}},
-          vizTab==='radar'&&h(RadarChart,{functionScores:fSc,size:340}),
-          vizTab==='bodymap'&&h(BodyMap,{systemScores:sysSc,size:320}),
-          vizTab==='symmetry'&&h(SymmetryChart,{testData:bilan.testData||{}})
-        ),
-        h(Card,{pad:16},
-          h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Fonctions evaluees'),
-          evFns.length===0&&h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction evaluee.'),
-          h('div',{style:{display:'flex',flexDirection:'column',gap:5}},evFns.map(function(f){var sc=fSc[f];return h('div',{key:f,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',borderRadius:7,background:SBG[sc.status],opacity:sc.confidence==='faible'?0.6:1}},h('div',null,h('span',{style:{color:C.text,fontSize:12,fontWeight:500}},f),h('div',{style:{color:C.muted,fontSize:9.5,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+sc.confidence)),h(Badge,{status:sc.status,small:true}));}))
-        )
+      h(Card,{pad:16,style:{display:'flex',flexDirection:'column',alignItems:'center',minHeight:380}},
+        vizTab==='bodymap'&&h(BodyMap,{systemScores:sysSc,size:320}),
+        vizTab==='symmetry'&&h(SymmetryChart,{testData:bilan.testData||{}})
       )
     ),
     pri.length>0&&h('div',{style:{marginBottom:18}},
