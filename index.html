@@ -2372,6 +2372,20 @@ function SyntheseView(props){
     syntheseTxt='Profil '+(limitations.length>=2?'hétérogène':'ciblé')+' avec '+limitations.length+' qualité'+(limitations.length>1?'s':'')+' déficitaire'+(limitations.length>1?'s':'')+' sur '+evFns.length+' évaluées : '+limitations.map(function(l){return l.label.toLowerCase();}).join(', ')+'.'
       +(forces.length?' Les qualités de '+forces.join(', ').toLowerCase()+(forces.length>1?' sont satisfaisantes.':' est satisfaisante.'):'');
   }
+  var hasAsym=false;
+  TESTS.forEach(function(test){
+    if(test.bilateral||hasAsym)return;
+    var data=td[test.key];if(!data||!data.active)return;
+    var lsi=data.lsiAuto;
+    if(lsi==null){var kpi=test.kpis[0];var dV=bestVal(((data.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((data.G||{}).trials||{})[kpi.key]||[],kpi.dir);lsi=autoLSI(dV,gV);}
+    if(lsi!=null&&lsiSt(lsi)!=='vert')hasAsym=true;
+  });
+  var risques=[];
+  if(limitations.length>0)risques.push({label:'Baisse de performance',status:'orange'});
+  if(pri.some(function(p){return p.status==='rouge';}))risques.push({label:'Risque de blessure (membre inférieur)',status:'rouge'});
+  if(hasAsym)risques.push({label:'Déséquilibres fonctionnels',status:'orange'});
+  var causalSteps=pri.map(function(p,i){return{icon:FN_ICON[p.fonction]||'●',label:(i===0?'Déficit de ':'Répercussion sur ')+p.fonction.toLowerCase()+(p.contributeurPrincipal?' ('+p.contributeurPrincipal.toLowerCase()+')':'')};});
+  if(causalSteps.length)causalSteps.push({icon:'📊',label:'Impact sur la performance et le risque de blessure'});
   return h('div',null,
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,alignItems:'start',marginBottom:18}},
       h('div',null,
@@ -2415,13 +2429,29 @@ function SyntheseView(props){
       evFns.length>0&&h('div',null,
         h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'04 · Synthèse clinique'),
         syntheseTxt&&h(Card,{pad:14,style:{marginBottom:12}},h('div',{style:{color:C.text,fontSize:12.5,lineHeight:1.6}},syntheseTxt)),
-        h(Card,{pad:14,style:{marginBottom:12}},
-          h('div',{style:{color:C.vert,fontSize:10,fontWeight:800,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}},'Forces'),
-          forcesDisplay.length===0?h('div',{style:{color:C.muted,fontSize:12}},'Aucune qualité optimale identifiée.'):h('div',{style:{display:'flex',flexDirection:'column',gap:8}},forcesDisplay.map(function(f){return h('div',{key:f,style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{color:C.vert,fontSize:13,flexShrink:0}},'✓'),h('span',{style:{color:C.text,fontSize:12.5}},f));}))
+        h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:12}},
+          h(Card,{pad:'12px 13px'},
+            h('div',{style:{color:C.vert,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Forces'),
+            forcesDisplay.length===0?h('div',{style:{color:C.muted,fontSize:11}},'Aucune identifiée.'):h('div',{style:{display:'flex',flexDirection:'column',gap:7}},forcesDisplay.map(function(f){return h('div',{key:f,style:{display:'flex',alignItems:'flex-start',gap:6}},h('span',{style:{color:C.vert,fontSize:11,flexShrink:0,marginTop:1}},'✓'),h('span',{style:{color:C.text,fontSize:11}},f));}))
+          ),
+          h(Card,{pad:'12px 13px'},
+            h('div',{style:{color:C.orange,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Limitations'),
+            limitations.length===0?h('div',{style:{color:C.muted,fontSize:11}},'Aucune identifiée.'):h('div',{style:{display:'flex',flexDirection:'column',gap:7}},limitations.map(function(l){return h('div',{key:l.label,style:{display:'flex',alignItems:'flex-start',gap:6}},h('span',{style:{color:SC[l.status],fontSize:11,flexShrink:0,marginTop:1}},'⚠'),h('span',{style:{color:C.text,fontSize:11}},l.label));}))
+          ),
+          h(Card,{pad:'12px 13px'},
+            h('div',{style:{color:C.rouge,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Risques potentiels'),
+            risques.length===0?h('div',{style:{color:C.muted,fontSize:11}},'Aucun identifié.'):h('div',{style:{display:'flex',flexDirection:'column',gap:7}},risques.map(function(r){return h('div',{key:r.label,style:{display:'flex',alignItems:'flex-start',gap:6}},h('span',{style:{color:SC[r.status],fontSize:11,flexShrink:0,marginTop:1}},'⊙'),h('span',{style:{color:C.text,fontSize:11}},r.label));}))
+          )
         ),
-        h(Card,{pad:14},
-          h('div',{style:{color:C.orange,fontSize:10,fontWeight:800,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:10}},'Limitations'),
-          limitations.length===0?h('div',{style:{color:C.muted,fontSize:12}},'Aucune limitation identifiée.'):h('div',{style:{display:'flex',flexDirection:'column',gap:8}},limitations.map(function(l){return h('div',{key:l.label,style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{color:SC[l.status],fontSize:13,flexShrink:0}},'⚠'),h('span',{style:{color:C.text,fontSize:12.5}},l.label));}))
+        causalSteps.length>0&&h(Card,{pad:14},
+          h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:12}},'Chaîne causale principale identifiée'),
+          h('div',{style:{display:'flex',alignItems:'center',flexWrap:'wrap',gap:6}},causalSteps.map(function(s,i){return h(React.Fragment,{key:i},
+            i>0&&h('span',{style:{color:C.border,fontSize:16,flexShrink:0}},'→'),
+            h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',width:100,flexShrink:0}},
+              h('div',{style:{width:36,height:36,borderRadius:'50%',background:C.surface,border:'1px solid '+C.border,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,marginBottom:5}},s.icon),
+              h('div',{style:{color:C.text,fontSize:10,lineHeight:1.3}},s.label)
+            )
+          );}))
         )
       )
     ),
