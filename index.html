@@ -1969,47 +1969,79 @@ function AnalyseView(props){
   var [view,setView]=useState('synthese');
   var [validated,setValidated]=useState(bilan.statut==='Validé');
   var [showPrintMenu,setShowPrintMenu]=useState(false);
+  var [vizTab,setVizTab]=useState('bodymap');
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
   var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,athlete.normPopulation,athleteAge);},[bilan,athlete.normPopulation,athleteAge]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
+  var fSc=res.functionScores,sysSc=res.systemScores;
 
   function doPrint(type){setShowPrintMenu(false);printReport(type,athlete,bilan,res);}
 
-  return h('div',null,
-    h('div',{style:{marginBottom:16}},
-      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:2}},'Analyse · '+athlete.prenom+' '+athlete.nom),
-      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8}},
-        h('h2',{style:{margin:0,fontSize:19,fontWeight:800,color:C.text}},bilan.type+' · '+bilan.sousType),
-        h('div',{style:{display:'flex',gap:8,position:'relative'}},
-          h(Btn,{small:true,onClick:props.onEdit},'✎ Modifier'),
-          h('div',{style:{position:'relative'}},
-            h(Btn,{small:true,onClick:function(){setShowPrintMenu(function(v){return!v;});}},'⬇ Rapport PDF'),
-            showPrintMenu&&h('div',{style:{position:'absolute',right:0,top:'100%',marginTop:4,background:C.card,border:'1px solid '+C.border,borderRadius:8,padding:6,zIndex:50,minWidth:160}},
-              h('button',{onClick:function(){doPrint('sportif');},style:{display:'block',width:'100%',padding:'8px 12px',background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:600,cursor:'pointer',textAlign:'left',borderRadius:6}},'📋 Rapport Sportif'),
-              h('button',{onClick:function(){doPrint('expert');},style:{display:'block',width:'100%',padding:'8px 12px',background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:600,cursor:'pointer',textAlign:'left',borderRadius:6}},'🔬 Rapport Expert')
-            )
-          )
-        )
+  var objectifs={Performance:'Optimiser les qualités physiques et prévenir les blessures.',RTP:'Évaluer les critères de retour au sport en sécurité.',Screening:'Dépister les facteurs de risque de blessure.',Suivi:"Suivre l'évolution du profil fonctionnel."};
+  var objectifTxt=bilan.commentaire||objectifs[bilan.type]||'Évaluer le profil fonctionnel du sportif.';
+  var normLbl=athlete.normPopulation?((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):null;
+
+  return h('div',{style:{display:'flex',alignItems:'flex-start'}},
+    h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 52px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:52,color:'#fff'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:7,marginBottom:24}},
+        h('div',{style:{width:22,height:22,borderRadius:6,background:'linear-gradient(135deg,'+C.teal+',#fff2)',display:'flex',alignItems:'center',justifyContent:'center'}},h('span',{style:{color:'#fff',fontSize:11,fontWeight:900}},'K')),
+        h('span',{style:{fontWeight:900,fontSize:12.5,letterSpacing:'-0.02em',color:'#fff'}},'KINEXUS')
       ),
-      h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:10,flexWrap:'wrap',gap:8}},
-        h('div',null,
-          h('div',{style:{color:C.muted,fontSize:12}},new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})),
-          h('div',{style:{color:C.teal,fontSize:10,fontWeight:600,marginTop:2}},athlete.normPopulation?'📊 Normes : '+((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):'Seuils génériques (aucune population de référence sélectionnée)')
-        ),
-        h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border}},
-          [['synthese','Synthèse'],['expert','Expert'],['historique','Historique']].map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+      h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',marginBottom:18}},
+        h('div',{style:{width:60,height:60,borderRadius:'50%',background:'rgba(255,255,255,0.12)',border:'2px solid rgba(255,255,255,0.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:800,color:'#fff',marginBottom:9}},(athlete.prenom||'?')[0]+(athlete.nom||'?')[0]),
+        h('div',{style:{fontWeight:800,fontSize:14,color:'#fff',lineHeight:1.3}},athlete.prenom+' '+athlete.nom),
+        h('div',{style:{fontSize:10.5,color:'rgba(255,255,255,0.6)',marginTop:2}},(athlete.sport||'—')+(athlete.niveau?' · '+athlete.niveau:'')),
+        h('div',{style:{fontSize:9.5,color:C.teal,fontWeight:700,marginTop:8,padding:'3px 10px',background:'rgba(42,157,143,0.22)',borderRadius:20}},bilan.type+' · '+bilan.sousType)
+      ),
+      h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:16}},
+        [['Âge',athleteAge?athleteAge+' ans':'—'],['Taille',athlete.taille?athlete.taille+' cm':'—'],['Poids',athlete.poids?athlete.poids+' kg':'—'],['Sexe',athlete.sexe||'—']].map(function(s){return h('div',{key:s[0],style:{background:'rgba(255,255,255,0.07)',borderRadius:8,padding:'7px 8px'}},h('div',{style:{fontSize:8,color:'rgba(255,255,255,0.5)',textTransform:'uppercase',fontWeight:700,letterSpacing:'0.04em'}},s[0]),h('div',{style:{fontSize:12.5,color:'#fff',fontWeight:700,marginTop:2}},s[1]));})
+      ),
+      h('div',{style:{background:'rgba(255,255,255,0.07)',borderRadius:10,padding:11,marginBottom:16}},
+        h('div',{style:{fontSize:8.5,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:C.teal,marginBottom:5}},'Objectif du bilan'),
+        h('div',{style:{fontSize:11,color:'rgba(255,255,255,0.85)',lineHeight:1.5}},objectifTxt)
+      ),
+      h('div',{style:{fontSize:10,color:'rgba(255,255,255,0.45)'}},new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})),
+      h('div',{style:{fontSize:9.5,color:'rgba(255,255,255,0.45)',marginTop:3,lineHeight:1.4}},normLbl?'📊 '+normLbl:'Seuils génériques'),
+      h('div',{className:'no-print',style:{display:'flex',flexDirection:'column',gap:7,marginTop:18}},
+        h(Btn,{small:true,onClick:props.onEdit,style:{width:'100%'}},'✎ Modifier'),
+        h('div',{style:{position:'relative'}},
+          h(Btn,{small:true,onClick:function(){setShowPrintMenu(function(v){return!v;});},style:{width:'100%'}},'⬇ Rapport PDF'),
+          showPrintMenu&&h('div',{style:{position:'absolute',left:0,top:'100%',marginTop:4,background:C.card,border:'1px solid '+C.border,borderRadius:8,padding:6,zIndex:50,minWidth:170}},
+            h('button',{onClick:function(){doPrint('sportif');},style:{display:'block',width:'100%',padding:'8px 12px',background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:600,cursor:'pointer',textAlign:'left',borderRadius:6}},'📋 Rapport Sportif'),
+            h('button',{onClick:function(){doPrint('expert');},style:{display:'block',width:'100%',padding:'8px 12px',background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:600,cursor:'pointer',textAlign:'left',borderRadius:6}},'🔬 Rapport Expert')
+          )
         )
       )
     ),
-    view==='synthese'&&h(SyntheseView,{res:res,evFns:evFns,bilan:bilan,athlete:athlete,athleteAge:athleteAge}),
-    view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge}),
-    view==='historique'&&h(HistoriqueView,{athlete:athlete,currentBilan:bilan}),
-    !validated&&h('div',{style:{marginTop:20,padding:'14px 18px',background:C.teal+'10',border:'1px solid '+C.teal+'40',borderRadius:12}},
-      h('div',{style:{color:C.teal,fontWeight:700,fontSize:13,marginBottom:4}},'🔍 Validation expert requise'),
-      h('div',{style:{color:C.muted,fontSize:12,marginBottom:10}},'Vérifiez les priorités et hypothèses avant de valider.'),
-      h(Btn,{primary:true,small:true,onClick:function(){setValidated(true);props.onValidate();}},'Valider le bilan')
-    ),
-    validated&&h('div',{style:{marginTop:14,color:C.vert,fontSize:12,fontWeight:600}},'✓ Bilan validé')
+    h('div',{style:{flex:1,minWidth:0,padding:'22px 24px 60px',boxSizing:'border-box'}},
+      h('div',{style:{marginBottom:20}},
+        h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Profil fonctionnel global'),
+        h('div',{style:{display:'grid',gridTemplateColumns:'1.5fr 1fr',gap:16,alignItems:'stretch'}},
+          evFns.length===0
+            ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction évaluée.'))
+            :h('div',{className:'g3',style:{gridTemplateColumns:'repeat(auto-fill,minmax(126px,1fr))',alignContent:'start'}},evFns.map(function(f){return h(FunctionGaugeCard,{key:f,label:f,sc:fSc[f]});})),
+          h(Card,{pad:14,style:{display:'flex',flexDirection:'column',alignItems:'center',minHeight:280}},
+            h('div',{style:{display:'flex',gap:6,marginBottom:10,alignSelf:'flex-start'}},
+              [['bodymap','Body Map'],['symmetry','Symétrie']].map(function(v){return h('button',{key:v[0],onClick:function(){setVizTab(v[0]);},style:{padding:'5px 12px',borderRadius:20,border:'1px solid '+(vizTab===v[0]?C.teal:C.border),background:vizTab===v[0]?C.teal+'20':'transparent',color:vizTab===v[0]?C.teal:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+            ),
+            vizTab==='bodymap'&&h(BodyMap,{systemScores:sysSc,size:230}),
+            vizTab==='symmetry'&&h(SymmetryChart,{testData:bilan.testData||{}})
+          )
+        )
+      ),
+      h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
+        [['synthese','Synthèse'],['expert','Expert'],['historique','Historique']].map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+      ),
+      view==='synthese'&&h(SyntheseView,{res:res,evFns:evFns,bilan:bilan,athlete:athlete,athleteAge:athleteAge}),
+      view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge}),
+      view==='historique'&&h(HistoriqueView,{athlete:athlete,currentBilan:bilan}),
+      !validated&&h('div',{className:'no-print',style:{marginTop:20,padding:'14px 18px',background:C.teal+'10',border:'1px solid '+C.teal+'40',borderRadius:12}},
+        h('div',{style:{color:C.teal,fontWeight:700,fontSize:13,marginBottom:4}},'🔍 Validation expert requise'),
+        h('div',{style:{color:C.muted,fontSize:12,marginBottom:10}},'Vérifiez les priorités et hypothèses avant de valider.'),
+        h(Btn,{primary:true,small:true,onClick:function(){setValidated(true);props.onValidate();}},'Valider le bilan')
+      ),
+      validated&&h('div',{style:{marginTop:14,color:C.vert,fontSize:12,fontWeight:600}},'✓ Bilan validé')
+    )
   );
 }
 
@@ -2312,25 +2344,10 @@ function FunctionGaugeCard(props){
 }
 function SyntheseView(props){
   var res=props.res,evFns=props.evFns,bilan=props.bilan,athlete=props.athlete||{},athleteAge=props.athleteAge;
-  var fSc=res.functionScores,pri=res.priorities,rtp=res.rtpStatus,sysSc=res.systemScores;
-  var _vt=useState('bodymap');var vizTab=_vt[0];var setVizTab=_vt[1];
+  var pri=res.priorities,rtp=res.rtpStatus;
   return h('div',null,
-    h('div',{style:{marginBottom:18}},
-      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Profil fonctionnel'),
-      evFns.length===0&&h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction evaluee.')),
-      evFns.length>0&&h('div',{className:'g3',style:{gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))'}},evFns.map(function(f){return h(FunctionGaugeCard,{key:f,label:f,sc:fSc[f]});}))
-    ),
-    h('div',{style:{marginBottom:18}},
-      h('div',{style:{display:'flex',gap:6,marginBottom:12}},
-        [['bodymap','Body Map'],['symmetry','Symétrie']].map(function(v){return h('button',{key:v[0],onClick:function(){setVizTab(v[0]);},style:{padding:'5px 12px',borderRadius:20,border:'1px solid '+(vizTab===v[0]?C.teal:C.border),background:vizTab===v[0]?C.teal+'20':'transparent',color:vizTab===v[0]?C.teal:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
-      ),
-      h(Card,{pad:16,style:{display:'flex',flexDirection:'column',alignItems:'center',minHeight:380}},
-        vizTab==='bodymap'&&h(BodyMap,{systemScores:sysSc,size:320}),
-        vizTab==='symmetry'&&h(SymmetryChart,{testData:bilan.testData||{}})
-      )
-    ),
     pri.length>0&&h('div',{style:{marginBottom:18}},
-      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Priorites d intervention'),
+      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'02 · Priorités d\'intervention'),
       h('div',{style:{display:'flex',flexDirection:'column',gap:10}},pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},
         h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},
           h('span',{style:{background:SC[p.status],color:'#000',fontWeight:800,fontSize:10,width:19,height:19,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},p.rang),
@@ -2703,7 +2720,7 @@ function App(){
         )
       )
     ),
-    h('div',{style:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
+    h('div',{style:screen==='analyse'?{maxWidth:1400,margin:'0 auto',padding:'0 0 60px'}:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
       screen==='dashboard'&&h(Dashboard,{athletes:athletes,onSelect:function(a){setCurId(a.id);setScreen('athlete');},onNew:function(){setScreen('newAthlete');},onDelete:delAth}),
       (screen==='newAthlete'||screen==='editAthlete')&&h(AthleteForm,{initial:screen==='editAthlete'?editAth:null,onSave:saveAth,onCancel:function(){setScreen(editAth?'athlete':'dashboard');}}),
       screen==='athlete'&&ca&&h(AthleteProfile,{athlete:ca,onNewBilan:function(){setScreen('newBilan');},onSelectBilan:function(b){setCurBilan(b);setScreen('analyse');},onDeleteBilan:delBilan,onEdit:function(){setEditAth(ca);setScreen('editAthlete');},onDuplicate:dupBilan}),
