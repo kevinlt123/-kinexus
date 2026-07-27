@@ -1263,7 +1263,7 @@ function buildSportifReport(athlete,bilan,res){
     var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(dV,gV);
     if(lsi!=null&&dV!=null&&gV!=null){
       var unitM=kpi.label.match(/\(([^)]+)\)/);
-      lsiItems.push({label:test.label,dV:dV,gV:gV,unit:unitM?unitM[1]:'',lsi:lsi,status:lsiSt(lsi)});
+      lsiItems.push({label:test.label,dV:roundStep(dV,kpi.step),gV:roundStep(gV,kpi.step),unit:unitM?unitM[1]:'',lsi:lsi,status:lsiSt(lsi)});
     }
   });
 
@@ -1527,7 +1527,7 @@ function buildExpertReport(athlete,bilan,res){
   html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Résultats KPI — '+athlete.prenom+' '+athlete.nom+'</div></div>';
   html+='<div class="print-section-title">Résultats bruts par test</div>';
   html+='<table class="print-table"><thead><tr><th>Test</th><th>KPI</th><th>Droite / Valeur</th><th>Gauche</th><th>LSI %</th><th>Statut</th></tr></thead><tbody>';
-  Object.keys(td).forEach(function(key){var data=td[key];if(!data||!data.active)return;var test=TBK[key];if(!test)return;var status=tSt[key];test.kpis.forEach(function(kpi){if(test.bilateral){var val=bestVal((data.trials||{})[kpi.key],kpi.dir);html+='<tr><td>'+test.label+'</td><td>'+kpi.label+'</td><td colspan="2" style="text-align:center">'+(val!=null?val:'—')+'</td><td>—</td><td>'+(status?'<span class="print-badge '+status+'">'+SL[status]+'</span>':'')+'</td></tr>';}else{var dV=bestVal(((data.D||{}).trials||{})[kpi.key],kpi.dir);var gV=bestVal(((data.G||{}).trials||{})[kpi.key],kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:'—';html+='<tr><td>'+test.label+'</td><td>'+kpi.label+'</td><td>'+(dV!=null?dV:'—')+'</td><td>'+(gV!=null?gV:'—')+'</td><td>'+lsi+'</td><td>'+(status?'<span class="print-badge '+status+'">'+SL[status]+'</span>':'')+'</td></tr>';}});});
+  Object.keys(td).forEach(function(key){var data=td[key];if(!data||!data.active)return;var test=TBK[key];if(!test)return;var status=tSt[key];test.kpis.forEach(function(kpi){if(test.bilateral){var val=bestVal((data.trials||{})[kpi.key],kpi.dir);if(val==null)return;html+='<tr><td>'+test.label+'</td><td>'+kpi.label+'</td><td colspan="2" style="text-align:center">'+roundStep(val,kpi.step)+'</td><td>—</td><td>'+(status?'<span class="print-badge '+status+'">'+SL[status]+'</span>':'')+'</td></tr>';}else{var dV=bestVal(((data.D||{}).trials||{})[kpi.key],kpi.dir);var gV=bestVal(((data.G||{}).trials||{})[kpi.key],kpi.dir);if(dV==null&&gV==null)return;var lsi=data.lsiAuto!=null?data.lsiAuto:'—';html+='<tr><td>'+test.label+'</td><td>'+kpi.label+'</td><td>'+(dV!=null?roundStep(dV,kpi.step):'—')+'</td><td>'+(gV!=null?roundStep(gV,kpi.step):'—')+'</td><td>'+lsi+'</td><td>'+(status?'<span class="print-badge '+status+'">'+SL[status]+'</span>':'')+'</td></tr>';}});});
   html+='</tbody></table></div>';
   // Systèmes + Hypothèses + Orientations + RTP
   html+='<div class="print-page">';
@@ -2118,7 +2118,9 @@ function SymmetryChart(props) {
       lsi = autoLSI(dV, gV);
     }
     if (lsi != null) {
-      lsiData.push({label: test.label.replace(' Iso','').replace(' Test',''), lsi: lsi, status: lsiSt(lsi)});
+      var lbl = test.label.replace(/^Single Leg /,'');
+      if (lbl.length > 20) lbl = lbl.substring(0,19) + '…';
+      lsiData.push({label: lbl, lsi: lsi, status: lsiSt(lsi)});
     }
   });
 
@@ -2133,7 +2135,7 @@ function SymmetryChart(props) {
     var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, W, H);
 
-    var padL = 10, padR = 10, padT = 20, padB = 50;
+    var padL = 30, padR = 62, padT = 20, padB = 50;
     var chartW = W - padL - padR;
     var chartH = H - padT - padB;
     var barW = Math.min(32, (chartW / lsiData.length) - 6);
@@ -2148,7 +2150,7 @@ function SymmetryChart(props) {
       ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = v === 95 ? C.teal : C.muted;
       ctx.font = '9px Inter,sans-serif'; ctx.textAlign = 'right';
-      ctx.fillText(v + '%', padL - 2, y + 3);
+      ctx.fillText(v + '%', padL - 6, y + 3);
     });
 
     // Bars
@@ -2179,10 +2181,10 @@ function SymmetryChart(props) {
       ctx.restore();
     });
 
-    // 95% threshold label
+    // 95% threshold label (in the right margin, clear of bars/value labels)
     ctx.fillStyle = C.teal; ctx.font = 'bold 9px Inter,sans-serif'; ctx.textAlign = 'left';
     var y95 = padT + chartH - ((95 - 60) / 50) * chartH;
-    ctx.fillText('Seuil RTP 95%', padL + 4, y95 - 4);
+    ctx.fillText('Seuil 95%', W - padR + 6, y95 + 3);
 
   }, [JSON.stringify(lsiData)]);
 
@@ -2292,15 +2294,15 @@ function SyntheseView(props){
         [['radar','Radar'],['bodymap','Body Map'],['symmetry','Symétrie']].map(function(v){return h('button',{key:v[0],onClick:function(){setVizTab(v[0]);},style:{padding:'5px 12px',borderRadius:20,border:'1px solid '+(vizTab===v[0]?C.teal:C.border),background:vizTab===v[0]?C.teal+'20':'transparent',color:vizTab===v[0]?C.teal:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       h('div',{className:'gh',style:{display:'grid',gap:16}},
-        h(Card,{pad:16,style:{display:'flex',flexDirection:'column',alignItems:'center',minHeight:260}},
-          vizTab==='radar'&&h(RadarChart,{functionScores:fSc,size:230}),
-          vizTab==='bodymap'&&h(BodyMap,{systemScores:sysSc,size:220}),
+        h(Card,{pad:16,style:{display:'flex',flexDirection:'column',alignItems:'center',minHeight:380}},
+          vizTab==='radar'&&h(RadarChart,{functionScores:fSc,size:340}),
+          vizTab==='bodymap'&&h(BodyMap,{systemScores:sysSc,size:320}),
           vizTab==='symmetry'&&h(SymmetryChart,{testData:bilan.testData||{}})
         ),
         h(Card,{pad:16},
           h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Fonctions evaluees'),
           evFns.length===0&&h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction evaluee.'),
-          h('div',{style:{display:'flex',flexDirection:'column',gap:5}},evFns.map(function(f){var sc=fSc[f];return h('div',{key:f,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',borderRadius:7,background:SBG[sc.status]}},h('span',{style:{color:C.text,fontSize:12,fontWeight:500}},f),h(Badge,{status:sc.status,small:true}));}))
+          h('div',{style:{display:'flex',flexDirection:'column',gap:5}},evFns.map(function(f){var sc=fSc[f];return h('div',{key:f,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',borderRadius:7,background:SBG[sc.status],opacity:sc.confidence==='faible'?0.6:1}},h('div',null,h('span',{style:{color:C.text,fontSize:12,fontWeight:500}},f),h('div',{style:{color:C.muted,fontSize:9.5,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+sc.confidence)),h(Badge,{status:sc.status,small:true}));}))
         )
       )
     ),
