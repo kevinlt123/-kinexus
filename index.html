@@ -1177,6 +1177,31 @@ function buildSportifReport(athlete,bilan,res){
   function badge(s,txt){return '<span style="display:inline-block;padding:2px 9px;border-radius:12px;font-weight:700;font-size:8.5pt;background:'+bgMap[s]+';color:'+txtMap[s]+'">'+(txt||lblMap[s])+'</span>';}
   function sectionTitle(n,title){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="width:20px;height:20px;border-radius:6px;background:#1B4F6A;color:#fff;font-weight:800;font-size:10pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+n+'</span><span style="font-size:10.5pt;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:#1B4F6A">'+title+'</span></div>';}
   function panel(inner,extraStyle){return '<div style="background:#fff;border:1px solid #E1E8EE;border-radius:12px;padding:16px;'+(extraStyle||'')+'">'+inner+'</div>';}
+  function functionGaugeCardHTML(label,sc){
+    var status=sc?sc.status:null;
+    var col=status?colMap[status]:'#E1E8EE';
+    var pct=status?FN_GAUGE_PCT[status]:0;
+    var r=42,cy=58,arcLen=Math.PI*r,fillLen=arcLen*(pct/100);
+    var tier=status?FN_TIER[status]:0;
+    return '<div style="background:#fff;border:1px solid #E1E8EE;border-radius:10px;padding:9px 6px 10px;display:flex;flex-direction:column;align-items:center;'+(sc&&sc.confidence==='faible'?'opacity:0.65':'')+'">'
+      +'<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;align-self:flex-start">'
+      +'<div style="width:18px;height:18px;border-radius:50%;background:#F3F6F8;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0">'+(FN_ICON[label]||'●')+'</div>'
+      +'<span style="font-size:6.6pt;font-weight:800;color:#132B3A;letter-spacing:0.02em;text-transform:uppercase;line-height:1.15">'+label+'</span>'
+      +'</div>'
+      +'<svg width="80" height="46" viewBox="0 0 108 64">'
+      +'<path d="M 12 '+cy+' A '+r+' '+r+' 0 0 1 96 '+cy+'" fill="none" stroke="#E1E8EE" stroke-width="9" stroke-linecap="round"/>'
+      +(status?'<path d="M 12 '+cy+' A '+r+' '+r+' 0 0 1 96 '+cy+'" fill="none" stroke="'+col+'" stroke-width="9" stroke-linecap="round" stroke-dasharray="'+fillLen.toFixed(1)+' '+(arcLen-fillLen).toFixed(1)+'"/>':'')
+      +'</svg>'
+      +'<div style="color:'+(status?col:'#94A3B8')+';font-weight:800;font-size:7pt;letter-spacing:0.02em;margin-top:0;margin-bottom:4px;text-align:center">'+(status?lblMap[status]:'Non évalué')+'</div>'
+      +(status?'<div style="display:flex;gap:3px">'+[1,2,3,4].map(function(i){return '<span style="width:4.5px;height:4.5px;border-radius:50%;background:'+(i<=tier?col:'#E1E8EE')+'"></span>';}).join('')+'</div>':'')
+      +'</div>';
+  }
+  function gaugeGridHTML(evFns,fSc){
+    if(!evFns.length)return '<div style="color:#888;font-size:9pt;text-align:center;padding:20px">Aucune fonction évaluée.</div>';
+    return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px">'
+      +evFns.map(function(f){return functionGaugeCardHTML(f,fSc[f]);}).join('')
+      +'</div>';
+  }
   function statCol(label,val){return '<div><div style="font-size:6.5pt;letter-spacing:0.08em;text-transform:uppercase;color:#8FAAB8;margin-bottom:2px">'+label+'</div><div style="font-size:8.5pt;color:#fff;font-weight:600">'+val+'</div></div>';}
 
   // ── Section 1 : dual radar + profil global ──────────────────────────────
@@ -1224,23 +1249,6 @@ function buildSportifReport(athlete,bilan,res){
     return svg;
   }
 
-  // Répartition réelle des statuts par fonction évaluée (comptage, aucune moyenne inventée).
-  var statusCount={vert:0,jaune:0,orange:0,rouge:0};
-  evFns.forEach(function(fn){statusCount[fSc[fn].status]++;});
-  var distBarHtml='';
-  if(evFns.length>0){
-    distBarHtml='<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;margin-bottom:8px">';
-    ['vert','jaune','orange','rouge'].forEach(function(st){
-      if(!statusCount[st])return;
-      distBarHtml+='<div style="width:'+(statusCount[st]/evFns.length*100)+'%;background:'+colMap[st]+'"></div>';
-    });
-    distBarHtml+='</div><div style="display:flex;flex-wrap:wrap;gap:8px;font-size:7.8pt;color:#444">';
-    ['vert','jaune','orange','rouge'].forEach(function(st){
-      if(!statusCount[st])return;
-      distBarHtml+='<span><strong style="color:'+colMap[st]+'">'+statusCount[st]+'</strong> '+lblMap[st].toLowerCase()+'</span>';
-    });
-    distBarHtml+='</div>';
-  }
   var globalDesc;
   if(pri.length===0)globalDesc='Profil équilibré, aucun déficit fonctionnel majeur identifié.';
   else{
@@ -1368,17 +1376,11 @@ function buildSportifReport(athlete,bilan,res){
 
   // ── Section 1 ──
   html+='<div style="margin-bottom:18px">'+sectionTitle(1,'Profil fonctionnel KINEXUS');
-  html+='<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:stretch">';
-  var rSvg=radarSVG(300);
-  html+=panel(rSvg?rSvg:'<div style="color:#888;font-size:9pt;text-align:center;padding:30px">Au moins 3 fonctions évaluées sont nécessaires pour le radar.</div>'
-    +'<div style="display:flex;gap:14px;justify-content:center;margin-top:10px;font-size:7.5pt;color:#5B7A8C"><span>— Niveau absolu</span><span>&#8213;&#8213; Symétrie (LSI)</span></div>','flex:1.4;min-width:260px;text-align:center');
   html+=panel(
-    '<div style="font-size:7pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5B7A8C;margin-bottom:8px">Profil global — répartition par statut</div>'
-    +distBarHtml
-    +'<div style="font-size:8.5pt;color:#444;line-height:1.55;margin-top:10px">'+globalDesc+'</div>',
-    'flex:1;min-width:200px'
+    gaugeGridHTML(evFns,fSc)
+    +'<div style="font-size:8.5pt;color:#444;line-height:1.55;margin-top:12px;padding-top:10px;border-top:1px solid #EEF2F5">'+globalDesc+'</div>'
   );
-  html+='</div></div>';
+  html+='</div>';
 
   // ── Section 2 : body map ──
   html+='<div style="margin-bottom:18px">'+sectionTitle(2,'Body Map');
