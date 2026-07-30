@@ -635,6 +635,16 @@ function resolveBands(entry,age){
 }
 function pctStatus(bands,val){if(val==null||!bands)return null;if(val>=bands[3])return'vert';if(val>=bands[2])return'jaune';if(val>=bands[1])return'orange';return'rouge';}
 
+// Population de normes à utiliser : celle choisie explicitement pour l'athlète,
+// sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
+// les seuils génériques dans THRESHOLDS.
+function effectiveNormPop(athlete){
+  athlete=athlete||{};
+  if(athlete.normPopulation)return athlete.normPopulation;
+  if(athlete.sexe==='F')return'general_f';
+  if(athlete.sexe==='M')return'general_m';
+  return null;
+}
 function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
 function lsiSt(lsi){if(lsi==null)return null;if(lsi>=95)return'vert';if(lsi>=90)return'jaune';if(lsi>=80)return'orange';return'rouge';}
 function normRefValue(testKey,kpiKey,pop,age){
@@ -1844,7 +1854,7 @@ function TestEntry(props){
   var bilan=props.bilan;
   var athlete=props.athlete||{};
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var pop=athlete.normPopulation;
+  var pop=effectiveNormPop(athlete);
   var [testData,setTestData]=useState(bilan.testData||{});
   var [questData,setQuestData]=useState(bilan.questData||{});
   var [tab,setTab]=useState('tests');
@@ -1972,7 +1982,7 @@ function AnalyseView(props){
   var [showPrintMenu,setShowPrintMenu]=useState(false);
   var [vizTab,setVizTab]=useState('bodymap');
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,athlete.normPopulation,athleteAge);},[bilan,athlete.normPopulation,athleteAge]);
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge);},[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
   var fSc=res.functionScores,sysSc=res.systemScores;
 
@@ -2514,7 +2524,7 @@ function KpiResultCard(props){
 }
 function ResultsBrowser(props){
   var td=props.testData||{};var athlete=props.athlete||{};var athleteAge=props.athleteAge;var tSt=props.testStatuses||{};
-  var pop=athlete.normPopulation;
+  var pop=effectiveNormPop(athlete);
   var activeTests=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];});
   var [sel,setSel]=useState(activeTests[0]||null);
   if(sel&&activeTests.indexOf(sel)<0)sel=activeTests[0]||null;
@@ -2585,13 +2595,13 @@ function ExpertView(props){
       h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:2}},'Relations variable-à-variable pour chacune des 283 variables du logiciel : variables amont/aval, variables corrélées, variables du même test, qualités mesurées/estimées et mécanismes biomécaniques impactés. Poids calculés automatiquement (TFM + hiérarchie des tests), sauf Measures/Estimates qui viennent du référentiel clinique fourni quand disponible — à valider par l\'équipe clinique.'),
       varRelKpis.length===0&&h('div',{style:{color:C.muted,fontSize:12}},'Aucune variable active.'),
       varRelKpis.map(function(v){
-        var st=kpiStatus(v.testKey,v.kpi.key,td,athlete.normPopulation,athleteAge);
+        var st=kpiStatus(v.testKey,v.kpi.key,td,effectiveNormPop(athlete),athleteAge);
         return h(Card,{key:v.testKey+'_'+v.kpi.key,pad:14,style:{borderLeft:'3px solid '+(st?SC[st]:C.border)}},
           h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},
             h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},v.testLabel),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},v.kpi.label)),
             st&&h(Badge,{status:st,small:true})
           ),
-          h('div',{dangerouslySetInnerHTML:{__html:varRelHTML(v.testKey,v.kpi.key,td,athlete.normPopulation,athleteAge)}})
+          h('div',{dangerouslySetInnerHTML:{__html:varRelHTML(v.testKey,v.kpi.key,td,effectiveNormPop(athlete),athleteAge)}})
         );
       })
     ),
@@ -2649,8 +2659,8 @@ function HistoriqueView(props){
   var b1=bilans.find(function(b){return b.id==sel1;});
   var b2=bilans.find(function(b){return b.id==sel2;});
   var histAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var r1=b1?computeMoteur(b1.testData,b1.questData,athlete.normPopulation,histAge):null;
-  var r2=b2?computeMoteur(b2.testData,b2.questData,athlete.normPopulation,histAge):null;
+  var r1=b1?computeMoteur(b1.testData,b1.questData,effectiveNormPop(athlete),histAge):null;
+  var r2=b2?computeMoteur(b2.testData,b2.questData,effectiveNormPop(athlete),histAge):null;
   function fmtD(d){return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'});}
   if(bilans.length<2)return h(Card,{pad:24,style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:13}},'Au moins 2 bilans sont nécessaires pour la comparaison.'));
   var opts=bilans.map(function(b){return{value:b.id,label:b.type+' · '+b.sousType+' ('+fmtD(b.date)+')'};});
