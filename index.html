@@ -2166,98 +2166,62 @@ function BodyMap(props) {
 // ── SYMMETRY CHART (bar chart canvas) ────────────────────────────────────────
 function SymmetryChart(props) {
   var testData = props.testData || {};
-  var ref = useRef(null);
 
-  // Collect all LSI values from active unilateral tests
-  var lsiData = [];
+  // Collect D/G values + LSI from active unilateral tests, worst asymmetry first.
+  var items = [];
   TESTS.forEach(function(test) {
     if (test.bilateral) return;
     var data = testData[test.key];
     if (!data || !data.active) return;
-    var lsi = data.lsiAuto;
-    if (lsi == null) {
-      // Try to compute from best values
-      var kpi = test.kpis[0];
-      var dV = bestVal(((data.D||{}).trials||{})[kpi.key]||[], kpi.dir);
-      var gV = bestVal(((data.G||{}).trials||{})[kpi.key]||[], kpi.dir);
-      lsi = autoLSI(dV, gV);
-    }
-    if (lsi != null) {
-      var lbl = test.label.replace(/^Single Leg /,'');
-      if (lbl.length > 20) lbl = lbl.substring(0,19) + '…';
-      lsiData.push({label: lbl, lsi: lsi, status: lsiSt(lsi)});
+    var kpi = test.kpis[0];
+    var dV = bestVal(((data.D||{}).trials||{})[kpi.key]||[], kpi.dir);
+    var gV = bestVal(((data.G||{}).trials||{})[kpi.key]||[], kpi.dir);
+    var lsi = data.lsiAuto != null ? data.lsiAuto : autoLSI(dV, gV);
+    if (lsi != null && dV != null && gV != null) {
+      var unitM = kpi.label.match(/\(([^)]+)\)/);
+      items.push({
+        label: test.label.replace(/^Single Leg /,''),
+        gV: roundStep(gV, kpi.step), dV: roundStep(dV, kpi.step),
+        unit: unitM ? unitM[1] : '', lsi: lsi, status: lsiSt(lsi)
+      });
     }
   });
+  items.sort(function(a,b){return a.lsi-b.lsi;});
 
-  useEffect(function() {
-    var canvas = ref.current;
-    if (!canvas || !lsiData.length) return;
-    var dpr = window.devicePixelRatio || 1;
-    var W = canvas.offsetWidth || 400;
-    var H = 220;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-    var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, W, H);
-
-    var padL = 30, padR = 62, padT = 20, padB = 50;
-    var chartW = W - padL - padR;
-    var chartH = H - padT - padB;
-    var barW = Math.min(32, (chartW / lsiData.length) - 6);
-    var barGap = chartW / lsiData.length;
-
-    // Background grid lines at 70, 80, 90, 95, 100
-    [70, 80, 90, 95, 100].forEach(function(v) {
-      var y = padT + chartH - ((v - 60) / 50) * chartH;
-      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y);
-      ctx.strokeStyle = v === 95 ? 'rgba(42,157,143,0.4)' : 'rgba(27,79,106,0.10)';
-      ctx.lineWidth = v === 95 ? 1.5 : 1; ctx.setLineDash(v === 95 ? [4,3] : []);
-      ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = v === 95 ? C.teal : C.muted;
-      ctx.font = '9px Inter,sans-serif'; ctx.textAlign = 'right';
-      ctx.fillText(v + '%', padL - 6, y + 3);
-    });
-
-    // Bars
-    lsiData.forEach(function(item, i) {
-      var x = padL + i * barGap + (barGap - barW) / 2;
-      var pct = Math.min(Math.max(item.lsi, 60), 110);
-      var barH2 = ((pct - 60) / 50) * chartH;
-      var y = padT + chartH - barH2;
-      var color = SC[item.status] || C.muted;
-
-      // Bar
-      ctx.fillStyle = color + 'CC';
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(x, y, barW, barH2, [4,4,0,0]) : ctx.rect(x, y, barW, barH2);
-      ctx.fill();
-
-      // Value label on top
-      ctx.fillStyle = color;
-      ctx.font = 'bold 9px Inter,sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(item.lsi + '%', x + barW / 2, y - 4);
-
-      // X label (rotated)
-      ctx.save();
-      ctx.translate(x + barW / 2, padT + chartH + 8);
-      ctx.rotate(-Math.PI / 4);
-      ctx.fillStyle = C.muted; ctx.font = '8px Inter,sans-serif'; ctx.textAlign = 'right';
-      ctx.fillText(item.label.length > 12 ? item.label.substring(0, 11) + '…' : item.label, 0, 0);
-      ctx.restore();
-    });
-
-    // 95% threshold label (in the right margin, clear of bars/value labels)
-    ctx.fillStyle = C.teal; ctx.font = 'bold 9px Inter,sans-serif'; ctx.textAlign = 'left';
-    var y95 = padT + chartH - ((95 - 60) / 50) * chartH;
-    ctx.fillText('Seuil 95%', W - padR + 6, y95 + 3);
-
-  }, [JSON.stringify(lsiData)]);
-
-  if (!lsiData.length) return h('div',{style:{color:C.muted,fontSize:12,textAlign:'center',padding:'20px'}},'Saisissez des tests bilatéraux avec D et G pour voir les symétries.');
+  if (!items.length) return h('div',{style:{color:C.muted,fontSize:12,textAlign:'center',padding:'20px'}},'Saisissez des tests unipodaux avec D et G pour voir les symétries.');
 
   return h('div',null,
-    h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Index de Symétrie (LSI)'),
-    h('canvas',{ref:ref,style:{width:'100%',display:'block'}})
+    h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Symétrie Gauche / Droite — tests unipodaux'),
+    h('div',{style:{display:'flex',justifyContent:'space-between',padding:'0 2px 10px',fontSize:9,fontWeight:800,letterSpacing:'0.1em',textTransform:'uppercase',color:C.muted}},
+      h('span',null,'◀ Gauche'), h('span',null,'Droite ▶')
+    ),
+    items.map(function(item,i){
+      var col=SC[item.status]||C.muted;
+      var mx=Math.max(item.gV,item.dV)||1;
+      var gPct=Math.max(Math.min(Math.abs(item.gV)/mx*100,100),4);
+      var dPct=Math.max(Math.min(Math.abs(item.dV)/mx*100,100),4);
+      return h('div',{key:i,style:{marginBottom:16}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:6}},
+          h('div',{style:{width:56,textAlign:'right',fontSize:12,fontWeight:800,color:C.text,flexShrink:0}},item.gV),
+          h('div',{style:{flex:1,display:'flex',justifyContent:'flex-end',height:18}},h('div',{style:{height:'100%',width:gPct+'%',background:col,borderRadius:'5px 0 0 5px'}})),
+          h('div',{style:{width:150,textAlign:'center',flexShrink:0}},
+            h('div',{style:{fontSize:11,fontWeight:700,color:C.petrol}},item.label),
+            h('div',{style:{fontSize:10,fontWeight:800,color:col,marginTop:1}},item.lsi+'% LSI')
+          ),
+          h('div',{style:{flex:1,display:'flex',justifyContent:'flex-start',height:18}},h('div',{style:{height:'100%',width:dPct+'%',background:col,borderRadius:'0 5px 5px 0'}})),
+          h('div',{style:{width:56,textAlign:'left',fontSize:12,fontWeight:800,color:C.text,flexShrink:0}},item.dV)
+        ),
+        item.unit&&h('div',{style:{textAlign:'center',fontSize:9,color:C.muted,marginTop:2}},item.unit)
+      );
+    }),
+    h('div',{style:{display:'flex',gap:10,justifyContent:'center',marginTop:14,paddingTop:12,borderTop:'1px solid '+C.border,flexWrap:'wrap'}},
+      [['vert','≥95%'],['jaune','90-94%'],['orange','80-89%'],['rouge','<80%']].map(function(p){
+        return h('span',{key:p[0],style:{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:20,background:SC[p[0]]+'22',fontSize:10,fontWeight:700}},
+          h('span',{style:{width:7,height:7,borderRadius:'50%',background:SC[p[0]],display:'inline-block'}}),
+          h('span',{style:{color:C.text}},SL[p[0]]+' ('+p[1]+')')
+        );
+      })
+    )
   );
 }
 
