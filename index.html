@@ -2094,6 +2094,35 @@ function AnalyseView(props){
           )
         )
       ),
+      (function(){
+        // Recommandations : orientations cliniques déjà calculées par priorité (pas d'exercices
+        // génériques inventés) + points de suivi/process dérivés de l'état réel du bilan.
+        var td=bilan.testData||{};
+        var hasAsym=false;
+        TESTS.forEach(function(test){
+          if(test.bilateral||hasAsym)return;
+          var data=td[test.key];if(!data||!data.active)return;
+          var lsi=data.lsiAuto;
+          if(lsi==null){var kpi=test.kpis[0];var dV=bestVal(((data.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((data.G||{}).trials||{})[kpi.key]||[],kpi.dir);lsi=autoLSI(dV,gV);}
+          if(lsi!=null&&lsiSt(lsi)!=='vert')hasAsym=true;
+        });
+        var recItems=pri.slice(0,3).map(function(p){return{icon:FN_ICON[p.fonction]||'●',text:p.orientation};});
+        if(res.rtpStatus&&res.rtpStatus.status!=='vert')recItems.push({icon:'📅',text:'Réévaluation recommandée dans 4 à 6 semaines.'});
+        if(pri.some(function(p){return p.status==='rouge';}))recItems.push({icon:'⚠️',text:'Surveillance rapprochée de la charge d\'entraînement et de la douleur.'});
+        if(hasAsym)recItems.push({icon:'⚖️',text:'Suivi de la symétrie gauche/droite lors de la réathlétisation.'});
+        if(!recItems.length)return null;
+        return h('div',{style:{marginBottom:20}},
+          h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'03 · Recommandations'),
+          h(Card,{pad:16},
+            h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+              recItems.map(function(r,i){return h('div',{key:i,style:{display:'flex',alignItems:'flex-start',gap:10}},
+                h('span',{style:{fontSize:15,flexShrink:0,marginTop:1}},r.icon),
+                h('span',{style:{fontSize:12.5,color:C.text,lineHeight:1.5}},r.text)
+              );})
+            )
+          )
+        );
+      })(),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
         [['synthese','Synthèse'],['expert','Expert'],['historique','Historique']].map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
