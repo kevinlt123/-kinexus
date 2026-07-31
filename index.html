@@ -1261,20 +1261,19 @@ function buildSportifReport(athlete,bilan,res){
   var avgCoverage=evFns.length?Math.round(evFns.reduce(function(s,f){return s+(fSc[f].coverage||0);},0)/evFns.length):0;
   var confLevel=avgCoverage>=50?'ÉLEVÉ':avgCoverage>=25?'MODÉRÉ':'FAIBLE';
   var confCol=confLevel==='ÉLEVÉ'?colMap.vert:confLevel==='MODÉRÉ'?colMap.jaune:colMap.orange;
-  var confPct=confLevel==='ÉLEVÉ'?90:confLevel==='MODÉRÉ'?55:25;
 
-  // ── Corps musculaire : statut + score par muscle (même échelle que les jauges de fonction) ──
+  // ── Corps musculaire : statut par muscle (aucun score chiffré inventé) ──
   function muscleScoreListHTML(){
     var items=MM_ORDER.map(function(k){
       var meta=MM_META[k];var status=sysSc[meta.sys];if(!status)return null;
-      return{label:meta.label,status:status,pct:FN_GAUGE_PCT[status]};
+      return{label:meta.label,status:status};
     }).filter(Boolean);
     if(!items.length)return '<div style="color:#94A3B8;font-size:8pt">Aucun système musculaire évalué.</div>';
     return items.map(function(it){
       return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:8pt">'
         +'<span style="width:7px;height:7px;border-radius:50%;background:'+colMap[it.status]+';flex-shrink:0"></span>'
         +'<span style="flex:1;color:#132B3A;font-weight:600">'+it.label+'</span>'
-        +'<span style="font-weight:800;color:'+colMap[it.status]+'">'+it.pct+'%</span>'
+        +'<span style="font-weight:800;color:'+colMap[it.status]+'">'+lblMap[it.status]+'</span>'
         +'</div>';
     }).join('');
   }
@@ -1365,7 +1364,7 @@ function buildSportifReport(athlete,bilan,res){
   // Confiance de l'analyse
   html+=panel(
     '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">'
-    +'<div style="flex:0 0 160px"><div style="font-size:7.5pt;color:#5B7A8C;font-weight:700;text-transform:uppercase">Confiance de l\'analyse</div><div style="font-size:11pt;font-weight:900;color:'+confCol+';margin-top:2px">'+confLevel+'</div><div style="height:5px;width:110px;background:#EEF2F5;border-radius:3px;overflow:hidden;margin-top:5px"><div style="height:100%;width:'+confPct+'%;background:'+confCol+'"></div></div></div>'
+    +'<div style="flex:0 0 160px"><div style="font-size:7.5pt;color:#5B7A8C;font-weight:700;text-transform:uppercase">Confiance de l\'analyse</div><div style="font-size:11pt;font-weight:900;color:'+confCol+';margin-top:2px">'+confLevel+'</div><div style="height:5px;width:110px;background:#EEF2F5;border-radius:3px;overflow:hidden;margin-top:5px"><div style="height:100%;width:'+avgCoverage+'%;background:'+confCol+'"></div></div></div>'
     +'<div style="flex:0 0 90px;text-align:center"><div style="font-size:15pt;font-weight:900;color:#132B3A">'+activeTestCount+'</div><div style="font-size:7pt;color:#5B7A8C;text-transform:uppercase;font-weight:700">Tests réalisés</div></div>'
     +'<div style="flex:0 0 90px;text-align:center"><div style="font-size:15pt;font-weight:900;color:#132B3A">'+variableCount+'</div><div style="font-size:7pt;color:#5B7A8C;text-transform:uppercase;font-weight:700">Variables analysées</div></div>'
     +'<div style="flex:1;min-width:180px;font-size:7.8pt;color:#5B7A8C;line-height:1.5">Analyse réalisée selon les normes de la population (âge, sexe et sport) sélectionnée pour cet athlète. Les résultats sont interprétés par le moteur expert KINEXUS.</div>'
@@ -1389,7 +1388,7 @@ function buildSportifReport(athlete,bilan,res){
     +evFns.map(function(f){
       var st=fSc[f].status,pct=FN_GAUGE_PCT[st];
       return '<div style="margin-bottom:9px">'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span style="font-size:9pt">'+(FN_ICON[f]||'●')+'</span><span style="flex:1;font-size:8pt;font-weight:700;color:#132B3A">'+f+'</span><span style="font-size:7.5pt;color:#94A3B8">'+pct+'/100</span></div>'
+        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span style="font-size:9pt">'+(FN_ICON[f]||'●')+'</span><span style="flex:1;font-size:8pt;font-weight:700;color:#132B3A">'+f+'</span><span style="font-size:7.5pt;font-weight:700;color:'+colMap[st]+'">'+lblMap[st]+'</span></div>'
         +'<div style="height:6px;background:#EEF2F5;border-radius:20px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+colMap[st]+'"></div></div>'
         +'</div>';
     }).join('')
