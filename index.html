@@ -1428,8 +1428,13 @@ function buildSportifReport(athlete,bilan,res){
   html+=panel(
     '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Asymétries majeures</div>'
     +(lsiItems.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucun test unipodal actif.</div>'
-      :'<div style="display:grid;grid-template-columns:1.4fr 0.7fr 0.7fr 0.6fr;gap:3px;font-size:6.5pt;font-weight:800;text-transform:uppercase;color:#94A3B8;padding-bottom:5px;border-bottom:1px solid #EEF2F5"><span>Test</span><span style="text-align:right">Côté G</span><span style="text-align:right">Côté D</span><span style="text-align:right">LSI</span></div>'
-      +lsiItems.slice(0,7).map(function(it){return '<div style="display:grid;grid-template-columns:1.4fr 0.7fr 0.7fr 0.6fr;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F3F6F8;font-size:7.5pt"><span style="color:#132B3A;font-weight:600">'+it.label+'</span><span style="text-align:right;color:#5B7A8C">'+it.gV+'</span><span style="text-align:right;color:#5B7A8C">'+it.dV+'</span><span style="text-align:right;font-weight:800;color:'+colMap[it.status]+'">'+it.lsi+'%</span></div>';}).join(''))
+      :lsiItems.slice(0,7).map(function(it){
+        return '<div style="margin-bottom:9px">'
+          +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span style="flex:1;font-size:8pt;font-weight:700;color:#132B3A">'+it.label+'</span><span style="font-size:7.5pt;font-weight:800;color:'+colMap[it.status]+'">'+it.lsi+'% LSI</span></div>'
+          +'<div style="height:6px;background:#EEF2F5;border-radius:20px;overflow:hidden"><div style="height:100%;width:'+Math.min(it.lsi,100)+'%;background:'+colMap[it.status]+'"></div></div>'
+          +'<div style="font-size:6.5pt;color:#94A3B8;margin-top:2px">G '+it.gV+(it.unit?' '+it.unit:'')+' · D '+it.dV+(it.unit?' '+it.unit:'')+'</div>'
+          +'</div>';
+      }).join(''))
   );
   html+=panel(
     '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Chaîne causale principale</div>'
