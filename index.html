@@ -1173,7 +1173,7 @@ function CSVImportModal(props){
 
 // ── PRINT ENGINE ──────────────────────────────────────────────────────────────
 function buildSportifReport(athlete,bilan,res){
-  var fSc=res.functionScores,sysSc=res.systemScores,pri=res.priorities,rtp=res.rtpStatus,tSt=res.testStatuses;
+  var fSc=res.functionScores,sysSc=res.systemScores,pri=res.priorities||[],rtp=res.rtpStatus,tSt=res.testStatuses;
   var evFns=FUNCTIONS.filter(function(f){return fSc[f];});
   var td=bilan.testData||{};
   var dateStr=new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
@@ -1183,93 +1183,35 @@ function buildSportifReport(athlete,bilan,res){
   var bgMap={vert:'#d1fae5',jaune:'#FEF9C3',orange:'#ffedd5',rouge:'#fee2e2'};
   var txtMap={vert:'#065f46',jaune:'#A16207',orange:'#9a3412',rouge:'#991b1b'};
   var lblMap={vert:'Optimal',jaune:'À surveiller',orange:'Déficitaire',rouge:'Critique'};
-  var SVAL={vert:90,jaune:70,orange:45,rouge:20};
   function badge(s,txt){return '<span style="display:inline-block;padding:2px 9px;border-radius:12px;font-weight:700;font-size:8.5pt;background:'+bgMap[s]+';color:'+txtMap[s]+'">'+(txt||lblMap[s])+'</span>';}
-  function sectionTitle(n,title){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="width:20px;height:20px;border-radius:6px;background:#1B4F6A;color:#fff;font-weight:800;font-size:10pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+n+'</span><span style="font-size:10.5pt;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:#1B4F6A">'+title+'</span></div>';}
+  function sectionTitle(n,title,dark){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span style="width:20px;height:20px;border-radius:6px;background:'+(dark?'#2A9D8F':'#1B4F6A')+';color:#fff;font-weight:800;font-size:10pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+n+'</span><span style="font-size:10.5pt;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:'+(dark?'#fff':'#1B4F6A')+'">'+title+'</span></div>';}
   function panel(inner,extraStyle){return '<div style="background:#fff;border:1px solid #E1E8EE;border-radius:12px;padding:16px;'+(extraStyle||'')+'">'+inner+'</div>';}
-  function functionGaugeCardHTML(label,sc){
-    var status=sc?sc.status:null;
-    var col=status?colMap[status]:'#E1E8EE';
-    var pct=status?FN_GAUGE_PCT[status]:0;
-    var r=42,cy=58,arcLen=Math.PI*r,fillLen=arcLen*(pct/100);
-    var tier=status?FN_TIER[status]:0;
-    return '<div style="background:#fff;border:1px solid #E1E8EE;border-radius:10px;padding:9px 6px 10px;display:flex;flex-direction:column;align-items:center;'+(sc&&sc.confidence==='faible'?'opacity:0.65':'')+'">'
-      +'<div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;align-self:flex-start">'
-      +'<div style="width:18px;height:18px;border-radius:50%;background:#F3F6F8;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0">'+(FN_ICON[label]||'●')+'</div>'
-      +'<span style="font-size:6.6pt;font-weight:800;color:#132B3A;letter-spacing:0.02em;text-transform:uppercase;line-height:1.15">'+label+'</span>'
-      +'</div>'
-      +'<svg width="80" height="46" viewBox="0 0 108 64">'
-      +'<path d="M 12 '+cy+' A '+r+' '+r+' 0 0 1 96 '+cy+'" fill="none" stroke="#E1E8EE" stroke-width="9" stroke-linecap="round"/>'
-      +(status?'<path d="M 12 '+cy+' A '+r+' '+r+' 0 0 1 96 '+cy+'" fill="none" stroke="'+col+'" stroke-width="9" stroke-linecap="round" stroke-dasharray="'+fillLen.toFixed(1)+' '+(arcLen-fillLen).toFixed(1)+'"/>':'')
-      +'</svg>'
-      +'<div style="color:'+(status?col:'#94A3B8')+';font-weight:800;font-size:7pt;letter-spacing:0.02em;margin-top:0;margin-bottom:4px;text-align:center">'+(status?lblMap[status]:'Non évalué')+'</div>'
-      +(status?'<div style="display:flex;gap:3px">'+[1,2,3,4].map(function(i){return '<span style="width:4.5px;height:4.5px;border-radius:50%;background:'+(i<=tier?col:'#E1E8EE')+'"></span>';}).join('')+'</div>':'')
-      +'</div>';
-  }
-  function gaugeGridHTML(evFns,fSc){
-    if(!evFns.length)return '<div style="color:#888;font-size:9pt;text-align:center;padding:20px">Aucune fonction évaluée.</div>';
-    return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px">'
-      +evFns.map(function(f){return functionGaugeCardHTML(f,fSc[f]);}).join('')
-      +'</div>';
-  }
-  function statCol(label,val){return '<div><div style="font-size:6.5pt;letter-spacing:0.08em;text-transform:uppercase;color:#8FAAB8;margin-bottom:2px">'+label+'</div><div style="font-size:8.5pt;color:#fff;font-weight:600">'+val+'</div></div>';}
-
-  // ── Section 1 : dual radar + profil global ──────────────────────────────
-  function fnLSI(fn){
-    var fk=FN_KEY[fn];var vals=[];
-    Object.keys(TFM).forEach(function(tk){
-      if(!TFM[tk][fk]||TFM[tk][fk]<2)return;
-      var test=TBK[tk];if(!test||test.bilateral)return;
-      var data=td[tk];if(!data||!data.active)return;
-      var lsi=data.lsiAuto;
-      if(lsi==null){var kpi=test.kpis[0];var dV=bestVal(((data.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((data.G||{}).trials||{})[kpi.key]||[],kpi.dir);lsi=autoLSI(dV,gV);}
-      if(lsi!=null)vals.push(lsi);
-    });
-    if(!vals.length)return null;
-    return Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length);
-  }
-  var sysLsiByFn={};evFns.forEach(function(fn){sysLsiByFn[fn]=fnLSI(fn);});
-
-  function radarSVG(size){
-    var n=evFns.length;if(n<3)return null;
-    var mx=48;var vbW=size+mx*2;
-    var cx=size/2,cy=size/2,r=size/2-54,as=(Math.PI*2)/n;
-    function pt(i,frac){var a=as*i-Math.PI/2;return{x:cx+Math.cos(a)*r*frac,y:cy+Math.sin(a)*r*frac};}
-    var svg='<svg viewBox="'+(-mx)+' 0 '+vbW+' '+size+'" width="100%" style="display:block;max-width:'+vbW+'px;margin:0 auto">';
-    [0.25,0.5,0.75,1].forEach(function(f){
-      var d='';for(var i=0;i<n;i++){var p=pt(i,f);d+=(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)+' ';}
-      svg+='<path d="'+d+'Z" fill="none" stroke="'+(f===1?'#2A9D8F80':'#1B4F6A1f')+'" stroke-width="'+(f===1?1.4:1)+'"/>';
-    });
-    for(var i=0;i<n;i++){var p=pt(i,1);svg+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p.x.toFixed(1)+'" y2="'+p.y.toFixed(1)+'" stroke="#1B4F6A1f" stroke-width="1"/>';}
-    var dAbs='',dSym='';
-    evFns.forEach(function(fn,i){
-      var val=SVAL[fSc[fn].status]/100;var p=pt(i,val);dAbs+=(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)+' ';
-      var symVal=Math.min((sysLsiByFn[fn]!=null?sysLsiByFn[fn]:SVAL[fSc[fn].status])/100,1);var p2=pt(i,symVal);dSym+=(i===0?'M':'L')+p2.x.toFixed(1)+','+p2.y.toFixed(1)+' ';
-    });
-    svg+='<path d="'+dAbs+'Z" fill="#2A9D8F26" stroke="#2A9D8F" stroke-width="2"/>';
-    svg+='<path d="'+dSym+'Z" fill="none" stroke="#1B4F6A" stroke-width="1.6" stroke-dasharray="4,3"/>';
-    evFns.forEach(function(fn,i){var val=SVAL[fSc[fn].status]/100;var p=pt(i,val);var col=colMap[fSc[fn].status];svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.2" fill="'+col+'" stroke="#fff" stroke-width="1.2"/>';});
-    evFns.forEach(function(fn,i){
-      var p=pt(i,1.2);var col=colMap[fSc[fn].status];
-      var anchor=p.x<cx-3?'end':p.x>cx+3?'start':'middle';
-      svg+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-2).toFixed(1)+'" text-anchor="'+anchor+'" font-size="7.2" font-weight="700" fill="'+col+'" font-family="Arial,sans-serif">'+fn+'</text>';
-      svg+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y+9).toFixed(1)+'" text-anchor="'+anchor+'" font-size="7.5" font-weight="800" fill="#1B4F6A" font-family="Arial,sans-serif">'+SVAL[fSc[fn].status]+'%</text>';
-    });
-    svg+='</svg>';
-    return svg;
-  }
 
   var globalDesc;
   if(pri.length===0)globalDesc='Profil équilibré, aucun déficit fonctionnel majeur identifié.';
   else{
     var top=pri[0],second=pri[1];
-    globalDesc='Déficit principal : '+top.fonction.toLowerCase()+(top.contributeurPrincipal?' ('+top.contributeurPrincipal.toLowerCase()+')':'')+'.'+(second?' Point secondaire : '+second.fonction.toLowerCase()+'.':'');
+    globalDesc='Le bilan met en évidence un déficit prédominant '+(top.contributeurPrincipal?'du '+top.contributeurPrincipal.toLowerCase():'de '+top.fonction.toLowerCase())+' limitant les capacités de '+top.fonction.toLowerCase()+(second?' et de '+second.fonction.toLowerCase():'')+'.';
   }
 
-  var objectifs={Performance:'Optimiser les qualités physiques et prévenir les blessures.',RTP:'Évaluer les critères de retour au sport en sécurité.',Screening:'Dépister les facteurs de risque de blessure.',Suivi:"Suivre l'évolution du profil fonctionnel."};
-  var objectifTxt=bilan.commentaire||objectifs[bilan.type]||'Évaluer le profil fonctionnel du sportif.';
+  // ── Risque global / priorité principale / évolution (même logique que l'écran Analyse) ──
+  var riskLevel=pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':'FAIBLE';
+  var riskCol=riskLevel==='ÉLEVÉ'?colMap.rouge:riskLevel==='MODÉRÉ'?colMap.orange:colMap.vert;
+  var riskSub=pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';
+  var evolution=null;
+  var priorBilans=(athlete.bilans||[]).filter(function(b){return b.id!==bilan.id&&new Date(b.date)<new Date(bilan.date);}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+  if(priorBilans.length>0){
+    var prevBilan=priorBilans[0];
+    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),age);
+    var commonFns=FUNCTIONS.filter(function(f){return fSc[f]&&prevRes.functionScores[f];});
+    if(commonFns.length>0){
+      var curAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[fSc[f].status];},0)/commonFns.length;
+      var prevAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[prevRes.functionScores[f].status];},0)/commonFns.length;
+      evolution={delta:Math.round(curAvg-prevAvg),prevDate:prevBilan.date};
+    }
+  }
 
-  // ── Section 3 : symétrie (LSI) ───────────────────────────────────────────
+  // ── Asymétries (LSI) ──
   var lsiItems=[];
   TESTS.forEach(function(test){
     if(test.bilateral)return;
@@ -1280,25 +1222,12 @@ function buildSportifReport(athlete,bilan,res){
     var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(dV,gV);
     if(lsi!=null&&dV!=null&&gV!=null){
       var unitM=kpi.label.match(/\(([^)]+)\)/);
-      lsiItems.push({label:test.label,dV:roundStep(dV,kpi.step),gV:roundStep(gV,kpi.step),unit:unitM?unitM[1]:'',lsi:lsi,status:lsiSt(lsi)});
+      lsiItems.push({label:test.label.replace(/^Single Leg /,''),dV:roundStep(dV,kpi.step),gV:roundStep(gV,kpi.step),unit:unitM?unitM[1]:'',lsi:lsi,status:lsiSt(lsi)});
     }
   });
+  lsiItems.sort(function(a,b){return a.lsi-b.lsi;});
 
-  // ── Section 4 : chaîne causale ────────────────────────────────────────────
-  function causalChainHtml(){
-    if(!pri.length)return '';
-    var nodes=pri.map(function(p){return p.fonction;}).concat(['Impact sur la performance']);
-    var out='<div style="display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:14px;padding:12px 14px;background:#F3F6F8;border-radius:10px">';
-    out+='<div style="width:100%;font-size:7pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5B7A8C;margin-bottom:2px">Chaîne causale principale identifiée</div>';
-    nodes.forEach(function(n,i){
-      out+='<div style="padding:6px 10px;border-radius:8px;background:#fff;border:1px solid #E1E8EE;font-size:8.3pt;font-weight:700;color:#1B4F6A">'+n+'</div>';
-      if(i<nodes.length-1)out+='<span style="color:#2A9D8F;font-weight:900;font-size:11pt">&#8594;</span>';
-    });
-    out+='</div>';
-    return out;
-  }
-
-  // ── Section 5 : retour au sport ──────────────────────────────────────────
+  // ── RTP checklist (réutilisé pour "Critères de progression") ──
   function rtpChecklist(){
     var items=[];
     var rtpKeys=['single_hop','triple_hop','crossover_hop','side_hop','slcmj','sldj'];
@@ -1307,7 +1236,7 @@ function buildSportifReport(athlete,bilan,res){
       if(!test.bilateral){
         var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);
         var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);
-        if(lsi!=null)items.push({label:test.label+' — LSI ≥ 95%',state:lsi>=95?'ok':'ko'});
+        if(lsi!=null)items.push({label:test.label.replace(/^Single Leg /,'')+' — LSI ≥ 95%',state:lsi>=95?'ok':'ko'});
       }else{
         var st=computeTestStatus(k,d);
         if(st)items.push({label:test.label,state:st==='vert'?'ok':st==='jaune'?'mid':'ko'});
@@ -1319,208 +1248,214 @@ function buildSportifReport(athlete,bilan,res){
     });
     return items;
   }
-  function checkIcon(state){
-    if(state==='ok')return '<span style="color:#22c55e;font-weight:900">&#10003;</span>';
-    if(state==='mid')return '<span style="color:#FACC15;font-weight:900">&#8212;</span>';
-    return '<span style="color:#ef4444;font-weight:900">&#10007;</span>';
+
+  // ── Chaîne causale (icônes + texte d'interprétation) ──
+  var causalSteps=pri.map(function(p,i){return{icon:FN_ICON[p.fonction]||'●',label:(i===0?'Déficit de ':'Répercussion sur ')+p.fonction.toLowerCase()+(p.contributeurPrincipal?' ('+p.contributeurPrincipal.toLowerCase()+')':'')};});
+  if(causalSteps.length)causalSteps.push({icon:'📊',label:'Impact sur la performance et le risque de blessure'});
+  var interpretationTxt=pri.length===0?'Profil équilibré, aucune chaîne causale de déficit identifiée.'
+    :'Le déficit '+(pri[0].contributeurPrincipal?'de '+pri[0].contributeurPrincipal.toLowerCase():'de '+pri[0].fonction.toLowerCase())+' entraîne une altération de la capacité de '+pri[0].fonction.toLowerCase()+(pri[1]?' et de '+pri[1].fonction.toLowerCase():'')+', augmentant le risque de blessure lors des situations de charge élevée et limitant la performance globale.';
+
+  // ── Confiance de l'analyse (dérivée de la couverture réelle par fonction) ──
+  var activeTestCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).length;
+  var variableCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];}).reduce(function(s,k){return s+TBK[k].kpis.length;},0);
+  var avgCoverage=evFns.length?Math.round(evFns.reduce(function(s,f){return s+(fSc[f].coverage||0);},0)/evFns.length):0;
+  var confLevel=avgCoverage>=50?'ÉLEVÉ':avgCoverage>=25?'MODÉRÉ':'FAIBLE';
+  var confCol=confLevel==='ÉLEVÉ'?colMap.vert:confLevel==='MODÉRÉ'?colMap.jaune:colMap.orange;
+  var confPct=confLevel==='ÉLEVÉ'?90:confLevel==='MODÉRÉ'?55:25;
+
+  // ── Corps musculaire : statut + score par muscle (même échelle que les jauges de fonction) ──
+  function muscleScoreListHTML(){
+    var items=MM_ORDER.map(function(k){
+      var meta=MM_META[k];var status=sysSc[meta.sys];if(!status)return null;
+      return{label:meta.label,status:status,pct:FN_GAUGE_PCT[status]};
+    }).filter(Boolean);
+    if(!items.length)return '<div style="color:#94A3B8;font-size:8pt">Aucun système musculaire évalué.</div>';
+    return items.map(function(it){
+      return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:8pt">'
+        +'<span style="width:7px;height:7px;border-radius:50%;background:'+colMap[it.status]+';flex-shrink:0"></span>'
+        +'<span style="flex:1;color:#132B3A;font-weight:600">'+it.label+'</span>'
+        +'<span style="font-weight:800;color:'+colMap[it.status]+'">'+it.pct+'%</span>'
+        +'</div>';
+    }).join('');
   }
 
-  // ── Section 6 : indicateurs clés (gauges) ────────────────────────────────
-  function gaugeSVG(pct,color,valueText,size){
-    size=size||66;var r=size/2-6,cx=size/2,cy=size/2,circ=2*Math.PI*r;
-    var dash=circ*Math.min(Math.max(pct,0),100)/100;
-    return '<svg viewBox="0 0 '+size+' '+size+'" width="'+size+'" height="'+size+'">'
-      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#E1E8EE" stroke-width="6"/>'
-      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="6" stroke-linecap="round" stroke-dasharray="'+dash.toFixed(1)+' '+circ.toFixed(1)+'" transform="rotate(-90 '+cx+' '+cy+')"/>'
-      +'<text x="'+cx+'" y="'+(cy+4)+'" text-anchor="middle" font-size="11" font-weight="800" fill="'+color+'" font-family="Arial,sans-serif">'+valueText+'</text>'
-      +'</svg>';
-  }
-  function indicatorItems(){
-    var out=[];
-    var order=['knee_ext','sl_iso_push','slcmj','cmj','ybt','dj','sldj','iso_belt_squat'];
-    order.forEach(function(k){
-      if(out.length>=6)return;
-      var d=td[k];if(!d||!d.active)return;var test=TBK[k];if(!test)return;
-      if(test.ybt){if(d.lsiAuto!=null)out.push({label:test.label,pct:Math.min(d.lsiAuto,100),valueText:d.lsiAuto+'%',status:lsiSt(d.lsiAuto)});return;}
-      if(!test.bilateral){
-        var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);
-        var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);
-        if(lsi!=null)out.push({label:test.label,pct:Math.min(lsi,100),valueText:lsi+'%',status:lsiSt(lsi)});
-      }else{
-        var kpi2=test.kpis.filter(function(x){return x.key==='rsi'||x.key==='rsi_mod';})[0]||test.kpis[0];
-        var val=bestVal((d.trials||{})[kpi2.key],kpi2.dir);
-        if(val!=null){var st=computeTestStatus(k,d);if(st)out.push({label:test.label,pct:Math.min(val/2*100,100),valueText:val,status:st});}
-      }
-    });
-    return out;
+  function kpiCard(icon,label,mainTxt,mainCol,subTxt){
+    return '<div style="background:#fff;border:1px solid #E1E8EE;border-radius:10px;padding:12px 13px">'
+      +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:11pt">'+icon+'</span><span style="color:#5B7A8C;font-size:7pt;font-weight:800;text-transform:uppercase;letter-spacing:0.03em">'+label+'</span></div>'
+      +'<div style="font-size:15pt;font-weight:900;color:'+mainCol+'">'+mainTxt+'</div>'
+      +(subTxt?'<div style="font-size:7.5pt;color:#5B7A8C;margin-top:5px;line-height:1.4">'+subTxt+'</div>':'')
+      +'</div>';
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  var html='<div class="print-page" style="background:#EEF2F5">';
+  // ══════════════════════════════════════ PAGE 1 ═══════════════════════════════════════
+  var html='<div class="print-page" style="background:#EEF2F5;padding:0;display:flex">';
 
-  // Header
-  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">'
-    +'<div><div style="font-weight:900;font-size:17pt;color:#1B4F6A;letter-spacing:-0.02em">KINEXUS</div><div style="font-size:8pt;color:#2A9D8F;font-weight:700;letter-spacing:0.12em">BILAN SPORTIF</div></div>'
-    +'<div style="text-align:right;font-size:7.5pt;color:#5B7A8C;line-height:1.6"><div><strong style="color:#1B4F6A">SPORT</strong> &nbsp;'+(athlete.sport||'—')+'</div><div><strong style="color:#1B4F6A">NIVEAU</strong> &nbsp;'+(athlete.niveau||'—')+'</div><div><strong style="color:#1B4F6A">DATE</strong> &nbsp;'+dateStr+'</div></div>'
+  // Sidebar
+  html+='<div style="width:170px;flex-shrink:0;background:#0A1E2D;color:#fff;padding:22px 16px;box-sizing:border-box">'
+    +'<div style="font-weight:900;font-size:13pt;letter-spacing:-0.02em;margin-bottom:22px">KINEXUS</div>'
+    +'<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.12);border:2px solid rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:16pt;font-weight:800;margin-bottom:10px">'+athlete.prenom[0]+athlete.nom[0]+'</div>'
+    +'<div style="font-weight:800;font-size:12pt;line-height:1.3">'+athlete.prenom+' '+athlete.nom+'</div>'
+    +'<div style="font-size:8pt;color:rgba(255,255,255,0.6);margin-top:2px">'+(athlete.sport||'—')+(athlete.poste?' · '+athlete.poste:'')+'</div>'
+    +'<div style="display:inline-block;font-size:7.5pt;color:#2A9D8F;font-weight:700;margin-top:8px;padding:3px 9px;background:rgba(42,157,143,0.2);border-radius:20px">'+bilan.type+' · '+bilan.sousType+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:16px">'
+    +[['Âge',age?age+' ans':'—'],['Sexe',athlete.sexe||'—'],['Taille',athlete.taille?athlete.taille+' cm':'—'],['Poids',athlete.poids?athlete.poids+' kg':'—']].map(function(s){return '<div style="background:rgba(255,255,255,0.07);border-radius:6px;padding:6px 7px"><div style="font-size:6.5pt;color:rgba(255,255,255,0.5);text-transform:uppercase;font-weight:700">'+s[0]+'</div><div style="font-size:9.5pt;font-weight:700;margin-top:1px">'+s[1]+'</div></div>';}).join('')
+    +'</div>'
+    +'<div style="margin-top:16px;font-size:7pt;color:rgba(255,255,255,0.45);text-transform:uppercase;font-weight:700;letter-spacing:0.05em">Date du bilan</div>'
+    +'<div style="font-size:9pt;margin-top:2px">'+dateStr+'</div>'
+    +'<div style="margin-top:12px;font-size:7pt;color:rgba(255,255,255,0.45);text-transform:uppercase;font-weight:700;letter-spacing:0.05em">Normes</div>'
+    +'<div style="font-size:8pt;margin-top:2px;color:'+(athlete.normPopulation?'#2A9D8F':'rgba(255,255,255,0.6)')+'">'+(athlete.normPopulation?((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):'Seuils génériques')+'</div>'
+    +'<div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.12);font-size:7.5pt;color:rgba(255,255,255,0.5);line-height:1.5">Bilan réalisé par<br/><strong style="color:#fff">KINEXUS CLINIC</strong></div>'
     +'</div>';
 
-  // Identity + objectif row
-  html+='<div style="display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap">';
-  html+=panel(
-    '<div style="display:flex;align-items:center;gap:12px">'
-    +'<div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#2A9D8F55,#1B4F6A88);border:2px solid #2A9D8F55;display:flex;align-items:center;justify-content:center;color:#1B4F6A;font-weight:800;font-size:15pt;flex-shrink:0">'+athlete.prenom[0]+athlete.nom[0]+'</div>'
-    +'<div><div style="font-weight:800;font-size:12.5pt;color:#132B3A">'+athlete.prenom+' '+athlete.nom+'</div>'
-    +'<div style="font-size:8.5pt;color:#5B7A8C;margin-top:2px">'+(athlete.sport||'—')+(athlete.poste?' · '+athlete.poste:'')+' · '+(athlete.niveau||'—')+'</div>'
-    +'<div style="font-size:8.5pt;color:#5B7A8C;margin-top:1px">'+bilan.type+' · '+bilan.sousType+(age?' · '+age+' ans':'')+'</div>'
-    +'<div style="font-size:7.5pt;color:#2A9D8F;font-weight:700;margin-top:4px">'+(athlete.normPopulation?'📊 Normes : '+((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):'Seuils génériques (aucune population de référence)')+'</div></div>'
-    +'</div>',
-    'flex:1.3;min-width:220px'
-  );
-  html+=panel(
-    '<div style="font-size:7pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5B7A8C;margin-bottom:4px">Objectif du bilan</div>'
-    +'<div style="font-weight:800;font-size:11pt;color:#2A9D8F;margin-bottom:4px">'+bilan.type+'</div>'
-    +'<div style="font-size:8.5pt;color:#444;line-height:1.5">'+objectifTxt+'</div>',
-    'flex:1;min-width:200px'
-  );
-  html+='</div>';
+  // Main content (page 1)
+  html+='<div style="flex:1;min-width:0;padding:22px 26px;box-sizing:border-box">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">'
+    +'<div><div style="font-weight:900;font-size:16pt;color:#132B3A;letter-spacing:-0.01em">BILAN FONCTIONNEL</div><div style="font-size:9pt;color:#2A9D8F;font-weight:700;letter-spacing:0.1em;margin-top:1px">SYNTHÈSE CLINIQUE</div></div>'
+    +'<div style="text-align:right"><div style="font-size:7.5pt;color:#5B7A8C">DATE DU BILAN</div><div style="font-size:9pt;font-weight:700;color:#132B3A;margin-bottom:6px">'+dateStr+'</div><span style="background:#0A1E2D;color:#fff;font-size:8pt;font-weight:700;padding:4px 12px;border-radius:14px">PAGE 1/2</span></div>'
+    +'</div>';
 
-  // ── Section 1 ──
-  html+='<div style="margin-bottom:18px">'+sectionTitle(1,'Profil fonctionnel KINEXUS');
-  html+=panel(
-    gaugeGridHTML(evFns,fSc)
-    +'<div style="font-size:8.5pt;color:#444;line-height:1.55;margin-top:12px;padding-top:10px;border-top:1px solid #EEF2F5">'+globalDesc+'</div>'
-  );
-  html+='</div>';
-
-  // ── Section 2 : body map ──
-  html+='<div style="margin-bottom:18px">'+sectionTitle(2,'Body Map');
-  html+=panel(
-    '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;justify-content:center">'
-    +'<div style="flex:0 0 auto;max-width:420px;margin:0 auto;width:100%">'+muscleMapHTML(sysSc,{width:420})+muscleMapChipsHTML(sysSc)+'</div>'
+  // Retour au sport + texte déficit + 3 mini KPI
+  html+='<div style="display:flex;gap:14px;margin-bottom:16px;align-items:stretch">'
+    +panel(
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px"><span>🏃</span><span style="color:#5B7A8C;font-size:7.5pt;font-weight:800;text-transform:uppercase;letter-spacing:0.03em">Retour au sport</span></div>'
+      +(rtp?'<div style="font-size:30pt;font-weight:900;color:'+colMap[rtp.status]+';line-height:1">'+rtp.ratio+'%</div><div style="font-weight:800;font-size:9.5pt;color:'+colMap[rtp.status]+';letter-spacing:0.03em;margin-top:2px">'+(rtp.status==='vert'?'PRÊT':rtp.status==='jaune'?'À SURVEILLER':'NON PRÊT')+'</div><div style="height:3px;width:36px;background:'+colMap[rtp.status]+';border-radius:2px;margin:8px 0"></div><div style="font-size:7.5pt;color:'+(rtp.status==='vert'?'#5B7A8C':colMap.rouge)+'">'+(rtp.status==='vert'?'Reprise autorisée':'Reprise déconseillée à ce jour')+'</div><div style="font-size:7.5pt;color:#5B7A8C;margin-top:8px">Prochain point de contrôle :<br/><strong style="color:#132B3A">'+(rtp.status!=='vert'?'dans 4 à 6 semaines':'suivi standard')+'</strong></div>'
+        :'<div style="font-size:12pt;font-weight:800;color:#94A3B8">—</div><div style="font-size:7.5pt;color:#94A3B8;margin-top:4px">Aucun test RTP actif</div>'),
+      'flex:0 0 150px'
+    )
+    +panel('<div style="font-size:9.5pt;color:#132B3A;line-height:1.6;font-weight:600">'+globalDesc+'</div>'+(pri.length?'<div style="font-size:8.5pt;color:#5B7A8C;margin-top:8px;line-height:1.5">Poursuivre la rééducation ciblée avant la reprise des sports à changements d\'appuis.</div>':''),'flex:1.4;min-width:180px')
+    +'<div style="flex:1.3;min-width:200px;display:flex;flex-direction:column;gap:10px">'
+    +kpiCard('⚠️','Risque global',riskLevel,riskCol,riskSub)
+    +kpiCard('🎯','Priorité principale',pri[0]?(pri[0].contributeurPrincipal||pri[0].fonction).toUpperCase():'AUCUNE',pri[0]?colMap[pri[0].status]:colMap.vert,pri[0]?pri[0].hypothese:'Profil équilibré.')
     +'</div>'
-    +'<div style="margin-top:12px;padding:10px 12px;background:#F3F6F8;border-radius:8px;font-size:8.5pt;color:#333;line-height:1.5"><strong style="color:#1B4F6A">Lecture rapide — </strong>'+globalDesc+'</div>'
+    +kpiCard('📈',"Évolution vs dernier bilan",evolution?(evolution.delta>0?'+':'')+evolution.delta+'%':'—',!evolution||evolution.delta===0?'#94A3B8':evolution.delta>0?colMap.vert:colMap.rouge,evolution?new Date(evolution.prevDate).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' → '+new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'Premier bilan enregistré')
+    +'</div>';
+
+  // Body map + diagnostic clinique
+  html+='<div style="margin-bottom:16px">'+sectionTitle(2,'Body Map musculaire')
+    +'<div style="display:flex;gap:14px;align-items:stretch">'
+    +panel('<div style="display:flex;gap:14px;justify-content:center">'+muscleMapHTML(sysSc,{width:340})+'</div>','flex:1.6')
+    +panel(
+      '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Diagnostic clinique</div>'
+      +muscleScoreListHTML(),
+      'flex:1'
+    )
+    +'</div></div>';
+
+  // Priorités d'intervention (avec pourquoi / durée / tests de suivi)
+  if(pri.length>0){
+    html+='<div style="margin-bottom:16px">'+sectionTitle(3,"Priorités d'intervention")
+      +'<div style="display:grid;grid-template-columns:repeat('+Math.min(pri.length,3)+',1fr);gap:12px">'
+      +pri.slice(0,3).map(function(p){
+        var testsHtml=(p.deficitTests||[]).slice(0,3).map(function(dt){return '<span style="display:inline-block;padding:2px 7px;border-radius:10px;background:#F3F6F8;color:#132B3A;font-size:7pt;font-weight:600;margin:2px 3px 0 0">'+dt.label+'</span>';}).join('');
+        return panel(
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+          +'<div style="width:24px;height:24px;border-radius:50%;background:'+colMap[p.status]+';color:#fff;font-weight:900;font-size:11pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+p.rang+'</div>'
+          +'<div style="font-weight:800;font-size:9.5pt;color:#132B3A">'+p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:'')+'</div>'
+          +'</div>'
+          +'<div style="font-size:6.8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em">Pourquoi ?</div>'
+          +'<div style="font-size:8pt;color:#132B3A;margin-top:2px;margin-bottom:8px;line-height:1.4">'+p.hypothese+'</div>'
+          +'<div style="font-size:6.8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em">Durée estimée</div>'
+          +'<div style="font-size:8pt;color:#132B3A;margin-top:2px;margin-bottom:8px">4 à 6 semaines</div>'
+          +(testsHtml?'<div style="font-size:6.8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em">Tests de suivi</div><div style="margin-top:3px">'+testsHtml+'</div>':'')
+        );
+      }).join('')
+      +'</div></div>';
+  }
+
+  // Confiance de l'analyse
+  html+=panel(
+    '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">'
+    +'<div style="flex:0 0 160px"><div style="font-size:7.5pt;color:#5B7A8C;font-weight:700;text-transform:uppercase">Confiance de l\'analyse</div><div style="font-size:11pt;font-weight:900;color:'+confCol+';margin-top:2px">'+confLevel+'</div><div style="height:5px;width:110px;background:#EEF2F5;border-radius:3px;overflow:hidden;margin-top:5px"><div style="height:100%;width:'+confPct+'%;background:'+confCol+'"></div></div></div>'
+    +'<div style="flex:0 0 90px;text-align:center"><div style="font-size:15pt;font-weight:900;color:#132B3A">'+activeTestCount+'</div><div style="font-size:7pt;color:#5B7A8C;text-transform:uppercase;font-weight:700">Tests réalisés</div></div>'
+    +'<div style="flex:0 0 90px;text-align:center"><div style="font-size:15pt;font-weight:900;color:#132B3A">'+variableCount+'</div><div style="font-size:7pt;color:#5B7A8C;text-transform:uppercase;font-weight:700">Variables analysées</div></div>'
+    +'<div style="flex:1;min-width:180px;font-size:7.8pt;color:#5B7A8C;line-height:1.5">Analyse réalisée selon les normes de la population (âge, sexe et sport) sélectionnée pour cet athlète. Les résultats sont interprétés par le moteur expert KINEXUS.</div>'
+    +'</div>'
+  );
+  html+='</div>'; // end main content
+  html+='</div>'; // end print-page 1
+
+  // ══════════════════════════════════════ PAGE 2 ═══════════════════════════════════════
+  html+='<div class="print-page" style="background:#0A1E2D;padding:26px 30px;box-sizing:border-box">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">'
+    +'<div style="color:#fff;font-weight:900;font-size:13pt;letter-spacing:-0.02em">KINEXUS</div>'
+    +'<span style="background:rgba(255,255,255,0.12);color:#fff;font-size:8pt;font-weight:700;padding:4px 12px;border-radius:14px">PAGE 2/2</span>'
+    +'</div>';
+
+  // Preuves & analyses clés : qualités (barres /100) · asymétries (tableau) · chaîne causale + interprétation
+  html+=sectionTitle(2,'Preuves & analyses clés',true);
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:14px;margin-bottom:18px">';
+  html+=panel(
+    '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Qualités fonctionnelles</div>'
+    +evFns.map(function(f){
+      var st=fSc[f].status,pct=FN_GAUGE_PCT[st];
+      return '<div style="margin-bottom:9px">'
+        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span style="font-size:9pt">'+(FN_ICON[f]||'●')+'</span><span style="flex:1;font-size:8pt;font-weight:700;color:#132B3A">'+f+'</span><span style="font-size:7.5pt;color:#94A3B8">'+pct+'/100</span></div>'
+        +'<div style="height:6px;background:#EEF2F5;border-radius:20px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+colMap[st]+'"></div></div>'
+        +'</div>';
+    }).join('')
+  );
+  html+=panel(
+    '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Asymétries majeures</div>'
+    +(lsiItems.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucun test unipodal actif.</div>'
+      :'<div style="display:grid;grid-template-columns:1.4fr 0.7fr 0.7fr 0.6fr;gap:3px;font-size:6.5pt;font-weight:800;text-transform:uppercase;color:#94A3B8;padding-bottom:5px;border-bottom:1px solid #EEF2F5"><span>Test</span><span style="text-align:right">Côté G</span><span style="text-align:right">Côté D</span><span style="text-align:right">LSI</span></div>'
+      +lsiItems.slice(0,7).map(function(it){return '<div style="display:grid;grid-template-columns:1.4fr 0.7fr 0.7fr 0.6fr;gap:3px;align-items:center;padding:5px 0;border-bottom:1px solid #F3F6F8;font-size:7.5pt"><span style="color:#132B3A;font-weight:600">'+it.label+'</span><span style="text-align:right;color:#5B7A8C">'+it.gV+'</span><span style="text-align:right;color:#5B7A8C">'+it.dV+'</span><span style="text-align:right;font-weight:800;color:'+colMap[it.status]+'">'+it.lsi+'%</span></div>';}).join(''))
+  );
+  html+=panel(
+    '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Chaîne causale principale</div>'
+    +(causalSteps.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucune priorité identifiée.</div>'
+      :'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:10px">'+causalSteps.map(function(s,i){return (i>0?'<span style="color:#E1E8EE;font-size:11pt">&#8594;</span>':'')+'<div style="display:flex;flex-direction:column;align-items:center;text-align:center;width:62px"><div style="width:26px;height:26px;border-radius:50%;background:#F3F6F8;border:1px solid #E1E8EE;display:flex;align-items:center;justify-content:center;font-size:10pt;margin-bottom:3px">'+s.icon+'</div><div style="font-size:6.3pt;color:#132B3A;line-height:1.25">'+s.label+'</div></div>';}).join('')+'</div>')
+    +'<div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;padding-top:8px;border-top:1px solid #F3F6F8">Interprétation clinique</div>'
+    +'<div style="font-size:7.8pt;color:#132B3A;line-height:1.55">'+interpretationTxt+'</div>'
   );
   html+='</div>';
 
-  // ── Section 3 : symétrie ──
-  if(lsiItems.length>0){
-    html+='<div style="margin-bottom:18px">'+sectionTitle(3,'Comparaison Gauche / Droite — Tests unipodaux');
-    var barsHtml='<div style="display:flex;justify-content:space-between;padding:0 4px 8px;font-size:7pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5B7A8C">'
-      +'<span>◀ Gauche</span><span>Droite ▶</span></div>';
-    lsiItems.forEach(function(item){
-      var mx=Math.max(item.gV,item.dV)||1;
-      var gPct=Math.max(Math.min(Math.abs(item.gV)/mx*100,100),2);
-      var dPct=Math.max(Math.min(Math.abs(item.dV)/mx*100,100),2);
-      var col=colMap[item.status];
-      barsHtml+='<div style="margin-bottom:12px">'
-        +'<div style="display:flex;align-items:center;gap:6px">'
-        +'<div style="width:64px;text-align:right;font-size:8.3pt;font-weight:700;color:#132B3A;flex-shrink:0">'+item.gV+'</div>'
-        +'<div style="flex:1;display:flex;justify-content:flex-end;height:13px"><div style="height:100%;width:'+gPct+'%;background:'+col+'CC;border-radius:4px 0 0 4px"></div></div>'
-        +'<div style="width:138px;text-align:center;flex-shrink:0"><div style="font-size:7.8pt;font-weight:700;color:#1B4F6A">'+item.label+'</div><div style="font-size:7pt;color:'+col+';font-weight:800">'+item.lsi+'% LSI</div></div>'
-        +'<div style="flex:1;display:flex;justify-content:flex-start;height:13px"><div style="height:100%;width:'+dPct+'%;background:'+col+'CC;border-radius:0 4px 4px 0"></div></div>'
-        +'<div style="width:64px;text-align:left;font-size:8.3pt;font-weight:700;color:#132B3A;flex-shrink:0">'+item.dV+'</div>'
-        +'</div>'
-        +(item.unit?'<div style="text-align:center;font-size:6.5pt;color:#8FAAB8;margin-top:1px">'+item.unit+'</div>':'')
-        +'</div>';
-    });
-    barsHtml+='<div style="display:flex;gap:12px;justify-content:center;margin-top:10px;padding-top:8px;border-top:1px solid #E1E8EE;font-size:7pt;color:#5B7A8C">'
-      +'<span>'+badge('vert','≥95% Optimal')+'</span><span>'+badge('jaune','90-94,9% À surveiller')+'</span><span>'+badge('orange','80-89,9% Déficitaire')+'</span><span>'+badge('rouge','<80% Critique')+'</span>'
-      +'</div>';
-    html+=panel(barsHtml);
-    html+='</div>';
-  }
-
-  // ── Section 4 : priorités ──
-  html+='<div style="margin-bottom:18px">'+sectionTitle(4,"Priorités d'intervention");
-  if(pri.length===0){html+=panel('<span style="color:#666;font-size:10pt">Aucun déficit fonctionnel majeur identifié. Profil équilibré.</span>');}
-  else{
-    var priHtml='';
-    pri.forEach(function(p){
-      var col=colMap[p.status];
-      priHtml+='<div style="border-left:4px solid '+col+';padding:10px 14px;border-radius:0 8px 8px 0;background:#F8FAFB;margin-bottom:10px">'
-        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-        +'<div style="width:22px;height:22px;border-radius:50%;background:'+col+';color:#fff;font-weight:800;font-size:11pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+p.rang+'</div>'
-        +'<strong style="font-size:11.5pt;color:#132B3A">'+p.fonction+'</strong>'
-        +(p.contributeurPrincipal?'<span style="font-size:8.5pt;color:#5B7A8C"> — '+p.contributeurPrincipal+'</span>':'')
-        +'</div>';
-      if(p.deficitTests&&p.deficitTests.length>0){
-        priHtml+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">';
-        p.deficitTests.forEach(function(dt){priHtml+='<span style="padding:2px 8px;border-radius:12px;background:'+bgMap[dt.status]+';color:'+txtMap[dt.status]+';font-size:7.5pt;font-weight:600">'+dt.label+'</span>';});
-        if(p.okTests&&p.okTests.length>0){p.okTests.forEach(function(lbl){priHtml+='<span style="padding:2px 8px;border-radius:12px;background:#d1fae5;color:#065f46;font-size:7.5pt;font-weight:600;opacity:0.85">'+lbl+' &#10003;</span>';});}
-        priHtml+='</div>';
-      }
-      priHtml+=rootCausesHTML(p.rootCauses,p.rootCauseTest,p.rootCauseKpi)
-        +'<div style="font-size:9pt;color:#444;font-style:italic;margin-bottom:6px">&#171; '+p.hypothese+' &#187;</div>'
-        +'<div style="font-size:9pt;color:#333"><strong style="color:'+col+'">Orientation : </strong>'+p.orientation+'</div>'
-        +(p.compensations&&p.compensations.length>0?'<div style="font-size:8.5pt;color:#666;margin-top:5px;padding-top:5px;border-top:1px solid #eee"><strong style="color:#9a3412">Compensations attendues : </strong>'+p.compensations.join(' ')+'</div>':'')
-        +'</div>';
-    });
-    priHtml+=causalChainHtml();
-    html+=panel(priHtml);
-  }
-  html+='</div>';
-
-  // ── Section 5 : retour au sport ──
-  html+='<div style="margin-bottom:18px">'+sectionTitle(5,'Retour au sport');
-  if(rtp){
-    var rtpCol=colMap[rtp.status];
-    var checklist=rtpChecklist();
-    var checklistHtml='';
-    checklist.forEach(function(it){checklistHtml+='<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #EEF2F5;font-size:8.3pt;color:#333"><span>'+it.label+'</span>'+checkIcon(it.state)+'</div>';});
-    html+=panel(
-      '<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">'
-      +'<div style="flex:0 0 160px">'
-      +'<div style="font-size:26pt;font-weight:900;color:'+rtpCol+'">'+rtp.ratio+'%</div>'
-      +'<div style="font-weight:700;font-size:10pt;color:'+rtpCol+';margin-bottom:8px">'+rtp.label+'</div>'
-      +'<div style="height:8px;background:#EEF2F5;border-radius:5px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:'+rtp.ratio+'%;background:'+rtpCol+'"></div></div>'
-      +'<div style="font-size:8pt;color:#5B7A8C">Tests RTP réussis : <strong style="color:#333">'+rtp.passCount+'/'+rtp.totalCount+'</strong></div>'
-      +(rtp.aclScore!=null?'<div style="font-size:8pt;color:#5B7A8C;margin-top:2px">ACL-RSI : <strong style="color:#333">'+rtp.aclScore+'/100</strong></div>':'')
-      +'</div>'
-      +'<div style="flex:1;min-width:220px">'
-      +'<div style="font-size:7pt;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5B7A8C;margin-bottom:6px">Critères</div>'
-      +checklistHtml
-      +'</div>'
-      +'</div>'
-      +(rtp.status!=='vert'?'<div style="margin-top:10px;font-size:8pt;color:#5B7A8C">&#128197; Réévaluation recommandée dans 4 à 6 semaines.</div>':'')
-    );
+  // Recommandations (Renforcer / Développer / Intégrer)
+  html+=sectionTitle(3,'Recommandations',true);
+  var recVerbs=[{icon:'💪',verb:'Renforcer'},{icon:'✨',verb:'Développer'},{icon:'🏃',verb:'Intégrer'}];
+  html+='<div style="display:grid;grid-template-columns:repeat('+Math.min(Math.max(pri.length,1),3)+',1fr);gap:14px;margin-bottom:18px">';
+  if(pri.length===0){
+    html+=panel('<div style="color:#5B7A8C;font-size:9pt">Profil équilibré : aucune recommandation ciblée nécessaire au-delà du suivi standard.</div>');
   }else{
-    html+=panel('<span style="color:#666;font-size:9.5pt">Activez des tests fonctionnels (hop tests, CMJ, drop jump…) pour calculer le statut de retour au sport.</span>');
+    html+=pri.slice(0,3).map(function(p,i){
+      var rv=recVerbs[i]||recVerbs[0];
+      return panel(
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:15pt">'+rv.icon+'</span><span style="font-weight:800;font-size:10pt;color:#132B3A;text-transform:uppercase">'+rv.verb+'</span></div>'
+        +'<div style="font-size:8.3pt;color:#333;line-height:1.5;margin-bottom:10px">'+p.orientation+'</div>'
+        +'<span style="display:inline-block;padding:3px 10px;border-radius:14px;background:'+bgMap[p.status]+';color:'+txtMap[p.status]+';font-size:7.5pt;font-weight:700">Priorité '+p.rang+'</span>'
+      );
+    }).join('');
   }
   html+='</div>';
 
-  // ── Section 6 : indicateurs clés ──
-  var indicators=indicatorItems();
-  if(indicators.length>0){
-    html+='<div style="margin-bottom:6px">'+sectionTitle(6,'Indicateurs clés');
-    var gridHtml='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
-    indicators.forEach(function(it){
-      var col=colMap[it.status]||'#94a3b8';
-      gridHtml+='<div style="text-align:center;background:#F8FAFB;border-radius:10px;padding:10px 6px">'
-        +gaugeSVG(it.pct,col,it.valueText)
-        +'<div style="font-size:7.5pt;color:#444;font-weight:600;margin-top:4px">'+it.label+'</div>'
-        +(it.status?badge(it.status):'')
-        +'</div>';
-    });
-    gridHtml+='</div>';
-    html+=panel(gridHtml);
-    html+='</div>';
-  }
+  // Informations pratiques
+  html+=sectionTitle(4,'Informations pratiques',true);
+  var checklist=rtpChecklist();
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">';
+  html+=panel(
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:12pt">📅</span><span style="font-size:7.5pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em">Prochaine évaluation conseillée</span></div>'
+    +'<div style="font-weight:800;font-size:10pt;color:#132B3A;margin-bottom:6px">'+(rtp&&rtp.status==='vert'?'Suivi standard':'Dans 4 à 6 semaines')+'</div>'
+    +'<div style="font-size:7.8pt;color:#5B7A8C;line-height:1.5">Ajuster le programme en fonction de l\'évolution des capacités.</div>'
+  );
+  html+=panel(
+    '<div style="font-size:7.5pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:8px">Critères de progression</div>'
+    +(checklist.length===0?'<div style="color:#94A3B8;font-size:8pt">Activez des tests RTP pour définir des critères.</div>'
+      :checklist.slice(0,5).map(function(it){return '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:6px;font-size:7.8pt;color:#132B3A;line-height:1.35"><span style="color:'+(it.state==='ok'?colMap.vert:it.state==='mid'?colMap.jaune:'#CBD5E1')+';flex-shrink:0;font-weight:900">'+(it.state==='ok'?'✓':'○')+'</span><span>'+it.label+'</span></div>';}).join(''))
+  );
+  html+=panel(
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:12pt">🩺</span><span style="font-size:7.5pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em">Note au médecin / chirurgien</span></div>'
+    +'<div style="font-size:7.8pt;color:#132B3A;line-height:1.55">Ce bilan a été réalisé dans le cadre du suivi fonctionnel post-blessure. N\'hésitez pas à nous contacter pour toute question.</div>'
+  );
+  html+='</div>';
 
   // Footer
-  html+='<div style="margin-top:8px;background:#0A1E2D;border-radius:10px;padding:14px 20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between">'
-    +'<div style="color:#fff;font-weight:900;font-size:12pt;letter-spacing:-0.02em">KINEXUS</div>'
-    +'<div style="display:flex;gap:24px;flex-wrap:wrap">'
-    +statCol('ATHLÈTE',athlete.prenom+' '+athlete.nom)
-    +statCol('SPORT',athlete.sport||'—')
-    +statCol('NIVEAU',athlete.niveau||'—')
-    +statCol('DATE DU BILAN',dateStr)
-    +'</div></div>';
-  html+='<div style="text-align:center;color:#94a3b8;font-size:7.3pt;margin-top:6px">Ce rapport est confidentiel et destiné au sportif et aux professionnels de santé.'+(athlete.normPopulation&&NORM_SOURCES[athlete.normPopulation]?' — Source des normes : '+NORM_SOURCES[athlete.normPopulation]+'.':'')+'</div>';
+  html+='<div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.12);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'
+    +'<div style="color:#fff;font-weight:900;font-size:11pt;letter-spacing:-0.02em">KINEXUS CLINIC</div>'
+    +'<div style="color:rgba(255,255,255,0.55);font-size:7.5pt">'+(athlete.normPopulation&&NORM_SOURCES[athlete.normPopulation]?'Source des normes : '+NORM_SOURCES[athlete.normPopulation]:'Ce rapport est confidentiel et destiné au sportif et aux professionnels de santé.')+'</div>'
+    +'</div>';
+  html+='</div>'; // end print-page 2
 
-  html+='</div>'; // end print-page
   return html;
 }
-
 function buildExpertReport(athlete,bilan,res){
   var fSc=res.functionScores,sysSc=res.systemScores,tSt=res.testStatuses,pri=res.priorities,rtp=res.rtpStatus;
   var td=bilan.testData||{};
