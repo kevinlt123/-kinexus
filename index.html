@@ -2116,11 +2116,11 @@ function AnalyseView(props){
             evFns.length===0
               ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction évaluée.'))
               :h(Card,{pad:'6px 14px'},evFns.map(function(f,i){
-                var sc=fSc[f];var status=sc.status;var tier=FN_TIER[status]||0;
+                var sc=fSc[f];var status=sc.status;var pct=FN_GAUGE_PCT[status]||0;
                 return h('div',{key:f,style:{display:'flex',alignItems:'center',gap:8,padding:'9px 0',borderTop:i>0?'1px solid '+C.border:'none'}},
                   h('span',{style:{fontSize:14,flexShrink:0}},FN_ICON[f]||'●'),
-                  h('span',{style:{flex:1,minWidth:0,fontSize:11.5,fontWeight:700,color:C.text}},f),
-                  h('div',{style:{display:'flex',gap:3,flexShrink:0}},[1,2,3,4].map(function(t){return h('span',{key:t,style:{width:6,height:6,borderRadius:'50%',background:t<=tier?SC[status]:C.border}});})),
+                  h('span',{style:{width:76,flexShrink:0,fontSize:11.5,fontWeight:700,color:C.text}},f),
+                  h('div',{style:{flex:1,height:7,background:C.border,borderRadius:20,overflow:'hidden'}},h('div',{style:{height:'100%',width:pct+'%',background:SC[status],borderRadius:20}})),
                   h('span',{style:{fontSize:9.5,fontWeight:800,color:SC[status],flexShrink:0,width:66,textAlign:'right'}},SL[status])
                 );
               }))
@@ -2147,10 +2147,14 @@ function AnalyseView(props){
                 var hasRouge=p.deficitTests&&p.deficitTests.some(function(dt){return dt.status==='rouge';});
                 var urgence=hasRouge?'Élevée':'Moyenne';
                 var urgCol=hasRouge?C.rouge:C.orange;
-                return h('div',{key:p.rang,style:{background:SBG[p.status],border:'1px solid '+SC[p.status]+'30',borderLeft:'3px solid '+SC[p.status],borderRadius:8,padding:'9px 11px'}},
-                  h('div',{style:{color:SC[p.status],fontSize:8,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase'}},'Priorité '+p.rang+' · '+(p.status==='rouge'?'Impact élevé':'Impact moyen')+' · Urgence '+urgence.toLowerCase()),
-                  h('div',{style:{color:C.text,fontWeight:800,fontSize:11.5,textTransform:'uppercase',marginTop:2}},p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:'')),
-                  h('div',{style:{color:C.muted,fontSize:10,lineHeight:1.4,marginTop:3}},p.hypothese)
+                var impact=p.status==='rouge'?'Élevé':'Moyen';
+                return h(Card,{key:p.rang,pad:'10px 12px'},
+                  h('div',{style:{display:'flex',alignItems:'center',gap:10}},
+                    h('div',{style:{width:26,height:26,borderRadius:'50%',background:SC[p.status],color:'#fff',fontWeight:900,fontSize:12,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}},p.rang),
+                    h('div',{style:{flex:1,minWidth:0,color:C.text,fontWeight:800,fontSize:12,textTransform:'uppercase',letterSpacing:'0.01em'}},p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:'')),
+                    h('div',{style:{textAlign:'center',flexShrink:0}},h('div',{style:{color:C.muted,fontSize:7,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em'}},'Impact'),h('div',{style:{color:SC[p.status],fontWeight:800,fontSize:10.5,marginTop:1}},impact)),
+                    h('div',{style:{textAlign:'center',flexShrink:0}},h('div',{style:{color:C.muted,fontSize:7,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em'}},'Urgence'),h('div',{style:{color:urgCol,fontWeight:800,fontSize:10.5,marginTop:1}},urgence))
+                  )
                 );
               }))
             )
