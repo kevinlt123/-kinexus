@@ -1985,6 +1985,26 @@ function AnalyseView(props){
   var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge);},[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
   var fSc=res.functionScores,sysSc=res.systemScores;
+  var pri=res.priorities||[];
+
+  // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).
+  var riskLevel=pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':pri.length?'FAIBLE':'FAIBLE';
+  var riskCol=riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;
+  var riskSub=pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';
+
+  // Évolution vs dernier bilan : delta de score fonctionnel moyen (FN_GAUGE_PCT) vs le bilan précédent du même athlète.
+  var evolution=null;
+  var priorBilans=(athlete.bilans||[]).filter(function(b){return b.id!==bilan.id&&new Date(b.date)<new Date(bilan.date);}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+  if(priorBilans.length>0){
+    var prevBilan=priorBilans[0];
+    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),athleteAge);
+    var commonFns=FUNCTIONS.filter(function(f){return res.functionScores[f]&&prevRes.functionScores[f];});
+    if(commonFns.length>0){
+      var curAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[res.functionScores[f].status];},0)/commonFns.length;
+      var prevAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[prevRes.functionScores[f].status];},0)/commonFns.length;
+      evolution={delta:Math.round(curAvg-prevAvg),prevDate:prevBilan.date};
+    }
+  }
 
   function doPrint(type){setShowPrintMenu(false);printReport(type,athlete,bilan,res);}
 
@@ -2026,7 +2046,41 @@ function AnalyseView(props){
     ),
     h('div',{style:{flex:1,minWidth:0,padding:'22px 24px 60px',boxSizing:'border-box'}},
       h('div',{style:{marginBottom:20}},
-        h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Profil fonctionnel global'),
+        h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Synthèse globale'),
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}},
+          h(Card,{pad:14},
+            h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+              h('span',{style:{fontSize:16}},'🏃'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Retour au sport')
+            ),
+            h('div',{style:{fontSize:26,fontWeight:900,color:res.rtpStatus?SC[res.rtpStatus.status]:C.muted}},res.rtpStatus?res.rtpStatus.ratio+'%':'—'),
+            h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'0.04em',color:res.rtpStatus?SC[res.rtpStatus.status]:C.muted,marginTop:1}},res.rtpStatus?(res.rtpStatus.status==='vert'?'PRÊT':res.rtpStatus.status==='jaune'?'À SURVEILLER':'NON PRÊT'):'NON ÉVALUÉ'),
+            h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6}},res.rtpStatus?'Tests RTP : '+res.rtpStatus.passCount+'/'+res.rtpStatus.totalCount:'Aucun test RTP actif')
+          ),
+          h(Card,{pad:14},
+            h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+              h('span',{style:{fontSize:16}},'⚠️'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Risque global')
+            ),
+            h('div',{style:{fontSize:20,fontWeight:900,color:riskCol,marginTop:5}},riskLevel),
+            h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6}},riskSub)
+          ),
+          h(Card,{pad:14},
+            h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+              h('span',{style:{fontSize:16}},'🎯'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Priorité principale')
+            ),
+            h('div',{style:{fontSize:18,fontWeight:900,color:pri[0]?SC[pri[0].status]:C.vert,marginTop:5,textTransform:'uppercase'}},pri[0]?(pri[0].contributeurPrincipal||pri[0].fonction):'AUCUNE'),
+            h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6,lineHeight:1.4}},pri[0]?pri[0].hypothese:'Profil équilibré, aucun déficit majeur.')
+          ),
+          h(Card,{pad:14},
+            h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+              h('span',{style:{fontSize:16}},evolution&&evolution.delta<0?'📉':'📈'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Évolution vs dernier bilan')
+            ),
+            h('div',{style:{fontSize:26,fontWeight:900,color:!evolution||evolution.delta===0?C.muted:evolution.delta>0?C.vert:C.rouge}},evolution?(evolution.delta>0?'+':'')+evolution.delta+'%':'—'),
+            h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6}},evolution?new Date(evolution.prevDate).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' → '+new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'Premier bilan enregistré')
+          )
+        )
+      ),
+      h('div',{style:{marginBottom:20}},
+        h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'02 · Profil fonctionnel global'),
         h('div',{style:{display:'grid',gridTemplateColumns:'1.5fr 1fr',gap:16,alignItems:'stretch'}},
           evFns.length===0
             ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction évaluée.'))
