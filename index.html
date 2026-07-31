@@ -29,18 +29,18 @@ input[type=number]::-webkit-inner-spin-button{opacity:.6;}
   .print-card{background:#f8f9fa!important;border:1px solid #ddd!important;border-radius:8px;padding:12px;margin-bottom:10px;}
   .print-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:700;font-size:9pt;}
   .print-badge.vert{background:#d1fae5;color:#065f46;}
-  .print-badge.jaune{background:#fef3c7;color:#92400e;}
+  .print-badge.jaune{background:#FEF9C3;color:#A16207;}
   .print-badge.orange{background:#ffedd5;color:#9a3412;}
   .print-badge.rouge{background:#fee2e2;color:#991b1b;}
   .print-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
   .print-dot.vert{background:#22c55e;}
-  .print-dot.jaune{background:#eab308;}
+  .print-dot.jaune{background:#FACC15;}
   .print-dot.orange{background:#f97316;}
   .print-dot.rouge{background:#ef4444;}
   .print-fn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .print-fn-item{padding:8px 10px;border-radius:6px;display:flex;align-items:center;justify-content:space-between;}
   .print-fn-item.vert{background:#d1fae5;}
-  .print-fn-item.jaune{background:#fef3c7;}
+  .print-fn-item.jaune{background:#FEF9C3;}
   .print-fn-item.orange{background:#ffedd5;}
   .print-fn-item.rouge{background:#fee2e2;}
   h1,h2,h3{color:#111;}
@@ -70,7 +70,7 @@ input[type=number]::-webkit-inner-spin-button{opacity:.6;}
 var h=React.createElement,useState=React.useState,useEffect=React.useEffect,useRef=React.useRef,useMemo=React.useMemo;
 
 // ── TOKENS ──────────────────────────────────────────────────────────────────
-var C={bg:'#EEF2F5',surface:'#F3F6F8',card:'#FFFFFF',border:'#E1E8EE',petrol:'#1B4F6A',teal:'#2A9D8F',tealLight:'#12897C',text:'#132B3A',muted:'#5B7A8C',vert:'#22C55E',jaune:'#FCAD14',orange:'#F97316',rouge:'#EF4444',blue:'#2563EB',vertBg:'rgba(34,197,94,0.14)',jauneBg:'rgba(252,173,20,0.16)',orangeBg:'rgba(249,115,22,0.14)',rougeBg:'rgba(239,68,68,0.14)'};
+var C={bg:'#EEF2F5',surface:'#F3F6F8',card:'#FFFFFF',border:'#E1E8EE',petrol:'#1B4F6A',teal:'#2A9D8F',tealLight:'#12897C',text:'#132B3A',muted:'#5B7A8C',vert:'#22C55E',jaune:'#FACC15',orange:'#F97316',rouge:'#EF4444',blue:'#2563EB',vertBg:'rgba(34,197,94,0.14)',jauneBg:'rgba(250,204,21,0.16)',orangeBg:'rgba(249,115,22,0.14)',rougeBg:'rgba(239,68,68,0.14)'};
 var C_D=C.orange,C_G=C.blue;
 var SC={vert:C.vert,jaune:C.jaune,orange:C.orange,rouge:C.rouge};
 var SBG={vert:C.vertBg,jaune:C.jauneBg,orange:C.orangeBg,rouge:C.rougeBg};
@@ -679,7 +679,7 @@ var VAR_REL3={"wblt_distance":{"test":"wblt","kpi":"distance","category":"Mobili
 var MECHANISMS=["PRODUCTION_FORCE_MAXIMALE", "DEVELOPPEMENT_FORCE_RAPIDE", "PROPULSION_VERTICALE", "PROPULSION_HORIZONTALE", "PROPULSION_DISTALE", "PROPULSION_PROXIMALE", "SSC_RAPIDE", "SSC_LENT", "RESTITUTION_ENERGIE_ELASTIQUE", "RIGIDITE_MEMBRE_INFERIEUR", "RIGIDITE_CHEVILLE", "CONTROLE_EXCENTRIQUE", "CONTROLE_FRONTAL", "STABILISATION_POSTURALE", "CHAINE_CINETIQUE_PROXIMO_DISTALE", "ENDURANCE_MUSCULAIRE_LOCALE", "MOBILITE_FONCTIONNELLE", "SYMETRIE_INTER_MEMBRES"];
 // Capacites fonctionnelles (CAP001-004) : qualites contributrices ponderees, issues du referentiel clinique.
 var CAPACITES_DATA={"SAUT":{"label":"Saut","sousCapacites":[{"name":"Production verticale","qualitesContributrices":[{"quality":"Puissance","poids":"Determinante"},{"quality":"Propulsion","poids":"Determinante"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Explosivité","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]},{"name":"Efficacité du saut","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Stabilisation","poids":"Moderee"}]},{"name":"Sécurité du saut","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Force maximale","poids":"Moderee"}]}]},"ACCELERATION":{"label":"Accélération","sousCapacites":[{"name":"Production initiale de force","qualitesContributrices":[{"quality":"Force maximale","poids":"Determinante"},{"quality":"Explosivité","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Propulsion","poids":"Moderee"}]},{"name":"Propulsion dynamique","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Contrôle moteur","poids":"Moderee"}]},{"name":"Efficacité mécanique","qualitesContributrices":[{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Stabilisation","poids":"Majeure"},{"quality":"Propulsion","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]}]},"RECEPTION":{"label":"Réception","sousCapacites":[{"name":"Dissipation des contraintes","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Stabilisation","poids":"Majeure"},{"quality":"Contrôle moteur","poids":"Moderee"}]},{"name":"Contrôle de la réception","qualitesContributrices":[{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Absorption","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]},{"name":"Transition motrice","qualitesContributrices":[{"quality":"Réactivité","poids":"Determinante"},{"quality":"Propulsion","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Puissance","poids":"Moderee"}]}]},"CHANGEMENT_DE_DIRECTION":{"label":"Changement de direction","sousCapacites":[{"name":"Décélération","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Puissance","poids":"Moderee"}]},{"name":"Réorientation","qualitesContributrices":[{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Absorption","poids":"Majeure"},{"quality":"Propulsion","poids":"Moderee"}]},{"name":"Réaccélération","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Réactivité","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Explosivité","poids":"Majeure"},{"quality":"Force maximale","poids":"Moderee"}]}]}};
-var WCOL={Determinante:'#22C55E',Majeure:'#F97316',Moderee:'#EAB308',Mineure:'#94A3B8'};
+var WCOL={Determinante:'#22C55E',Majeure:'#F97316',Moderee:'#FACC15',Mineure:'#94A3B8'};
 function kpiStatus(testKey,kpiKey,testData,pop,age){
   var test=TBK[testKey];var data=(testData||{})[testKey];
   if(!test||!data||!data.active)return null;
@@ -1179,9 +1179,9 @@ function buildSportifReport(athlete,bilan,res){
   var dateStr=new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
   var age=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
 
-  var colMap={vert:'#22c55e',jaune:'#ca8a04',orange:'#f97316',rouge:'#ef4444'};
-  var bgMap={vert:'#d1fae5',jaune:'#fef3c7',orange:'#ffedd5',rouge:'#fee2e2'};
-  var txtMap={vert:'#065f46',jaune:'#854d0e',orange:'#9a3412',rouge:'#991b1b'};
+  var colMap={vert:'#22c55e',jaune:'#FACC15',orange:'#f97316',rouge:'#ef4444'};
+  var bgMap={vert:'#d1fae5',jaune:'#FEF9C3',orange:'#ffedd5',rouge:'#fee2e2'};
+  var txtMap={vert:'#065f46',jaune:'#A16207',orange:'#9a3412',rouge:'#991b1b'};
   var lblMap={vert:'Optimal',jaune:'À surveiller',orange:'Déficitaire',rouge:'Critique'};
   var SVAL={vert:90,jaune:70,orange:45,rouge:20};
   function badge(s,txt){return '<span style="display:inline-block;padding:2px 9px;border-radius:12px;font-weight:700;font-size:8.5pt;background:'+bgMap[s]+';color:'+txtMap[s]+'">'+(txt||lblMap[s])+'</span>';}
@@ -1321,7 +1321,7 @@ function buildSportifReport(athlete,bilan,res){
   }
   function checkIcon(state){
     if(state==='ok')return '<span style="color:#22c55e;font-weight:900">&#10003;</span>';
-    if(state==='mid')return '<span style="color:#ca8a04;font-weight:900">&#8212;</span>';
+    if(state==='mid')return '<span style="color:#FACC15;font-weight:900">&#8212;</span>';
     return '<span style="color:#ef4444;font-weight:900">&#10007;</span>';
   }
 
@@ -1551,7 +1551,7 @@ function buildExpertReport(athlete,bilan,res){
   pri.forEach(function(p){html+='<div class="print-card" style="margin-bottom:8px"><strong>'+p.fonction+'</strong><p style="margin:4px 0 0;font-style:italic;color:#444">'+p.hypothese+'</p>'+(p.contributeurPrincipal?'<p style="margin:4px 0 0;font-size:9pt;color:#666">Contributeur : '+p.contributeurPrincipal+(p.contributeurSecondaire?' · '+p.contributeurSecondaire:'')+'</p>':'')+'</div>';});
   html+='<div class="print-section-title" style="margin-top:12px">Orientations</div>';
   pri.forEach(function(p){html+='<div class="print-card"><strong>'+p.rang+'. '+p.fonction+'</strong><p style="margin:4px 0 0;color:#333">'+p.orientation+'</p></div>';});
-  if(rtp){var rtpCol=rtp.status==='vert'?'#22c55e':rtp.status==='jaune'?'#eab308':'#ef4444';html+='<div class="print-section-title" style="margin-top:12px">Statut RTP</div>';html+='<div class="print-rtp-box" style="border-color:'+rtpCol+'"><div style="font-size:13pt;font-weight:800;color:'+rtpCol+'">'+rtp.label+'</div><div style="font-size:9pt;color:#555;margin-top:3px">Tests RTP : '+rtp.passCount+'/'+rtp.totalCount+' ('+rtp.ratio+'%)'+(rtp.aclScore!=null?' · ACL-RSI : '+rtp.aclScore+'/100':'')+'</div></div>';}
+  if(rtp){var rtpCol=rtp.status==='vert'?'#22c55e':rtp.status==='jaune'?'#FACC15':'#ef4444';html+='<div class="print-section-title" style="margin-top:12px">Statut RTP</div>';html+='<div class="print-rtp-box" style="border-color:'+rtpCol+'"><div style="font-size:13pt;font-weight:800;color:'+rtpCol+'">'+rtp.label+'</div><div style="font-size:9pt;color:#555;margin-top:3px">Tests RTP : '+rtp.passCount+'/'+rtp.totalCount+' ('+rtp.ratio+'%)'+(rtp.aclScore!=null?' · ACL-RSI : '+rtp.aclScore+'/100':'')+'</div></div>';}
   html+='</div>';
   return html;
 }
@@ -1564,11 +1564,11 @@ function printReport(type,athlete,bilan,res){
     '.print-page:last-child{page-break-after:auto;}'+
     '.print-card{background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:10px;}'+
     '.print-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:700;font-size:9pt;}'+
-    '.print-badge.vert{background:#d1fae5;color:#065f46;}.print-badge.jaune{background:#fef3c7;color:#92400e;}'+
+    '.print-badge.vert{background:#d1fae5;color:#065f46;}.print-badge.jaune{background:#FEF9C3;color:#A16207;}'+
     '.print-badge.orange{background:#ffedd5;color:#9a3412;}.print-badge.rouge{background:#fee2e2;color:#991b1b;}'+
     '.print-fn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}'+
     '.print-fn-item{padding:8px 10px;border-radius:6px;display:flex;align-items:center;justify-content:space-between;}'+
-    '.print-fn-item.vert{background:#d1fae5;}.print-fn-item.jaune{background:#fef3c7;}'+
+    '.print-fn-item.vert{background:#d1fae5;}.print-fn-item.jaune{background:#FEF9C3;}'+
     '.print-fn-item.orange{background:#ffedd5;}.print-fn-item.rouge{background:#fee2e2;}'+
     '.print-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #2A9D8F;}'+
     '.print-logo{font-weight:900;font-size:18pt;color:#1B4F6A;letter-spacing:-0.02em;}'+
