@@ -1428,11 +1428,22 @@ function buildSportifReport(athlete,bilan,res){
   html+=panel(
     '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Asymétries majeures</div>'
     +(lsiItems.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucun test unipodal actif.</div>'
-      :lsiItems.slice(0,7).map(function(it){
-        return '<div style="margin-bottom:9px">'
-          +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span style="flex:1;font-size:8pt;font-weight:700;color:#132B3A">'+it.label+'</span><span style="font-size:7.5pt;font-weight:800;color:'+colMap[it.status]+'">'+it.lsi+'% LSI</span></div>'
-          +'<div style="height:6px;background:#EEF2F5;border-radius:20px;overflow:hidden"><div style="height:100%;width:'+Math.min(it.lsi,100)+'%;background:'+colMap[it.status]+'"></div></div>'
-          +'<div style="font-size:6.5pt;color:#94A3B8;margin-top:2px">G '+it.gV+(it.unit?' '+it.unit:'')+' · D '+it.dV+(it.unit?' '+it.unit:'')+'</div>'
+      :'<div style="display:flex;justify-content:space-between;padding:0 1px 6px;font-size:6.3pt;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:#94A3B8">'
+        +'<span>◀ Gauche</span><span>Droite ▶</span></div>'
+      +lsiItems.slice(0,6).map(function(it){
+        var mx=Math.max(it.gV,it.dV)||1;
+        var gPct=Math.max(Math.min(Math.abs(it.gV)/mx*100,100),4);
+        var dPct=Math.max(Math.min(Math.abs(it.dV)/mx*100,100),4);
+        var col=colMap[it.status];
+        return '<div style="margin-bottom:10px">'
+          +'<div style="display:flex;align-items:center;gap:4px">'
+          +'<span style="width:34px;text-align:right;font-size:7.3pt;font-weight:800;color:#132B3A;flex-shrink:0">'+it.gV+'</span>'
+          +'<div style="flex:1;display:flex;justify-content:flex-end;height:10px"><div style="height:100%;width:'+gPct+'%;background:'+col+';border-radius:4px 0 0 4px"></div></div>'
+          +'<span style="width:56px;text-align:center;flex-shrink:0;font-size:6.3pt;font-weight:800;color:'+col+'">'+it.lsi+'% LSI</span>'
+          +'<div style="flex:1;display:flex;justify-content:flex-start;height:10px"><div style="height:100%;width:'+dPct+'%;background:'+col+';border-radius:0 4px 4px 0"></div></div>'
+          +'<span style="width:34px;text-align:left;font-size:7.3pt;font-weight:800;color:#132B3A;flex-shrink:0">'+it.dV+'</span>'
+          +'</div>'
+          +'<div style="text-align:center;font-size:6.8pt;color:#132B3A;font-weight:600;margin-top:2px">'+it.label+'</div>'
           +'</div>';
       }).join(''))
   );
