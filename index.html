@@ -1191,6 +1191,8 @@ function buildSportifReport(athlete,bilan,res){
   var CARD_SHADOW='0 1px 3px rgba(15,35,55,0.05)';
   function badge(s,txt){return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-weight:700;font-size:8pt;background:'+bgMap[s]+';color:'+txtMap[s]+'">'+(txt||lblMap[s])+'</span>';}
   function sectionTitle(n,title,dark){return '<div style="display:flex;align-items:center;gap:11px;margin-bottom:20px"><span style="width:24px;height:24px;border-radius:7px;background:'+(dark?'#2A9D8F':'#1B4F6A')+';color:#fff;font-weight:800;font-size:10.5pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+n+'</span><span style="font-size:13.5px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:'+(dark?'#fff':'#1B4F6A')+'">'+title+'</span></div>';}
+  // Entête discret, sans numéro ni carré coloré — pour les blocs de niveau 3 qui ne doivent pas concurrencer les sections principales.
+  function subtleHeader(title,dark){return '<div style="font-size:9.5px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+(dark?'rgba(255,255,255,0.4)':'#B7C2CC')+';margin-bottom:16px">'+title+'</div>';}
   function panel(inner,extraStyle){return '<div style="background:#fff;border:'+CARD_BORDER+';border-radius:'+CARD_RADIUS+';padding:20px;box-shadow:'+CARD_SHADOW+';'+(extraStyle||'')+'">'+inner+'</div>';}
   function panelL1(inner,extraStyle){return '<div style="background:#fff;border:1px solid #EEF2F5;border-radius:18px;padding:26px;box-shadow:0 4px 16px rgba(15,35,55,0.07);'+(extraStyle||'')+'">'+inner+'</div>';}
   function panelL3(inner,extraStyle){return '<div style="background:#FAFBFC;border:1px solid #EEF1F4;border-radius:'+CARD_RADIUS+';padding:16px;'+(extraStyle||'')+'">'+inner+'</div>';}
@@ -1210,23 +1212,6 @@ function buildSportifReport(athlete,bilan,res){
   else{
     var top=pri[0],second=pri[1];
     globalDesc='Le bilan met en évidence un déficit prédominant '+(top.contributeurPrincipal?'du '+top.contributeurPrincipal.toLowerCase():'de '+top.fonction.toLowerCase())+' limitant les capacités de '+top.fonction.toLowerCase()+(second?' et de '+second.fonction.toLowerCase():'')+'.';
-  }
-
-  // ── Risque global / priorité principale / évolution (même logique que l'écran Analyse) ──
-  var riskLevel=pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':'FAIBLE';
-  var riskCol=riskLevel==='ÉLEVÉ'?colMap.rouge:riskLevel==='MODÉRÉ'?colMap.orange:colMap.vert;
-  var riskSub=pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';
-  var evolution=null;
-  var priorBilans=(athlete.bilans||[]).filter(function(b){return b.id!==bilan.id&&new Date(b.date)<new Date(bilan.date);}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
-  if(priorBilans.length>0){
-    var prevBilan=priorBilans[0];
-    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),age);
-    var commonFns=FUNCTIONS.filter(function(f){return fSc[f]&&prevRes.functionScores[f];});
-    if(commonFns.length>0){
-      var curAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[fSc[f].status];},0)/commonFns.length;
-      var prevAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[prevRes.functionScores[f].status];},0)/commonFns.length;
-      evolution={delta:Math.round(curAvg-prevAvg),prevDate:prevBilan.date};
-    }
   }
 
   // ── Asymétries (LSI) ──
@@ -1273,12 +1258,9 @@ function buildSportifReport(athlete,bilan,res){
   var interpretationTxt=pri.length===0?'Profil équilibré, aucune chaîne causale de déficit identifiée.'
     :'Le déficit '+(pri[0].contributeurPrincipal?'de '+pri[0].contributeurPrincipal.toLowerCase():'de '+pri[0].fonction.toLowerCase())+' entraîne une altération de la capacité de '+pri[0].fonction.toLowerCase()+(pri[1]?' et de '+pri[1].fonction.toLowerCase():'')+', augmentant le risque de blessure lors des situations de charge élevée et limitant la performance globale.';
 
-  // ── Confiance de l'analyse (dérivée de la couverture réelle par fonction) ──
+  // ── Couverture réelle du bilan (nombre de tests / variables actifs) ──
   var activeTestCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).length;
   var variableCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];}).reduce(function(s,k){return s+TBK[k].kpis.length;},0);
-  var avgCoverage=evFns.length?Math.round(evFns.reduce(function(s,f){return s+(fSc[f].coverage||0);},0)/evFns.length):0;
-  var confLevel=avgCoverage>=50?'ÉLEVÉ':avgCoverage>=25?'MODÉRÉ':'FAIBLE';
-  var confCol=confLevel==='ÉLEVÉ'?colMap.vert:confLevel==='MODÉRÉ'?colMap.jaune:colMap.orange;
 
   // ── Corps musculaire : statut par muscle + LSI réel si un test unipodal gouverne ce système
   // (aucun score inventé — soit le vrai LSI du test qui a servi à calculer le statut, soit rien).
@@ -1346,42 +1328,57 @@ function buildSportifReport(athlete,bilan,res){
   html+='<div style="font-size:9.5pt;color:#5B7A8C;font-weight:500;line-height:1.65;max-width:600px;margin-bottom:26px">Évaluation biomécanique multidimensionnelle combinant mesures objectives, analyse fonctionnelle et expertise clinique.</div>';
 
   html+=sectionTitle(1,'Suis-je prêt ?');
-  // Retour au sport (L1) + Résumé clinique (L1, signature du rapport) + KPI secondaires
+  // Retour au sport (L1) + Résumé clinique (L1, signature du rapport) + priorité principale (seul KPI conservé)
   var consequenceTxt=pri.length===0?'Aucune conséquence fonctionnelle significative identifiée à ce jour.':interpretationTxt;
-  var recommandationTxt=pri.length?'Poursuivre la rééducation ciblée avant la reprise des sports à changements d\'appuis.':'Poursuivre le suivi standard, aucune restriction particulière.';
-  html+='<div style="display:flex;gap:16px;margin-bottom:26px;align-items:stretch">'
+  var decisionTxt=rtp&&rtp.status==='vert'?'Retour au sport autorisé, aucune restriction particulière.':'Retour au sport non recommandé à ce jour ; poursuite de la rééducation ciblée nécessaire.';
+  var reevalTxt=rtp&&rtp.status!=='vert'?'Nouveau bilan conseillé dans 4 à 6 semaines.':'Suivi standard, prochaine évaluation selon planning habituel.';
+  html+='<div style="display:flex;gap:16px;margin-bottom:18px;align-items:stretch">'
     +panelL1(
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'+iconBadge('🏃')+'<span style="color:#5B7A8C;font-size:7.5pt;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Retour au sport</span></div>'
       +(rtp?'<div style="font-size:30pt;font-weight:900;color:'+colMap[rtp.status]+';line-height:1">'+rtp.ratio+'%</div><div style="font-weight:800;font-size:10pt;color:'+colMap[rtp.status]+';letter-spacing:0.03em;margin-top:6px">'+(rtp.status==='vert'?'PRÊT':rtp.status==='jaune'?'À SURVEILLER':'NON PRÊT')+'</div><div style="height:3px;width:32px;background:'+colMap[rtp.status]+';border-radius:2px;margin:12px 0"></div><div style="font-size:8pt;color:'+(rtp.status==='vert'?'#5B7A8C':colMap.rouge)+';line-height:1.5">'+(rtp.status==='vert'?'Reprise autorisée':'Reprise déconseillée à ce jour')+'</div><div style="font-size:7.5pt;color:#5B7A8C;margin-top:12px;line-height:1.5">Prochain point de contrôle :<br/><strong style="color:#132B3A">'+(rtp.status!=='vert'?'dans 4 à 6 semaines':'suivi standard')+'</strong></div>'
         :'<div style="font-size:12pt;font-weight:800;color:#94A3B8">—</div><div style="font-size:7.5pt;color:#94A3B8;margin-top:4px">Aucun test RTP actif</div>'),
       'flex:0 0 168px'
     )
-    +'<div style="flex:2;min-width:240px;background:#F8FAFC;border:1px solid #E7ECF1;border-left:6px solid #2A9D8F;border-radius:18px;padding:26px 28px;box-shadow:0 4px 16px rgba(15,35,55,0.07)">'
-    +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:16px">'+iconBadge('ℹ','#2A9D8F','rgba(42,157,143,0.12)')+'<span style="font-size:17px;font-weight:800;color:#132B3A">Résumé clinique</span></div>'
+    +'<div style="flex:2.3;min-width:260px;background:#F8FAFC;border:1px solid #E7ECF1;border-left:6px solid #2A9D8F;border-radius:18px;padding:28px 30px;box-shadow:0 4px 16px rgba(15,35,55,0.07)">'
+    +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:18px">'+iconBadge('ℹ','#2A9D8F','rgba(42,157,143,0.12)')+'<span style="font-size:17px;font-weight:800;color:#132B3A">Résumé clinique</span></div>'
     +'<div style="font-size:7.2pt;font-weight:800;color:#2A9D8F;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conclusion</div>'
-    +'<div style="font-size:13.5px;color:#132B3A;line-height:1.75;font-weight:600;margin-bottom:14px">'+globalDesc+'</div>'
-    +'<div style="font-size:7.2pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conséquences</div>'
-    +'<div style="font-size:12.5px;color:#334155;line-height:1.7;margin-bottom:14px">'+consequenceTxt+'</div>'
-    +'<div style="font-size:7.2pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Recommandation</div>'
-    +'<div style="font-size:12.5px;color:#334155;line-height:1.7">'+recommandationTxt+'</div>'
+    +'<div style="font-size:13.5px;color:#132B3A;line-height:1.75;font-weight:600;margin-bottom:15px">'+globalDesc+'</div>'
+    +'<div style="font-size:7.2pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Conséquences fonctionnelles</div>'
+    +'<div style="font-size:12.5px;color:#334155;line-height:1.7;margin-bottom:15px">'+consequenceTxt+'</div>'
+    +'<div style="font-size:7.2pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Décision</div>'
+    +'<div style="font-size:12.5px;color:#334155;line-height:1.7;margin-bottom:15px">'+decisionTxt+'</div>'
+    +'<div style="font-size:7.2pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Réévaluation conseillée</div>'
+    +'<div style="font-size:12.5px;color:#334155;line-height:1.7">'+reevalTxt+'</div>'
     +'</div>'
-    +'<div style="flex:1;min-width:170px;display:flex;flex-direction:column;gap:12px">'
-    +kpiCard('⚠️','Risque global',riskLevel,riskCol,riskSub)
-    +kpiCard('🎯','Priorité principale',pri[0]?(pri[0].contributeurPrincipal||pri[0].fonction).toUpperCase():'AUCUNE',pri[0]?colMap[pri[0].status]:colMap.vert,pri[0]?pri[0].hypothese:'Profil équilibré.')
-    +'</div>'
-    +'<div style="flex:1;min-width:150px">'+kpiCard('📈',"Évolution vs dernier bilan",evolution?(evolution.delta>0?'+':'')+evolution.delta+'%':'—',!evolution||evolution.delta===0?'#94A3B8':evolution.delta>0?colMap.vert:colMap.rouge,evolution?new Date(evolution.prevDate).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' → '+new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'Premier bilan enregistré')+'</div>'
+    +'<div style="flex:1;min-width:180px">'+kpiCard('🎯','Priorité principale',pri[0]?(pri[0].contributeurPrincipal||pri[0].fonction).toUpperCase():'AUCUNE',pri[0]?colMap[pri[0].status]:colMap.vert,pri[0]?pri[0].hypothese:'Profil équilibré.')+'</div>'
     +'</div>';
+
+  // Ce bilan repose sur — encart discret de crédibilité, juste sous le résumé clinique
+  html+=panelL3(
+    '<div style="font-size:7pt;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:11px">Ce bilan repose sur</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:9px 26px">'
+    +[
+        activeTestCount+' test'+(activeTestCount>1?'s':'')+' objectif'+(activeTestCount>1?'s':'')+' réalisé'+(activeTestCount>1?'s':''),
+        variableCount+' variable'+(variableCount>1?'s':'')+' biomécanique'+(variableCount>1?'s':'')+' analysée'+(variableCount>1?'s':''),
+        evFns.length+' qualité'+(evFns.length>1?'s':'')+' fonctionnelle'+(evFns.length>1?'s':'')+' évaluée'+(evFns.length>1?'s':''),
+        'Analyse des asymétries',
+        'Comparaison aux valeurs de référence',
+        'Validation clinique par votre praticien'
+      ].map(function(t){return '<span style="display:flex;align-items:center;gap:6px;font-size:7.5pt;color:#5B7A8C;font-weight:600"><span style="color:#2A9D8F;font-weight:900">✓</span>'+t+'</span>';}).join('')
+    +'</div>',
+    'margin-bottom:26px'
+  );
 
   // Body map + diagnostic clinique
   html+='<div style="margin-bottom:26px">'+sectionTitle(2,'Pourquoi ? Où ?')
     +'<div style="display:flex;gap:16px;align-items:stretch">'
-    +panelL1('<div style="display:flex;gap:14px;justify-content:center;padding:10px 4px">'+muscleMapHTML(sysSc,{width:390})+'</div>','flex:1.6')
+    +panelL1('<div style="display:flex;gap:14px;justify-content:center;padding:18px 8px">'+muscleMapHTML(sysSc,{width:480})+'</div>','flex:2.1')
     +panel(
       '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:12px">Déficits majeurs</div>'
       +muscleScoreListHTML(),
-      'flex:1'
+      'flex:0.85'
     )
-    +'<div style="flex:1;background:#0A1E2D;border-radius:'+CARD_RADIUS+';padding:20px;color:#fff;display:flex;flex-direction:column;box-shadow:'+CARD_SHADOW+'">'
+    +'<div style="flex:0.85;background:#0A1E2D;border-radius:'+CARD_RADIUS+';padding:20px;color:#fff;display:flex;flex-direction:column;box-shadow:'+CARD_SHADOW+'">'
     +'<div style="font-size:8pt;font-weight:800;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">Avis clinique</div>'
     +'<div style="flex:1;display:flex;flex-direction:column">'
     +causalSteps.map(function(s,i){
@@ -1407,32 +1404,25 @@ function buildSportifReport(athlete,bilan,res){
       +pri.slice(0,3).map(function(p){
         var testsHtml=(p.deficitTests||[]).slice(0,3).map(function(dt){return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#F3F6F8;color:#132B3A;font-size:7pt;font-weight:600;margin:2px 4px 0 0">'+dt.label+'</span>';}).join('');
         var objLsi=p.contributeurPrincipal?muscleLsiFor(p.contributeurPrincipal):null;
-        var impactTxt='Limite la capacité de '+p.fonction.toLowerCase()+(p.contributeurSecondaire?' et de '+p.contributeurSecondaire.toLowerCase():'')+'.';
-        var objTxt=objLsi?'LSI '+p.contributeurPrincipal+' ≥ 95%':'Retour à un profil équilibré';
+        var contribs=[p.contributeurPrincipal,p.contributeurSecondaire].filter(Boolean);
+        var objectifTxt=contribs.length?contribs.join(' · '):p.fonction;
+        var sortieTxt=objLsi?'LSI '+p.contributeurPrincipal+' ≥ 95%':'Retour à un profil équilibré';
         function field(ic,lbl,val){return '<div style="display:flex;gap:8px;margin-bottom:12px"><span style="font-size:9.5pt;flex-shrink:0;width:16px;text-align:center">'+ic+'</span><div><div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px">'+lbl+'</div><div style="font-size:8.5pt;color:#132B3A;line-height:1.5">'+val+'</div></div></div>';}
         return panel(
           '<div style="display:flex;align-items:center;gap:11px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #F3F6F8">'
           +'<div style="width:28px;height:28px;border-radius:50%;background:'+colMap[p.status]+';color:#fff;font-weight:900;font-size:12pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+p.rang+'</div>'
           +'<div style="font-weight:800;font-size:15px;color:#132B3A">'+p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:'')+'</div>'
           +'</div>'
+          +field('🎯','Objectif',objectifTxt)
           +field('🔍','Pourquoi ?',p.hypothese)
-          +field('⚡','Impact',impactTxt)
-          +field('🎯','Objectif',objTxt)
-          +(testsHtml?'<div style="display:flex;gap:8px"><span style="font-size:9.5pt;flex-shrink:0;width:16px;text-align:center">📋</span><div><div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px">Tests de suivi</div><div>'+testsHtml+'</div></div></div>':'')
+          +field('🛠️','Actions',p.orientation)
+          +(testsHtml?'<div style="display:flex;gap:8px;margin-bottom:12px"><span style="font-size:9.5pt;flex-shrink:0;width:16px;text-align:center">📋</span><div><div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px">Tests de suivi</div><div>'+testsHtml+'</div></div></div>':'')
+          +field('🏁','Critère de sortie',sortieTxt)
         );
       }).join('')
       +'</div></div>';
   }
 
-  // Confiance de l'analyse — information secondaire, discrète (niveau 3)
-  html+=panelL3(
-    '<div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">'
-    +'<div style="flex:0 0 160px"><div style="font-size:7pt;color:#94A3B8;font-weight:700;text-transform:uppercase">Confiance de l\'analyse</div><div style="font-size:10pt;font-weight:800;color:#5B7A8C;margin-top:3px">'+confLevel+'</div><div style="height:4px;width:110px;background:#EEF2F5;border-radius:3px;overflow:hidden;margin-top:6px"><div style="height:100%;width:'+avgCoverage+'%;background:#CBD5E1"></div></div></div>'
-    +'<div style="flex:0 0 90px;text-align:center"><div style="font-size:13pt;font-weight:800;color:#5B7A8C">'+activeTestCount+'</div><div style="font-size:6.5pt;color:#94A3B8;text-transform:uppercase;font-weight:700">Tests réalisés</div></div>'
-    +'<div style="flex:0 0 90px;text-align:center"><div style="font-size:13pt;font-weight:800;color:#5B7A8C">'+variableCount+'</div><div style="font-size:6.5pt;color:#94A3B8;text-transform:uppercase;font-weight:700">Variables analysées</div></div>'
-    +'<div style="flex:1;min-width:180px;font-size:7.3pt;color:#94A3B8;line-height:1.55">Analyse réalisée selon les normes de la population (âge, sexe et sport) sélectionnée pour cet athlète. Les résultats sont interprétés par le moteur expert KINEXUS.</div>'
-    +'</div>'
-  );
   html+=footerHTML(1,false);
   html+='</div>'; // end main content
   html+='</div>'; // end print-page 1
@@ -1444,54 +1434,25 @@ function buildSportifReport(athlete,bilan,res){
     +'<span style="background:rgba(255,255,255,0.12);color:#fff;font-size:8pt;font-weight:700;padding:4px 12px;border-radius:14px">PAGE 2/2</span>'
     +'</div>';
 
-  // Preuves objectives : qualités (badges premium) · asymétries (barres, style Apple Health) · chaîne causale + interprétation
-  html+=sectionTitle(1,'Preuves objectives',true);
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1.1fr;gap:16px;margin-bottom:26px">';
+  // Page 2 : le raisonnement clinique se construit progressivement — déficits → preuves → asymétries → chaîne causale → plan.
+
+  // 1. Quelles fonctions sont touchées ?
+  html+=sectionTitle(1,'Qualités fonctionnelles',true);
   html+=panel(
-    '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:13px">Qualités fonctionnelles</div>'
-    +evFns.map(function(f,i){
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px 24px">'
+    +evFns.map(function(f){
       var st=fSc[f].status;
-      return '<div style="display:flex;align-items:center;gap:9px;padding:10px 0;'+(i<evFns.length-1?'border-bottom:1px solid #F3F6F8':'')+'">'
+      return '<div style="display:flex;align-items:center;gap:10px">'
         +iconBadge(FN_ICON[f]||'●')
-        +'<span style="flex:1;font-size:8.5pt;font-weight:700;color:#132B3A">'+f+'</span>'
+        +'<span style="flex:1;font-size:9pt;font-weight:700;color:#132B3A">'+f+'</span>'
         +badge(st)
         +'</div>';
     }).join('')
+    +'</div>',
+    'margin-bottom:26px'
   );
-  html+=panel(
-    '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:12px">Asymétries majeures</div>'
-    +(lsiItems.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucun test unipodal actif.</div>'
-      :'<div style="display:flex;justify-content:space-between;padding:0 1px 8px;font-size:6.3pt;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:#94A3B8">'
-        +'<span>◀ Gauche</span><span>Droite ▶</span></div>'
-      +lsiItems.slice(0,6).map(function(it,i){
-        var mx=Math.max(it.gV,it.dV)||1;
-        var gPct=Math.max(Math.min(Math.abs(it.gV)/mx*100,100),4);
-        var dPct=Math.max(Math.min(Math.abs(it.dV)/mx*100,100),4);
-        var col=colMap[it.status];
-        return '<div style="padding:10px 0;'+(i<Math.min(lsiItems.length,6)-1?'border-bottom:1px solid #F3F6F8':'')+'">'
-          +'<div style="display:flex;align-items:center;gap:5px">'
-          +'<span style="width:15px;height:15px;border-radius:4px;background:#F3F6F8;color:#5B7A8C;font-size:6pt;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">G</span>'
-          +'<span style="width:36px;text-align:right;font-size:9pt;font-weight:800;color:#132B3A;flex-shrink:0">'+it.gV+'</span>'
-          +'<div style="flex:1;display:flex;justify-content:flex-end;height:8px"><div style="height:100%;width:'+gPct+'%;background:'+col+';border-radius:4px 0 0 4px"></div></div>'
-          +'<span style="flex-shrink:0;padding:2px 8px;border-radius:10px;background:'+bgMap[it.status]+';color:'+txtMap[it.status]+';font-size:7pt;font-weight:900">'+it.lsi+'% LSI</span>'
-          +'<div style="flex:1;display:flex;justify-content:flex-start;height:8px"><div style="height:100%;width:'+dPct+'%;background:'+col+';border-radius:0 4px 4px 0"></div></div>'
-          +'<span style="width:36px;text-align:left;font-size:9pt;font-weight:800;color:#132B3A;flex-shrink:0">'+it.dV+'</span>'
-          +'<span style="width:15px;height:15px;border-radius:4px;background:#F3F6F8;color:#5B7A8C;font-size:6pt;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">D</span>'
-          +'</div>'
-          +'<div style="text-align:center;font-size:6.8pt;color:#132B3A;font-weight:600;margin-top:4px">'+it.label+'</div>'
-          +'</div>';
-      }).join(''))
-  );
-  html+=panel(
-    '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:12px">Chaîne causale principale</div>'
-    +(causalSteps.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucune priorité identifiée.</div>'
-      :'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:12px">'+causalSteps.map(function(s,i){return (i>0?'<span style="color:#E1E8EE;font-size:11pt">&#8594;</span>':'')+'<div style="display:flex;flex-direction:column;align-items:center;text-align:center;width:62px"><div style="width:26px;height:26px;border-radius:50%;background:#F3F6F8;border:1px solid #E1E8EE;display:flex;align-items:center;justify-content:center;font-size:10pt;margin-bottom:4px">'+s.icon+'</div><div style="font-size:6.3pt;color:#132B3A;line-height:1.3">'+s.label+'</div></div>';}).join('')+'</div>')
-    +'<div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:5px;padding-top:10px;border-top:1px solid #F3F6F8">Interprétation clinique</div>'
-    +'<div style="font-size:7.8pt;color:#132B3A;line-height:1.6">'+interpretationTxt+'</div>'
-  );
-  html+='</div>';
 
-  // Les tests réalisés : regroupés par famille clinique (Force / Puissance / Fonction)
+  // 2. Sur quoi repose cette analyse ? (les preuves)
   html+=sectionTitle(2,'Les tests réalisés',true);
   var TEST_FAMILIES=[
     {label:'Force',icon:'🏋️',cats:['Force Globale','Force Segmentaire']},
@@ -1521,8 +1482,47 @@ function buildSportifReport(athlete,bilan,res){
     );
   }
 
-  // PLAN DE PRISE EN CHARGE : fiches prescription synthétiques (Objectif / Actions / Critères de réussite)
-  html+=sectionTitle(3,'Plan de prise en charge',true);
+  // 3. Où sont les asymétries ? (le LSI est l'information principale — mis en évidence, G/D clairement différenciés)
+  html+=sectionTitle(3,'Asymétries majeures',true);
+  html+=panel(
+    (lsiItems.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucun test unipodal actif.</div>'
+      :'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px 28px">'
+      +lsiItems.slice(0,6).map(function(it){
+        var mx=Math.max(it.gV,it.dV)||1;
+        var gPct=Math.max(Math.min(Math.abs(it.gV)/mx*100,100),4);
+        var dPct=Math.max(Math.min(Math.abs(it.dV)/mx*100,100),4);
+        var col=colMap[it.status];
+        return '<div>'
+          +'<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">'
+          +'<span style="font-size:8.5pt;font-weight:700;color:#132B3A">'+it.label+'</span>'
+          +'<span style="font-size:19pt;font-weight:900;color:'+col+'">'+it.lsi+'<span style="font-size:9pt;font-weight:800">% LSI</span></span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<span style="width:16px;height:16px;border-radius:4px;background:#F3F6F8;color:#5B7A8C;font-size:6.3pt;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">G</span>'
+          +'<span style="width:38px;text-align:right;font-size:8.5pt;font-weight:800;color:#132B3A;flex-shrink:0">'+it.gV+'</span>'
+          +'<div style="flex:1;display:flex;justify-content:flex-end;height:9px"><div style="height:100%;width:'+gPct+'%;background:'+col+';border-radius:5px 0 0 5px"></div></div>'
+          +'<div style="flex:1;display:flex;justify-content:flex-start;height:9px"><div style="height:100%;width:'+dPct+'%;background:'+col+';border-radius:0 5px 5px 0"></div></div>'
+          +'<span style="width:38px;text-align:left;font-size:8.5pt;font-weight:800;color:#132B3A;flex-shrink:0">'+it.dV+'</span>'
+          +'<span style="width:16px;height:16px;border-radius:4px;background:#F3F6F8;color:#5B7A8C;font-size:6.3pt;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">D</span>'
+          +'</div>'
+          +'</div>';
+      }).join('')
+      +'</div>'),
+    'margin-bottom:26px'
+  );
+
+  // 4. Pourquoi cette conclusion ? (chaîne causale + interprétation clinique)
+  html+=sectionTitle(4,'Pourquoi cette conclusion ?',true);
+  html+=panel(
+    (causalSteps.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucune priorité identifiée.</div>'
+      :'<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:14px">'+causalSteps.map(function(s,i){return (i>0?'<span style="color:#E1E8EE;font-size:12pt">&#8594;</span>':'')+'<div style="display:flex;flex-direction:column;align-items:center;text-align:center;width:88px"><div style="width:30px;height:30px;border-radius:50%;background:#F3F6F8;border:1px solid #E1E8EE;display:flex;align-items:center;justify-content:center;font-size:11pt;margin-bottom:5px">'+s.icon+'</div><div style="font-size:6.8pt;color:#132B3A;line-height:1.35">'+s.label+'</div></div>';}).join('')+'</div>')
+    +'<div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;padding-top:12px;border-top:1px solid #F3F6F8">Interprétation clinique</div>'
+    +'<div style="font-size:9pt;color:#132B3A;line-height:1.7">'+interpretationTxt+'</div>',
+    'margin-bottom:26px'
+  );
+
+  // 5. Que faut-il traiter ? (plan thérapeutique — fiches prescription synthétiques)
+  html+=sectionTitle(5,'Plan de prise en charge',true);
   var recVerbs=[{icon:'💪',verb:'Renforcer'},{icon:'✨',verb:'Développer'},{icon:'🏃',verb:'Intégrer'}];
   html+='<div style="display:grid;grid-template-columns:repeat('+Math.min(Math.max(pri.length,1),3)+',1fr);gap:16px;margin-bottom:26px">';
   if(pri.length===0){
@@ -1547,8 +1547,8 @@ function buildSportifReport(athlete,bilan,res){
   }
   html+='</div>';
 
-  // Informations pratiques — niveau 3 : très discret, faible contraste, ne doit pas attirer l'œil
-  html+=sectionTitle(4,'Informations pratiques',true);
+  // Informations pratiques — niveau 3 : très discret, faible contraste, ne doit pas attirer l'œil ; pas de numéro de section
+  html+=subtleHeader('Informations pratiques',true);
   var checklist=rtpChecklist();
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">';
   html+=panelL3(
