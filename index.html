@@ -705,6 +705,28 @@ var BIOMECA_DEFAULT_BANDS={
     {min:45,max:65,label:'Confiance modérée',color:'#eab308'},
     {min:25,max:45,label:'Faible confiance',color:'#f97316'},
     {min:-1,max:25,label:'Interprétation prudente',color:'#ef4444'}
+  ],
+  // Intensité de la dominance entre profils biomécaniques — écart = percentile du profil le plus
+  // élevé moins la moyenne des autres profils (comparaison intra-individuelle, jamais aux
+  // normes). Seuils calibrés par le praticien sur ses deux exemples de référence (écart 2 ->
+  // "Aucune dominante" ; écart ~43 -> "Dominance très marquée") — non issus de la littérature.
+  intensiteDominance:[
+    {min:0,max:10,label:'Aucune dominante',color:'#84cc16'},
+    {min:10,max:20,label:'Dominance légère',color:'#a3e635'},
+    {min:20,max:30,label:'Dominance modérée',color:'#eab308'},
+    {min:30,max:40,label:'Dominance marquée',color:'#f97316'},
+    {min:40,max:101,label:'Dominance très marquée',color:'#ef4444'}
+  ],
+  // Équilibre global entre profils biomécaniques — écart-type des percentiles de TOUS les
+  // profils exploitables (pas seulement le meilleur vs le reste) : une vue complémentaire de
+  // l'intensité de dominance, qui peut diverger (ex. un profil très en avance mais les 3 autres
+  // eux-mêmes dispersés). Seuils Kinexus, configurables.
+  equilibreProfils:[
+    {min:0,max:10,label:'Très homogène',color:'#22c55e'},
+    {min:10,max:20,label:'Homogène',color:'#84cc16'},
+    {min:20,max:35,label:'Modérément hétérogène',color:'#eab308'},
+    {min:35,max:50,label:'Hétérogène',color:'#f97316'},
+    {min:50,max:1001,label:'Très hétérogène',color:'#ef4444'}
   ]
 };
 // ThresholdBandClassifier générique — composant UNIQUE réutilisé par toutes les
@@ -860,7 +882,7 @@ function validateClinicalConcordance(biomecaLevel,qualiteLevel){
 var BIOMECA_PROFILES_LS_KEY='kinexus_biomeca_profiles';
 var DEFAULT_BIOMECA_PROFILE_ID='default';
 function defaultBiomecaProfilesState(){
-  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,dominanteTiers:{},dominanteTierWeights:{}}}]};
+  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,profilTiers:{},profilTierWeights:{}}}]};
 }
 function loadBiomecaProfilesState(){
   try{
@@ -1319,9 +1341,9 @@ function effectiveConfidenceWeights(){
   var cfg=activeBiomecaProfile().config||{};
   return cfg.confidenceWeights||{variable:30,phase:30,transition:40};
 }
-// Concordance individuelle des variables d'un tier donné avec le sens du score global — brique
-// partagée entre la confiance de phase (tier 'master') et la confiance de dominante (tier
-// 'principale', voir module DOMINANTES BIOMÉCANIQUES) : même calcul, jamais dupliqué.
+// Concordance individuelle des variables d'un tier donné avec le sens du score global — utilisée
+// par la confiance de phase (tier 'master', ci-dessous). Générique par tierLabel au cas où
+// d'autres modules en auraient besoin plus tard.
 function variableConcordance(score,entries,tierLabel){
   var tierOk=(entries||[]).filter(function(e){return e.tier===tierLabel&&e.status==='ok';});
   if(!tierOk.length)return{score:0,reason:'Aucune variable "'+tierLabel+'" exploitable.'};
@@ -1359,33 +1381,46 @@ function computePhaseConfidence(phaseResult,coherenceResult){
   return{phase:phaseResult.phase,composite:composite,band:band,niveaux:{variables:lv,phase:lp,transition:lt}};
 }
 
-// ── DOMINANTES BIOMÉCANIQUES ──────────────────────────────────────────────────────────────────
+// ── PROFILS BIOMÉCANIQUES ────────────────────────────────────────────────────────────────────
 // Troisième niveau d'analyse, INDÉPENDANT des qualités fonctionnelles et des phases
-// biomécaniques (décision explicite du praticien, 02/08) :
+// biomécaniques (décision explicite du praticien, 02-03/08) :
 //   - les qualités décrivent des capacités physiques (Force, Puissance, Réactivité...) ;
 //   - les phases décrivent l'exécution du mouvement (Unloading, Braking, Concentric...) ;
-//   - les dominantes décrivent le STYLE biomécanique de l'athlète.
+//   - les PROFILS biomécaniques regroupent des variables qui décrivent LE MÊME MÉCANISME —
+//     jamais une qualité, une phase ou un résultat.
 // Ces trois niveaux sont complémentaires et ne doivent jamais être confondus.
 //
-// V1 : 5 profils (le praticien a demandé l'ajout d'un 5e, Contrôle, absent de la proposition
-// initiale à 4 — deux athlètes à puissance/propulsion/RSI identiques peuvent avoir une
-// organisation du mouvement très différente ; aucun des 4 premiers profils ne le décrit) :
-// Propulsif, Absorbeur, Réactif, Explosif, Contrôle.
+// TERMINOLOGIE (précision du praticien, 03/08) : "Profil biomécanique" désigne une des 5
+// catégories ci-dessous (Propulsif, Absorbeur, Réactif, Explosif, Contrôle). Le terme
+// "Dominance" est réservé EXCLUSIVEMENT à la comparaison entre profils (le fait que l'un soit
+// significativement plus développé que les autres chez un même athlète) — voir le module
+// ANALYSE DE DOMINANCE RELATIVE plus bas. Les deux notions ne doivent jamais être confondues,
+// dans le code comme dans le rapport.
 //
-// DÉFINITION (praticien, 02/08) : un profil biomécanique regroupe des variables qui décrivent
-// LE MÊME MÉCANISME — jamais une qualité, une phase ou un résultat. Chaque profil répond à une
-// question mécanique précise (DOMINANTE_QUESTION ci-dessous) ; les variables de RÉSULTAT (ex.
-// Jump Height pour Propulsif — un résultat, pas un mécanisme de propulsion) sont reléguées en
-// tier 'info', jamais en 'master'/'support'.
+// 5 profils (le praticien a demandé l'ajout d'un 5e, Contrôle, absent de la proposition initiale
+// à 4 — deux athlètes à puissance/propulsion/RSI identiques peuvent avoir une organisation du
+// mouvement très différente ; aucun des 4 premiers profils ne le décrit) : Propulsif, Absorbeur,
+// Réactif, Explosif, Contrôle. Chaque profil répond à une question mécanique précise
+// (PROFIL_QUESTION ci-dessous) ; les variables de RÉSULTAT (ex. Jump Height pour Propulsif — un
+// résultat, pas un mécanisme de propulsion) sont reléguées en tier 'info', jamais en
+// 'master'/'support'.
 //
 // Structure imposée par le praticien, jamais dépassée : 3-5 variables 'master', 2-3 'support',
-// 0-2 'info' par profil (mêmes noms de tier que CMJ_VAR_META, pour cohérence dans tout le
-// moteur). Poids par TIER uniquement (pas par variable) tant que le référentiel n'a pas été
-// calibré sur des données réelles (~200 CMJ) — voir effectiveDominanteTierWeights().
+// 0-2 'info' par profil (mêmes noms de tier que CMJ_VAR_META). Poids par TIER uniquement (pas
+// par variable) tant que le référentiel n'a pas été calibré sur des données réelles (~200 CMJ)
+// — voir effectiveProfilTierWeights().
 //
-// Chaque dominante est calculée EXACTEMENT comme une phase (computeBiomecaPhase) : percentile
-// individuel conservé par variable, dispersion/cohérence interne, variables fortes/faibles,
-// conclusion qui ne se fonde jamais sur le seul percentile global.
+// Chaque profil est calculé selon DEUX dimensions distinctes et jamais confondues (règle du
+// praticien, 03/08) :
+//  A. NIVEAU ABSOLU (computeProfilBiomecanique ci-dessous) — comparaison aux normes de
+//     référence : percentile individuel conservé par variable, dispersion/cohérence interne,
+//     variables fortes/faibles, conclusion absolue. EXACTEMENT la même mécanique qu'une phase
+//     (computeBiomecaPhase) : le percentile global n'est jamais un jugement en soi.
+//  B. DOMINANCE RELATIVE (computeDominanceRelative, module séparé plus bas) — comparaison
+//     INTRA-individuelle des profils entre eux, totalement indépendante des normes. Un profil
+//     peut être excellent sans être dominant, moyen tout en étant le profil dominant, ou faible
+//     tout en restant le moins faible des profils : ce sont deux informations complémentaires,
+//     jamais résumables à un seul score.
 //
 // Module INDÉPENDANT : ne modifie JAMAIS les scores des qualités, les scores biomécaniques des
 // phases, ni les hypothèses cliniques. Couche DESCRIPTIVE, pas décisionnelle — le Moteur de
@@ -1393,33 +1428,32 @@ function computePhaseConfidence(phaseResult,coherenceResult){
 //
 // VARIABLES CROSS-TESTS : certaines variables proviennent d'un test autre que le CMJ (ex.
 // Reactive Strength du Drop Jump pour Réactif). Chaque variable est donc identifiée par
-// "testKey:kpiKey" et computeDominante reçoit l'ensemble des valeurs de l'athlète, pas
+// "testKey:kpiKey" et computeProfilBiomecanique reçoit l'ensemble des valeurs de l'athlète, pas
 // seulement le CMJ (valuesByTest = {testKey:{kpiKey:valeur}}).
 //
-// PROVENANCE — IMPORTANT : le document source ne fournit aucun critère pour ces dominantes.
-// Le référentiel DTM ci-dessous reprend la proposition du praticien (02/08) telle quelle — non
-// validée scientifiquement, à ajuster après calibration sur données réelles. Deux variables
-// demandées par le praticien ne sont PAS implémentées, par principe : si une variable n'existe
-// pas pour un test donné (ou n'a pas d'équivalent démontré), elle est simplement absente du
-// calcul — jamais remplacée par une équivalence biomécanique non démontrée (le moteur est conçu
-// pour fonctionner avec des données partielles) :
-//  - "Contact Time (si disponible)" du profil Réactif : AUCUNE variable "Contact Time" n'existe
-//    pour le CMJ dans ce référentiel (tto = Time to Take Off, une notion différente). Le Drop
-//    Jump a en revanche un vrai kpi 'contact_time' — non ajouté ici sans confirmation du
-//    praticien, à discuter ;
+// PROVENANCE — IMPORTANT : le document source ne fournit aucun critère pour ces profils. Le
+// référentiel PTM ci-dessous reprend la proposition du praticien (02/08) telle quelle — non
+// validée scientifiquement, à ajuster après calibration sur données réelles. Une variable
+// demandée par le praticien n'est PAS implémentée, par principe : si une variable n'existe pas
+// pour un test donné (ou n'a pas d'équivalent démontré), elle est simplement absente du calcul
+// — jamais remplacée par une équivalence biomécanique non démontrée (le moteur est conçu pour
+// fonctionner avec des données partielles) :
 //  - "Phase Consistency" (support du profil Contrôle) : mesure dérivée (consistance essai-à-
 //    essai ou inter-phases) sans formule définie et sans variable brute existante.
-var DOMINANTES=['Propulsif','Absorbeur','Réactif','Explosif','Contrôle'];
-var DOMINANTE_QUESTION={
+// ("Contact Time" du profil Réactif a été retiré sur consigne explicite du praticien — TTO et
+// Contact Time sont deux notions différentes ; un vrai kpi 'contact_time' existe sur le Drop
+// Jump mais n'a pas été ajouté sans confirmation.)
+var PROFILS_BIOMECANIQUES=['Propulsif','Absorbeur','Réactif','Explosif','Contrôle'];
+var PROFIL_QUESTION={
   'Propulsif':'Est-ce que l\'athlète est capable de produire une forte propulsion ?',
   'Absorbeur':'Est-ce que l\'athlète absorbe efficacement les contraintes ?',
   'Réactif':'Est-ce que l\'athlète recycle efficacement l\'énergie élastique ?',
   'Explosif':'Est-ce que l\'athlète développe très rapidement sa propulsion ?',
   'Contrôle':'Est-ce que l\'athlète exécute le mouvement de façon stable et organisée ?'
 };
-// DTM (Dominante-Test Matrix, miroir de TFM) : {'testKey:kpiKey':{dominanteLabel:{tier}}}.
+// PTM (Profil-Test Matrix, miroir de TFM) : {'testKey:kpiKey':{profilLabel:{tier}}}.
 // tier : 'master'|'support'|'info'.
-var DTM={
+var PTM={
   'cmj:peak_power':        {Propulsif:{tier:'master'}, Explosif:{tier:'master'}},
   'cmj:peak_vel':          {Propulsif:{tier:'master'}, Explosif:{tier:'master'}},
   'cmj:conc_impulse':      {Propulsif:{tier:'master'}},
@@ -1439,8 +1473,8 @@ var DTM={
   'cmj:rsi_mod':           {Réactif:{tier:'master'}, Explosif:{tier:'support'}},
   'cmj:ft_ct_ratio':       {Réactif:{tier:'master'}},
   'dj:rsi':                {Réactif:{tier:'master'}}, // "Reactive Strength (DJ)"
-  // "Contact Time (si disponible)" : absente pour l'instant, cf. note ci-dessus — Réactif reste
-  // à 3 variables maîtresses (dans la règle 3-5), pas 4, tant qu'elle n'est pas confirmée.
+  // Réactif reste à 3 variables maîtresses (dans la règle 3-5), pas 4 : "Contact Time" retiré,
+  // cf. note de provenance ci-dessus.
 
   'cmj:conc_impulse_100':  {Explosif:{tier:'master'}},
 
@@ -1449,22 +1483,22 @@ var DTM={
   'cmj:force_peak_power_asym':  {Contrôle:{tier:'master'}},
   'cmj:depth':                  {Contrôle:{tier:'info'}} // "Countermovement Depth"
 };
-function effectiveDominanteTier(varKey,dominanteLabel){
+function effectiveProfilTier(varKey,profilLabel){
   var cfg=activeBiomecaProfile().config||{};
-  if(cfg.dominanteTiers&&cfg.dominanteTiers[varKey]&&cfg.dominanteTiers[varKey][dominanteLabel])return cfg.dominanteTiers[varKey][dominanteLabel];
-  var ref=DTM[varKey]&&DTM[varKey][dominanteLabel];
+  if(cfg.profilTiers&&cfg.profilTiers[varKey]&&cfg.profilTiers[varKey][profilLabel])return cfg.profilTiers[varKey][profilLabel];
+  var ref=PTM[varKey]&&PTM[varKey][profilLabel];
   return ref&&ref.tier?ref.tier:null;
 }
 // Poids par TIER (pas par variable) — décision du praticien : "toutes les Master = même poids,
 // toutes les Support = même poids, tant qu'on n'a pas calibré sur des données réelles". Valeurs
 // de départ arbitraires (1 / 0.5), entièrement configurables.
-function effectiveDominanteTierWeights(){
+function effectiveProfilTierWeights(){
   var cfg=activeBiomecaProfile().config||{};
-  return cfg.dominanteTierWeights||{master:1,support:0.5};
+  return cfg.profilTierWeights||{master:1,support:0.5};
 }
-function effectiveDominanteWeight(varKey,dominanteLabel){
-  var tier=effectiveDominanteTier(varKey,dominanteLabel);
-  var w=effectiveDominanteTierWeights();
+function effectiveProfilWeight(varKey,profilLabel){
+  var tier=effectiveProfilTier(varKey,profilLabel);
+  var w=effectiveProfilTierWeights();
   if(tier==='master')return w.master!=null?w.master:1;
   if(tier==='support')return w.support!=null?w.support:0.5;
   return 0; // 'info' ou non défini : jamais dans le calcul, uniquement affiché en contexte.
@@ -1473,17 +1507,18 @@ function testKpiDir(testKey,kpiKey){
   var kpi=TBK[testKey]&&TBK[testKey].kpis.filter(function(k){return k.key===kpiKey;})[0];
   return kpi?kpi.dir:'max';
 }
-// Calcule le résultat d'UNE dominante — même mécanique que computeBiomecaPhase (percentile
-// continu, dispersion, cohérence interne, variables fortes/faibles) mais indexée sur DTM et
-// potentiellement multi-tests. valuesByTest = {testKey:{kpiKey:valeur}}.
-function computeDominante(dominanteLabel,valuesByTest,pop,age){
+// A. NIVEAU ABSOLU — calcule le résultat d'UN profil biomécanique. Même mécanique que
+// computeBiomecaPhase (percentile continu, dispersion, cohérence interne, variables
+// fortes/faibles) mais indexée sur PTM et potentiellement multi-tests.
+// valuesByTest = {testKey:{kpiKey:valeur}}.
+function computeProfilBiomecanique(profilLabel,valuesByTest,pop,age){
   valuesByTest=valuesByTest||{};
-  var varKeys=Object.keys(DTM).filter(function(k){return DTM[k][dominanteLabel];});
+  var varKeys=Object.keys(PTM).filter(function(k){return PTM[k][profilLabel];});
   var entries=varKeys.map(function(varKey){
     var parts=varKey.split(':'),testKey=parts[0],kpiKey=parts[1];
     var raw=(valuesByTest[testKey]||{})[kpiKey];
-    var tier=effectiveDominanteTier(varKey,dominanteLabel);
-    var weight=effectiveDominanteWeight(varKey,dominanteLabel);
+    var tier=effectiveProfilTier(varKey,profilLabel);
+    var weight=effectiveProfilWeight(varKey,profilLabel);
     var tech=validateTechnical(kpiKey,raw);
     if(!tech.ok)return{varKey:varKey,testKey:testKey,kpiKey:kpiKey,tier:tier,weight:weight,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
     var pct=normPercentile(testKey,kpiKey,pop,age,raw,testKpiDir(testKey,kpiKey));
@@ -1495,15 +1530,15 @@ function computeDominante(dominanteLabel,valuesByTest,pop,age){
   var ratio=masterVars.length?masterOk.length/masterVars.length:0;
   if(masterVars.length===0||ratio<threshold){
     return{
-      dominante:dominanteLabel,sufficient:false,score:null,
-      reason:masterVars.length===0?'Aucune variable maîtresse définie pour cette dominante (référentiel non encore calibré).':'Données insuffisantes pour calculer cette dominante ('+masterOk.length+'/'+masterVars.length+' variables maîtresses disponibles).',
+      profil:profilLabel,sufficient:false,score:null,
+      reason:masterVars.length===0?'Aucune variable maîtresse définie pour ce profil (référentiel non encore calibré).':'Données insuffisantes pour calculer ce profil ('+masterOk.length+'/'+masterVars.length+' variables maîtresses disponibles).',
       entries:entries
     };
   }
   // Le percentile global n'est qu'une moyenne pondérée de SYNTHÈSE — chaque percentile
   // individuel, la dispersion entre variables et la cohérence interne restent exposés
-  // séparément, et l'interprétation (dominanteConclusion ci-dessous) ne se fonde JAMAIS sur le
-  // seul percentile global.
+  // séparément, et l'interprétation (profilConclusionAbsolue ci-dessous) ne se fonde JAMAIS sur
+  // le seul percentile global.
   var usable=entries.filter(function(e){return e.status==='ok'&&(e.tier==='master'||e.tier==='support');});
   var sumW=0,sumWP=0;
   usable.forEach(function(e){sumW+=e.weight;sumWP+=e.weight*e.percentile;});
@@ -1512,48 +1547,98 @@ function computeDominante(dominanteLabel,valuesByTest,pop,age){
   var niveau=classifyBand(effectiveBiomecaBands('niveauAbsolu'),score);
   var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceInterne'),coherenceInterne);
   return{
-    dominante:dominanteLabel,sufficient:true,score:score,percentile:score,niveau:niveau,
+    profil:profilLabel,sufficient:true,score:score,percentile:score,niveau:niveau,
     coherenceInterne:coherenceInterne,coherenceBand:coherenceBand,
     entries:entries,masterAvailable:masterOk.length,masterTotal:masterVars.length,
     variablesFaibles:usable.filter(function(e){return e.percentile<40;}),
     variablesFortes:usable.filter(function(e){return e.percentile>=60;})
   };
 }
-// Conclusion automatique d'une dominante — expose TOUJOURS le raisonnement (percentile global +
-// cohérence interne + variables fortes/faibles), jamais un jugement fondé sur le seul
-// percentile global. Si la cohérence interne est faible, la conclusion le signale explicitement
-// et invite à interpréter les variables individuellement plutôt que le percentile de synthèse.
-function dominanteConclusion(dominanteResult){
-  if(!dominanteResult.sufficient)return{text:dominanteResult.reason};
-  var niveauLabel=dominanteResult.niveau?dominanteResult.niveau.label:'indéterminé';
-  var cohLabel=dominanteResult.coherenceBand?dominanteResult.coherenceBand.label:'indéterminée';
-  var heterogene=!!dominanteResult.coherenceBand&&['Faible cohérence','Très faible cohérence'].indexOf(dominanteResult.coherenceBand.label)>=0;
+// Conclusion ABSOLUE d'un profil — répond à "quel est le niveau de ce profil par rapport à la
+// population de référence ?", jamais à sa dominance relative (module séparé). Expose TOUJOURS le
+// raisonnement (percentile global + cohérence interne + variables fortes/faibles), jamais un
+// jugement fondé sur le seul percentile global.
+function profilConclusionAbsolue(profilResult){
+  if(!profilResult.sufficient)return{text:profilResult.reason};
+  var niveauLabel=profilResult.niveau?profilResult.niveau.label:'indéterminé';
+  var cohLabel=profilResult.coherenceBand?profilResult.coherenceBand.label:'indéterminée';
+  var heterogene=!!profilResult.coherenceBand&&['Faible cohérence','Très faible cohérence'].indexOf(profilResult.coherenceBand.label)>=0;
   var text;
   if(heterogene){
-    text='La dominante "'+dominanteResult.dominante+'" est hétérogène (cohérence interne "'+cohLabel+'") : ses variables ne racontent pas la même histoire. Le percentile global ('+dominanteResult.score.toFixed(0)+') ne doit pas être interprété seul — se référer aux variables individuelles ci-dessous.';
+    text='Le profil "'+profilResult.profil+'" est hétérogène (cohérence interne "'+cohLabel+'") : ses variables ne racontent pas la même histoire. Le percentile global ('+profilResult.score.toFixed(0)+') ne doit pas être interprété seul — se référer aux variables individuelles ci-dessous.';
   }else{
-    var qualif=['Exceptionnel','Excellent','Très bon'].indexOf(niveauLabel)>=0?'élevée':(niveauLabel==='Dans les normes'?'dans les normes':'faible');
-    text='La dominante "'+dominanteResult.dominante+'" est '+qualif+' (percentile global '+dominanteResult.score.toFixed(0)+', niveau "'+niveauLabel+'"), avec une cohérence interne "'+cohLabel+'" entre ses variables.';
+    var qualif=['Exceptionnel','Excellent','Très bon'].indexOf(niveauLabel)>=0?'élevé':(niveauLabel==='Dans les normes'?'dans les normes':'faible');
+    text='Le profil "'+profilResult.profil+'" est '+qualif+' ('+profilResult.score.toFixed(0)+'e percentile, niveau "'+niveauLabel+'"), avec une cohérence interne "'+cohLabel+'" entre ses variables.';
   }
-  if(dominanteResult.variablesFortes.length)text+=' Variable(s) forte(s) : '+dominanteResult.variablesFortes.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
-  if(dominanteResult.variablesFaibles.length)text+=' Variable(s) faible(s) : '+dominanteResult.variablesFaibles.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
+  if(profilResult.variablesFortes.length)text+=' Variable(s) forte(s) : '+profilResult.variablesFortes.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
+  if(profilResult.variablesFaibles.length)text+=' Variable(s) faible(s) : '+profilResult.variablesFaibles.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
   return{text:text,heterogene:heterogene};
 }
-// Point d'entrée du module. Input : valuesByTest = {testKey:{kpiKey:valeur}} — l'ensemble des
-// valeurs de l'athlète (CMJ et, le cas échéant, Drop Jump), pas seulement le CMJ. Output : les 5
-// dominantes, chacune indépendamment traçable.
-function computeDominantesEngine(valuesByTest,pop,age){
+// Point d'entrée du niveau absolu. Input : valuesByTest = {testKey:{kpiKey:valeur}} — l'ensemble
+// des valeurs de l'athlète (CMJ et, le cas échéant, Drop Jump), pas seulement le CMJ. Output :
+// les 5 profils, chacun indépendamment traçable.
+function computeProfilsBiomecaniquesEngine(valuesByTest,pop,age){
   var out={};
-  DOMINANTES.forEach(function(d){out[d]=computeDominante(d,valuesByTest,pop,age);});
+  PROFILS_BIOMECANIQUES.forEach(function(p){out[p]=computeProfilBiomecanique(p,valuesByTest,pop,age);});
   return out;
 }
-// "Style biomécanique" — affichage uniquement : identifie la dominante principale/secondaire
-// (les deux scores les plus élevés parmi les dominantes exploitables). Pure présentation,
-// n'alimente aucune conclusion, priorité ou hypothèse (cf. note d'architecture ci-dessus).
-function syntheseStyleBiomecanique(dominantesResult){
-  var suff=DOMINANTES.filter(function(d){return dominantesResult[d]&&dominantesResult[d].sufficient;})
-    .sort(function(a,b){return dominantesResult[b].score-dominantesResult[a].score;});
-  return{scores:dominantesResult,principale:suff[0]||null,secondaire:suff[1]||null};
+
+// ── ANALYSE DE DOMINANCE RELATIVE ────────────────────────────────────────────────────────────
+// B. DOMINANCE RELATIVE (règle du praticien, 03/08) — module INDÉPENDANT, exécuté UNIQUEMENT
+// après le calcul des profils biomécaniques (computeProfilsBiomecaniquesEngine ci-dessus). Ne
+// modifie JAMAIS les percentiles des profils, les qualités, les phases, les transitions ni les
+// hypothèses cliniques — produit uniquement une synthèse comparative. Consomme UNIQUEMENT les
+// percentiles globaux déjà calculés, jamais les variables brutes.
+//
+// Répond à "ce profil est-il plus développé que les autres profils du même athlète ?" — une
+// comparaison INTRA-individuelle, totalement indépendante des normes de référence (à ne jamais
+// confondre avec le niveau absolu d'un profil).
+//
+// Calcul : écart = percentile du profil le plus élevé - moyenne des percentiles des autres
+// profils exploitables. Classé via ThresholdBandClassifier ('intensiteDominance', seuils
+// calibrés par le praticien sur ses deux exemples de référence — non issus de la littérature,
+// entièrement configurables). Équilibre global = dispersion (écart-type) des percentiles de TOUS
+// les profils exploitables, classée via 'equilibreProfils' — une vue complémentaire qui peut
+// diverger de l'intensité de dominance (ex. un profil très en avance mais les autres eux-mêmes
+// dispersés entre eux).
+function computeDominanceRelative(profilsResult){
+  var suff=PROFILS_BIOMECANIQUES.filter(function(p){return profilsResult[p]&&profilsResult[p].sufficient;})
+    .map(function(p){return{profil:p,percentile:profilsResult[p].score};})
+    .sort(function(a,b){return b.percentile-a.percentile;});
+  if(suff.length<2){
+    return{
+      sufficient:false,
+      reason:'Au moins 2 profils exploitables sont nécessaires pour analyser une dominance relative ('+suff.length+' disponible(s)).',
+      profils:suff
+    };
+  }
+  var dominant=suff[0];
+  var autres=suff.slice(1);
+  var moyenneAutres=autres.reduce(function(s,p){return s+p.percentile;},0)/autres.length;
+  var ecart=dominant.percentile-moyenneAutres;
+  var intensiteBand=classifyBand(effectiveBiomecaBands('intensiteDominance'),ecart);
+  var tousPercentiles=suff.map(function(p){return p.percentile;});
+  var equilibre=stdDevOf(tousPercentiles);
+  var equilibreBand=classifyBand(effectiveBiomecaBands('equilibreProfils'),equilibre);
+  var aucuneDominante=!!intensiteBand&&intensiteBand.label==='Aucune dominante';
+  var conclusionRelative=aucuneDominante
+    ?'Les différents profils biomécaniques sont homogènes ('+dominant.profil+' '+dominant.percentile.toFixed(0)+'e percentile vs moyenne des autres '+moyenneAutres.toFixed(0)+'e). Aucune stratégie dominante n\'est identifiée.'
+    :'Le profil '+dominant.profil+' constitue la stratégie biomécanique dominante de cet athlète ('+dominant.percentile.toFixed(0)+'e percentile vs moyenne des autres profils '+moyenneAutres.toFixed(0)+'e, écart '+ecart.toFixed(0)+' classé "'+intensiteBand.label+'").';
+  return{
+    sufficient:true,
+    profilDominant:aucuneDominante?null:dominant.profil,
+    intensiteDominance:{ecart:ecart,band:intensiteBand},
+    profilsSecondaires:autres.map(function(p){return p.profil;}),
+    equilibreGlobal:{dispersion:equilibre,band:equilibreBand},
+    conclusionRelative:conclusionRelative,
+    // Traçabilité complète (règle du praticien) : percentile de chaque profil, écart utilisé,
+    // règle de classification — jamais une boîte noire.
+    traceabilite:{
+      percentiles:suff,
+      ecartCalcule:ecart,
+      regle:'écart = percentile('+dominant.profil+') - moyenne(percentiles des '+autres.length+' autres profils exploitables), classé via la bande "intensiteDominance".'
+    }
+  };
 }
 
 // ── MOTEUR DE SYNTHÈSE BIOMÉCANIQUE ──────────────────────────────────────────────────────────
@@ -1580,11 +1665,12 @@ function syntheseProfilGlobal(phases){
   return{label:'Profil homogène faible',reason:'Aucune phase individuellement limitante, mais niveau moyen classé "'+(niveauMoyenBand?niveauMoyenBand.label:'indéterminé')+'".'};
 }
 
-// (Les dominantes biomécaniques — Propulsif/Absorbeur/Réactif/Explosif — NE sont PAS calculées
-// ici : sur décision explicite du praticien, elles constituent un troisième niveau d'analyse
-// indépendant des phases, avec leur propre référentiel de variables/poids. Voir le module
-// "DOMINANTES BIOMÉCANIQUES" plus haut (computeDominantesEngine) — jamais consommé par la
-// Synthèse, qui reste limitée aux phases/transitions/confiance.)
+// (Les profils biomécaniques — Propulsif/Absorbeur/Réactif/Explosif/Contrôle — et leur analyse
+// de dominance relative NE sont PAS calculés ici : sur décision explicite du praticien, ils
+// constituent un troisième niveau d'analyse indépendant des phases, avec leur propre référentiel
+// de variables/poids. Voir les modules "PROFILS BIOMÉCANIQUES" et "ANALYSE DE DOMINANCE
+// RELATIVE" plus haut (computeProfilsBiomecaniquesEngine, computeDominanceRelative) — jamais
+// consommés par la Synthèse, qui reste limitée aux phases/transitions/confiance.)
 
 // ÉTAPE 4 — potentiel de progression : échelle UNIQUE validée (Faible/Modéré/Important/Très
 // important), amplitude = meilleure phase - moins bonne phase parmi les phases exploitables.
@@ -1692,9 +1778,10 @@ function syntheseResumeExecutif(phases,coherence,profil,potentiel,priorites,cohe
 
 // Point d'entrée du module. Input : UNIQUEMENT les résultats des modules précédents (jamais les
 // variables brutes). functionScores (optionnel, issu de computeMoteur() déjà existant dans
-// KINEXUS) permet l'Étape 7 (cohérence avec le moteur des qualités). Ne calcule PAS les
-// dominantes biomécaniques (module indépendant, computeDominantesEngine — jamais une entrée de
-// la Synthèse, cf. décision du praticien : couche descriptive, non décisionnelle).
+// KINEXUS) permet l'Étape 7 (cohérence avec le moteur des qualités). Ne calcule PAS les profils
+// biomécaniques ni leur dominance relative (modules indépendants, computeProfilsBiomecaniques
+// Engine/computeDominanceRelative — jamais une entrée de la Synthèse, cf. décision du praticien :
+// couche descriptive, non décisionnelle).
 function computeSyntheseBiomecanique(phases,coherence,functionScores){
   var profil=syntheseProfilGlobal(phases);
   var potentiel=synthesePotentielProgression(phases);
