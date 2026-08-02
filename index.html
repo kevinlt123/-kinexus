@@ -511,6 +511,63 @@ var FN_KEY={'Mobilité':'mobilite','Force':'force','Explosivité':'explosivite',
 // contribuent bien à la Force, ce qui manquait auparavant).
 var TFM={wblt:{mobilite:3,reactivite:1,absorption:1,stabilisation:1},knee_ext:{force:3,explosivite:2,puissance:2,absorption:2,stabilisation:1},knee_flex:{force:3,explosivite:2,puissance:2,absorption:2,stabilisation:1},hip_flex:{force:3,explosivite:2,puissance:2,stabilisation:1,controle_frontal:1},hip_ext:{force:3,explosivite:2,puissance:2,absorption:2,stabilisation:1,controle_frontal:1},hip_abd:{controle_frontal:3,stabilisation:2,force:2,absorption:1,puissance:1},hip_add:{controle_frontal:3,stabilisation:2,force:2,absorption:1,puissance:1},df_iso:{force:3,controle_frontal:2,stabilisation:2,absorption:1,mobilite:2},inv_iso:{controle_frontal:2,stabilisation:2,force:2,absorption:1,mobilite:1},ev_iso:{controle_frontal:2,stabilisation:2,force:2,absorption:1,mobilite:1},hip_rot_int:{force:2,stabilisation:2,controle_frontal:2,absorption:1},hip_rot_ext:{force:2,stabilisation:2,controle_frontal:2,absorption:1,reactivite:1},soleus_iso:{force:3,explosivite:2,puissance:2,reactivite:2,absorption:1,stabilisation:1,endurance:1},gastro_iso:{force:3,explosivite:2,puissance:2,reactivite:2,absorption:1,stabilisation:1,endurance:1},sl_iso_push:{force:3,explosivite:2,puissance:2,reactivite:1,absorption:2},iso_belt_squat:{force:3,explosivite:2,puissance:2,absorption:2},cmj:{explosivite:3,puissance:3,force:1,reactivite:1,absorption:2},slcmj:{explosivite:3,puissance:3,force:1,reactivite:1,absorption:2},dj:{reactivite:3,absorption:2,force:1,puissance:1},sldj:{reactivite:3,absorption:2,stabilisation:2,controle_frontal:1,force:1},repeated_hop:{reactivite:2,endurance:3},profil_fv:{force:3,explosivite:2,puissance:3},landing_bi:{absorption:3,stabilisation:2,force:1},landing_uni:{absorption:3,stabilisation:3,controle_frontal:3,force:1},ybt:{controle_frontal:3,stabilisation:2,controle_sensoriel:1,mobilite:1,force:1},side_hop:{controle_frontal:3,stabilisation:2,reactivite:1,endurance:1,force:1},eo:{controle_sensoriel:3,stabilisation:1},ef:{controle_sensoriel:3,stabilisation:2,controle_frontal:1},strobo:{controle_sensoriel:3,stabilisation:2,controle_frontal:1},single_hop:{puissance:2,force:1,absorption:1,reactivite:1},triple_hop:{puissance:2,reactivite:2,force:1,absorption:1,endurance:1},crossover_hop:{controle_frontal:2,reactivite:2,puissance:2,force:1,absorption:1},heel_raise:{endurance:3,reactivite:1,absorption:1},sh_iso_9020:{force:3,explosivite:1,puissance:1,absorption:2,stabilisation:1},sh_iso_9090:{force:3,absorption:2,stabilisation:2},sh_iso_3030:{force:2,explosivite:1,absorption:1,stabilisation:1},sh_iso_6060:{force:3,explosivite:1,puissance:1,absorption:2,stabilisation:1},iso_squat_hold:{force:3,explosivite:1,puissance:1,absorption:1},sllt:{absorption:3,stabilisation:3,controle_frontal:2,force:1},sls:{controle_sensoriel:3,stabilisation:2},imtp:{force:3,explosivite:2,puissance:3,absorption:1},slimtp:{force:3,explosivite:2,puissance:3,absorption:1},rs_hip_push:{force:2,explosivite:2,stabilisation:1},rs_knee_push:{force:2,explosivite:2,stabilisation:1},rs_ankle_push:{force:2,explosivite:2,reactivite:1},cmjr:{reactivite:3,puissance:2,endurance:2,explosivite:1},seated_calf_raise:{force:3,explosivite:2,puissance:2,reactivite:2,absorption:1,stabilisation:1,endurance:1},standing_calf_raise:{force:3,explosivite:2,puissance:2,reactivite:2,absorption:1,stabilisation:1,endurance:1}};
 var SYSTEM_TESTS={'Quadriceps':['knee_ext','rs_knee_push'],'Ischio-jambiers':['knee_flex','sh_iso_9020','sh_iso_9090','sh_iso_3030','sh_iso_6060'],'Fléchisseurs de hanche':['hip_flex'],'Extenseurs de hanche':['hip_ext','rs_hip_push'],'Adducteurs':['hip_add'],'Abducteurs':['hip_abd'],'Rotateurs de hanche':['hip_rot_int','hip_rot_ext'],'Cheville':['wblt','df_iso','inv_iso','ev_iso'],'Soléaire':['soleus_iso','seated_calf_raise','heel_raise','rs_ankle_push'],'Gastrocnémien':['gastro_iso','standing_calf_raise','rs_ankle_push'],'Sensoriel':['eo','ef','strobo','sls']};
+
+// ── CONFIGURATION CLINIQUE : quelles variables (tests) comptent dans le calcul de chaque
+// qualité fonctionnelle. Réglage unique pour tout le cabinet (pas par athlète/bilan), avec
+// plusieurs profils nommés que le praticien peut créer/activer/restaurer. TFM ci-dessus reste
+// le référentiel de poids de RÉFÉRENCE (jamais modifié) ; chaque profil ne stocke que les
+// dérogations par rapport à l'état par défaut "utilisée" (used).
+// État possible par variable (test) pour une qualité donnée :
+//   'used'    (défaut, implicite) — compte dans le calcul du score, avec le poids TFM réel.
+//   'visible' — n'entre plus dans le calcul (poids effectif 0) mais reste listée dans le
+//               rapport ("Les tests réalisés"), signalée comme non comptabilisée.
+//   'ignored' — n'entre plus dans le calcul ET n'apparaît plus dans le rapport.
+var QUALITY_PROFILES_LS_KEY='kinexus_quality_profiles';
+var DEFAULT_QUALITY_PROFILE_ID='default';
+function defaultQualityProfilesState(){
+  return{activeId:DEFAULT_QUALITY_PROFILE_ID,profiles:[{id:DEFAULT_QUALITY_PROFILE_ID,name:'Par défaut',config:{}}]};
+}
+function loadQualityProfilesState(){
+  try{
+    var raw=localStorage.getItem(QUALITY_PROFILES_LS_KEY);
+    if(!raw)return defaultQualityProfilesState();
+    var parsed=JSON.parse(raw);
+    if(!parsed||!parsed.profiles||!parsed.profiles.length)return defaultQualityProfilesState();
+    if(!parsed.profiles.some(function(p){return p.id===DEFAULT_QUALITY_PROFILE_ID;}))parsed.profiles.unshift({id:DEFAULT_QUALITY_PROFILE_ID,name:'Par défaut',config:{}});
+    return parsed;
+  }catch(e){return defaultQualityProfilesState();}
+}
+function saveQualityProfilesState(state){try{localStorage.setItem(QUALITY_PROFILES_LS_KEY,JSON.stringify(state));}catch(e){}}
+// Chargé une fois au démarrage ; la vue Configuration clinique recharge la page après
+// enregistrement pour garantir que tout le moteur (calculs déjà en mémoire) reflète le
+// nouveau réglage — pas d'état React à invalider un par un.
+var qualityProfilesState=loadQualityProfilesState();
+function activeQualityProfile(){
+  return qualityProfilesState.profiles.find(function(p){return p.id===qualityProfilesState.activeId;})||qualityProfilesState.profiles[0];
+}
+function qualityVarState(functionKey,testKey){
+  var cfg=activeQualityProfile().config;
+  return(cfg[functionKey]&&cfg[functionKey][testKey])||'used';
+}
+// Poids effectif d'un test pour une fonction, après application du réglage actif.
+// 'visible' et 'ignored' retirent tous deux le test du calcul (poids 0) ; la distinction ne
+// joue que sur l'affichage dans le rapport (voir testReportState()).
+function effectiveTFMWeight(testKey,functionKey){
+  var full=TFM[testKey]&&TFM[testKey][functionKey];
+  if(!full)return 0;
+  return qualityVarState(functionKey,testKey)==='used'?full:0;
+}
+// État d'affichage d'un test dans le rapport, agrégé sur l'ensemble des fonctions auxquelles
+// il contribue : 'used' si au moins une fonction l'utilise réellement, sinon 'visible' si au
+// moins une fonction le garde visible, sinon 'ignored' (retiré du rapport).
+function testReportState(testKey){
+  var mappings=TFM[testKey];
+  if(!mappings)return'used'; // tests hors TFM (ex. équilibre/sensoriel) : non concernés par ce réglage.
+  var states=Object.keys(mappings).map(function(fk){return qualityVarState(fk,testKey);});
+  if(states.indexOf('used')>=0)return'used';
+  if(states.indexOf('visible')>=0)return'visible';
+  return'ignored';
+}
 // Compensations attendues en cas de déficit, par système — issues du référentiel de raisonnement
 // clinique KINEXUS (fiches STR001-013, section « Compensations »).
 var SYS_COMPENSATIONS={
@@ -858,7 +915,7 @@ function computeMoteur(testData,questData,normPop,normAge){
     var fk=FN_KEY[fn];var tw=0,ts=0,hasR=false,maj=0,cov=0,poss=0;
     var directTests=[],directStatuses=[];
     Object.keys(TFM).forEach(function(tk){
-      var w=TFM[tk][fk];if(!w)return;poss++;
+      var w=effectiveTFMWeight(tk,fk);if(!w)return;poss++;
       var s=tSt[tk];if(!s)return;cov++;
       var sc=s2sc(s);tw+=w;ts+=sc*w;
       if(s==='rouge'){hasR=true;maj++;}if(s==='orange')maj++;
@@ -882,10 +939,10 @@ function computeMoteur(testData,questData,normPop,normAge){
   var deficits=FUNCTIONS.filter(function(fn){return fSc[fn]&&(fSc[fn].status==='rouge'||fSc[fn].status==='orange');}).sort(function(a,b){return({rouge:0,orange:1}[fSc[a].status]||2)-({rouge:0,orange:1}[fSc[b].status]||2);}).slice(0,3);
   var priorities=deficits.map(function(fn,i){
     var fk=FN_KEY[fn];
-    var contrib=SYSTEMS.filter(function(sys){return(SYSTEM_TESTS[sys]||[]).some(function(t){return TFM[t]&&TFM[t][fk]>=2&&tSt[t]&&tSt[t]!=='vert';});}).filter(function(s){return sysSc[s]&&sysSc[s]!=='vert';});
+    var contrib=SYSTEMS.filter(function(sys){return(SYSTEM_TESTS[sys]||[]).some(function(t){return effectiveTFMWeight(t,fk)>=2&&tSt[t]&&tSt[t]!=='vert';});}).filter(function(s){return sysSc[s]&&sysSc[s]!=='vert';});
     var main=contrib[0]||null;var sec=contrib[1]||null;
-    var deficitTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]>=2&&tSt[tk]&&(tSt[tk]==='rouge'||tSt[tk]==='orange');}).map(function(tk){return{key:tk,label:TBK[tk]?TBK[tk].label:tk,status:tSt[tk],weight:TFM[tk][fk]};});
-    var okTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]>=2&&tSt[tk]==='vert';}).map(function(tk){return TBK[tk]?TBK[tk].label:tk;});
+    var deficitTests=Object.keys(TFM).filter(function(tk){return effectiveTFMWeight(tk,fk)>=2&&tSt[tk]&&(tSt[tk]==='rouge'||tSt[tk]==='orange');}).map(function(tk){return{key:tk,label:TBK[tk]?TBK[tk].label:tk,status:tSt[tk],weight:TFM[tk][fk]};});
+    var okTests=Object.keys(TFM).filter(function(tk){return effectiveTFMWeight(tk,fk)>=2&&tSt[tk]==='vert';}).map(function(tk){return TBK[tk]?TBK[tk].label:tk;});
     var hFn=HYPO[fn];
     var rootCauses=[],rootCauseTest=null,rootCauseKpi=null;
     for(var dk=0;dk<deficitTests.length&&!rootCauses.length;dk++){
@@ -1292,8 +1349,10 @@ function buildSportifReport(athlete,bilan,res){
     :'Le déficit '+(pri[0].contributeurPrincipal?'de '+pri[0].contributeurPrincipal.toLowerCase():'de '+pri[0].fonction.toLowerCase())+' entraîne une altération de la capacité de '+pri[0].fonction.toLowerCase()+(pri[1]?' et de '+pri[1].fonction.toLowerCase():'')+', augmentant le risque de blessure lors des situations de charge élevée et limitant la performance globale.';
 
   // ── Couverture réelle du bilan (nombre de tests / variables actifs) ──
-  var activeTestCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).length;
-  var variableCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];}).reduce(function(s,k){return s+TBK[k].kpis.length;},0);
+  // Les tests réglés sur "ignorée" pour toutes les qualités concernées (Configuration clinique)
+  // sont retirés du décompte et du rapport, comme s'ils n'avaient pas été réalisés.
+  var activeTestCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&testReportState(k)!=='ignored';}).length;
+  var variableCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k]&&testReportState(k)!=='ignored';}).reduce(function(s,k){return s+TBK[k].kpis.length;},0);
 
   // ── Corps musculaire : statut par muscle + LSI réel si un test unipodal gouverne ce système
   // (aucun score inventé — soit le vrai LSI du test qui a servi à calculer le statut, soit rien).
@@ -1580,8 +1639,9 @@ function buildSportifReport(athlete,bilan,res){
     {label:'Fonction',icon:'🎯',cats:['Tests Fonctionnels','Mobilité','Sensoriel']}
   ];
   var familyGroups=TEST_FAMILIES.map(function(fam){
-    var labels=TESTS.filter(function(test){var d=td[test.key];return d&&d.active&&fam.cats.indexOf(test.cat)>=0;}).map(function(test){return test.label;});
-    return {label:fam.label,icon:fam.icon,tests:labels};
+    var items=TESTS.filter(function(test){var d=td[test.key];return d&&d.active&&fam.cats.indexOf(test.cat)>=0&&testReportState(test.key)!=='ignored';})
+      .map(function(test){return{label:test.label,visibleOnly:testReportState(test.key)==='visible'};});
+    return {label:fam.label,icon:fam.icon,tests:items};
   }).filter(function(g){return g.tests.length>0;});
   if(familyGroups.length>0){
     html+=panel(
@@ -1591,8 +1651,10 @@ function buildSportifReport(athlete,bilan,res){
         return '<div>'
           +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">'+iconBadge(g.icon)+'<span style="font-size:8.5pt;font-weight:800;color:#132B3A;text-transform:uppercase;letter-spacing:0.04em">'+g.label+'</span></div>'
           +'<div style="display:flex;flex-wrap:wrap;gap:8px;padding-left:2px">'
-          +g.tests.map(function(label){
-            return '<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:#F0FDFA;border:1px solid #CCFBF1;color:#0F766E;font-size:7.5pt;font-weight:700"><span>✓</span>'+label+'</span>';
+          +g.tests.map(function(it){
+            return it.visibleOnly
+              ?'<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:#F3F6F8;border:1px solid #E1E8EE;color:#5B7A8C;font-size:7.5pt;font-weight:700" title="Visible mais non comptabilisée dans le score"><span>👁</span>'+it.label+'</span>'
+              :'<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;background:#F0FDFA;border:1px solid #CCFBF1;color:#0F766E;font-size:7.5pt;font-weight:700"><span>✓</span>'+it.label+'</span>';
           }).join('')
           +'</div>'
           +'</div>';
@@ -1948,6 +2010,150 @@ function ReportPreview(props){
   );
 }
 
+// ── CONFIGURATION CLINIQUE ───────────────────────────────────────────────────────
+var QUALITY_WEIGHT_LABEL={3:'Majeure',2:'Modérée',1:'Mineure'};
+var QUALITY_VAR_STATES=[
+  {value:'used',icon:'✅',label:'Utilisée'},
+  {value:'visible',icon:'👁',label:'Visible'},
+  {value:'ignored',icon:'❌',label:'Ignorée'}
+];
+function QualityConfigView(props){
+  // Clone local jusqu'à l'enregistrement : les modifications ne touchent le réglage réel du
+  // cabinet (qualityProfilesState, utilisé par tous les calculs) qu'après clic sur Enregistrer.
+  var [state,setState]=useState(function(){return JSON.parse(JSON.stringify(qualityProfilesState));});
+  var [openFn,setOpenFn]=useState(FUNCTIONS[0]);
+  var [savedFlash,setSavedFlash]=useState(false);
+  var [renaming,setRenaming]=useState(null);
+  var [newProfileName,setNewProfileName]=useState('');
+
+  var activeProfile=state.profiles.find(function(p){return p.id===state.activeId;})||state.profiles[0];
+
+  function updateActiveProfile(fn){
+    setState(function(s){
+      var next=JSON.parse(JSON.stringify(s));
+      var p=next.profiles.find(function(pp){return pp.id===next.activeId;});
+      fn(p);
+      return next;
+    });
+  }
+  function varStateFor(functionKey,testKey){return(activeProfile.config[functionKey]&&activeProfile.config[functionKey][testKey])||'used';}
+  function setVarState(functionKey,testKey,val){
+    updateActiveProfile(function(p){
+      if(val==='used'){
+        if(p.config[functionKey])delete p.config[functionKey][testKey];
+      }else{
+        p.config[functionKey]=p.config[functionKey]||{};
+        p.config[functionKey][testKey]=val;
+      }
+    });
+  }
+  function restoreDefault(){updateActiveProfile(function(p){p.config={};});}
+  function selectProfile(id){setState(function(s){return Object.assign({},s,{activeId:id});});}
+  function addProfile(){
+    var name=(newProfileName||'').trim();if(!name)return;
+    var id='p'+Date.now();
+    setState(function(s){
+      var cloned=JSON.parse(JSON.stringify(activeProfile.config));
+      return Object.assign({},s,{activeId:id,profiles:s.profiles.concat([{id:id,name:name,config:cloned}])});
+    });
+    setNewProfileName('');
+  }
+  function renameProfile(id,name){setState(function(s){return Object.assign({},s,{profiles:s.profiles.map(function(p){return p.id===id?Object.assign({},p,{name:name}):p;})});});}
+  function deleteProfile(id){
+    if(id===DEFAULT_QUALITY_PROFILE_ID)return;
+    setState(function(s){
+      var remaining=s.profiles.filter(function(p){return p.id!==id;});
+      return Object.assign({},s,{profiles:remaining,activeId:s.activeId===id?DEFAULT_QUALITY_PROFILE_ID:s.activeId});
+    });
+  }
+  function handleSave(){
+    qualityProfilesState=state;
+    saveQualityProfilesState(state);
+    setSavedFlash(true);setTimeout(function(){setSavedFlash(false);},2500);
+  }
+
+  var relevantTests=useMemo(function(){
+    var fk=FN_KEY[openFn];
+    return Object.keys(TFM).filter(function(tk){return TFM[tk][fk];}).map(function(tk){return{key:tk,label:TBK[tk]?TBK[tk].label:tk,weight:TFM[tk][fk]};}).sort(function(a,b){return b.weight-a.weight;});
+  },[openFn]);
+
+  return h('div',{style:{maxWidth:1100,margin:'0 auto',padding:'22px 16px 80px'}},
+    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6,flexWrap:'wrap',gap:10}},
+      h('div',null,
+        h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Configuration clinique'),
+        h('h1',{style:{margin:0,fontSize:22,fontWeight:800,color:C.text}},'Variables utilisées par qualité fonctionnelle')
+      ),
+      h('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+        savedFlash&&h('span',{style:{color:C.vert,fontSize:12,fontWeight:600}},'✓ Enregistré et appliqué'),
+        h(Btn,{primary:true,onClick:handleSave},'Enregistrer'),
+        h(Btn,{onClick:props.onClose},'← Retour')
+      )
+    ),
+    h('div',{style:{color:C.muted,fontSize:12,lineHeight:1.6,marginBottom:20,maxWidth:760}},
+      'Ce réglage s\'applique à tout le cabinet : il détermine quelles variables comptent dans le calcul du score de chaque qualité fonctionnelle. ',
+      h('b',null,'Utilisée'),' = compte dans le score. ',h('b',null,'Visible'),' = reste affichée dans le rapport mais ne compte plus. ',h('b',null,'Ignorée'),' = ni affichée, ni utilisée.'
+    ),
+
+    // Profils
+    h(Card,{pad:16,style:{marginBottom:20}},
+      h(SecTitle,null,'Profils'),
+      h('div',{style:{display:'flex',flexWrap:'wrap',gap:8,marginBottom:12}},
+        state.profiles.map(function(p){
+          var active=p.id===state.activeId;
+          return h('div',{key:p.id,style:{display:'flex',alignItems:'center',gap:4,border:'1px solid '+(active?C.teal:C.border),background:active?C.teal+'18':'transparent',borderRadius:20,padding:'4px 4px 4px 12px'}},
+            renaming===p.id
+              ?h('input',{autoFocus:true,value:p.name,onChange:function(e){renameProfile(p.id,e.target.value);},onBlur:function(){setRenaming(null);},onKeyDown:function(e){if(e.key==='Enter')setRenaming(null);},style:{background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:700,width:110}})
+              :h('span',{onClick:function(){selectProfile(p.id);},style:{color:active?C.teal:C.text,fontWeight:700,fontSize:12,cursor:'pointer'}},p.name),
+            h('button',{onClick:function(){setRenaming(p.id);},title:'Renommer',style:{background:'transparent',border:'none',color:C.muted,fontSize:11,cursor:'pointer',padding:'2px 4px'}},'✎'),
+            p.id!==DEFAULT_QUALITY_PROFILE_ID&&h('button',{onClick:function(){deleteProfile(p.id);},title:'Supprimer',style:{background:'transparent',border:'none',color:C.rouge,fontSize:12,cursor:'pointer',padding:'2px 6px'}},'✕')
+          );
+        })
+      ),
+      h('div',{style:{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}},
+        h('input',{value:newProfileName,onChange:function(e){setNewProfileName(e.target.value);},placeholder:'Nom du nouveau profil (ex : Football, LCA…)',
+          style:{background:C.surface,border:'1px solid '+C.border,borderRadius:8,padding:'7px 10px',color:C.text,fontSize:12,minWidth:220}}),
+        h(Btn,{small:true,onClick:addProfile,disabled:!newProfileName.trim()},'+ Dupliquer le profil actif sous ce nom'),
+        h(Btn,{small:true,onClick:restoreDefault},'Restaurer la configuration par défaut')
+      )
+    ),
+
+    // Qualités fonctionnelles
+    FUNCTIONS.map(function(fn){
+      var open=openFn===fn;
+      var fk=FN_KEY[fn];
+      var overrideCount=Object.keys((activeProfile.config[fk]||{})).length;
+      return h(Card,{key:fn,pad:'0px',style:{marginBottom:10,overflow:'hidden'}},
+        h('div',{onClick:function(){setOpenFn(open?null:fn);},style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 16px',cursor:'pointer'}},
+          h('div',{style:{display:'flex',alignItems:'center',gap:8}},
+            h('span',{style:{color:C.text,fontWeight:700,fontSize:14}},fn),
+            overrideCount>0&&h('span',{style:{color:C.teal,fontSize:10.5,fontWeight:700,background:C.teal+'18',padding:'2px 8px',borderRadius:10}},overrideCount+' modifiée'+(overrideCount>1?'s':''))
+          ),
+          h('span',{style:{color:C.muted,fontSize:14}},open?'▾':'›')
+        ),
+        open&&h('div',{style:{padding:'0 16px 14px'}},
+          relevantTests.map(function(t){
+            var vs=varStateFor(fk,t.key);
+            return h('div',{key:t.key,style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderTop:'1px solid '+C.border}},
+              h('div',null,
+                h('div',{style:{color:C.text,fontSize:12.5,fontWeight:600}},t.label),
+                h('div',{style:{color:C.muted,fontSize:10}},'Poids de référence : '+QUALITY_WEIGHT_LABEL[t.weight])
+              ),
+              h('div',{style:{display:'flex',gap:4}},
+                QUALITY_VAR_STATES.map(function(opt){
+                  var active=vs===opt.value;
+                  return h('button',{key:opt.value,onClick:function(){setVarState(fk,t.key,opt.value);},title:opt.label,
+                    style:{padding:'5px 10px',borderRadius:8,border:'1px solid '+(active?C.teal:C.border),background:active?C.teal+'22':'transparent',color:active?C.teal:C.muted,fontSize:12,cursor:'pointer'}
+                  },opt.icon);
+                })
+              )
+            );
+          })
+        )
+      );
+    })
+  );
+}
+
 // ── SCREENS ───────────────────────────────────────────────────────────────────
 function Dashboard(props){
   var [search,setSearch]=useState('');var [fSport,setFSport]=useState('');var [fNiv,setFNiv]=useState('');var [confirmDel,setConfirmDel]=useState(null);
@@ -1957,7 +2163,10 @@ function Dashboard(props){
   return h('div',{style:{paddingBottom:40}},
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:18}},
       h('div',null,h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Tableau de bord'),h('h1',{style:{margin:0,fontSize:24,fontWeight:800,color:C.text}},'Sportifs ',h('span',{style:{color:C.muted,fontSize:16,fontWeight:400}},'('+filtered.length+')'))),
-      h(Btn,{primary:true,onClick:props.onNew},'+ Nouveau sportif')
+      h('div',{style:{display:'flex',gap:8}},
+        h(Btn,{onClick:props.onOpenConfig},'⚙ Configuration clinique'),
+        h(Btn,{primary:true,onClick:props.onNew},'+ Nouveau sportif')
+      )
     ),
     h('div',{style:{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}},
       h('input',{value:search,onChange:function(e){setSearch(e.target.value);},placeholder:'🔍 Rechercher…',style:{flex:'1 1 180px',background:C.surface,border:'1px solid '+C.border,borderRadius:8,padding:'9px 12px',color:C.text,fontSize:13,minWidth:0}}),
@@ -3208,8 +3417,9 @@ function App(){
         )
       )
     ),
-    h('div',{style:(screen==='analyse'||screen==='reportPreview')?{maxWidth:1400,margin:'0 auto',padding:'0 0 60px'}:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
-      screen==='dashboard'&&h(Dashboard,{athletes:athletes,onSelect:function(a){setCurId(a.id);setScreen('athlete');},onNew:function(){setScreen('newAthlete');},onDelete:delAth}),
+    h('div',{style:(screen==='analyse'||screen==='reportPreview')?{maxWidth:1400,margin:'0 auto',padding:'0 0 60px'}:screen==='qualityConfig'?{maxWidth:1100,margin:'0 auto',padding:'0 0 60px'}:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
+      screen==='dashboard'&&h(Dashboard,{athletes:athletes,onSelect:function(a){setCurId(a.id);setScreen('athlete');},onNew:function(){setScreen('newAthlete');},onDelete:delAth,onOpenConfig:function(){setScreen('qualityConfig');}}),
+      screen==='qualityConfig'&&h(QualityConfigView,{onClose:function(){setScreen('dashboard');}}),
       (screen==='newAthlete'||screen==='editAthlete')&&h(AthleteForm,{initial:screen==='editAthlete'?editAth:null,onSave:saveAth,onCancel:function(){setScreen(editAth?'athlete':'dashboard');}}),
       screen==='athlete'&&ca&&h(AthleteProfile,{athlete:ca,onNewBilan:function(){setScreen('newBilan');},onSelectBilan:function(b){setCurBilan(b);setScreen('analyse');},onDeleteBilan:delBilan,onEdit:function(){setEditAth(ca);setScreen('editAthlete');},onDuplicate:dupBilan}),
       screen==='newBilan'&&h(BilanForm,{onSave:function(b){setDraft(b);setScreen('testEntry');},onCancel:function(){setScreen('athlete');}}),
