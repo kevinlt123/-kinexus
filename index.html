@@ -1300,6 +1300,58 @@ function computeCoherenceEngine(phases){
   };
 }
 
+// ── HIÉRARCHIE DE CONFIANCE UNIFIÉE (Variables → Phase → Transition → Confiance globale) ─────
+// Remplace les 4 mécanismes de confiance concurrents identifiés à l'analyse de la spécification
+// (cohérence interne isolée, modèle "3 niveaux de preuve" du document, indice global à 6
+// facteurs jamais formalisé, échelle du moteur de raisonnement Kinexus) par UNE seule
+// hiérarchie, entièrement traçable : chaque niveau consomme le résultat du niveau précédent,
+// jamais les données brutes directement, et le résultat final expose toujours la trace des 3
+// niveaux — jamais un chiffre seul.
+// Niveau 1 — Variables : les variables maîtresses de la phase pointent-elles individuellement
+//   dans le même sens que le score global de la phase (concordance) ?
+// Niveau 2 — Phase : la phase est-elle elle-même classée sous les normes (réutilise
+//   BiomecaSpecs.niveauInferieurAuxNormes, jamais une nouvelle comparaison numérique) ?
+// Niveau 3 — Transition : une rupture de cohérence (Moteur de Cohérence Inter-Phases) touche-
+//   t-elle une transition adjacente à cette phase ?
+// Niveau 4 — Confiance globale : combinaison pondérée des 3 niveaux (poids Kinexus par défaut,
+//   configurables), classée via ThresholdBandClassifier ('confianceGlobale').
+function effectiveConfidenceWeights(){
+  var cfg=activeBiomecaProfile().config||{};
+  return cfg.confidenceWeights||{variable:30,phase:30,transition:40};
+}
+function confidenceLevelVariables(phaseResult){
+  if(!phaseResult.sufficient)return{level:'variables',score:0,reason:'Phase insuffisante : niveau Variables non évaluable.'};
+  var masterOk=phaseResult.entries.filter(function(e){return e.tier==='master'&&e.status==='ok';});
+  if(!masterOk.length)return{level:'variables',score:0,reason:'Aucune variable maîtresse exploitable.'};
+  var phaseFaible=phaseResult.score<50;
+  var concordantes=masterOk.filter(function(e){return phaseFaible?e.percentile<40:e.percentile>=60;});
+  var ratio=concordantes.length/masterOk.length;
+  return{level:'variables',score:Math.round(ratio*100),reason:concordantes.length+'/'+masterOk.length+' variables maîtresses concordent individuellement avec le sens de la phase ("'+(phaseFaible?'faible':'élevée')+'").'};
+}
+function confidenceLevelPhase(phaseResult){
+  if(!phaseResult.sufficient)return{level:'phase',score:0,reason:'Phase insuffisante : niveau Phase non évaluable.'};
+  var proof=BiomecaSpecs.niveauInferieurAuxNormes.isSatisfiedBy({phase:phaseResult});
+  return{level:'phase',score:proof.result?100:0,reason:proof.reason};
+}
+function confidenceLevelTransition(phaseKey,coherenceResult){
+  if(!coherenceResult||!coherenceResult.ruptures)return{level:'transition',score:0,reason:'Analyse des transitions non disponible.'};
+  var touchante=coherenceResult.ruptures.filter(function(r){return r.from===phaseKey||r.to===phaseKey;});
+  return{level:'transition',score:touchante.length?100:0,reason:touchante.length?('Rupture de cohérence sur la transition "'+touchante[0].key+'".'):'Aucune rupture de transition adjacente à cette phase.'};
+}
+// Point d'entrée du module. Input : le résultat d'UNE phase (Moteur Biomécanique) + le résultat
+// du Moteur de Cohérence Inter-Phases (déjà calculé). Output : score composite 0-100 + bande +
+// trace complète des 3 niveaux sous-jacents.
+function computePhaseConfidence(phaseResult,coherenceResult){
+  var w=effectiveConfidenceWeights();
+  var lv=confidenceLevelVariables(phaseResult);
+  var lp=confidenceLevelPhase(phaseResult);
+  var lt=confidenceLevelTransition(phaseResult.phase,coherenceResult);
+  var sumW=(w.variable||0)+(w.phase||0)+(w.transition||0);
+  var composite=sumW>0?(lv.score*w.variable+lp.score*w.phase+lt.score*w.transition)/sumW:0;
+  var band=classifyBand(effectiveBiomecaBands('confianceGlobale'),composite);
+  return{phase:phaseResult.phase,composite:composite,band:band,niveaux:{variables:lv,phase:lp,transition:lt}};
+}
+
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
 // sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
 // les seuils génériques dans THRESHOLDS.
