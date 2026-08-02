@@ -1201,6 +1201,13 @@ var REPORT_OVERRIDE_FIELDS=[
 ];
 function buildSportifReport(athlete,bilan,res){
   var fSc=res.functionScores,sysSc=res.systemScores,pri=res.priorities||[],rtp=res.rtpStatus,tSt=res.testStatuses;
+  // Surcharges du praticien (aperçu éditable) : priorités éditées/réordonnées, statut RTP forcé
+  // manuellement. Tout le reste du rapport (Body Map, qualités, asymétries, chaîne causale)
+  // continue de refléter exclusivement les données mesurées — seules les priorités et le
+  // statut RTP sont un jugement clinique explicitement modifiable par le praticien.
+  var reportOv=bilan.reportOverrides||{};
+  if(reportOv.priorities!=null)pri=reportOv.priorities; // tableau vide = le praticien a explicitement supprimé toutes les priorités
+  if(reportOv.rtpStatusOverride&&rtp)rtp=Object.assign({},rtp,{status:reportOv.rtpStatusOverride});
   var evFns=FUNCTIONS.filter(function(f){return fSc[f];});
   var td=bilan.testData||{};
   var dateStr=new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
@@ -1237,7 +1244,6 @@ function buildSportifReport(athlete,bilan,res){
   // Textes du Résumé clinique / Note au médecin : valeur par défaut calculée, sauf si le
   // praticien l'a explicitement modifiée (bilan.reportOverrides, éditable depuis l'aperçu).
   var reportDefaults=defaultReportTexts(athlete,bilan,res);
-  var reportOv=bilan.reportOverrides||{};
   function reportTxt(key){return reportOv[key]!=null&&reportOv[key]!==''?reportOv[key]:reportDefaults[key];}
   var globalDesc=reportTxt('conclusion');
 
@@ -1520,7 +1526,7 @@ function buildSportifReport(athlete,bilan,res){
         var objLsi=p.contributeurPrincipal?muscleLsiFor(p.contributeurPrincipal):null;
         var contribs=[p.contributeurPrincipal,p.contributeurSecondaire].filter(Boolean);
         var objectifTxt=contribs.length?contribs.join(' · '):p.fonction;
-        var sortieTxt=objLsi?'LSI '+p.contributeurPrincipal+' ≥ 95%':'Retour à un profil équilibré';
+        var sortieTxt=p.sortieTxt||(objLsi?'LSI '+p.contributeurPrincipal+' ≥ 95%':'Retour à un profil équilibré');
         function field(ic,lbl,val){return '<div style="display:flex;gap:10px;margin-bottom:15px">'+iconBadge(ic)+'<div><div style="font-size:6.8pt;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">'+lbl+'</div><div style="font-size:8.5pt;color:#132B3A;line-height:1.55">'+val+'</div></div></div>';}
         return panel(
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #F3F6F8">'
@@ -1647,7 +1653,7 @@ function buildSportifReport(athlete,bilan,res){
       var rv=recVerbs[i]||recVerbs[0];
       var contribs=[p.contributeurPrincipal,p.contributeurSecondaire].filter(Boolean);
       var objLsi2=p.contributeurPrincipal?muscleLsiFor(p.contributeurPrincipal):null;
-      var critereTxt=objLsi2?'LSI '+p.contributeurPrincipal+' ≥ 95%':'Retour à un profil équilibré';
+      var critereTxt=p.sortieTxt||(objLsi2?'LSI '+p.contributeurPrincipal+' ≥ 95%':'Retour à un profil équilibré');
       return panel(
         '<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">'+iconBadge(rv.icon)+'<span style="font-weight:800;font-size:10pt;color:#132B3A;text-transform:uppercase;letter-spacing:0.02em">'+rv.verb+'</span></div>'
         +'<div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">Objectif</div>'
@@ -1681,6 +1687,15 @@ function buildSportifReport(athlete,bilan,res){
     +'<div style="font-size:7.3pt;color:#94A3B8;line-height:1.55">'+reportTxt('noteMedecin')+'</div>'
   );
   html+='</div>';
+
+  // Commentaires du praticien — champ libre, additif, affiché uniquement s'il est renseigné.
+  if(reportOv.praticienComments){
+    html+=panelL3(
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:9px"><span style="font-size:10.5pt;opacity:0.7">🖊️</span><span style="font-size:7pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em">Commentaires du praticien</span></div>'
+      +'<div style="font-size:7.8pt;color:#5B7A8C;line-height:1.6;white-space:pre-line">'+reportOv.praticienComments+'</div>',
+      'margin-top:14px'
+    );
+  }
 
   html+=footerHTML(2,true);
   html+='</div>'; // end print-page 2
@@ -1787,11 +1802,18 @@ function downloadReportHtml(fullHtml,type,athlete){
 // modifier le Résumé clinique et la Note au médecin. Les modifications sont
 // mémorisées sur le bilan (bilan.reportOverrides) via props.onSave, donc elles
 // sont conservées si on rouvre l'aperçu ou qu'on réexporte plus tard.
+var RTP_OVERRIDE_OPTIONS=[{value:null,label:'Auto (calculé)'},{value:'vert',label:'Prêt'},{value:'jaune',label:'À surveiller'},{value:'rouge',label:'Non prêt'}];
+var PRIORITY_STATUS_OPTIONS=['vert','jaune','orange','rouge'];
+var smallInputStyle={width:'100%',boxSizing:'border-box',background:C.card,border:'1px solid '+C.border,borderRadius:6,padding:'6px 8px',color:C.text,fontSize:11.5,marginBottom:6,fontFamily:'inherit'};
+var smallTextareaStyle=Object.assign({},smallInputStyle,{resize:'vertical',lineHeight:1.4});
+
 function ReportPreview(props){
   var athlete=props.athlete,bilan=props.bilan;
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
   var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge);},[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
   var defaults=useMemo(function(){return defaultReportTexts(athlete,bilan,res);},[bilan,res]);
+  var priKeyCounter=useRef(0);
+  function withKey(p){priKeyCounter.current+=1;return Object.assign({},p,{_key:'p'+priKeyCounter.current});}
   function initialForm(){
     var f={};
     REPORT_OVERRIDE_FIELDS.forEach(function(fld){
@@ -1800,20 +1822,52 @@ function ReportPreview(props){
     });
     return f;
   }
+  function initialPriorities(){
+    var ov=bilan.reportOverrides||{};
+    var src=ov.priorities!=null?ov.priorities:(res.priorities||[]);
+    return src.map(function(p){return withKey({fonction:p.fonction||'',contributeurPrincipal:p.contributeurPrincipal||'',contributeurSecondaire:p.contributeurSecondaire||'',status:p.status||'orange',hypothese:p.hypothese||'',orientation:p.orientation||'',sortieTxt:p.sortieTxt||'',deficitTests:p.deficitTests||[]});});
+  }
   var [form,setForm]=useState(initialForm);
+  var [priorities,setPriorities]=useState(initialPriorities);
+  var [rtpOverride,setRtpOverride]=useState(function(){return(bilan.reportOverrides||{}).rtpStatusOverride||null;});
+  var [comments,setComments]=useState(function(){return(bilan.reportOverrides||{}).praticienComments||'';});
   var [editing,setEditing]=useState(false);
   var [savedFlash,setSavedFlash]=useState(false);
-  var dirty=REPORT_OVERRIDE_FIELDS.some(function(fld){return(bilan.reportOverrides||{})[fld.key]!==form[fld.key]&&!((bilan.reportOverrides||{})[fld.key]==null&&form[fld.key]===defaults[fld.key]);});
+  var dragIndex=useRef(null);
 
-  var previewBilan=useMemo(function(){return Object.assign({},bilan,{reportOverrides:form});},[bilan,form]);
+  function currentOverrides(){
+    return Object.assign({},form,{
+      priorities:priorities.map(function(p,i){return{rang:i+1,fonction:p.fonction,contributeurPrincipal:p.contributeurPrincipal,contributeurSecondaire:p.contributeurSecondaire,status:p.status,hypothese:p.hypothese,orientation:p.orientation,sortieTxt:p.sortieTxt,deficitTests:p.deficitTests};}),
+      rtpStatusOverride:rtpOverride,
+      praticienComments:comments
+    });
+  }
+  var overridesForPreview=currentOverrides();
+  var savedOv=bilan.reportOverrides||{};
+  var dirty=JSON.stringify(overridesForPreview)!==JSON.stringify(Object.assign({},savedOv,{priorities:savedOv.priorities!=null?savedOv.priorities:(res.priorities||[]).map(function(p){return{rang:p.rang,fonction:p.fonction,contributeurPrincipal:p.contributeurPrincipal,contributeurSecondaire:p.contributeurSecondaire,status:p.status,hypothese:p.hypothese,orientation:p.orientation,sortieTxt:p.sortieTxt||'',deficitTests:p.deficitTests||[]};})}));
+
+  var previewBilan=useMemo(function(){return Object.assign({},bilan,{reportOverrides:overridesForPreview});},[bilan,form,priorities,rtpOverride,comments]);
   var fullHtml=useMemo(function(){return buildFullReportHtml('sportif',athlete,previewBilan,res);},[previewBilan,res]);
 
   function setField(key,val){setForm(function(f){var n=Object.assign({},f);n[key]=val;return n;});}
   function resetField(key){setField(key,defaults[key]);}
-  function handleSave(){props.onSave(form);setSavedFlash(true);setTimeout(function(){setSavedFlash(false);},2000);}
+  function updatePriority(idx,key,val){setPriorities(function(list){return list.map(function(p,i){return i===idx?Object.assign({},p,{status:key==='status'?val:p.status,fonction:key==='fonction'?val:p.fonction,contributeurPrincipal:key==='contributeurPrincipal'?val:p.contributeurPrincipal,hypothese:key==='hypothese'?val:p.hypothese,orientation:key==='orientation'?val:p.orientation,sortieTxt:key==='sortieTxt'?val:p.sortieTxt}):p;});});}
+  function removePriority(idx){setPriorities(function(list){return list.filter(function(_,i){return i!==idx;});});}
+  function addPriority(){setPriorities(function(list){return list.concat([withKey({fonction:'Nouvelle priorité',contributeurPrincipal:'',status:'orange',hypothese:'',orientation:'',sortieTxt:'',deficitTests:[]})]);});}
+  function movePriority(from,to){
+    if(from==null||from===to)return;
+    setPriorities(function(list){
+      var next=list.slice();
+      var moved=next.splice(from,1)[0];
+      next.splice(to,0,moved);
+      return next;
+    });
+    dragIndex.current=null;
+  }
+  function handleSave(){props.onSave(currentOverrides());setSavedFlash(true);setTimeout(function(){setSavedFlash(false);},2000);}
   function handleDownload(){downloadReportHtml(fullHtml,'sportif',athlete);}
 
-  return h('div',{style:{maxWidth:1400,margin:'0 auto',padding:'18px 20px 60px'}},
+  return h('div',{style:{maxWidth:1500,margin:'0 auto',padding:'18px 20px 60px'}},
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:10}},
       h('div',null,
         h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Aperçu'),
@@ -1821,15 +1875,29 @@ function ReportPreview(props){
       ),
       h('div',{style:{display:'flex',gap:8,alignItems:'center'}},
         savedFlash&&h('span',{style:{color:C.vert,fontSize:12,fontWeight:600}},'✓ Enregistré'),
-        h(Btn,{onClick:function(){setEditing(function(v){return!v;});}},editing?'Fermer l\'édition':'✎ Modifier le texte'),
+        h(Btn,{onClick:function(){setEditing(function(v){return!v;});}},editing?'Fermer l\'édition':'✎ Modifier le rapport'),
         h(Btn,{onClick:handleSave,disabled:!dirty},'Enregistrer'),
         h(Btn,{primary:true,onClick:handleDownload},'⬇ Télécharger'),
         h(Btn,{onClick:props.onClose},'← Retour')
       )
     ),
     h('div',{style:{display:'flex',gap:16,alignItems:'flex-start'}},
-      editing&&h('div',{style:{width:340,flexShrink:0,background:C.card,border:'1px solid '+C.border,borderRadius:12,padding:16,position:'sticky',top:70}},
-        h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:14}},'Ces textes apparaissent dans le Résumé clinique et en bas de la page 2. L\'aperçu à droite se met à jour en direct.'),
+      editing&&h('div',{style:{width:380,flexShrink:0,background:C.card,border:'1px solid '+C.border,borderRadius:12,padding:16,position:'sticky',top:70,maxHeight:'88vh',overflowY:'auto'}},
+        h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:16}},'Toutes les modifications se reflètent en direct dans l\'aperçu à droite. Rien n\'est enregistré tant que tu ne cliques pas sur « Enregistrer ».'),
+
+        // Statut RTP
+        h(SecTitle,null,'Statut RTP'),
+        h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:20}},
+          RTP_OVERRIDE_OPTIONS.map(function(opt){
+            var active=rtpOverride===opt.value;
+            return h('button',{key:opt.label,onClick:function(){setRtpOverride(opt.value);},
+              style:{padding:'6px 11px',borderRadius:20,border:'1px solid '+(active?C.teal:C.border),background:active?C.teal+'22':'transparent',color:active?C.teal:C.muted,fontSize:11,fontWeight:700,cursor:'pointer'}
+            },opt.label);
+          })
+        ),
+
+        // Résumé clinique / note
+        h(SecTitle,null,'Résumé clinique & note'),
         REPORT_OVERRIDE_FIELDS.map(function(fld){
           return h('div',{key:fld.key,style:{marginBottom:16}},
             h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}},
@@ -1839,7 +1907,39 @@ function ReportPreview(props){
             h('textarea',{value:form[fld.key],onChange:function(e){setField(fld.key,e.target.value);},rows:fld.key==='noteMedecin'?3:4,
               style:{width:'100%',boxSizing:'border-box',background:C.surface,border:'1px solid '+C.border,borderRadius:8,padding:'8px 10px',color:C.text,fontSize:12.5,lineHeight:1.5,resize:'vertical',fontFamily:'inherit'}})
           );
-        })
+        }),
+
+        // Priorités (réordonnables, ajout/suppression)
+        h(SecTitle,null,'Priorités d\'intervention'),
+        h('div',{style:{color:C.muted,fontSize:10,lineHeight:1.4,marginBottom:10}},'Glisse-dépose (⠿) pour réordonner. Ces priorités alimentent aussi le Plan de prise en charge (page 2).'),
+        priorities.map(function(p,idx){
+          return h('div',{key:p._key,draggable:true,
+            onDragStart:function(){dragIndex.current=idx;},
+            onDragOver:function(e){e.preventDefault();},
+            onDrop:function(e){e.preventDefault();movePriority(dragIndex.current,idx);},
+            style:{border:'1px solid '+C.border,borderRadius:10,padding:10,marginBottom:10,background:C.surface}
+          },
+            h('div',{style:{display:'flex',alignItems:'center',gap:7,marginBottom:7}},
+              h('span',{style:{color:C.muted,fontSize:13,cursor:'grab'},title:'Glisser pour réordonner'},'⠿'),
+              h('span',{style:{width:18,height:18,borderRadius:'50%',background:SC[p.status],color:'#fff',fontSize:9.5,fontWeight:800,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},idx+1),
+              h('input',{value:p.fonction,onChange:function(e){updatePriority(idx,'fonction',e.target.value);},placeholder:'Fonction / titre',style:{flex:1,background:'transparent',border:'none',borderBottom:'1px solid '+C.border,color:C.text,fontWeight:700,fontSize:12,padding:'2px 3px',minWidth:0}}),
+              h('button',{onClick:function(){removePriority(idx);},title:'Supprimer',style:{background:'transparent',border:'none',color:C.rouge,fontSize:14,cursor:'pointer',padding:'0 2px',flexShrink:0}},'✕')
+            ),
+            h('select',{value:p.status,onChange:function(e){updatePriority(idx,'status',e.target.value);},style:smallInputStyle},
+              PRIORITY_STATUS_OPTIONS.map(function(s){return h('option',{key:s,value:s},SL[s]);})
+            ),
+            h('input',{value:p.contributeurPrincipal,onChange:function(e){updatePriority(idx,'contributeurPrincipal',e.target.value);},placeholder:'Contributeur principal (ex : Quadriceps)',style:smallInputStyle}),
+            h('textarea',{value:p.hypothese,onChange:function(e){updatePriority(idx,'hypothese',e.target.value);},placeholder:'Pourquoi ?',rows:2,style:smallTextareaStyle}),
+            h('textarea',{value:p.orientation,onChange:function(e){updatePriority(idx,'orientation',e.target.value);},placeholder:'Actions',rows:2,style:smallTextareaStyle}),
+            h('input',{value:p.sortieTxt,onChange:function(e){updatePriority(idx,'sortieTxt',e.target.value);},placeholder:'Critère de sortie (vide = calculé automatiquement)',style:Object.assign({},smallInputStyle,{marginBottom:0})})
+          );
+        }),
+        h(Btn,{onClick:addPriority,style:{width:'100%',marginBottom:20}},'+ Ajouter une priorité'),
+
+        // Commentaires du praticien
+        h(SecTitle,null,'Commentaires du praticien'),
+        h('textarea',{value:comments,onChange:function(e){setComments(e.target.value);},rows:3,placeholder:'Notes libres, visibles uniquement si renseignées (bas de la page 2)…',
+          style:{width:'100%',boxSizing:'border-box',background:C.surface,border:'1px solid '+C.border,borderRadius:8,padding:'8px 10px',color:C.text,fontSize:12.5,lineHeight:1.5,resize:'vertical',fontFamily:'inherit'}})
       ),
       h('div',{style:{flex:1,minWidth:0,background:'#EEF2F5',borderRadius:14,padding:14}},
         h('iframe',{srcDoc:fullHtml,title:'Aperçu du rapport',style:{width:'100%',height:'88vh',border:'1px solid '+C.border,borderRadius:10,background:'#fff'}})
