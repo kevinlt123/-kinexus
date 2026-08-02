@@ -1203,6 +1203,103 @@ function biomecaPhaseConclusion(phaseResult){
   return{label:'Nuancé',text:text,proof:proof};
 }
 
+// ── MOTEUR DE COHÉRENCE INTER-PHASES (transitions) ───────────────────────────────────────────
+// Module indépendant : consomme UNIQUEMENT les scores de phase produits par le Moteur
+// Biomécanique ci-dessus (lecture seule, jamais les variables brutes) — "troisième niveau
+// d'analyse" du document source. Ne modifie JAMAIS les scores de phase, n'attribue jamais de
+// cause musculaire, ne pose jamais de diagnostic. Les conclusions sont des hypothèses
+// biomécaniques, jamais des certitudes.
+var CMJ_TRANSITIONS=[
+  {key:'unloading_braking',from:'unloading',to:'braking'},
+  {key:'braking_concentric',from:'braking',to:'concentric'},
+  {key:'concentric_flight',from:'concentric',to:'flight'},
+  {key:'flight_landing',from:'flight',to:'landing'}
+];
+// Textes d'interprétation par transition — repris tels quels du document source (règles
+// d'interprétation rédigées explicitement par le praticien pour chacune des 4 transitions, pas
+// une invention de cette implémentation). Table de DONNÉES : chaque transition ne définit que
+// son texte, jamais sa logique de déclenchement (portée par computeTransition ci-dessous) —
+// c'est ce qui permet d'ajouter/modifier un texte sans toucher au code.
+var CMJ_TRANSITION_TEMPLATES={
+  unloading_braking:{
+    similar:'Préparation et freinage cohérents.',
+    fromGreater:'Bonne préparation du mouvement mais freinage relativement limité.',
+    toGreater:'Freinage performant malgré une préparation plus limitée.'
+  },
+  braking_concentric:{
+    similar:'Bonne conversion du freinage vers la propulsion.',
+    fromGreater:'La capacité à convertir le freinage en propulsion semble constituer le principal facteur limitant du mouvement.',
+    toGreater:'La propulsion est performante malgré un freinage relativement limité.',
+    toGreaterNote:'Interpréter avec prudence.'
+  },
+  concentric_flight:{
+    similar:'La propulsion est efficacement convertie en performance de saut.',
+    fromGreater:'La production de propulsion est importante mais se traduit imparfaitement en performance verticale.',
+    fromGreaterNote:'Vérifier la stratégie de saut, la technique ou la qualité des données.',
+    toGreater:'Vérifier la cohérence des données.',
+    toGreaterNote:'Cette situation est inhabituelle.'
+  },
+  flight_landing:{
+    similar:'La réception est cohérente avec la performance produite.',
+    fromGreater:'La capacité d\'absorption et de contrôle à la réception semble constituer le principal facteur limitant après la phase de vol.',
+    toGreater:'Réception performante malgré une performance verticale limitée.'
+  }
+};
+// Calcule le résultat d'UNE transition à partir des scores de phase (Moteur Biomécanique).
+// "similaire" = les deux phases sont dans les 2 paliers les plus favorables de l'échelle
+// 'coherenceTransition' (Très cohérente / Cohérente) — sinon la transition est classée selon le
+// sens de l'écart (choix Kinexus, configurable via les bandes, pas une règle VALD).
+function computeTransition(transitionDef,phases){
+  var from=phases[transitionDef.from],to=phases[transitionDef.to];
+  var tpl=CMJ_TRANSITION_TEMPLATES[transitionDef.key];
+  if(!from||!to||!from.sufficient||!to.sufficient){
+    return{key:transitionDef.key,from:transitionDef.from,to:transitionDef.to,sufficient:false,reason:'Données de phase insuffisantes pour analyser cette transition.'};
+  }
+  var deltaScore=to.score-from.score;
+  var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceTransition'),Math.abs(deltaScore));
+  var similar=!!coherenceBand&&['Très cohérente','Cohérente'].indexOf(coherenceBand.label)>=0;
+  var sens=similar?'similaire':(deltaScore<0?'from>to':'to>from');
+  var text,note;
+  if(similar){text=tpl.similar;}
+  else if(sens==='from>to'){text=tpl.fromGreater;note=tpl.fromGreaterNote;}
+  else{text=tpl.toGreater;note=tpl.toGreaterNote;}
+  return{
+    key:transitionDef.key,from:transitionDef.from,to:transitionDef.to,sufficient:true,
+    deltaScore:deltaScore,coherenceBand:coherenceBand,sens:sens,text:text,note:note||null
+  };
+}
+// Point d'entrée du module. Input : phases du Moteur Biomécanique UNIQUEMENT (jamais les
+// variables brutes). Output : les 4 transitions + synthèse automatique (nombre de transitions
+// cohérentes, ruptures classées par ordre d'importance, transition la plus limitante,
+// conclusion globale — un seul choix parmi les 5 prévus par le document source).
+function computeCoherenceEngine(phases){
+  var transitions=CMJ_TRANSITIONS.map(function(t){return computeTransition(t,phases);});
+  var analysable=transitions.filter(function(t){return t.sufficient;});
+  var coherentes=analysable.filter(function(t){return t.sens==='similaire';});
+  var incoherentes=analysable.filter(function(t){return t.sens!=='similaire';})
+    .slice().sort(function(a,b){return Math.abs(b.deltaScore)-Math.abs(a.deltaScore);});
+  var conclusionGlobale;
+  if(!analysable.length){
+    conclusionGlobale='Données insuffisantes pour analyser la chaîne biomécanique.';
+  }else if(analysable.length<CMJ_TRANSITIONS.length){
+    conclusionGlobale='Profil biomécanique complexe nécessitant une interprétation prudente.';
+  }else if(incoherentes.length===0){
+    var toutesTresCoherentes=coherentes.every(function(t){return t.coherenceBand.label==='Très cohérente';});
+    conclusionGlobale=toutesTresCoherentes?'Chaîne biomécanique très cohérente.':'Chaîne biomécanique globalement cohérente.';
+  }else if(incoherentes.length===1){
+    conclusionGlobale='Présence d\'une rupture biomécanique isolée.';
+  }else{
+    conclusionGlobale='Présence de plusieurs ruptures biomécaniques.';
+  }
+  return{
+    transitions:transitions,
+    nbCoherentes:coherentes.length,nbAnalysables:analysable.length,nbTotal:CMJ_TRANSITIONS.length,
+    ruptures:incoherentes,
+    transitionLaPlusLimitante:incoherentes.length?incoherentes[0]:null,
+    conclusionGlobale:conclusionGlobale
+  };
+}
+
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
 // sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
 // les seuils génériques dans THRESHOLDS.
