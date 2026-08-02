@@ -1432,17 +1432,45 @@ function computeDominante(dominanteLabel,cmjValues,pop,age){
       entries:entries
     };
   }
+  // Même philosophie que computeBiomecaPhase (moteur biomécanique des phases) : le percentile
+  // global n'est qu'une moyenne pondérée de synthèse — chaque percentile individuel, la
+  // dispersion entre variables et la cohérence interne restent exposés séparément, et
+  // l'interprétation (dominanteConclusion ci-dessous) ne se fonde JAMAIS sur le seul percentile
+  // global.
   var usable=entries.filter(function(e){return e.status==='ok';});
   var sumW=0,sumWP=0;
   usable.forEach(function(e){sumW+=e.weight;sumWP+=e.weight*e.percentile;});
   var score=sumW>0?sumWP/sumW:null;
+  var coherenceInterne=stdDevOf(principalesOk.map(function(e){return e.percentile;}));
   var niveau=classifyBand(effectiveBiomecaBands('niveauAbsolu'),score);
-  var concordance=variableConcordance(score,entries,'principale');
-  var confidenceBand=classifyBand(effectiveBiomecaBands('confianceGlobale'),concordance.score);
+  var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceInterne'),coherenceInterne);
   return{
     dominante:dominanteLabel,sufficient:true,score:score,percentile:score,niveau:niveau,
-    entries:entries,confidence:{composite:concordance.score,band:confidenceBand,reason:concordance.reason}
+    coherenceInterne:coherenceInterne,coherenceBand:coherenceBand,
+    entries:entries,principalesAvailable:principalesOk.length,principalesTotal:principales.length,
+    variablesFaibles:usable.filter(function(e){return e.percentile<40;}),
+    variablesFortes:usable.filter(function(e){return e.percentile>=60;})
   };
+}
+// Conclusion automatique d'une dominante — expose TOUJOURS le raisonnement (percentile global +
+// cohérence interne + variables fortes/faibles), jamais un jugement fondé sur le seul
+// percentile global. Si la cohérence interne est faible, la conclusion le signale explicitement
+// et invite à interpréter les variables individuellement plutôt que le percentile de synthèse.
+function dominanteConclusion(dominanteResult){
+  if(!dominanteResult.sufficient)return{text:dominanteResult.reason};
+  var niveauLabel=dominanteResult.niveau?dominanteResult.niveau.label:'indéterminé';
+  var cohLabel=dominanteResult.coherenceBand?dominanteResult.coherenceBand.label:'indéterminée';
+  var heterogene=!!dominanteResult.coherenceBand&&['Faible cohérence','Très faible cohérence'].indexOf(dominanteResult.coherenceBand.label)>=0;
+  var text;
+  if(heterogene){
+    text='La dominante "'+dominanteResult.dominante+'" est hétérogène (cohérence interne "'+cohLabel+'") : ses variables ne racontent pas la même histoire. Le percentile global ('+dominanteResult.score.toFixed(0)+') ne doit pas être interprété seul — se référer aux variables individuelles ci-dessous.';
+  }else{
+    var qualif=['Exceptionnel','Excellent','Très bon'].indexOf(niveauLabel)>=0?'élevée':(niveauLabel==='Dans les normes'?'dans les normes':'faible');
+    text='La dominante "'+dominanteResult.dominante+'" est '+qualif+' (percentile global '+dominanteResult.score.toFixed(0)+', niveau "'+niveauLabel+'"), avec une cohérence interne "'+cohLabel+'" entre ses variables.';
+  }
+  if(dominanteResult.variablesFortes.length)text+=' Variable(s) forte(s) : '+dominanteResult.variablesFortes.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
+  if(dominanteResult.variablesFaibles.length)text+=' Variable(s) faible(s) : '+dominanteResult.variablesFaibles.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
+  return{text:text,heterogene:heterogene};
 }
 // Point d'entrée du module. Input : valeurs CMJ brutes (identique au Moteur Biomécanique, en
 // parallèle — PAS en aval). Output : les 4 dominantes, chacune indépendamment traçable.
