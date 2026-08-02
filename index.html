@@ -860,7 +860,7 @@ function validateClinicalConcordance(biomecaLevel,qualiteLevel){
 var BIOMECA_PROFILES_LS_KEY='kinexus_biomeca_profiles';
 var DEFAULT_BIOMECA_PROFILE_ID='default';
 function defaultBiomecaProfilesState(){
-  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,dominanteWeights:{},dominanteTiers:{}}}]};
+  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,dominanteTiers:{},dominanteTierWeights:{}}}]};
 }
 function loadBiomecaProfilesState(){
   try{
@@ -1367,87 +1367,149 @@ function computePhaseConfidence(phaseResult,coherenceResult){
 //   - les dominantes décrivent le STYLE biomécanique de l'athlète.
 // Ces trois niveaux sont complémentaires et ne doivent jamais être confondus.
 //
-// V1 limitée à 4 dominantes (Économique/Protecteur retirées : jugées trop interprétatives et
-// insuffisamment définissables pour être implémentées de façon robuste) : Propulsif, Absorbeur,
-// Réactif, Explosif.
+// V1 : 5 profils (le praticien a demandé l'ajout d'un 5e, Contrôle, absent de la proposition
+// initiale à 4 — deux athlètes à puissance/propulsion/RSI identiques peuvent avoir une
+// organisation du mouvement très différente ; aucun des 4 premiers profils ne le décrit) :
+// Propulsif, Absorbeur, Réactif, Explosif, Contrôle.
 //
-// Chaque dominante est un score composite INDÉPENDANT, calculé exactement selon la même
-// architecture que le moteur des qualités fonctionnelles (variables principales/secondaires,
-// poids configurables, score 0-100, percentile, niveau, indice de confiance) — mais appliquée
-// aux variables de phase CMJ plutôt qu'aux tests discrets.
+// DÉFINITION (praticien, 02/08) : un profil biomécanique regroupe des variables qui décrivent
+// LE MÊME MÉCANISME — jamais une qualité, une phase ou un résultat. Chaque profil répond à une
+// question mécanique précise (DOMINANTE_QUESTION ci-dessous) ; les variables de RÉSULTAT (ex.
+// Jump Height pour Propulsif — un résultat, pas un mécanisme de propulsion) sont reléguées en
+// tier 'info', jamais en 'master'/'support'.
 //
-// Module INDÉPENDANT : consomme les valeurs CMJ brutes (comme le Moteur Biomécanique, en
-// parallèle, jamais en aval de lui) et ne modifie JAMAIS les scores des qualités, les scores
-// biomécaniques des phases, ni les hypothèses cliniques. C'est une couche DESCRIPTIVE, pas
-// décisionnelle : les dominantes n'alimentent ni les conclusions, ni les priorités, ni les
-// hypothèses (celles-ci restent déterminées par les qualités, les phases, les transitions et le
-// moteur de raisonnement Kinexus). Le Moteur de Synthèse ci-dessous ne les consomme donc PAS.
+// Structure imposée par le praticien, jamais dépassée : 3-5 variables 'master', 2-3 'support',
+// 0-2 'info' par profil (mêmes noms de tier que CMJ_VAR_META, pour cohérence dans tout le
+// moteur). Poids par TIER uniquement (pas par variable) tant que le référentiel n'a pas été
+// calibré sur des données réelles (~200 CMJ) — voir effectiveDominanteTierWeights().
+//
+// Chaque dominante est calculée EXACTEMENT comme une phase (computeBiomecaPhase) : percentile
+// individuel conservé par variable, dispersion/cohérence interne, variables fortes/faibles,
+// conclusion qui ne se fonde jamais sur le seul percentile global.
+//
+// Module INDÉPENDANT : ne modifie JAMAIS les scores des qualités, les scores biomécaniques des
+// phases, ni les hypothèses cliniques. Couche DESCRIPTIVE, pas décisionnelle — le Moteur de
+// Synthèse ne consomme pas ce module (cf. note d'architecture plus haut).
+//
+// VARIABLES CROSS-TESTS : certaines variables proviennent d'un test autre que le CMJ (ex.
+// Reactive Strength du Drop Jump pour Réactif). Chaque variable est donc identifiée par
+// "testKey:kpiKey" et computeDominante reçoit l'ensemble des valeurs de l'athlète, pas
+// seulement le CMJ (valuesByTest = {testKey:{kpiKey:valeur}}).
 //
 // PROVENANCE — IMPORTANT : le document source ne fournit aucun critère pour ces dominantes.
-// Le praticien a explicitement choisi de ne PAS figer aujourd'hui les variables qui composent
-// chacune (DTM ci-dessous est intentionnellement vide) : elles seront calibrées avec lui, à
-// partir de données réelles, dans une seconde étape. Tant que DTM reste vide pour une
-// dominante, computeDominante() retourne "donnée insuffisante" — jamais un score inventé.
-var DOMINANTES=['Propulsif','Absorbeur','Réactif','Explosif'];
-// DTM (Dominante-Test Matrix, miroir de TFM) : {kpiKey:{dominanteLabel:{weight,tier}}}.
-// tier : 'principale' | 'secondaire' (équivalent des tiers master/support du Moteur
-// Biomécanique, mais nommés comme le document le demande pour les dominantes). VIDE en V1 —
-// à calibrer avec le praticien avant toute utilisation clinique.
-var DTM={};
-function effectiveDominanteWeight(kpiKey,dominanteLabel){
+// Le référentiel DTM ci-dessous reprend la proposition du praticien (02/08) telle quelle — non
+// validée scientifiquement, à ajuster après calibration sur données réelles. Deux points
+// restent des interprétations de cette implémentation, à confirmer :
+//  - "Contact Time (si disponible)" du profil Réactif est mappé sur cmj:tto (Time to Take Off,
+//    la seule mesure de durée de contraction disponible pour un CMJ dans ce référentiel) ;
+//  - "Phase Consistency" (support du profil Contrôle) n'est PAS implémentée : c'est une mesure
+//    dérivée (consistance essai-à-essai ou inter-phases) qui n'a pas de formule définie et
+//    n'existe dans aucune variable brute actuelle — omise plutôt qu'inventée.
+var DOMINANTES=['Propulsif','Absorbeur','Réactif','Explosif','Contrôle'];
+var DOMINANTE_QUESTION={
+  'Propulsif':'Est-ce que l\'athlète est capable de produire une forte propulsion ?',
+  'Absorbeur':'Est-ce que l\'athlète absorbe efficacement les contraintes ?',
+  'Réactif':'Est-ce que l\'athlète recycle efficacement l\'énergie élastique ?',
+  'Explosif':'Est-ce que l\'athlète développe très rapidement sa propulsion ?',
+  'Contrôle':'Est-ce que l\'athlète exécute le mouvement de façon stable et organisée ?'
+};
+// DTM (Dominante-Test Matrix, miroir de TFM) : {'testKey:kpiKey':{dominanteLabel:{tier}}}.
+// tier : 'master'|'support'|'info'.
+var DTM={
+  'cmj:peak_power':        {Propulsif:{tier:'master'}, Explosif:{tier:'master'}},
+  'cmj:peak_vel':          {Propulsif:{tier:'master'}, Explosif:{tier:'master'}},
+  'cmj:conc_impulse':      {Propulsif:{tier:'master'}},
+  'cmj:force_peak_power':  {Propulsif:{tier:'master'}},
+  'cmj:conc_mean_power':   {Propulsif:{tier:'support'}},
+  'cmj:height':            {Propulsif:{tier:'info'}, Réactif:{tier:'support'}, Explosif:{tier:'info'}},
+  'cmj:flight_time':       {Propulsif:{tier:'info'}},
+
+  'cmj:force_zero_vel':    {Absorbeur:{tier:'master'}},
+  'cmj:braking_rfd':       {Absorbeur:{tier:'master'}}, // EDRFD
+  'cmj:landing_peak_force':{Absorbeur:{tier:'master'}},
+  'cmj:landing_impulse':   {Absorbeur:{tier:'master'}},
+  'cmj:ecc_mean_power':    {Absorbeur:{tier:'support'}},
+  'cmj:time_to_stab':      {Absorbeur:{tier:'support'}, Contrôle:{tier:'master'}},
+  'cmj:landing_duration':  {Absorbeur:{tier:'info'}},
+
+  'cmj:rsi_mod':           {Réactif:{tier:'master'}, Explosif:{tier:'support'}},
+  'cmj:ft_ct_ratio':       {Réactif:{tier:'master'}},
+  'cmj:tto':               {Réactif:{tier:'master'}}, // "Contact Time" — interprétation, cf. note ci-dessus
+  'dj:rsi':                {Réactif:{tier:'master'}}, // "Reactive Strength (DJ)"
+
+  'cmj:conc_impulse_100':  {Explosif:{tier:'master'}},
+
+  'cmj:landing_peak_force_asym':{Contrôle:{tier:'master'}}, // "Landing Asymmetry"
+  'cmj:ecc_decel_rfd_asym':     {Contrôle:{tier:'master'}}, // "EDRFD Asymmetry"
+  'cmj:force_peak_power_asym':  {Contrôle:{tier:'master'}},
+  'cmj:depth':                  {Contrôle:{tier:'info'}} // "Countermovement Depth"
+};
+function effectiveDominanteTier(varKey,dominanteLabel){
   var cfg=activeBiomecaProfile().config||{};
-  if(cfg.dominanteWeights&&cfg.dominanteWeights[kpiKey]&&cfg.dominanteWeights[kpiKey][dominanteLabel]!=null)return cfg.dominanteWeights[kpiKey][dominanteLabel];
-  var ref=DTM[kpiKey]&&DTM[kpiKey][dominanteLabel];
-  return ref&&ref.weight!=null?ref.weight:0;
-}
-function effectiveDominanteTier(kpiKey,dominanteLabel){
-  var cfg=activeBiomecaProfile().config||{};
-  if(cfg.dominanteTiers&&cfg.dominanteTiers[kpiKey]&&cfg.dominanteTiers[kpiKey][dominanteLabel])return cfg.dominanteTiers[kpiKey][dominanteLabel];
-  var ref=DTM[kpiKey]&&DTM[kpiKey][dominanteLabel];
+  if(cfg.dominanteTiers&&cfg.dominanteTiers[varKey]&&cfg.dominanteTiers[varKey][dominanteLabel])return cfg.dominanteTiers[varKey][dominanteLabel];
+  var ref=DTM[varKey]&&DTM[varKey][dominanteLabel];
   return ref&&ref.tier?ref.tier:null;
 }
-// Calcule le score composite d'UNE dominante — même mécanique que computeBiomecaPhase (percentile
-// continu, pondération, seuil de données manquantes configurable) mais indexée sur le
-// référentiel DTM plutôt que CMJ_VAR_META/phase.
-function computeDominante(dominanteLabel,cmjValues,pop,age){
-  cmjValues=cmjValues||{};
+// Poids par TIER (pas par variable) — décision du praticien : "toutes les Master = même poids,
+// toutes les Support = même poids, tant qu'on n'a pas calibré sur des données réelles". Valeurs
+// de départ arbitraires (1 / 0.5), entièrement configurables.
+function effectiveDominanteTierWeights(){
+  var cfg=activeBiomecaProfile().config||{};
+  return cfg.dominanteTierWeights||{master:1,support:0.5};
+}
+function effectiveDominanteWeight(varKey,dominanteLabel){
+  var tier=effectiveDominanteTier(varKey,dominanteLabel);
+  var w=effectiveDominanteTierWeights();
+  if(tier==='master')return w.master!=null?w.master:1;
+  if(tier==='support')return w.support!=null?w.support:0.5;
+  return 0; // 'info' ou non défini : jamais dans le calcul, uniquement affiché en contexte.
+}
+function testKpiDir(testKey,kpiKey){
+  var kpi=TBK[testKey]&&TBK[testKey].kpis.filter(function(k){return k.key===kpiKey;})[0];
+  return kpi?kpi.dir:'max';
+}
+// Calcule le résultat d'UNE dominante — même mécanique que computeBiomecaPhase (percentile
+// continu, dispersion, cohérence interne, variables fortes/faibles) mais indexée sur DTM et
+// potentiellement multi-tests. valuesByTest = {testKey:{kpiKey:valeur}}.
+function computeDominante(dominanteLabel,valuesByTest,pop,age){
+  valuesByTest=valuesByTest||{};
   var varKeys=Object.keys(DTM).filter(function(k){return DTM[k][dominanteLabel];});
-  var entries=varKeys.map(function(k){
-    var raw=cmjValues[k];
-    var tier=effectiveDominanteTier(k,dominanteLabel);
-    var weight=effectiveDominanteWeight(k,dominanteLabel);
-    var tech=validateTechnical(k,raw);
-    if(!tech.ok)return{kpiKey:k,tier:tier,weight:weight,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
-    var pct=normPercentile('cmj',k,pop,age,raw,cmjKpiDir(k));
-    return{kpiKey:k,tier:tier,weight:weight,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
+  var entries=varKeys.map(function(varKey){
+    var parts=varKey.split(':'),testKey=parts[0],kpiKey=parts[1];
+    var raw=(valuesByTest[testKey]||{})[kpiKey];
+    var tier=effectiveDominanteTier(varKey,dominanteLabel);
+    var weight=effectiveDominanteWeight(varKey,dominanteLabel);
+    var tech=validateTechnical(kpiKey,raw);
+    if(!tech.ok)return{varKey:varKey,testKey:testKey,kpiKey:kpiKey,tier:tier,weight:weight,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
+    var pct=normPercentile(testKey,kpiKey,pop,age,raw,testKpiDir(testKey,kpiKey));
+    return{varKey:varKey,testKey:testKey,kpiKey:kpiKey,tier:tier,weight:weight,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
   });
-  var principales=entries.filter(function(e){return e.tier==='principale';});
-  var principalesOk=principales.filter(function(e){return e.status==='ok';});
+  var masterVars=entries.filter(function(e){return e.tier==='master';});
+  var masterOk=masterVars.filter(function(e){return e.status==='ok';});
   var threshold=effectiveMissingDataThreshold();
-  var ratio=principales.length?principalesOk.length/principales.length:0;
-  if(principales.length===0||ratio<threshold){
+  var ratio=masterVars.length?masterOk.length/masterVars.length:0;
+  if(masterVars.length===0||ratio<threshold){
     return{
       dominante:dominanteLabel,sufficient:false,score:null,
-      reason:principales.length===0?'Aucune variable principale définie pour cette dominante (référentiel non encore calibré).':'Données insuffisantes pour calculer cette dominante ('+principalesOk.length+'/'+principales.length+' variables principales disponibles).',
+      reason:masterVars.length===0?'Aucune variable maîtresse définie pour cette dominante (référentiel non encore calibré).':'Données insuffisantes pour calculer cette dominante ('+masterOk.length+'/'+masterVars.length+' variables maîtresses disponibles).',
       entries:entries
     };
   }
-  // Même philosophie que computeBiomecaPhase (moteur biomécanique des phases) : le percentile
-  // global n'est qu'une moyenne pondérée de synthèse — chaque percentile individuel, la
-  // dispersion entre variables et la cohérence interne restent exposés séparément, et
-  // l'interprétation (dominanteConclusion ci-dessous) ne se fonde JAMAIS sur le seul percentile
-  // global.
-  var usable=entries.filter(function(e){return e.status==='ok';});
+  // Le percentile global n'est qu'une moyenne pondérée de SYNTHÈSE — chaque percentile
+  // individuel, la dispersion entre variables et la cohérence interne restent exposés
+  // séparément, et l'interprétation (dominanteConclusion ci-dessous) ne se fonde JAMAIS sur le
+  // seul percentile global.
+  var usable=entries.filter(function(e){return e.status==='ok'&&(e.tier==='master'||e.tier==='support');});
   var sumW=0,sumWP=0;
   usable.forEach(function(e){sumW+=e.weight;sumWP+=e.weight*e.percentile;});
   var score=sumW>0?sumWP/sumW:null;
-  var coherenceInterne=stdDevOf(principalesOk.map(function(e){return e.percentile;}));
+  var coherenceInterne=stdDevOf(masterOk.map(function(e){return e.percentile;}));
   var niveau=classifyBand(effectiveBiomecaBands('niveauAbsolu'),score);
   var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceInterne'),coherenceInterne);
   return{
     dominante:dominanteLabel,sufficient:true,score:score,percentile:score,niveau:niveau,
     coherenceInterne:coherenceInterne,coherenceBand:coherenceBand,
-    entries:entries,principalesAvailable:principalesOk.length,principalesTotal:principales.length,
+    entries:entries,masterAvailable:masterOk.length,masterTotal:masterVars.length,
     variablesFaibles:usable.filter(function(e){return e.percentile<40;}),
     variablesFortes:usable.filter(function(e){return e.percentile>=60;})
   };
@@ -1472,11 +1534,12 @@ function dominanteConclusion(dominanteResult){
   if(dominanteResult.variablesFaibles.length)text+=' Variable(s) faible(s) : '+dominanteResult.variablesFaibles.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
   return{text:text,heterogene:heterogene};
 }
-// Point d'entrée du module. Input : valeurs CMJ brutes (identique au Moteur Biomécanique, en
-// parallèle — PAS en aval). Output : les 4 dominantes, chacune indépendamment traçable.
-function computeDominantesEngine(cmjValues,pop,age){
+// Point d'entrée du module. Input : valuesByTest = {testKey:{kpiKey:valeur}} — l'ensemble des
+// valeurs de l'athlète (CMJ et, le cas échéant, Drop Jump), pas seulement le CMJ. Output : les 5
+// dominantes, chacune indépendamment traçable.
+function computeDominantesEngine(valuesByTest,pop,age){
   var out={};
-  DOMINANTES.forEach(function(d){out[d]=computeDominante(d,cmjValues,pop,age);});
+  DOMINANTES.forEach(function(d){out[d]=computeDominante(d,valuesByTest,pop,age);});
   return out;
 }
 // "Style biomécanique" — affichage uniquement : identifie la dominante principale/secondaire
