@@ -1172,6 +1172,33 @@ function CSVImportModal(props){
 }
 
 // ── PRINT ENGINE ──────────────────────────────────────────────────────────────
+// Textes cliniques par défaut du Rapport Sportif (Résumé clinique + Note au médecin).
+// Réutilisé par buildSportifReport (comme valeur de repli) et par l'aperçu éditable
+// (pour préremplir/réinitialiser les champs). Le praticien peut les surcharger via
+// bilan.reportOverrides — voir REPORT_OVERRIDE_FIELDS.
+function defaultReportTexts(athlete,bilan,res){
+  var pri=res.priorities||[],rtp=res.rtpStatus;
+  var conclusion;
+  if(pri.length===0)conclusion='Profil équilibré, aucun déficit fonctionnel majeur identifié.';
+  else{
+    var top=pri[0],second=pri[1];
+    conclusion='Le bilan met en évidence un déficit prédominant '+(top.contributeurPrincipal?'du '+top.contributeurPrincipal.toLowerCase():'de '+top.fonction.toLowerCase())+' limitant les capacités de '+top.fonction.toLowerCase()+(second?' et de '+second.fonction.toLowerCase():'')+'.';
+  }
+  var consequences;
+  if(pri.length===0)consequences='Aucune conséquence fonctionnelle significative identifiée à ce jour.';
+  else consequences='Le déficit '+(pri[0].contributeurPrincipal?'de '+pri[0].contributeurPrincipal.toLowerCase():'de '+pri[0].fonction.toLowerCase())+' entraîne une altération de la capacité de '+pri[0].fonction.toLowerCase()+(pri[1]?' et de '+pri[1].fonction.toLowerCase():'')+', augmentant le risque de blessure lors des situations de charge élevée et limitant la performance globale.';
+  var decision=rtp&&rtp.status==='vert'?'Retour au sport autorisé, aucune restriction particulière.':'Retour au sport non recommandé à ce jour ; poursuite de la rééducation ciblée nécessaire.';
+  var reevaluation=rtp&&rtp.status!=='vert'?'Nouveau bilan conseillé dans 4 à 6 semaines.':'Suivi standard, prochaine évaluation selon planning habituel.';
+  var noteMedecin='Ce bilan a été réalisé dans le cadre du suivi fonctionnel post-blessure. N\'hésitez pas à nous contacter pour toute question.';
+  return{conclusion:conclusion,consequences:consequences,decision:decision,reevaluation:reevaluation,noteMedecin:noteMedecin};
+}
+var REPORT_OVERRIDE_FIELDS=[
+  {key:'conclusion',label:'Conclusion'},
+  {key:'consequences',label:'Conséquences fonctionnelles'},
+  {key:'decision',label:'Décision clinique'},
+  {key:'reevaluation',label:'Réévaluation conseillée'},
+  {key:'noteMedecin',label:'Note au médecin / chirurgien'}
+];
 function buildSportifReport(athlete,bilan,res){
   var fSc=res.functionScores,sysSc=res.systemScores,pri=res.priorities||[],rtp=res.rtpStatus,tSt=res.testStatuses;
   var evFns=FUNCTIONS.filter(function(f){return fSc[f];});
@@ -1207,12 +1234,12 @@ function buildSportifReport(athlete,bilan,res){
       +'</div>';
   }
 
-  var globalDesc;
-  if(pri.length===0)globalDesc='Profil équilibré, aucun déficit fonctionnel majeur identifié.';
-  else{
-    var top=pri[0],second=pri[1];
-    globalDesc='Le bilan met en évidence un déficit prédominant '+(top.contributeurPrincipal?'du '+top.contributeurPrincipal.toLowerCase():'de '+top.fonction.toLowerCase())+' limitant les capacités de '+top.fonction.toLowerCase()+(second?' et de '+second.fonction.toLowerCase():'')+'.';
-  }
+  // Textes du Résumé clinique / Note au médecin : valeur par défaut calculée, sauf si le
+  // praticien l'a explicitement modifiée (bilan.reportOverrides, éditable depuis l'aperçu).
+  var reportDefaults=defaultReportTexts(athlete,bilan,res);
+  var reportOv=bilan.reportOverrides||{};
+  function reportTxt(key){return reportOv[key]!=null&&reportOv[key]!==''?reportOv[key]:reportDefaults[key];}
+  var globalDesc=reportTxt('conclusion');
 
   // ── Asymétries (LSI) ──
   var lsiItems=[];
@@ -1338,9 +1365,9 @@ function buildSportifReport(athlete,bilan,res){
 
   html+=sectionTitle(1,'Suis-je prêt ?');
   // Retour au sport (L1) + Résumé clinique (L1, signature du rapport) + priorité principale (seul KPI conservé)
-  var consequenceTxt=pri.length===0?'Aucune conséquence fonctionnelle significative identifiée à ce jour.':interpretationTxt;
-  var decisionTxt=rtp&&rtp.status==='vert'?'Retour au sport autorisé, aucune restriction particulière.':'Retour au sport non recommandé à ce jour ; poursuite de la rééducation ciblée nécessaire.';
-  var reevalTxt=rtp&&rtp.status!=='vert'?'Nouveau bilan conseillé dans 4 à 6 semaines.':'Suivi standard, prochaine évaluation selon planning habituel.';
+  var consequenceTxt=reportTxt('consequences');
+  var decisionTxt=reportTxt('decision');
+  var reevalTxt=reportTxt('reevaluation');
   html+='<div style="display:flex;gap:16px;margin-bottom:18px;align-items:stretch">'
     +panelL1(
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'+iconBadge('🏃')+'<span style="color:#5B7A8C;font-size:7.5pt;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Retour au sport</span></div>'
@@ -1579,7 +1606,7 @@ function buildSportifReport(athlete,bilan,res){
   );
   html+=panelL3(
     '<div style="display:flex;align-items:center;gap:6px;margin-bottom:9px"><span style="font-size:10.5pt;opacity:0.7">🩺</span><span style="font-size:7pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em">Note au médecin / chirurgien</span></div>'
-    +'<div style="font-size:7.3pt;color:#94A3B8;line-height:1.55">Ce bilan a été réalisé dans le cadre du suivi fonctionnel post-blessure. N\'hésitez pas à nous contacter pour toute question.</div>'
+    +'<div style="font-size:7.3pt;color:#94A3B8;line-height:1.55">'+reportTxt('noteMedecin')+'</div>'
   );
   html+='</div>';
 
@@ -1623,10 +1650,11 @@ function buildExpertReport(athlete,bilan,res){
   return html;
 }
 
-function printReport(type,athlete,bilan,res){
+// Construit le document HTML autonome (report + styles d'impression), réutilisé
+// par le téléchargement (printReport) et par l'aperçu éditable (ReportPreview).
+function buildFullReportHtml(type,athlete,bilan,res){
   var html=type==='sportif'?buildSportifReport(athlete,bilan,res):buildExpertReport(athlete,bilan,res);
-  // Full HTML doc for download
-  var fullHtml='<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KINEXUS - Rapport '+type+'</title><style>body{font-family:Inter,-apple-system,sans-serif;margin:0;padding:0;background:#fff;color:#111;}'+
+  return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KINEXUS - Rapport '+type+'</title><style>body{font-family:Inter,-apple-system,sans-serif;margin:0;padding:0;background:#fff;color:#111;}'+
     '.print-page{padding:28px 32px;min-height:100vh;page-break-after:always;box-sizing:border-box;}'+
     '.print-page:last-child{page-break-after:auto;}'+
     '.print-card{background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:10px;}'+
@@ -1650,6 +1678,11 @@ function printReport(type,athlete,bilan,res){
     'h1,h2,h3{color:#111;}'+
     '@media print{.print-page{page-break-after:always;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}'+
     '</style></head><body>'+html+'</body></html>';
+}
+
+function printReport(type,athlete,bilan,res){
+  var html=type==='sportif'?buildSportifReport(athlete,bilan,res):buildExpertReport(athlete,bilan,res);
+  var fullHtml=buildFullReportHtml(type,athlete,bilan,res);
   // Try blob download first (works in Safari when opened directly)
   try {
     var blob=new Blob([fullHtml],{type:'text/html;charset=utf-8'});
@@ -1665,6 +1698,82 @@ function printReport(type,athlete,bilan,res){
     if(w){w.document.write(fullHtml);w.document.close();}
     else{var container=document.getElementById('print-container');if(container)container.innerHTML=html;setTimeout(function(){window.print();},200);}
   }
+}
+
+function downloadReportHtml(fullHtml,type,athlete){
+  var blob=new Blob([fullHtml],{type:'text/html;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var fname='KINEXUS_Rapport_'+type+'_'+athlete.nom+'_'+new Date().toISOString().slice(0,10)+'.html';
+  var a=document.createElement('a');
+  a.href=url;a.download=fname;a.style.display='none';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);document.body.removeChild(a);},2000);
+}
+
+// ── APERÇU DU RAPPORT (modifiable) ──────────────────────────────────────────────
+// Aperçu en direct du Rapport Sportif dans une iframe, avec un formulaire pour
+// modifier le Résumé clinique et la Note au médecin. Les modifications sont
+// mémorisées sur le bilan (bilan.reportOverrides) via props.onSave, donc elles
+// sont conservées si on rouvre l'aperçu ou qu'on réexporte plus tard.
+function ReportPreview(props){
+  var athlete=props.athlete,bilan=props.bilan;
+  var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge);},[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
+  var defaults=useMemo(function(){return defaultReportTexts(athlete,bilan,res);},[bilan,res]);
+  function initialForm(){
+    var f={};
+    REPORT_OVERRIDE_FIELDS.forEach(function(fld){
+      var ov=bilan.reportOverrides||{};
+      f[fld.key]=(ov[fld.key]!=null&&ov[fld.key]!=='')?ov[fld.key]:defaults[fld.key];
+    });
+    return f;
+  }
+  var [form,setForm]=useState(initialForm);
+  var [editing,setEditing]=useState(false);
+  var [savedFlash,setSavedFlash]=useState(false);
+  var dirty=REPORT_OVERRIDE_FIELDS.some(function(fld){return(bilan.reportOverrides||{})[fld.key]!==form[fld.key]&&!((bilan.reportOverrides||{})[fld.key]==null&&form[fld.key]===defaults[fld.key]);});
+
+  var previewBilan=useMemo(function(){return Object.assign({},bilan,{reportOverrides:form});},[bilan,form]);
+  var fullHtml=useMemo(function(){return buildFullReportHtml('sportif',athlete,previewBilan,res);},[previewBilan,res]);
+
+  function setField(key,val){setForm(function(f){var n=Object.assign({},f);n[key]=val;return n;});}
+  function resetField(key){setField(key,defaults[key]);}
+  function handleSave(){props.onSave(form);setSavedFlash(true);setTimeout(function(){setSavedFlash(false);},2000);}
+  function handleDownload(){downloadReportHtml(fullHtml,'sportif',athlete);}
+
+  return h('div',{style:{maxWidth:1400,margin:'0 auto',padding:'18px 20px 60px'}},
+    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16,flexWrap:'wrap',gap:10}},
+      h('div',null,
+        h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Aperçu'),
+        h('h1',{style:{margin:0,fontSize:20,fontWeight:800,color:C.text}},'Rapport Sportif — '+athlete.prenom+' '+athlete.nom)
+      ),
+      h('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+        savedFlash&&h('span',{style:{color:C.vert,fontSize:12,fontWeight:600}},'✓ Enregistré'),
+        h(Btn,{onClick:function(){setEditing(function(v){return!v;});}},editing?'Fermer l\'édition':'✎ Modifier le texte'),
+        h(Btn,{onClick:handleSave,disabled:!dirty},'Enregistrer'),
+        h(Btn,{primary:true,onClick:handleDownload},'⬇ Télécharger'),
+        h(Btn,{onClick:props.onClose},'← Retour')
+      )
+    ),
+    h('div',{style:{display:'flex',gap:16,alignItems:'flex-start'}},
+      editing&&h('div',{style:{width:340,flexShrink:0,background:C.card,border:'1px solid '+C.border,borderRadius:12,padding:16,position:'sticky',top:70}},
+        h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:14}},'Ces textes apparaissent dans le Résumé clinique et en bas de la page 2. L\'aperçu à droite se met à jour en direct.'),
+        REPORT_OVERRIDE_FIELDS.map(function(fld){
+          return h('div',{key:fld.key,style:{marginBottom:16}},
+            h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}},
+              h('label',{style:{color:C.text,fontSize:11.5,fontWeight:700}},fld.label),
+              form[fld.key]!==defaults[fld.key]&&h('button',{onClick:function(){resetField(fld.key);},style:{background:'transparent',border:'none',color:C.teal,fontSize:10.5,cursor:'pointer',textDecoration:'underline'}},'Réinitialiser')
+            ),
+            h('textarea',{value:form[fld.key],onChange:function(e){setField(fld.key,e.target.value);},rows:fld.key==='noteMedecin'?3:4,
+              style:{width:'100%',boxSizing:'border-box',background:C.surface,border:'1px solid '+C.border,borderRadius:8,padding:'8px 10px',color:C.text,fontSize:12.5,lineHeight:1.5,resize:'vertical',fontFamily:'inherit'}})
+          );
+        })
+      ),
+      h('div',{style:{flex:1,minWidth:0,background:'#EEF2F5',borderRadius:14,padding:14}},
+        h('iframe',{srcDoc:fullHtml,title:'Aperçu du rapport',style:{width:'100%',height:'88vh',border:'1px solid '+C.border,borderRadius:10,background:'#fff'}})
+      )
+    )
+  );
 }
 
 // ── SCREENS ───────────────────────────────────────────────────────────────────
@@ -2132,11 +2241,12 @@ function AnalyseView(props){
       h('div',{style:{fontSize:9.5,color:'rgba(255,255,255,0.45)',marginTop:3,lineHeight:1.4}},normLbl?'📊 '+normLbl:'Seuils génériques'),
       h('div',{className:'no-print',style:{display:'flex',flexDirection:'column',gap:7,marginTop:18}},
         h(Btn,{small:true,onClick:props.onEdit,style:{width:'100%'}},'✎ Modifier'),
+        h(Btn,{small:true,onClick:props.onPreview,style:{width:'100%'}},'👁 Aperçu du rapport'),
         h('div',{style:{position:'relative'}},
           h(Btn,{small:true,onClick:function(){setShowPrintMenu(function(v){return!v;});},style:{width:'100%'}},'⬇ Rapport PDF'),
           showPrintMenu&&h('div',{style:{position:'absolute',left:0,top:'100%',marginTop:4,background:C.card,border:'1px solid '+C.border,borderRadius:8,padding:6,zIndex:50,minWidth:170}},
-            h('button',{onClick:function(){doPrint('sportif');},style:{display:'block',width:'100%',padding:'8px 12px',background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:600,cursor:'pointer',textAlign:'left',borderRadius:6}},'📋 Rapport Sportif'),
-            h('button',{onClick:function(){doPrint('expert');},style:{display:'block',width:'100%',padding:'8px 12px',background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:600,cursor:'pointer',textAlign:'left',borderRadius:6}},'🔬 Rapport Expert')
+            h('button',{onClick:function(){doPrint('sportif');},style:{display:'block',width:'100%',padding:'8px 12px',background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:600,cursor:'pointer',textAlign:'left',borderRadius:6}},'📋 Télécharger (Sportif)'),
+            h('button',{onClick:function(){doPrint('expert');},style:{display:'block',width:'100%',padding:'8px 12px',background:'transparent',border:'none',color:C.text,fontSize:12,fontWeight:600,cursor:'pointer',textAlign:'left',borderRadius:6}},'🔬 Télécharger (Expert)')
           )
         )
       )
@@ -2926,13 +3036,14 @@ function App(){
         )
       )
     ),
-    h('div',{style:screen==='analyse'?{maxWidth:1400,margin:'0 auto',padding:'0 0 60px'}:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
+    h('div',{style:(screen==='analyse'||screen==='reportPreview')?{maxWidth:1400,margin:'0 auto',padding:'0 0 60px'}:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
       screen==='dashboard'&&h(Dashboard,{athletes:athletes,onSelect:function(a){setCurId(a.id);setScreen('athlete');},onNew:function(){setScreen('newAthlete');},onDelete:delAth}),
       (screen==='newAthlete'||screen==='editAthlete')&&h(AthleteForm,{initial:screen==='editAthlete'?editAth:null,onSave:saveAth,onCancel:function(){setScreen(editAth?'athlete':'dashboard');}}),
       screen==='athlete'&&ca&&h(AthleteProfile,{athlete:ca,onNewBilan:function(){setScreen('newBilan');},onSelectBilan:function(b){setCurBilan(b);setScreen('analyse');},onDeleteBilan:delBilan,onEdit:function(){setEditAth(ca);setScreen('editAthlete');},onDuplicate:dupBilan}),
       screen==='newBilan'&&h(BilanForm,{onSave:function(b){setDraft(b);setScreen('testEntry');},onCancel:function(){setScreen('athlete');}}),
       screen==='testEntry'&&draft&&h(TestEntry,{bilan:draft,athlete:ca,onSave:saveTests,onCancel:function(){setScreen('athlete');}}),
-      screen==='analyse'&&liveBilan&&ca&&h(AnalyseView,{bilan:liveBilan,athlete:ca,onValidate:validateBilan,onEdit:function(){setDraft(liveBilan);setScreen('testEntry');}})
+      screen==='analyse'&&liveBilan&&ca&&h(AnalyseView,{bilan:liveBilan,athlete:ca,onValidate:validateBilan,onEdit:function(){setDraft(liveBilan);setScreen('testEntry');},onPreview:function(){setScreen('reportPreview');}}),
+      screen==='reportPreview'&&liveBilan&&ca&&h(ReportPreview,{bilan:liveBilan,athlete:ca,onClose:function(){setScreen('analyse');},onSave:function(overrides){upBilans(curId,function(bil){return bil.map(function(b){return b.id===liveBilan.id?Object.assign({},b,{reportOverrides:overrides}):b;});});setCurBilan(Object.assign({},liveBilan,{reportOverrides:overrides}));}})
     )
   );
 }
