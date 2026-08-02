@@ -757,6 +757,101 @@ function makeSpec(name,evaluateFn){
   return spec;
 }
 
+// ── VALIDATION DES DONNÉES À 3 NIVEAUX (moteur biomécanique) ────────────────────────────────
+// Niveau 1 — Erreur technique : une valeur individuelle est manquante, non numérique ou hors
+//   plage physiquement possible pour cette variable. BLOQUE l'utilisation de LA variable
+//   concernée uniquement (jamais toute la phase), avec un message explicite.
+// Niveau 2 — Incohérence biomécanique : plusieurs variables liées par une relation connue (ex.
+//   RSI-Mod = Jump Height / Contraction Time) donnent, ensemble, un résultat implausible. Ne
+//   bloque rien : dégrade automatiquement la confiance et affiche un avertissement explicite.
+// Niveau 3 — Discordance clinique : la conclusion du moteur biomécanique et celle du moteur des
+//   qualités (fonctionnel) racontent des histoires différentes pour la même capacité. Ne bloque
+//   rien : invite à vérifier qualité des données / protocole / autres tests, ne propose jamais
+//   de diagnostic (cf. document source, module final, Étape 7).
+// Provenance : les 3 niveaux et leur séparation formelle sont une architecture KINEXUS. Le
+// document source ne distingue explicitement que "valeurs aberrantes" (repris ici en niveaux 1
+// et 2) et "discordance entre moteurs" (niveau 3) — la structuration en 3 niveaux nommés est un
+// choix d'implémentation validé avec le praticien, pas une règle VALD.
+
+// Plages de plausibilité physique par variable — bornes Kinexus volontairement larges (écarter
+// les valeurs impossibles/de saisie, pas juger la performance : ce rôle revient aux bandes de
+// percentile). Unités identiques à celles du kpi correspondant (test 'cmj'). Non exhaustif :
+// une variable absente de cette table n'est simplement pas contrôlée au niveau 1.
+var CMJ_PLAUSIBLE_RANGE={
+  height:[5,80],rsi_mod:[0.05,3.0],peak_power:[5,120],conc_impulse:[0.5,10],peak_vel:[0.5,6],
+  tto:[100,3000],depth:[2,60],flight_time:[100,1200],ft_ct_ratio:[0.1,3.0],
+  ecc_peak_vel:[0.2,5],force_zero_vel:[3,60],ecc_mean_power:[1,80],braking_rfd:[10,20000],
+  braking_duration:[50,2000],braking_impulse:[0.2,8],
+  conc_mean_force:[3,60],conc_impulse_100:[0.1,4],force_peak_power:[3,60],
+  landing_peak_force:[5,120],time_to_stab:[0.1,10],landing_impulse:[0.2,10]
+};
+// Niveau 1 — vérifie qu'une valeur est numérique, finie, et dans la plage physiquement possible.
+function validateTechnical(kpiKey,val){
+  if(val==null)return{level:'technique',ok:false,blocking:true,reason:'Valeur absente.'};
+  if(typeof val!=='number'||!isFinite(val))return{level:'technique',ok:false,blocking:true,reason:'Valeur non numérique.'};
+  var range=CMJ_PLAUSIBLE_RANGE[kpiKey];
+  if(range&&(val<range[0]||val>range[1]))return{level:'technique',ok:false,blocking:true,reason:'Valeur ('+val+') hors plage physiquement possible ['+range[0]+' – '+range[1]+'] pour cette variable.'};
+  return{level:'technique',ok:true,blocking:false,reason:null};
+}
+
+// Niveau 2 — contrôles de plausibilité croisée entre variables liées par une relation connue.
+// Liste extensible (le "Chain of Responsibility" est ici une donnée, pas du code à modifier) :
+// chaque contrôle reçoit l'ensemble des valeurs CMJ disponibles et renvoie null (rien à
+// signaler) ou un avis. tol = tolérance relative acceptée avant de signaler une incohérence
+// (choix Kinexus, 35% par défaut — au-delà, les deux valeurs ne peuvent raisonnablement pas
+// provenir de la même relation physique).
+var CMJ_CROSS_CHECKS=[
+  {
+    name:'RSI-Mod cohérent avec Jump Height / Contraction Time',
+    check:function(v){
+      if(v.rsi_mod==null||v.height==null||v.tto==null)return null;
+      var implied=(v.height/100)/(v.tto/1000); // Jump Height (m) / Contraction Time (s)
+      var diff=Math.abs(implied-v.rsi_mod)/Math.max(v.rsi_mod,0.01);
+      if(diff>0.35)return{reason:'RSI-Mod déclaré ('+v.rsi_mod+') incohérent avec Jump Height ('+v.height+' cm) et Contraction Time ('+v.tto+' ms) — valeur implicite ≈'+implied.toFixed(2)+'.'};
+      return null;
+    }
+  },
+  {
+    name:'FT:CT cohérent avec Flight Time / Contraction Time',
+    check:function(v){
+      if(v.ft_ct_ratio==null||v.flight_time==null||v.tto==null)return null;
+      var implied=v.flight_time/v.tto;
+      var diff=Math.abs(implied-v.ft_ct_ratio)/Math.max(v.ft_ct_ratio,0.01);
+      if(diff>0.35)return{reason:'FT:CT déclaré ('+v.ft_ct_ratio+') incohérent avec Flight Time ('+v.flight_time+' ms) et Contraction Time ('+v.tto+' ms) — valeur implicite ≈'+implied.toFixed(2)+'.'};
+      return null;
+    }
+  }
+];
+// Niveau 2 — exécute tous les contrôles croisés disponibles sur un jeu de variables CMJ. Ne
+// bloque jamais : retourne la liste des avis (vide si tout est cohérent).
+function validateBiomechanicalCoherence(cmjValues){
+  var warnings=[];
+  CMJ_CROSS_CHECKS.forEach(function(c){
+    var r=c.check(cmjValues||{});
+    if(r)warnings.push({level:'incoherence_biomecanique',ok:false,blocking:false,check:c.name,reason:r.reason});
+  });
+  return warnings;
+}
+
+// Niveau 3 — discordance entre le moteur biomécanique et le moteur des qualités (fonctionnel).
+// Ne juge pas les valeurs sources : compare deux conclusions déjà classées sur une échelle
+// ordinale commune ('faible'|'normal'|'eleve') et détermine le cas de figure (cf. document
+// source, module final, Étape 7 : Cas 1 convergent / Cas 2 discordance partielle / Cas 3
+// discordance importante). Sera invoqué par le Moteur de Synthèse une fois les deux moteurs
+// exécutés (aucune fonction de scoring n'est encore branchée à ce stade). Ne propose jamais de
+// diagnostic — uniquement une invitation à vérifier (qualité des données / protocole / autres
+// tests), conformément à la contrainte du document source.
+var CONCORDANCE_ORDER={faible:0,normal:1,eleve:2};
+function validateClinicalConcordance(biomecaLevel,qualiteLevel){
+  if(CONCORDANCE_ORDER[biomecaLevel]==null||CONCORDANCE_ORDER[qualiteLevel]==null){
+    return{level:'discordance_clinique',ok:null,blocking:false,cas:null,reason:'Comparaison impossible : au moins un des deux moteurs n\'a pas produit de conclusion exploitable.'};
+  }
+  if(biomecaLevel===qualiteLevel)return{level:'discordance_clinique',ok:true,blocking:false,cas:1,reason:'Les deux moteurs convergent ("'+biomecaLevel+'") : confiance maximale.'};
+  var ecart=Math.abs(CONCORDANCE_ORDER[biomecaLevel]-CONCORDANCE_ORDER[qualiteLevel]);
+  if(ecart===1)return{level:'discordance_clinique',ok:false,blocking:false,cas:2,reason:'Discordance partielle entre le moteur biomécanique ("'+biomecaLevel+'") et le moteur des qualités ("'+qualiteLevel+'") : interpréter avec prudence.'};
+  return{level:'discordance_clinique',ok:false,blocking:false,cas:3,reason:'Discordance importante entre le moteur biomécanique ("'+biomecaLevel+'") et le moteur des qualités ("'+qualiteLevel+'") : vérifier la qualité des données, le protocole et les autres tests disponibles avant toute conclusion — jamais de diagnostic automatique.'};
+}
+
 // ── CONFIGURATION CLINIQUE : moteur biomécanique (phases CMJ) ───────────────────────────────
 // Même mécanisme que QUALITY_PROFILES ci-dessus (un seul réglage pour tout le cabinet,
 // plusieurs profils nommés, un seul actif) — réutilisé plutôt que dupliqué, appliqué ici aux
