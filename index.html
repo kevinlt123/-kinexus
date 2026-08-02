@@ -1398,13 +1398,17 @@ function computePhaseConfidence(phaseResult,coherenceResult){
 //
 // PROVENANCE — IMPORTANT : le document source ne fournit aucun critère pour ces dominantes.
 // Le référentiel DTM ci-dessous reprend la proposition du praticien (02/08) telle quelle — non
-// validée scientifiquement, à ajuster après calibration sur données réelles. Deux points
-// restent des interprétations de cette implémentation, à confirmer :
-//  - "Contact Time (si disponible)" du profil Réactif est mappé sur cmj:tto (Time to Take Off,
-//    la seule mesure de durée de contraction disponible pour un CMJ dans ce référentiel) ;
-//  - "Phase Consistency" (support du profil Contrôle) n'est PAS implémentée : c'est une mesure
-//    dérivée (consistance essai-à-essai ou inter-phases) qui n'a pas de formule définie et
-//    n'existe dans aucune variable brute actuelle — omise plutôt qu'inventée.
+// validée scientifiquement, à ajuster après calibration sur données réelles. Deux variables
+// demandées par le praticien ne sont PAS implémentées, par principe : si une variable n'existe
+// pas pour un test donné (ou n'a pas d'équivalent démontré), elle est simplement absente du
+// calcul — jamais remplacée par une équivalence biomécanique non démontrée (le moteur est conçu
+// pour fonctionner avec des données partielles) :
+//  - "Contact Time (si disponible)" du profil Réactif : AUCUNE variable "Contact Time" n'existe
+//    pour le CMJ dans ce référentiel (tto = Time to Take Off, une notion différente). Le Drop
+//    Jump a en revanche un vrai kpi 'contact_time' — non ajouté ici sans confirmation du
+//    praticien, à discuter ;
+//  - "Phase Consistency" (support du profil Contrôle) : mesure dérivée (consistance essai-à-
+//    essai ou inter-phases) sans formule définie et sans variable brute existante.
 var DOMINANTES=['Propulsif','Absorbeur','Réactif','Explosif','Contrôle'];
 var DOMINANTE_QUESTION={
   'Propulsif':'Est-ce que l\'athlète est capable de produire une forte propulsion ?',
@@ -1434,8 +1438,9 @@ var DTM={
 
   'cmj:rsi_mod':           {Réactif:{tier:'master'}, Explosif:{tier:'support'}},
   'cmj:ft_ct_ratio':       {Réactif:{tier:'master'}},
-  'cmj:tto':               {Réactif:{tier:'master'}}, // "Contact Time" — interprétation, cf. note ci-dessus
   'dj:rsi':                {Réactif:{tier:'master'}}, // "Reactive Strength (DJ)"
+  // "Contact Time (si disponible)" : absente pour l'instant, cf. note ci-dessus — Réactif reste
+  // à 3 variables maîtresses (dans la règle 3-5), pas 4, tant qu'elle n'est pas confirmée.
 
   'cmj:conc_impulse_100':  {Explosif:{tier:'master'}},
 
