@@ -1079,6 +1079,130 @@ function normPercentile(testKey,kpiKey,pop,age,val,dir){
   return continuousPercentile(bands,val,dir);
 }
 
+// ── MOTEUR BIOMÉCANIQUE (VALD CMJ) ───────────────────────────────────────────────────────────
+// Module indépendant, exécutable seul. Input : valeurs brutes CMJ (dict {kpiKey:valeur},
+// population de normes, âge). Output : par phase, {score, niveau, Δ, cohérence interne,
+// variables responsables/préservées/exceptionnelles, qualité des données}, entièrement
+// traçable (chaque entrée expose valeur brute → percentile → poids → contribution au score).
+// Ne consomme QUE les valeurs CMJ et le référentiel/la configuration définis plus haut — ne lit
+// jamais les autres tests, ne modifie jamais rien en dehors de son propre résultat.
+function stdDevOf(nums){
+  if(!nums||nums.length<2)return 0;
+  var m=nums.reduce(function(a,b){return a+b;},0)/nums.length;
+  var variance=nums.reduce(function(a,b){return a+(b-m)*(b-m);},0)/nums.length;
+  return Math.sqrt(variance);
+}
+function cmjKpiDir(kpiKey){
+  var kpi=TBK.cmj&&TBK.cmj.kpis.filter(function(k){return k.key===kpiKey;})[0];
+  return kpi?kpi.dir:'max';
+}
+// Calcule le résultat d'UNE phase. N'a besoin d'aucune autre phase (Δ relatif est calculé
+// séparément par computeBiomecaEngine, une fois tous les scores de phase connus).
+function computeBiomecaPhase(phaseKey,cmjValues,pop,age){
+  cmjValues=cmjValues||{};
+  var phaseVarKeys=Object.keys(CMJ_VAR_META).filter(function(k){return CMJ_VAR_META[k].phase===phaseKey&&effectiveBiomecaTier(k)!=='info';});
+  var entries=phaseVarKeys.map(function(k){
+    var raw=cmjValues[k];
+    var tier=effectiveBiomecaTier(k);
+    var weight=effectiveBiomecaWeight(k);
+    var valdName=(CMJ_VAR_META[k]||{}).valdName||k;
+    var tech=validateTechnical(k,raw);
+    if(!tech.ok)return{kpiKey:k,valdName:valdName,tier:tier,weight:weight,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
+    var pct=normPercentile('cmj',k,pop,age,raw,cmjKpiDir(k));
+    return{kpiKey:k,valdName:valdName,tier:tier,weight:weight,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
+  });
+  var masterEntries=entries.filter(function(e){return e.tier==='master';});
+  var masterOk=masterEntries.filter(function(e){return e.status==='ok';});
+  var threshold=effectiveMissingDataThreshold();
+  var ratio=masterEntries.length?masterOk.length/masterEntries.length:0;
+  if(masterEntries.length===0||ratio<threshold){
+    return{
+      phase:phaseKey,sufficient:false,score:null,
+      reason:'Données insuffisantes pour interpréter cette phase ('+masterOk.length+'/'+masterEntries.length+' variables maîtresses disponibles, seuil requis '+Math.round(threshold*100)+'%).',
+      entries:entries,masterAvailable:masterOk.length,masterTotal:masterEntries.length
+    };
+  }
+  var usable=entries.filter(function(e){return e.status==='ok'&&(e.tier==='master'||e.tier==='support');});
+  var sumW=0,sumWP=0;
+  usable.forEach(function(e){sumW+=e.weight;sumWP+=e.weight*e.percentile;});
+  var score=sumW>0?sumWP/sumW:null;
+  var coherenceInterne=stdDevOf(masterOk.map(function(e){return e.percentile;}));
+  var niveau=classifyBand(effectiveBiomecaBands('niveauAbsolu'),score);
+  var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceInterne'),coherenceInterne);
+  return{
+    phase:phaseKey,sufficient:true,score:score,percentile:score,niveau:niveau,
+    coherenceInterne:coherenceInterne,coherenceBand:coherenceBand,
+    entries:entries,masterAvailable:masterOk.length,masterTotal:masterEntries.length,
+    variablesResponsables:usable.filter(function(e){return e.percentile<40;}),
+    variablesPreservees:usable.filter(function(e){return e.percentile>=60&&e.percentile<90;}),
+    variablesExceptionnelles:usable.filter(function(e){return e.percentile>=90;})
+  };
+}
+// Point d'entrée du module : calcule les 5 phases + Δ relatif (une fois tous les scores connus)
+// + les avertissements de cohérence biomécanique (niveau 2 de validation) sur l'ensemble des
+// variables CMJ. N'écrit jamais dans testData — retourne un résultat immuable.
+function computeBiomecaEngine(cmjValues,pop,age){
+  var phases={};
+  CMJ_PHASES.forEach(function(p){phases[p]=computeBiomecaPhase(p,cmjValues,pop,age);});
+  var sufficientKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
+  sufficientKeys.forEach(function(p){
+    var others=sufficientKeys.filter(function(o){return o!==p;});
+    if(!others.length){phases[p].delta=null;phases[p].deltaBand=null;return;}
+    var avgOthers=others.reduce(function(s,o){return s+phases[o].score;},0)/others.length;
+    var delta=phases[p].score-avgOthers;
+    phases[p].delta=delta;
+    phases[p].deltaBand=classifyBand(effectiveBiomecaBands('deltaRelatif'),Math.abs(delta));
+  });
+  return{phases:phases,globalWarnings:validateBiomechanicalCoherence(cmjValues)};
+}
+
+// ── Specification Pattern appliqué : gate à 3 conditions du document source ("ne jamais
+// conclure qu'une phase est un facteur limitant biomécanique sans vérifier simultanément
+// niveau absolu + écart relatif + cohérence interne"). Chaque prédicat reçoit {phase:<résultat
+// de computeBiomecaPhase>} et s'auto-explique — jamais un jugement opaque.
+var BiomecaSpecs={
+  niveauInferieurAuxNormes:makeSpec('Niveau absolu inférieur aux normes',function(ctx){
+    var band=ctx.phase.niveau;
+    var sousNormes=!!band&&['Déficitaire','Déficit majeur','À surveiller'].indexOf(band.label)>=0;
+    return{result:sousNormes,reason:band?('Niveau absolu classé "'+band.label+'" (score '+ctx.phase.score.toFixed(1)+').'):'Score de phase indisponible.'};
+  }),
+  phaseSignificativementInferieure:makeSpec('Phase significativement inférieure au reste du profil',function(ctx){
+    if(ctx.phase.delta==null)return{result:false,reason:'Δ relatif indisponible (une seule phase exploitable dans ce bilan).'};
+    var band=ctx.phase.deltaBand;
+    var significatif=ctx.phase.delta<0&&!!band&&['Écart identifiable','Écart majeur','Rupture biomécanique majeure'].indexOf(band.label)>=0;
+    return{result:significatif,reason:band?('Écart relatif Δ='+ctx.phase.delta.toFixed(1)+' classé "'+band.label+'".'):'Δ relatif indisponible.'};
+  }),
+  coherenceInterneSuffisante:makeSpec('Cohérence interne de la phase suffisante',function(ctx){
+    var band=ctx.phase.coherenceBand;
+    // Choix Kinexus (le document ne le chiffre pas) : "suffisante" = les 3 paliers les plus
+    // favorables de l'échelle à 5 paliers ; "Faible"/"Très faible cohérence" ne le sont pas.
+    var suffisante=!!band&&['Très forte cohérence','Bonne cohérence','Cohérence moyenne'].indexOf(band.label)>=0;
+    return{result:suffisante,reason:band?('Cohérence interne classée "'+band.label+'".'):'Cohérence interne indisponible.'};
+  })
+};
+BiomecaSpecs.facteurLimitantBiomecanique=BiomecaSpecs.niveauInferieurAuxNormes
+  .and(BiomecaSpecs.phaseSignificativementInferieure)
+  .and(BiomecaSpecs.coherenceInterneSuffisante);
+// Conclusion textuelle d'une phase, dérivée du gate ci-dessus. Si le gate échoue, reprend les
+// nuances explicitement prévues par le document source plutôt qu'une conclusion catégorique.
+// Ne conclut jamais au niveau patient (cf. contrainte du document source) — uniquement au
+// niveau de la phase.
+function biomecaPhaseConclusion(phaseResult){
+  if(!phaseResult.sufficient)return{label:'Donnée insuffisante',text:phaseResult.reason,proof:null};
+  var proof=BiomecaSpecs.facteurLimitantBiomecanique.isSatisfiedBy({phase:phaseResult});
+  if(proof.result){
+    return{label:'Principal facteur limitant biomécanique',text:'Les variables de la phase '+CMJ_PHASE_LABEL[phaseResult.phase]+' sont diminuées et significativement inférieures au reste du profil, avec une cohérence interne suffisante pour l\'affirmer.',proof:proof};
+  }
+  var niveauOk=BiomecaSpecs.niveauInferieurAuxNormes.isSatisfiedBy({phase:phaseResult}).result;
+  var deltaOk=BiomecaSpecs.phaseSignificativementInferieure.isSatisfiedBy({phase:phaseResult}).result;
+  var cohOk=BiomecaSpecs.coherenceInterneSuffisante.isSatisfiedBy({phase:phaseResult}).result;
+  var text;
+  if(!niveauOk)text='Cette phase est actuellement la moins performante du profil mais reste dans les normes.';
+  else if(!deltaOk)text='Cette phase est faible mais reste cohérente avec un niveau global faible.';
+  else text='Les variables étant discordantes au sein de la phase, l\'interprétation reste prudente.';
+  return{label:'Nuancé',text:text,proof:proof};
+}
+
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
 // sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
 // les seuils génériques dans THRESHOLDS.
