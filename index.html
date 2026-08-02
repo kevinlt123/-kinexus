@@ -112,7 +112,13 @@ var TESTS=[
   {key:'cmj',label:'Countermovement Jump',cat:'Sauts',bilateral:true,kpis:[{key:'height',label:'Height (cm)',step:0.1,dir:'max'},{key:'rsi_mod',label:'RSI Mod',step:0.01,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'conc_impulse',label:'Impulsion concentrique (Ns/kg)',step:0.01,dir:'max'},{key:'peak_vel',label:'Peak Velocity (m/s)',step:0.01,dir:'max'},{key:'tto',label:'Time to Take Off (ms)',step:1,dir:'min'},{key:'depth',label:'Countermovement Depth (cm)',step:0.1,dir:'max'},
     {key:'ecc_peak_force',label:'Eccentric Peak Force (N/kg)',step:0.01,dir:'max'},{key:'ecc_peak_vel',label:'Peak Eccentric Velocity (m/s)',step:0.01,dir:'max'},{key:'conc_peak_force',label:'Concentric Peak Force (N/kg)',step:0.01,dir:'max'},{key:'conc_mean_force',label:'Concentric Mean Force (N/kg)',step:0.01,dir:'max'},{key:'conc_mean_vel',label:'Concentric Mean Velocity (m/s)',step:0.01,dir:'max'},{key:'conc_mean_power',label:'Concentric Mean Power (W/kg)',step:0.1,dir:'max'},{key:'conc_rfd',label:'Concentric Rate of Force (N/s)',step:1,dir:'max'},{key:'conc_duration',label:'Concentric Duration (ms)',step:1,dir:'min'},{key:'conc_displacement',label:'Concentric Displacement (cm)',step:0.1,dir:'max'},
     {key:'braking_duration',label:'Braking Phase Duration (ms)',step:1,dir:'min'},{key:'braking_impulse',label:'Braking Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'braking_peak_force',label:'Braking Peak Force (N/kg)',step:0.01,dir:'max'},{key:'braking_rfd',label:'Braking Rate of Force (N/s)',step:1,dir:'max'},{key:'braking_power',label:'Braking Power (W/kg)',step:0.1,dir:'max'},{key:'propulsion_eff',label:'Propulsion Efficiency (%)',step:0.1,dir:'max'},{key:'braking_eff',label:'Braking Efficiency (%)',step:0.1,dir:'max'},{key:'ft_ct_ratio',label:'FT:CT Ratio',step:0.01,dir:'max'},{key:'conc_impulse_100',label:'Impulsion concentrique @100ms (Ns/kg)',step:0.01,dir:'max'},{key:'ecc_decel',label:'Eccentric Deceleration (m/s²)',step:0.1,dir:'max'},
-    {key:'conc_peak_vel',label:'Concentric Peak Velocity (m/s)',step:0.01,dir:'max'},{key:'ecc_mean_force',label:'Eccentric Mean Force (N/kg)',step:0.01,dir:'max'},{key:'ecc_mean_power',label:'Eccentric Mean Power (W/kg)',step:0.1,dir:'max'},{key:'landing_peak_force',label:'Landing Peak Force (N/kg)',step:0.01,dir:'min'},{key:'landing_mean_force',label:'Landing Mean Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'landing_rfd',label:'Landing RFD (N/s)',step:1,dir:'min'},{key:'landing_duration',label:'Landing Phase Duration (ms)',step:1,dir:'max'},{key:'landing_mean_power',label:'Landing Mean Power (W/kg)',step:0.1,dir:'min'},{key:'time_to_stab',label:'Time to Stabilization (s)',step:0.01,dir:'min'},{key:'post_landing_stability',label:'Post Landing Stability',step:0.1,dir:'min'}
+    {key:'conc_peak_vel',label:'Concentric Peak Velocity (m/s)',step:0.01,dir:'max'},{key:'ecc_mean_force',label:'Eccentric Mean Force (N/kg)',step:0.01,dir:'max'},{key:'ecc_mean_power',label:'Eccentric Mean Power (W/kg)',step:0.1,dir:'max'},{key:'landing_peak_force',label:'Landing Peak Force (N/kg)',step:0.01,dir:'min'},{key:'landing_mean_force',label:'Landing Mean Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'landing_rfd',label:'Landing RFD (N/s)',step:1,dir:'min'},{key:'landing_duration',label:'Landing Phase Duration (ms)',step:1,dir:'max'},{key:'landing_mean_power',label:'Landing Mean Power (W/kg)',step:0.1,dir:'min'},{key:'time_to_stab',label:'Time to Stabilization (s)',step:0.01,dir:'min'},{key:'post_landing_stability',label:'Post Landing Stability',step:0.1,dir:'min'},
+    // ── Variables VALD ajoutées pour le moteur biomécanique (phases CMJ) — voir CMJ_VAR_META ──
+    {key:'force_zero_vel',label:'Force at Zero Velocity (N/kg)',step:0.01,dir:'max'},{key:'force_peak_power',label:'Force at Peak Power (N/kg)',step:0.01,dir:'max'},{key:'flight_time',label:'Flight Time (ms)',step:1,dir:'max'},
+    {key:'ecc_decel_rfd_asym',label:'Eccentric Deceleration RFD Asymmetry (%)',step:0.1,dir:'min'},{key:'ecc_decel_rfd_L',label:'Eccentric Deceleration RFD Gauche (N/s)',step:1,dir:'max'},{key:'ecc_decel_rfd_R',label:'Eccentric Deceleration RFD Droit (N/s)',step:1,dir:'max'},
+    {key:'ecc_decel_impulse_asym',label:'Eccentric Deceleration Impulse Asymmetry (%)',step:0.1,dir:'min'},
+    {key:'conc_force_impulse_asym',label:'Concentric Mean Force / Impulse Asymmetry (%)',step:0.1,dir:'min'},{key:'force_peak_power_asym',label:'Force at Peak Power Asymmetry (%)',step:0.1,dir:'min'},{key:'p2_conc_impulse_asym',label:'P2 Concentric Impulse Asymmetry (%)',step:0.1,dir:'min'},
+    {key:'landing_peak_force_asym',label:'Peak Landing Force Asymmetry (%)',step:0.1,dir:'min'},{key:'landing_peak_force_L',label:'Peak Landing Force Gauche (N/kg)',step:0.01,dir:'min'},{key:'landing_peak_force_R',label:'Peak Landing Force Droit (N/kg)',step:0.01,dir:'min'}
   ]},
   {key:'slcmj',label:'Single Leg Jump',cat:'Sauts',bilateral:false,kpis:[{key:'height',label:'Height (cm)',step:0.1,dir:'max'},{key:'rsi_mod',label:'RSI Mod',step:0.01,dir:'max'},{key:'peak_conc_force',label:'Peak Concentric Force (N/kg)',step:0.01,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'peak_conc_vel',label:'Peak Concentric Velocity (m/s)',step:0.01,dir:'max'},{key:'edrfd_bm',label:'EDRFD / BM (N/s/kg)',step:0.1,dir:'max'},{key:'braking_rfd',label:'Braking RFD (N/s)',step:1,dir:'max'},{key:'peak_braking_force',label:'Peak Braking Force (N/kg)',step:0.01,dir:'max'},{key:'braking_impulse',label:'Braking Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'depth',label:'Countermovement Depth (cm)',step:0.1,dir:'max'},{key:'contraction_time',label:'Contraction Time (ms)',step:1,dir:'min'},{key:'ecc_duration',label:'Eccentric Duration (ms)',step:1,dir:'min'},{key:'conc_duration',label:'Concentric Duration (ms)',step:1,dir:'min'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'time_to_stab',label:'Time to Stabilization (s)',step:0.01,dir:'min'}]},
   {key:'cmjr',label:'Countermovement Rebound Jump',cat:'Sauts',bilateral:true,kpis:[{key:'first_height',label:'First Jump Height (cm)',step:0.1,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'mean_ct',label:'Mean Contact Time (ms)',step:1,dir:'min'},{key:'mean_rebound_height',label:'Mean Rebound Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'mean_stiffness',label:'Mean Leg Stiffness (kN/m)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'rsi_decay',label:'RSI Decay (%)',step:0.1,dir:'min'},{key:'stiffness_decay',label:'Leg Stiffness Decay (%)',step:0.1,dir:'min'}]},
@@ -135,6 +141,78 @@ var TESTS=[
   {key:'repeated_hop_bi',label:'Hop Test Bilatéral',cat:'Tests Fonctionnels',bilateral:true,kpis:[{key:'mean_height',label:'Mean Jump Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'mean_peak_force',label:'Mean Peak Force (N)',step:1,dir:'max'},{key:'n_hops',label:'Nombre de sauts',step:1,dir:'max'}]},
 ];
 var TBK={};TESTS.forEach(function(t){TBK[t.key]=t;});
+
+// ── MOTEUR BIOMÉCANIQUE (VALD CMJ) : référentiel de phase ──────────────────────────────────
+// Associe chaque variable CMJ à sa phase biomécanique (VALD ForceDecks), son tier
+// (master/support/info) et son poids de référence pour le calcul du score de phase pondéré.
+//
+// Provenance :
+//  - Phase + appartenance de la variable = VALD (Practitioner's Intermediate Guide to Force
+//    Plates / Force Plates 2). Quand une variable apparaît dans la liste VALD de deux phases
+//    (Countermovement Depth, Eccentric Peak Velocity et Eccentric Deceleration Phase Duration
+//    sont listées à la fois en Unloading et en Braking dans le document source), Kinexus lui
+//    attribue UNE seule phase de rattachement pour éviter un double comptage dans le score
+//    pondéré — choix logiciel, pas une règle VALD. Ici : rattachées à Unloading (leur première
+//    apparition, et la phase dont elles décrivent le mieux l'objectif : stratégie de
+//    préparation du mouvement).
+//  - Tier (master/support/info) et poids = choix Kinexus par défaut, non scientifiquement
+//    validés. Entièrement modifiables via la Configuration clinique (BIOMECA_CONFIG_LS_KEY,
+//    même mécanisme que qualityProfilesState) — les valeurs ci-dessous ne sont que le profil
+//    "Par défaut", jamais codées en dur pour le calcul réel.
+//  - Tier 'info' = variable ForceDecks disponible dans KINEXUS mais non citée par VALD comme
+//    variable propre à cette phase dans le référentiel source (pages 1-20 du cahier des
+//    charges). Affichée en contexte dans le rapport, mais exclue du score de phase pondéré
+//    (poids 0 implicite, jamais "master" ni "support").
+var CMJ_PHASES=['unloading','braking','concentric','flight','landing'];
+var CMJ_PHASE_LABEL={unloading:'Unloading',braking:'Braking',concentric:'Concentric',flight:'Flight',landing:'Landing'};
+var CMJ_VAR_META={
+  // Unloading — variables VALD phase 1 (rattachement Kinexus, cf. note ci-dessus)
+  depth:              {phase:'unloading',tier:'master',weight:1.5,valdName:'Countermovement Depth'},
+  ecc_peak_vel:       {phase:'unloading',tier:'master',weight:1.0,valdName:'Eccentric Peak Velocity'},
+  braking_duration:   {phase:'unloading',tier:'master',weight:1.0,valdName:'Eccentric Deceleration Phase Duration',note:'clé historique "braking_duration" ; variable VALD rattachée à Unloading par choix Kinexus (cf. note ci-dessus).'},
+  // Braking — variables VALD phase 2 propres (au-delà des 3 partagées avec Unloading ci-dessus)
+  ecc_mean_power:     {phase:'braking',tier:'master',weight:1.0,valdName:'Eccentric Mean Power'},
+  force_zero_vel:     {phase:'braking',tier:'master',weight:1.5,valdName:'Force at Zero Velocity'},
+  braking_rfd:        {phase:'braking',tier:'master',weight:2.0,valdName:'Eccentric Deceleration RFD / BM (EDRFD)',note:'clé historique "braking_rfd".'},
+  braking_impulse:    {phase:'braking',tier:'support',weight:1.0,valdName:'Eccentric Deceleration Impulse'},
+  // Concentric — variables VALD phase 3
+  peak_power:         {phase:'concentric',tier:'master',weight:1.5,valdName:'Peak Power / BM'},
+  conc_mean_force:    {phase:'concentric',tier:'master',weight:1.5,valdName:'Concentric Mean Force'},
+  conc_impulse_100:   {phase:'concentric',tier:'master',weight:1.5,valdName:'Concentric Impulse 100ms',note:'variable mise en avant par VALD comme particulièrement discriminante (profilage, suivi de charge, rééducation).'},
+  conc_impulse:       {phase:'concentric',tier:'support',weight:1.0,valdName:'Concentric Impulse'},
+  force_peak_power:   {phase:'concentric',tier:'support',weight:1.0,valdName:'Force at Peak Power'},
+  // Flight — variables VALD phase 4 (phase de résultat, ne produit aucune force propre)
+  height:             {phase:'flight',tier:'master',weight:1.5,valdName:'Jump Height'},
+  ft_ct_ratio:        {phase:'flight',tier:'master',weight:1.5,valdName:'FT:CT'},
+  rsi_mod:            {phase:'flight',tier:'master',weight:1.5,valdName:'RSI-Mod'},
+  flight_time:        {phase:'flight',tier:'support',weight:1.0,valdName:'Flight Time'},
+  // Landing — variables VALD phase 5
+  landing_peak_force: {phase:'landing',tier:'master',weight:1.5,valdName:'Peak Landing Force'},
+  time_to_stab:       {phase:'landing',tier:'master',weight:1.0,valdName:'Time to Stabilization'},
+  landing_impulse:    {phase:'landing',tier:'support',weight:1.0,valdName:'Landing Impulse',note:'VALD : "utilisée lorsqu\'elle est disponible selon le protocole".'},
+  // Variables ForceDecks additionnelles disponibles dans KINEXUS mais non citées par VALD comme
+  // variable propre à une phase dans ce référentiel — affichées en contexte, jamais utilisées
+  // dans le score de phase pondéré (tier 'info').
+  ecc_peak_force:{phase:'braking',tier:'info'},ecc_mean_force:{phase:'braking',tier:'info'},ecc_decel:{phase:'braking',tier:'info'},braking_eff:{phase:'braking',tier:'info'},
+  conc_peak_force:{phase:'concentric',tier:'info'},conc_mean_vel:{phase:'concentric',tier:'info'},conc_peak_vel:{phase:'concentric',tier:'info'},
+  conc_rfd:{phase:'concentric',tier:'info'},conc_duration:{phase:'concentric',tier:'info'},conc_displacement:{phase:'concentric',tier:'info'},propulsion_eff:{phase:'concentric',tier:'info'},
+  landing_mean_force:{phase:'landing',tier:'info'},landing_rfd:{phase:'landing',tier:'info'},landing_duration:{phase:'landing',tier:'info'},
+  landing_mean_power:{phase:'landing',tier:'info'},post_landing_stability:{phase:'landing',tier:'info'},
+  tto:{phase:null,tier:'info',note:'Time to Take Off = temps de contraction total, dénominateur de RSI-Mod/FT:CT ; pas une variable de phase VALD en soi.'}
+};
+// ── Asymétries CMJ : 3 familles (référentiel VALD, philosophie "jamais de seuil universel") ──
+// Chaque métrique d'asymétrie possède sa propre distribution normative et doit être comparée à
+// ses propres percentiles (jamais un seuil unique type 10% pour toutes les métriques).
+// Concentric Mean Force Asymmetry et Concentric Impulse Asymmetry sont déclarées par VALD
+// (rapports Premier League 2025/26) comme numériquement équivalentes — même %, mêmes
+// percentiles, métriques interchangeables. Kinexus les fusionne en UNE seule information
+// logique (kpi 'conc_force_impulse_asym') pour ne jamais compter deux fois la même preuve dans
+// le moteur de raisonnement (Règle 2 : 2 variables maîtresses concordantes requises).
+var CMJ_ASYM_FAMILIES={
+  eccentric:{label:'Asymétries excentriques (freinage)',vars:['ecc_decel_rfd_asym','ecc_decel_impulse_asym']},
+  concentric:{label:'Asymétries concentriques (propulsion)',vars:['conc_force_impulse_asym','force_peak_power_asym','p2_conc_impulse_asym']},
+  landing:{label:'Asymétries de réception',vars:['landing_peak_force_asym']}
+};
 
 // ── CSV IMPORT MAPPERS ───────────────────────────────────────────────────────
 // VALD ForceDecks: columns vary but common patterns
@@ -568,6 +646,177 @@ function testReportState(testKey){
   if(states.indexOf('visible')>=0)return'visible';
   return'ignored';
 }
+
+// ── MOTEUR BIOMÉCANIQUE : bandes de classification par défaut (ThresholdBandClassifier) ──────
+// Provenance : AUCUNE de ces bandes n'est une donnée VALD ni un seuil validé par la
+// littérature — ce sont des valeurs Kinexus par défaut, un point de départ raisonnable,
+// entièrement modifiables via la Configuration clinique (jamais comparées "en dur" ailleurs
+// dans le code : uniquement lues via classifyBand()/effectiveBiomecaBands()). {min,max} :
+// borne basse incluse, borne haute exclue (sauf dernière bande de chaque échelle).
+var BIOMECA_DEFAULT_BANDS={
+  // Niveau absolu d'une phase (score pondéré 0-100, plus haut = mieux).
+  niveauAbsolu:[
+    {min:95,max:101,label:'Exceptionnel',color:'#0ea5e9'},
+    {min:90,max:95,label:'Excellent',color:'#22c55e'},
+    {min:75,max:90,label:'Très bon',color:'#22c55e'},
+    {min:40,max:75,label:'Dans les normes',color:'#eab308'},
+    {min:25,max:40,label:'À surveiller',color:'#f97316'},
+    {min:10,max:25,label:'Déficitaire',color:'#ef4444'},
+    {min:-1,max:10,label:'Déficit majeur',color:'#b91c1c'}
+  ],
+  // |Δ relatif| = |score(phase) - moyenne(autres phases)|. Le sens (point fort / point faible)
+  // est déterminé par le moteur à partir du signe de Δ, jamais par cette classification.
+  deltaRelatif:[
+    {min:0,max:11,label:'Profil cohérent',color:'#22c55e'},
+    {min:11,max:21,label:'Différence légère',color:'#84cc16'},
+    {min:21,max:36,label:'Écart identifiable',color:'#eab308'},
+    {min:36,max:51,label:'Écart majeur',color:'#f97316'},
+    {min:51,max:101,label:'Rupture biomécanique majeure',color:'#ef4444'}
+  ],
+  // Cohérence interne d'une phase — dispersion (écart-type) des percentiles des variables
+  // maîtresses de la phase.
+  coherenceInterne:[
+    {min:0,max:10,label:'Très forte cohérence',color:'#22c55e'},
+    {min:10,max:20,label:'Bonne cohérence',color:'#84cc16'},
+    {min:20,max:35,label:'Cohérence moyenne',color:'#eab308'},
+    {min:35,max:50,label:'Faible cohérence',color:'#f97316'},
+    {min:50,max:1001,label:'Très faible cohérence',color:'#ef4444'}
+  ],
+  // Cohérence d'une transition inter-phases — |Δscore| entre deux phases adjacentes.
+  coherenceTransition:[
+    {min:0,max:10,label:'Très cohérente',color:'#22c55e'},
+    {min:10,max:20,label:'Cohérente',color:'#84cc16'},
+    {min:20,max:35,label:'Légèrement incohérente',color:'#eab308'},
+    {min:35,max:50,label:'Incohérente',color:'#f97316'},
+    {min:50,max:1001,label:'Très incohérente',color:'#ef4444'}
+  ],
+  // Potentiel de progression biomécanique — amplitude = meilleure phase - moins bonne phase.
+  // Échelle unique à 4 paliers (fusion des deux échelles concurrentes identifiées à l'analyse).
+  potentielProgression:[
+    {min:0,max:15,label:'Faible',color:'#84cc16'},
+    {min:15,max:30,label:'Modéré',color:'#eab308'},
+    {min:30,max:45,label:'Important',color:'#f97316'},
+    {min:45,max:1001,label:'Très important',color:'#ef4444'}
+  ],
+  // Confiance globale — indice composite 0-100 (cf. hiérarchie Variables→Phase→Transition→Globale).
+  confianceGlobale:[
+    {min:80,max:101,label:'Très forte confiance',color:'#22c55e'},
+    {min:65,max:80,label:'Forte confiance',color:'#84cc16'},
+    {min:45,max:65,label:'Confiance modérée',color:'#eab308'},
+    {min:25,max:45,label:'Faible confiance',color:'#f97316'},
+    {min:-1,max:25,label:'Interprétation prudente',color:'#ef4444'}
+  ]
+};
+// ThresholdBandClassifier générique — composant UNIQUE réutilisé par toutes les
+// classifications par bandes du moteur biomécanique (voir BIOMECA_DEFAULT_BANDS). bands :
+// tableau [{min,max,label,color}] ; {min inclusif, max exclusif}. Retourne null si val est
+// null/undefined ou si aucune bande ne couvre la valeur — ne lance jamais d'exception et ne
+// devine jamais une classification par défaut.
+function classifyBand(bands,val){
+  if(val==null||!bands||!bands.length)return null;
+  for(var i=0;i<bands.length;i++){
+    var b=bands[i];
+    if(val>=b.min&&val<b.max)return{label:b.label,color:b.color,min:b.min,max:b.max};
+  }
+  return null;
+}
+
+// ── SPECIFICATION PATTERN : prédicats nommés, composables et traçables ──────────────────────
+// Remplace les if/else imbriqués pour les règles décisionnelles composées du moteur
+// biomécanique (ex. le gate à 3 conditions du document source : "ne jamais conclure qu'une
+// phase est un facteur limitant sans vérifier simultanément niveau absolu + écart relatif +
+// cohérence interne"). Chaque spécification s'auto-explique (raison) et la composition
+// (ET/OU/NON) construit un arbre de preuve entièrement traçable — jamais un jugement opaque.
+// evaluateFn(context) doit retourner {result:boolean, reason:string}. isSatisfiedBy() renvoie
+// toujours {name,result,reason,children[]} — children[] est vide pour une spec atomique, et
+// contient les preuves des sous-spécifications pour une spec composée (ET/OU/NON).
+function makeSpec(name,evaluateFn){
+  var spec={name:name};
+  spec.isSatisfiedBy=function(context){
+    var r=evaluateFn(context)||{};
+    return{name:name,result:!!r.result,reason:r.reason||'',children:r.children||[]};
+  };
+  spec.and=function(other){
+    return makeSpec(name+' ET '+other.name,function(context){
+      var a=spec.isSatisfiedBy(context),b=other.isSatisfiedBy(context);
+      return{result:a.result&&b.result,reason:(a.result&&b.result)?'Toutes les conditions sont vérifiées.':'Au moins une condition n\'est pas vérifiée.',children:[a,b]};
+    });
+  };
+  spec.or=function(other){
+    return makeSpec(name+' OU '+other.name,function(context){
+      var a=spec.isSatisfiedBy(context),b=other.isSatisfiedBy(context);
+      return{result:a.result||b.result,reason:(a.result||b.result)?'Au moins une condition est vérifiée.':'Aucune condition n\'est vérifiée.',children:[a,b]};
+    });
+  };
+  spec.not=function(){
+    return makeSpec('NON ('+name+')',function(context){
+      var a=spec.isSatisfiedBy(context);
+      return{result:!a.result,reason:a.result?'La condition évitée est vérifiée.':'La condition évitée n\'est pas vérifiée.',children:[a]};
+    });
+  };
+  return spec;
+}
+
+// ── CONFIGURATION CLINIQUE : moteur biomécanique (phases CMJ) ───────────────────────────────
+// Même mécanisme que QUALITY_PROFILES ci-dessus (un seul réglage pour tout le cabinet,
+// plusieurs profils nommés, un seul actif) — réutilisé plutôt que dupliqué, appliqué ici aux
+// poids/tiers de variables (CMJ_VAR_META) et aux bandes de classification (BIOMECA_DEFAULT_
+// BANDS). Chaque profil ne stocke que les dérogations, jamais une copie complète.
+var BIOMECA_PROFILES_LS_KEY='kinexus_biomeca_profiles';
+var DEFAULT_BIOMECA_PROFILE_ID='default';
+function defaultBiomecaProfilesState(){
+  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5}}]};
+}
+function loadBiomecaProfilesState(){
+  try{
+    var raw=localStorage.getItem(BIOMECA_PROFILES_LS_KEY);
+    if(!raw)return defaultBiomecaProfilesState();
+    var parsed=JSON.parse(raw);
+    if(!parsed||!parsed.profiles||!parsed.profiles.length)return defaultBiomecaProfilesState();
+    if(!parsed.profiles.some(function(p){return p.id===DEFAULT_BIOMECA_PROFILE_ID;}))parsed.profiles.unshift(defaultBiomecaProfilesState().profiles[0]);
+    return parsed;
+  }catch(e){return defaultBiomecaProfilesState();}
+}
+function saveBiomecaProfilesState(state){try{localStorage.setItem(BIOMECA_PROFILES_LS_KEY,JSON.stringify(state));}catch(e){}}
+var biomecaProfilesState=loadBiomecaProfilesState();
+function activeBiomecaProfile(){
+  return biomecaProfilesState.profiles.find(function(p){return p.id===biomecaProfilesState.activeId;})||biomecaProfilesState.profiles[0];
+}
+// Poids effectif d'une variable CMJ pour le score de phase pondéré : dérogation du profil actif
+// sinon poids de référence CMJ_VAR_META, sinon 0 (variable 'info' ou inconnue — jamais utilisée
+// dans un score de phase par défaut).
+function effectiveBiomecaWeight(kpiKey){
+  var cfg=activeBiomecaProfile().config||{};
+  if(cfg.weights&&cfg.weights[kpiKey]!=null)return cfg.weights[kpiKey];
+  var ref=CMJ_VAR_META[kpiKey];
+  return(ref&&ref.tier!=='info'&&ref.weight!=null)?ref.weight:0;
+}
+// Tier effectif d'une variable (master/support/info) : dérogation du profil actif sinon tier de
+// référence CMJ_VAR_META, sinon 'info' (variable inconnue du référentiel = jamais master).
+function effectiveBiomecaTier(kpiKey){
+  var cfg=activeBiomecaProfile().config||{};
+  if(cfg.tiers&&cfg.tiers[kpiKey])return cfg.tiers[kpiKey];
+  var ref=CMJ_VAR_META[kpiKey];
+  return(ref&&ref.tier)||'info';
+}
+// Bandes effectives d'un classifieur (voir BIOMECA_DEFAULT_BANDS) : dérogation du profil actif
+// sinon bandes de référence Kinexus par défaut.
+function effectiveBiomecaBands(classifierKey){
+  var cfg=activeBiomecaProfile().config||{};
+  if(cfg.bands&&cfg.bands[classifierKey]&&cfg.bands[classifierKey].length)return cfg.bands[classifierKey];
+  return BIOMECA_DEFAULT_BANDS[classifierKey]||[];
+}
+// Seuil de disponibilité minimale des variables maîtresses d'une phase (proportion 0-1)
+// en dessous duquel le score de phase n'est PAS calculé (cf. gestion des données manquantes).
+// Résout une ambiguïté du document source ("moins de 50% des variables principales") en
+// explicitant le dénominateur : le nombre de variables tier 'master' de CMJ_VAR_META pour
+// cette phase dans le référentiel de RÉFÉRENCE (pas le nombre de variables tentées par le
+// testeur) — choix Kinexus, configurable.
+function effectiveMissingDataThreshold(){
+  var cfg=activeBiomecaProfile().config||{};
+  return cfg.missingDataThreshold!=null?cfg.missingDataThreshold:0.5;
+}
+
 // Compensations attendues en cas de déficit, par système — issues du référentiel de raisonnement
 // clinique KINEXUS (fiches STR001-013, section « Compensations »).
 var SYS_COMPENSATIONS={
@@ -691,6 +940,49 @@ function resolveBands(entry,age){
   return entry[entry.length-1].vals;
 }
 function pctStatus(bands,val){if(val==null||!bands)return null;if(val>=bands[3])return'vert';if(val>=bands[2])return'jaune';if(val>=bands[1])return'orange';return'rouge';}
+// Percentile continu (0-100), utilisé par le moteur biomécanique (score de phase pondéré, Δ
+// relatif) — pctStatus ci-dessus ne donne qu'un statut à 4 paliers, insuffisant pour une
+// moyenne pondérée de percentiles. Interpolation linéaire entre les points connus
+// [p5,p25,p50,p75,p95] (valeurs brutes, croissantes) ; extrapolation linéaire au-delà des
+// bornes à partir de la pente du segment le plus proche, puis bornage à [1,99] (jamais 0 ni
+// 100 par interpolation — une extrapolation ne doit jamais afficher une certitude absolue).
+// dir='min' inverse le percentile obtenu (une valeur brute basse = performance élevée), pour
+// les métriques où "plus petit est meilleur" (ex. temps de contact, temps de stabilisation).
+function continuousPercentile(bands,val,dir){
+  if(val==null||!bands||bands.length<5||bands.some(function(b){return b==null;}))return null;
+  var pts=[[5,bands[0]],[25,bands[1]],[50,bands[2]],[75,bands[3]],[95,bands[4]]];
+  var pct=null;
+  if(val<=pts[0][1]){
+    var s0=(pts[1][0]-pts[0][0])/((pts[1][1]-pts[0][1])||1e-9);
+    pct=pts[0][0]-(pts[0][1]-val)*s0;
+  }else if(val>=pts[4][1]){
+    var s4=(pts[4][0]-pts[3][0])/((pts[4][1]-pts[3][1])||1e-9);
+    pct=pts[4][0]+(val-pts[4][1])*s4;
+  }else{
+    for(var i=0;i<pts.length-1;i++){
+      if(val>=pts[i][1]&&val<=pts[i+1][1]){
+        var span=pts[i+1][1]-pts[i][1];
+        var t=span!==0?(val-pts[i][1])/span:0;
+        pct=pts[i][0]+t*(pts[i+1][0]-pts[i][0]);
+        break;
+      }
+    }
+  }
+  if(pct==null)return null;
+  pct=Math.max(1,Math.min(99,pct));
+  return dir==='min'?100-pct:pct;
+}
+// Percentile continu d'une valeur de test à partir de la population de normes active. Miroir
+// de normRefValue()/normRefText() ci-dessous, mais retourne un percentile plutôt qu'une valeur
+// de référence. Retourne null si aucune donnée normative n'existe pour cette variable — le
+// moteur biomécanique doit alors traiter la variable comme "donnée manquante", jamais inventer
+// un percentile par défaut.
+function normPercentile(testKey,kpiKey,pop,age,val,dir){
+  var key=testKey+'_'+kpiKey;
+  if(!pop||!NORMS[pop]||NORMS[pop][key]==null)return null;
+  var bands=resolveBands(NORMS[pop][key],age);
+  return continuousPercentile(bands,val,dir);
+}
 
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
 // sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
