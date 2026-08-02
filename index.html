@@ -1416,7 +1416,7 @@ function computePhaseConfidence(phaseResult,coherenceResult){
 //     référence : percentile individuel conservé par variable, dispersion/cohérence interne,
 //     variables fortes/faibles, conclusion absolue. EXACTEMENT la même mécanique qu'une phase
 //     (computeBiomecaPhase) : le percentile global n'est jamais un jugement en soi.
-//  B. DOMINANCE RELATIVE (computeDominanceRelative, module séparé plus bas) — comparaison
+//  B. SIGNATURE BIOMÉCANIQUE (computeSignatureBiomecanique, module séparé plus bas) — comparaison
 //     INTRA-individuelle des profils entre eux, totalement indépendante des normes. Un profil
 //     peut être excellent sans être dominant, moyen tout en étant le profil dominant, ou faible
 //     tout en restant le moins faible des profils : ce sont deux informations complémentaires,
@@ -1583,32 +1583,44 @@ function computeProfilsBiomecaniquesEngine(valuesByTest,pop,age){
   return out;
 }
 
-// ── ANALYSE DE DOMINANCE RELATIVE ────────────────────────────────────────────────────────────
-// B. DOMINANCE RELATIVE (règle du praticien, 03/08) — module INDÉPENDANT, exécuté UNIQUEMENT
-// après le calcul des profils biomécaniques (computeProfilsBiomecaniquesEngine ci-dessus). Ne
-// modifie JAMAIS les percentiles des profils, les qualités, les phases, les transitions ni les
-// hypothèses cliniques — produit uniquement une synthèse comparative. Consomme UNIQUEMENT les
-// percentiles globaux déjà calculés, jamais les variables brutes.
+// ── SIGNATURE BIOMÉCANIQUE ───────────────────────────────────────────────────────────────────
+// Nomenclature finale (praticien, 03/08) : le rapport est organisé en deux niveaux, jamais
+// fusionnés —
+//   Niveau 1 — PROFILS BIOMÉCANIQUES (module ci-dessus) : présentation individuelle de chaque
+//     profil, analyse ABSOLUE par rapport aux normes ("quels mécanismes cet athlète a-t-il
+//     développés par rapport aux normes ?").
+//   Niveau 2 — SIGNATURE BIOMÉCANIQUE (ce module) : analyse COMPARATIVE entre les profils
+//     ("comment ces profils s'organisent-ils entre eux chez cet athlète ?"). Le mot "Dominance"
+//     est réservé exclusivement au résultat de cette comparaison (une propriété de
+//     l'organisation biomécanique, jamais d'un profil pris isolément).
 //
-// Répond à "ce profil est-il plus développé que les autres profils du même athlète ?" — une
-// comparaison INTRA-individuelle, totalement indépendante des normes de référence (à ne jamais
-// confondre avec le niveau absolu d'un profil).
+// Module INDÉPENDANT, exécuté UNIQUEMENT après le calcul des profils biomécaniques
+// (computeProfilsBiomecaniquesEngine ci-dessus). Ne modifie JAMAIS les percentiles des profils,
+// les qualités, les phases, les transitions ni les hypothèses cliniques — produit uniquement une
+// synthèse comparative. Consomme UNIQUEMENT les percentiles globaux déjà calculés, jamais les
+// variables brutes.
 //
-// Calcul : écart = percentile du profil le plus élevé - moyenne des percentiles des autres
-// profils exploitables. Classé via ThresholdBandClassifier ('intensiteDominance', seuils
-// calibrés par le praticien sur ses deux exemples de référence — non issus de la littérature,
-// entièrement configurables). Équilibre global = dispersion (écart-type) des percentiles de TOUS
-// les profils exploitables, classée via 'equilibreProfils' — une vue complémentaire qui peut
-// diverger de l'intensité de dominance (ex. un profil très en avance mais les autres eux-mêmes
-// dispersés entre eux).
-function computeDominanceRelative(profilsResult){
+// Calcul (règle du praticien) :
+//  - Profil dominant + intensité de la dominance : écart = percentile du profil le plus élevé -
+//    moyenne des percentiles des autres profils exploitables, classé via ThresholdBandClassifier
+//    ('intensiteDominance', 5 paliers Aucune -> Très marquée, seuils calibrés par le praticien
+//    sur ses deux exemples de référence — non issus de la littérature, entièrement
+//    configurables).
+//  - Facteurs limitants relatifs : même logique que BiomecaSpecs.phaseSignificativementInferieure
+//    (module Moteur Biomécanique) mais appliquée aux profils — tout profil dont le percentile
+//    est significativement inférieur à la moyenne des AUTRES profils (bande 'deltaRelatif',
+//    même mécanisme déjà utilisé pour les phases, réutilisé plutôt que dupliqué).
+//  - Équilibre biomécanique global : dispersion (écart-type) des percentiles de TOUS les profils
+//    exploitables, classée via 'equilibreProfils' — une vue complémentaire qui peut diverger de
+//    l'intensité de dominance (ex. un profil très en avance mais les autres eux-mêmes dispersés).
+function computeSignatureBiomecanique(profilsResult){
   var suff=PROFILS_BIOMECANIQUES.filter(function(p){return profilsResult[p]&&profilsResult[p].sufficient;})
     .map(function(p){return{profil:p,percentile:profilsResult[p].score};})
     .sort(function(a,b){return b.percentile-a.percentile;});
   if(suff.length<2){
     return{
       sufficient:false,
-      reason:'Au moins 2 profils exploitables sont nécessaires pour analyser une dominance relative ('+suff.length+' disponible(s)).',
+      reason:'Au moins 2 profils exploitables sont nécessaires pour établir une signature biomécanique ('+suff.length+' disponible(s)).',
       profils:suff
     };
   }
@@ -1621,22 +1633,44 @@ function computeDominanceRelative(profilsResult){
   var equilibre=stdDevOf(tousPercentiles);
   var equilibreBand=classifyBand(effectiveBiomecaBands('equilibreProfils'),equilibre);
   var aucuneDominante=!!intensiteBand&&intensiteBand.label==='Aucune dominante';
+  // Facteurs limitants relatifs : pour chaque profil (dominant compris), écart par rapport à la
+  // moyenne des AUTRES profils — un profil est un facteur limitant relatif si son écart est
+  // négatif ET classé "Écart identifiable" ou pire sur la bande 'deltaRelatif' (déjà utilisée
+  // pour les phases, réutilisée ici pour rester cohérent, jamais un nouveau seuil dupliqué).
+  var facteursLimitantsRelatifs=suff.filter(function(p){
+    var autresQueP=suff.filter(function(o){return o.profil!==p.profil;});
+    var moyenneAutresQueP=autresQueP.reduce(function(s,o){return s+o.percentile;},0)/autresQueP.length;
+    var deltaP=p.percentile-moyenneAutresQueP;
+    var bandP=classifyBand(effectiveBiomecaBands('deltaRelatif'),Math.abs(deltaP));
+    var estLimitant=deltaP<0&&!!bandP&&['Écart identifiable','Écart majeur','Rupture biomécanique majeure'].indexOf(bandP.label)>=0;
+    return estLimitant;
+  }).map(function(p){return p.profil;});
   var conclusionRelative=aucuneDominante
     ?'Les différents profils biomécaniques sont homogènes ('+dominant.profil+' '+dominant.percentile.toFixed(0)+'e percentile vs moyenne des autres '+moyenneAutres.toFixed(0)+'e). Aucune stratégie dominante n\'est identifiée.'
     :'Le profil '+dominant.profil+' constitue la stratégie biomécanique dominante de cet athlète ('+dominant.percentile.toFixed(0)+'e percentile vs moyenne des autres profils '+moyenneAutres.toFixed(0)+'e, écart '+ecart.toFixed(0)+' classé "'+intensiteBand.label+'").';
+  if(facteursLimitantsRelatifs.length)conclusionRelative+=' Facteur(s) limitant(s) relatif(s) : '+facteursLimitantsRelatifs.join(', ')+'.';
+  // Ligne "signature" courte (praticien, 03/08 : "beaucoup plus fort sur le plan clinique et
+  // marketing"). Choix délibéré : forme nominale ("profil X") plutôt qu'un adjectif accordé
+  // automatiquement — les 5 libellés de profil n'ont pas tous une forme adjectivale naturelle en
+  // français (ex. "Contrôle"), et une inflexion grammaticale automatique risquerait de produire
+  // une phrase mal accordée. Robustesse > effet de style.
+  var signature='Signature biomécanique : profil '+dominant.profil+(aucuneDominante?' (aucune dominance marquée)':' dominant')+
+    (facteursLimitantsRelatifs.length?(', déficit relatif '+facteursLimitantsRelatifs.join('/')):'')+'.';
   return{
     sufficient:true,
     profilDominant:aucuneDominante?null:dominant.profil,
     intensiteDominance:{ecart:ecart,band:intensiteBand},
     profilsSecondaires:autres.map(function(p){return p.profil;}),
+    facteursLimitantsRelatifs:facteursLimitantsRelatifs,
     equilibreGlobal:{dispersion:equilibre,band:equilibreBand},
     conclusionRelative:conclusionRelative,
+    signature:signature,
     // Traçabilité complète (règle du praticien) : percentile de chaque profil, écart utilisé,
     // règle de classification — jamais une boîte noire.
     traceabilite:{
       percentiles:suff,
       ecartCalcule:ecart,
-      regle:'écart = percentile('+dominant.profil+') - moyenne(percentiles des '+autres.length+' autres profils exploitables), classé via la bande "intensiteDominance".'
+      regle:'écart = percentile('+dominant.profil+') - moyenne(percentiles des '+autres.length+' autres profils exploitables), classé via la bande "intensiteDominance". Facteurs limitants relatifs : même règle appliquée à chaque profil individuellement, classée via la bande "deltaRelatif".'
     }
   };
 }
@@ -1666,11 +1700,11 @@ function syntheseProfilGlobal(phases){
 }
 
 // (Les profils biomécaniques — Propulsif/Absorbeur/Réactif/Explosif/Contrôle — et leur analyse
-// de dominance relative NE sont PAS calculés ici : sur décision explicite du praticien, ils
-// constituent un troisième niveau d'analyse indépendant des phases, avec leur propre référentiel
-// de variables/poids. Voir les modules "PROFILS BIOMÉCANIQUES" et "ANALYSE DE DOMINANCE
-// RELATIVE" plus haut (computeProfilsBiomecaniquesEngine, computeDominanceRelative) — jamais
-// consommés par la Synthèse, qui reste limitée aux phases/transitions/confiance.)
+// (leur signature biomécanique) NE sont PAS calculés ici : sur décision explicite du praticien,
+// ils constituent un troisième niveau d'analyse indépendant des phases, avec leur propre
+// référentiel de variables/poids. Voir les modules "PROFILS BIOMÉCANIQUES" et "SIGNATURE
+// BIOMÉCANIQUE" plus haut (computeProfilsBiomecaniquesEngine, computeSignatureBiomecanique) —
+// jamais consommés par la Synthèse, qui reste limitée aux phases/transitions/confiance.)
 
 // ÉTAPE 4 — potentiel de progression : échelle UNIQUE validée (Faible/Modéré/Important/Très
 // important), amplitude = meilleure phase - moins bonne phase parmi les phases exploitables.
@@ -1779,9 +1813,9 @@ function syntheseResumeExecutif(phases,coherence,profil,potentiel,priorites,cohe
 // Point d'entrée du module. Input : UNIQUEMENT les résultats des modules précédents (jamais les
 // variables brutes). functionScores (optionnel, issu de computeMoteur() déjà existant dans
 // KINEXUS) permet l'Étape 7 (cohérence avec le moteur des qualités). Ne calcule PAS les profils
-// biomécaniques ni leur dominance relative (modules indépendants, computeProfilsBiomecaniques
-// Engine/computeDominanceRelative — jamais une entrée de la Synthèse, cf. décision du praticien :
-// couche descriptive, non décisionnelle).
+// biomécaniques ni leur signature biomécanique (modules indépendants,
+// computeProfilsBiomecaniquesEngine/computeSignatureBiomecanique — jamais une entrée de la
+// Synthèse, cf. décision du praticien : couche descriptive, non décisionnelle).
 function computeSyntheseBiomecanique(phases,coherence,functionScores){
   var profil=syntheseProfilGlobal(phases);
   var potentiel=synthesePotentielProgression(phases);
