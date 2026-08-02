@@ -860,7 +860,7 @@ function validateClinicalConcordance(biomecaLevel,qualiteLevel){
 var BIOMECA_PROFILES_LS_KEY='kinexus_biomeca_profiles';
 var DEFAULT_BIOMECA_PROFILE_ID='default';
 function defaultBiomecaProfilesState(){
-  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5}}]};
+  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,dominanteWeights:{},dominanteTiers:{}}}]};
 }
 function loadBiomecaProfilesState(){
   try{
@@ -1319,14 +1319,21 @@ function effectiveConfidenceWeights(){
   var cfg=activeBiomecaProfile().config||{};
   return cfg.confidenceWeights||{variable:30,phase:30,transition:40};
 }
+// Concordance individuelle des variables d'un tier donné avec le sens du score global — brique
+// partagée entre la confiance de phase (tier 'master') et la confiance de dominante (tier
+// 'principale', voir module DOMINANTES BIOMÉCANIQUES) : même calcul, jamais dupliqué.
+function variableConcordance(score,entries,tierLabel){
+  var tierOk=(entries||[]).filter(function(e){return e.tier===tierLabel&&e.status==='ok';});
+  if(!tierOk.length)return{score:0,reason:'Aucune variable "'+tierLabel+'" exploitable.'};
+  var faible=score<50;
+  var concordantes=tierOk.filter(function(e){return faible?e.percentile<40:e.percentile>=60;});
+  var ratio=concordantes.length/tierOk.length;
+  return{score:Math.round(ratio*100),reason:concordantes.length+'/'+tierOk.length+' variables "'+tierLabel+'" concordent individuellement avec le sens du score global ("'+(faible?'faible':'élevé')+'").'};
+}
 function confidenceLevelVariables(phaseResult){
   if(!phaseResult.sufficient)return{level:'variables',score:0,reason:'Phase insuffisante : niveau Variables non évaluable.'};
-  var masterOk=phaseResult.entries.filter(function(e){return e.tier==='master'&&e.status==='ok';});
-  if(!masterOk.length)return{level:'variables',score:0,reason:'Aucune variable maîtresse exploitable.'};
-  var phaseFaible=phaseResult.score<50;
-  var concordantes=masterOk.filter(function(e){return phaseFaible?e.percentile<40:e.percentile>=60;});
-  var ratio=concordantes.length/masterOk.length;
-  return{level:'variables',score:Math.round(ratio*100),reason:concordantes.length+'/'+masterOk.length+' variables maîtresses concordent individuellement avec le sens de la phase ("'+(phaseFaible?'faible':'élevée')+'").'};
+  var c=variableConcordance(phaseResult.score,phaseResult.entries,'master');
+  return{level:'variables',score:c.score,reason:c.reason};
 }
 function confidenceLevelPhase(phaseResult){
   if(!phaseResult.sufficient)return{level:'phase',score:0,reason:'Phase insuffisante : niveau Phase non évaluable.'};
@@ -1350,6 +1357,261 @@ function computePhaseConfidence(phaseResult,coherenceResult){
   var composite=sumW>0?(lv.score*w.variable+lp.score*w.phase+lt.score*w.transition)/sumW:0;
   var band=classifyBand(effectiveBiomecaBands('confianceGlobale'),composite);
   return{phase:phaseResult.phase,composite:composite,band:band,niveaux:{variables:lv,phase:lp,transition:lt}};
+}
+
+// ── DOMINANTES BIOMÉCANIQUES ──────────────────────────────────────────────────────────────────
+// Troisième niveau d'analyse, INDÉPENDANT des qualités fonctionnelles et des phases
+// biomécaniques (décision explicite du praticien, 02/08) :
+//   - les qualités décrivent des capacités physiques (Force, Puissance, Réactivité...) ;
+//   - les phases décrivent l'exécution du mouvement (Unloading, Braking, Concentric...) ;
+//   - les dominantes décrivent le STYLE biomécanique de l'athlète.
+// Ces trois niveaux sont complémentaires et ne doivent jamais être confondus.
+//
+// V1 limitée à 4 dominantes (Économique/Protecteur retirées : jugées trop interprétatives et
+// insuffisamment définissables pour être implémentées de façon robuste) : Propulsif, Absorbeur,
+// Réactif, Explosif.
+//
+// Chaque dominante est un score composite INDÉPENDANT, calculé exactement selon la même
+// architecture que le moteur des qualités fonctionnelles (variables principales/secondaires,
+// poids configurables, score 0-100, percentile, niveau, indice de confiance) — mais appliquée
+// aux variables de phase CMJ plutôt qu'aux tests discrets.
+//
+// Module INDÉPENDANT : consomme les valeurs CMJ brutes (comme le Moteur Biomécanique, en
+// parallèle, jamais en aval de lui) et ne modifie JAMAIS les scores des qualités, les scores
+// biomécaniques des phases, ni les hypothèses cliniques. C'est une couche DESCRIPTIVE, pas
+// décisionnelle : les dominantes n'alimentent ni les conclusions, ni les priorités, ni les
+// hypothèses (celles-ci restent déterminées par les qualités, les phases, les transitions et le
+// moteur de raisonnement Kinexus). Le Moteur de Synthèse ci-dessous ne les consomme donc PAS.
+//
+// PROVENANCE — IMPORTANT : le document source ne fournit aucun critère pour ces dominantes.
+// Le praticien a explicitement choisi de ne PAS figer aujourd'hui les variables qui composent
+// chacune (DTM ci-dessous est intentionnellement vide) : elles seront calibrées avec lui, à
+// partir de données réelles, dans une seconde étape. Tant que DTM reste vide pour une
+// dominante, computeDominante() retourne "donnée insuffisante" — jamais un score inventé.
+var DOMINANTES=['Propulsif','Absorbeur','Réactif','Explosif'];
+// DTM (Dominante-Test Matrix, miroir de TFM) : {kpiKey:{dominanteLabel:{weight,tier}}}.
+// tier : 'principale' | 'secondaire' (équivalent des tiers master/support du Moteur
+// Biomécanique, mais nommés comme le document le demande pour les dominantes). VIDE en V1 —
+// à calibrer avec le praticien avant toute utilisation clinique.
+var DTM={};
+function effectiveDominanteWeight(kpiKey,dominanteLabel){
+  var cfg=activeBiomecaProfile().config||{};
+  if(cfg.dominanteWeights&&cfg.dominanteWeights[kpiKey]&&cfg.dominanteWeights[kpiKey][dominanteLabel]!=null)return cfg.dominanteWeights[kpiKey][dominanteLabel];
+  var ref=DTM[kpiKey]&&DTM[kpiKey][dominanteLabel];
+  return ref&&ref.weight!=null?ref.weight:0;
+}
+function effectiveDominanteTier(kpiKey,dominanteLabel){
+  var cfg=activeBiomecaProfile().config||{};
+  if(cfg.dominanteTiers&&cfg.dominanteTiers[kpiKey]&&cfg.dominanteTiers[kpiKey][dominanteLabel])return cfg.dominanteTiers[kpiKey][dominanteLabel];
+  var ref=DTM[kpiKey]&&DTM[kpiKey][dominanteLabel];
+  return ref&&ref.tier?ref.tier:null;
+}
+// Calcule le score composite d'UNE dominante — même mécanique que computeBiomecaPhase (percentile
+// continu, pondération, seuil de données manquantes configurable) mais indexée sur le
+// référentiel DTM plutôt que CMJ_VAR_META/phase.
+function computeDominante(dominanteLabel,cmjValues,pop,age){
+  cmjValues=cmjValues||{};
+  var varKeys=Object.keys(DTM).filter(function(k){return DTM[k][dominanteLabel];});
+  var entries=varKeys.map(function(k){
+    var raw=cmjValues[k];
+    var tier=effectiveDominanteTier(k,dominanteLabel);
+    var weight=effectiveDominanteWeight(k,dominanteLabel);
+    var tech=validateTechnical(k,raw);
+    if(!tech.ok)return{kpiKey:k,tier:tier,weight:weight,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
+    var pct=normPercentile('cmj',k,pop,age,raw,cmjKpiDir(k));
+    return{kpiKey:k,tier:tier,weight:weight,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
+  });
+  var principales=entries.filter(function(e){return e.tier==='principale';});
+  var principalesOk=principales.filter(function(e){return e.status==='ok';});
+  var threshold=effectiveMissingDataThreshold();
+  var ratio=principales.length?principalesOk.length/principales.length:0;
+  if(principales.length===0||ratio<threshold){
+    return{
+      dominante:dominanteLabel,sufficient:false,score:null,
+      reason:principales.length===0?'Aucune variable principale définie pour cette dominante (référentiel non encore calibré).':'Données insuffisantes pour calculer cette dominante ('+principalesOk.length+'/'+principales.length+' variables principales disponibles).',
+      entries:entries
+    };
+  }
+  var usable=entries.filter(function(e){return e.status==='ok';});
+  var sumW=0,sumWP=0;
+  usable.forEach(function(e){sumW+=e.weight;sumWP+=e.weight*e.percentile;});
+  var score=sumW>0?sumWP/sumW:null;
+  var niveau=classifyBand(effectiveBiomecaBands('niveauAbsolu'),score);
+  var concordance=variableConcordance(score,entries,'principale');
+  var confidenceBand=classifyBand(effectiveBiomecaBands('confianceGlobale'),concordance.score);
+  return{
+    dominante:dominanteLabel,sufficient:true,score:score,percentile:score,niveau:niveau,
+    entries:entries,confidence:{composite:concordance.score,band:confidenceBand,reason:concordance.reason}
+  };
+}
+// Point d'entrée du module. Input : valeurs CMJ brutes (identique au Moteur Biomécanique, en
+// parallèle — PAS en aval). Output : les 4 dominantes, chacune indépendamment traçable.
+function computeDominantesEngine(cmjValues,pop,age){
+  var out={};
+  DOMINANTES.forEach(function(d){out[d]=computeDominante(d,cmjValues,pop,age);});
+  return out;
+}
+// "Style biomécanique" — affichage uniquement : identifie la dominante principale/secondaire
+// (les deux scores les plus élevés parmi les dominantes exploitables). Pure présentation,
+// n'alimente aucune conclusion, priorité ou hypothèse (cf. note d'architecture ci-dessus).
+function syntheseStyleBiomecanique(dominantesResult){
+  var suff=DOMINANTES.filter(function(d){return dominantesResult[d]&&dominantesResult[d].sufficient;})
+    .sort(function(a,b){return dominantesResult[b].score-dominantesResult[a].score;});
+  return{scores:dominantesResult,principale:suff[0]||null,secondaire:suff[1]||null};
+}
+
+// ── MOTEUR DE SYNTHÈSE BIOMÉCANIQUE ──────────────────────────────────────────────────────────
+// Module final : exécuté en dernier, ne consomme QUE les résultats des 3 modules précédents
+// (Moteur Biomécanique, Moteur de Cohérence Inter-Phases, Hiérarchie de confiance) — ne modifie
+// jamais les variables, les scores de phase, les qualités, les muscles, les systèmes ni les
+// hypothèses cliniques. Il synthétise uniquement des résultats déjà produits ailleurs.
+
+// ÉTAPE 1 — Profil biomécanique global : SYSTÈME UNIQUE à 6 catégories (fusion des 3 systèmes
+// concurrents identifiés à l'analyse de la spécification, validée avec le praticien).
+function syntheseProfilGlobal(phases){
+  var suffKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
+  if(suffKeys.length<CMJ_PHASES.length){
+    return{label:'Profil biomécanique complexe',reason:'Au moins une phase n\'a pas pu être interprétée ('+suffKeys.length+'/'+CMJ_PHASES.length+' phases exploitables).'};
+  }
+  var limitantes=suffKeys.filter(function(p){return biomecaPhaseConclusion(phases[p]).label==='Principal facteur limitant biomécanique';});
+  var niveauMoyen=suffKeys.reduce(function(s,p){return s+phases[p].score;},0)/suffKeys.length;
+  var niveauMoyenBand=classifyBand(effectiveBiomecaBands('niveauAbsolu'),niveauMoyen);
+  if(limitantes.length>=3)return{label:'Profil biomécanique complexe',reason:limitantes.length+' phases identifiées comme facteur limitant biomécanique.'};
+  if(limitantes.length===2)return{label:'Profil avec deux phases limitantes',reason:'Phases '+limitantes.map(function(p){return CMJ_PHASE_LABEL[p];}).join(' et ')+' identifiées comme facteurs limitants.'};
+  if(limitantes.length===1)return{label:'Profil avec une phase limitante',reason:'Phase '+CMJ_PHASE_LABEL[limitantes[0]]+' identifiée comme facteur limitant.'};
+  if(niveauMoyenBand&&['Exceptionnel','Excellent','Très bon'].indexOf(niveauMoyenBand.label)>=0)return{label:'Profil homogène performant',reason:'Aucune phase limitante, niveau moyen classé "'+niveauMoyenBand.label+'".'};
+  if(niveauMoyenBand&&niveauMoyenBand.label==='Dans les normes')return{label:'Profil homogène dans les normes',reason:'Aucune phase limitante, niveau moyen dans les normes.'};
+  return{label:'Profil homogène faible',reason:'Aucune phase individuellement limitante, mais niveau moyen classé "'+(niveauMoyenBand?niveauMoyenBand.label:'indéterminé')+'".'};
+}
+
+// (Les dominantes biomécaniques — Propulsif/Absorbeur/Réactif/Explosif — NE sont PAS calculées
+// ici : sur décision explicite du praticien, elles constituent un troisième niveau d'analyse
+// indépendant des phases, avec leur propre référentiel de variables/poids. Voir le module
+// "DOMINANTES BIOMÉCANIQUES" plus haut (computeDominantesEngine) — jamais consommé par la
+// Synthèse, qui reste limitée aux phases/transitions/confiance.)
+
+// ÉTAPE 4 — potentiel de progression : échelle UNIQUE validée (Faible/Modéré/Important/Très
+// important), amplitude = meilleure phase - moins bonne phase parmi les phases exploitables.
+function synthesePotentielProgression(phases){
+  var suffKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
+  if(suffKeys.length<2)return{amplitude:null,band:null,reason:'Au moins 2 phases exploitables sont nécessaires pour calculer une amplitude.'};
+  var scores=suffKeys.map(function(p){return phases[p].score;});
+  var best=Math.max.apply(null,scores),worst=Math.min.apply(null,scores);
+  var amplitude=best-worst;
+  var band=classifyBand(effectiveBiomecaBands('potentielProgression'),amplitude);
+  return{amplitude:amplitude,band:band,reason:'Amplitude entre la meilleure ('+best.toFixed(1)+') et la moins bonne phase exploitable ('+worst.toFixed(1)+').'};
+}
+
+// ÉTAPE 5 — priorités : jamais plus de 1 principale + 2 secondaires + 3 remarques. Tri :
+// 1. importance biomécanique (gate facteur limitant) 2. niveau absolu 3. niveau relatif (|Δ|)
+// 4. indice de confiance.
+function synthesePriorites(phases,coherence){
+  var suffKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
+  var candidats=suffKeys.filter(function(p){
+    return BiomecaSpecs.niveauInferieurAuxNormes.isSatisfiedBy({phase:phases[p]}).result;
+  }).map(function(p){
+    var concl=biomecaPhaseConclusion(phases[p]);
+    var conf=computePhaseConfidence(phases[p],coherence);
+    return{phase:p,conclusion:concl,confidence:conf,estLimitante:concl.label==='Principal facteur limitant biomécanique'};
+  }).sort(function(a,b){
+    if(a.estLimitante!==b.estLimitante)return a.estLimitante?-1:1;
+    if(phases[a.phase].score!==phases[b.phase].score)return phases[a.phase].score-phases[b.phase].score;
+    var da=Math.abs(phases[a.phase].delta||0),db=Math.abs(phases[b.phase].delta||0);
+    if(da!==db)return db-da;
+    return b.confidence.composite-a.confidence.composite;
+  });
+  return{principale:candidats.slice(0,1),secondaires:candidats.slice(1,3),remarques:candidats.slice(3,6)};
+}
+
+// ÉTAPE 6 — points à préserver : niveau élevé + bonne cohérence + aucune rupture de transition
+// adjacente. "Le rapport ne doit pas uniquement mettre en évidence les déficits" (doc source).
+function synthesePointsAPreserver(phases,coherence){
+  var suffKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
+  return suffKeys.filter(function(p){
+    var ph=phases[p];
+    var niveauOk=!!ph.niveau&&['Exceptionnel','Excellent','Très bon'].indexOf(ph.niveau.label)>=0;
+    var cohOk=!!ph.coherenceBand&&['Très forte cohérence','Bonne cohérence'].indexOf(ph.coherenceBand.label)>=0;
+    var ruptureAdjacente=coherence.ruptures.some(function(r){return r.from===p||r.to===p;});
+    return niveauOk&&cohOk&&!ruptureAdjacente;
+  }).map(function(p){return{phase:p,score:phases[p].score,niveau:phases[p].niveau};});
+}
+
+// ÉTAPE 7 — cohérence entre les moteurs (biomécanique vs qualités fonctionnelles). PROVENANCE :
+// l'association phase -> qualité fonctionnelle est un choix Kinexus (le document ne le précise
+// pas), limitée aux 4 phases productrices de force les plus directement apparentées à une
+// qualité existante du moteur des qualités déjà présent dans KINEXUS — Unloading n'a pas
+// d'équivalent direct et n'est pas comparé. À valider avec l'équipe clinique.
+var CMJ_PHASE_TO_QUALITY={braking:'Force',concentric:'Puissance',flight:'Réactivité',landing:'Absorption'};
+function ordinalLevel(score){
+  if(score==null)return null;
+  return score<40?'faible':(score<75?'normal':'eleve');
+}
+function syntheseCoherenceQualites(phases,functionScores){
+  var out={};
+  Object.keys(CMJ_PHASE_TO_QUALITY).forEach(function(phaseKey){
+    var qualiteLabel=CMJ_PHASE_TO_QUALITY[phaseKey];
+    var ph=phases[phaseKey];
+    if(!ph||!ph.sufficient||!functionScores||functionScores[qualiteLabel]==null){
+      out[phaseKey]={qualite:qualiteLabel,result:validateClinicalConcordance(null,null)};
+      return;
+    }
+    var biomecaLevel=ordinalLevel(ph.score);
+    var qualiteLevel=ordinalLevel(functionScores[qualiteLabel]);
+    out[phaseKey]={qualite:qualiteLabel,biomecaLevel:biomecaLevel,qualiteLevel:qualiteLevel,result:validateClinicalConcordance(biomecaLevel,qualiteLevel)};
+  });
+  return out;
+}
+
+// ÉTAPE 8 — indice global de confiance : moyenne des indices de confiance de phase (Hiérarchie
+// de confiance unifiée, module précédent) sur les phases exploitables, classée par
+// ThresholdBandClassifier. Choix Kinexus (agrégation simple), configurable via les mêmes bandes
+// que la confiance de phase.
+function syntheseConfianceGlobale(phases,coherence){
+  var suffKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
+  if(!suffKeys.length)return{composite:0,band:classifyBand(effectiveBiomecaBands('confianceGlobale'),0),reason:'Aucune phase exploitable.'};
+  var confs=suffKeys.map(function(p){return computePhaseConfidence(phases[p],coherence);});
+  var composite=confs.reduce(function(s,c){return s+c.composite;},0)/confs.length;
+  return{composite:composite,band:classifyBand(effectiveBiomecaBands('confianceGlobale'),composite),parPhase:confs};
+}
+
+// ÉTAPE 9 — résumé exécutif. Structure obligatoire du document source, une phrase par section,
+// conclusion finale de 5 lignes maximum.
+function syntheseResumeExecutif(phases,coherence,profil,potentiel,priorites,coherenceQualites,confianceGlobale){
+  var suffKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
+  var niveauMoyen=suffKeys.length?suffKeys.reduce(function(s,p){return s+phases[p].score;},0)/suffKeys.length:null;
+  var niveauBand=niveauMoyen!=null?classifyBand(effectiveBiomecaBands('niveauAbsolu'),niveauMoyen):null;
+  var principal=priorites.principale[0];
+  var pointFortPhase=suffKeys.length?suffKeys.reduce(function(a,b){return phases[b].score>phases[a].score?b:a;}):null;
+  return{
+    niveauBiomecaniqueGlobal:niveauBand?('Le niveau biomécanique global est classé "'+niveauBand.label+'".'):'Le niveau biomécanique global n\'a pas pu être déterminé (données insuffisantes).',
+    profilBiomecanique:profil.label+'.',
+    principalPointFort:pointFortPhase?('La phase '+CMJ_PHASE_LABEL[pointFortPhase]+' constitue le principal point fort biomécanique.'):'Aucun point fort ne peut être identifié (données insuffisantes).',
+    principalFacteurLimitant:principal?('La phase '+CMJ_PHASE_LABEL[principal.phase]+' constitue le principal facteur limitant biomécanique.'):'Aucun facteur limitant biomécanique n\'a été identifié.',
+    transitionLimitante:coherence.transitionLaPlusLimitante?(coherence.transitionLaPlusLimitante.key+' : '+coherence.transitionLaPlusLimitante.text):'Aucune transition limitante identifiée.',
+    potentielProgression:potentiel.band?('Potentiel de progression biomécanique classé "'+potentiel.band.label+'".'):'Potentiel de progression non calculable.',
+    coherenceAvecLesQualites:Object.keys(coherenceQualites).length?('Cohérence avec les qualités fonctionnelles vérifiée sur '+Object.keys(coherenceQualites).length+' phase(s) apparentée(s).'):'Comparaison avec les qualités fonctionnelles non disponible.',
+    confianceGlobale:confianceGlobale.band?('Indice global de confiance : "'+confianceGlobale.band.label+'".'):'Indice global de confiance non calculable.'
+  };
+}
+
+// Point d'entrée du module. Input : UNIQUEMENT les résultats des modules précédents (jamais les
+// variables brutes). functionScores (optionnel, issu de computeMoteur() déjà existant dans
+// KINEXUS) permet l'Étape 7 (cohérence avec le moteur des qualités). Ne calcule PAS les
+// dominantes biomécaniques (module indépendant, computeDominantesEngine — jamais une entrée de
+// la Synthèse, cf. décision du praticien : couche descriptive, non décisionnelle).
+function computeSyntheseBiomecanique(phases,coherence,functionScores){
+  var profil=syntheseProfilGlobal(phases);
+  var potentiel=synthesePotentielProgression(phases);
+  var priorites=synthesePriorites(phases,coherence);
+  var pointsAPreserver=synthesePointsAPreserver(phases,coherence);
+  var coherenceQualites=syntheseCoherenceQualites(phases,functionScores);
+  var confianceGlobale=syntheseConfianceGlobale(phases,coherence);
+  var resume=syntheseResumeExecutif(phases,coherence,profil,potentiel,priorites,coherenceQualites,confianceGlobale);
+  return{
+    profil:profil,potentiel:potentiel,priorites:priorites,
+    pointsAPreserver:pointsAPreserver,coherenceQualites:coherenceQualites,
+    confianceGlobale:confianceGlobale,resume:resume
+  };
 }
 
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
