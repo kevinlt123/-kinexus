@@ -208,21 +208,49 @@ var CMJ_VAR_META={
 // percentiles, métriques interchangeables. Kinexus les fusionne en UNE seule information
 // logique (kpi 'conc_force_impulse_asym') pour ne jamais compter deux fois la même preuve dans
 // le moteur de raisonnement (Règle 2 : 2 variables maîtresses concordantes requises).
-// Référentiel (données) désormais keyé par PHASE (mêmes 5 clés que CMJ_PHASES, le même axe que
-// le Moteur Biomécanique) plutôt que par famille mécanique — nécessaire pour le Moteur d'Analyse
-// des Asymétries par Phase (04/08). Chaque variable a un rôle, exactement comme le référentiel
-// des profils biomécaniques : principales (construisent le score), secondaires (renforcent
-// uniquement la confiance), contextuelles (expliquent, jamais ne concluent). Unloading et Flight
-// n'ont aujourd'hui AUCUNE variable d'asymétrie identifiée dans ForceDecks — aucune inventée,
-// ces deux phases seront simplement "données insuffisantes" pour l'asymétrie. Landing n'a qu'UNE
-// seule variable disponible (aucune secondaire possible, cf. limite documentée plus loin).
-var ASYM_PHASE_VARIABLES={
-  unloading:{principales:[],secondaires:[],contextuelles:[]},
-  braking:{principales:['ecc_decel_rfd_asym','ecc_decel_impulse_asym'],secondaires:[],contextuelles:[]},
-  concentric:{principales:['conc_force_impulse_asym','force_peak_power_asym'],secondaires:['p2_conc_impulse_asym'],contextuelles:[]},
-  flight:{principales:[],secondaires:[],contextuelles:[]},
-  landing:{principales:['landing_peak_force_asym'],secondaires:[],contextuelles:[]}
+// Décision d'architecture du praticien (04/08) : le Moteur d'Analyse des Asymétries par Phase
+// doit être le MIROIR EXACT du Moteur Biomécanique de performance (CMJ_VAR_META) — chaque
+// variable de performance possède son équivalent d'asymétrie LORSQUE CELUI-CI EXISTE, et le rôle
+// est conservé (master->principale, support->secondaire, info->contextuelle). Cette table ne
+// liste QUE les correspondances CONFIRMÉES (le KPI d'asymétrie existe réellement dans TBK
+// aujourd'hui) — aucune équivalence inventée. Conséquence factuelle importante, à signaler :
+// la GRANDE MAJORITÉ des variables de performance CMJ_VAR_META n'ont AUCUN équivalent
+// d'asymétrie dans ForceDecks aujourd'hui (ex. ecc_mean_power, force_zero_vel, peak_power,
+// conc_impulse_100, time_to_stab, landing_impulse, height, ft_ct_ratio, rsi_mod, flight_time,
+// depth, ecc_peak_vel, braking_duration — aucun n'a de "Asymmetry" correspondant dans TBK).
+var ASYM_PERFORMANCE_EQUIVALENT={
+  braking_rfd:'ecc_decel_rfd_asym',
+  braking_impulse:'ecc_decel_impulse_asym',
+  // VALD déclare Concentric Mean Force Asymmetry et Concentric Impulse Asymmetry numériquement
+  // équivalentes (déjà fusionnées par Kinexus en un seul kpi, cf. note ci-dessus) : rattaché ici
+  // à conc_mean_force (master) uniquement, jamais dupliqué une seconde fois pour conc_impulse
+  // (support), qui n'a donc pas de secondaire propre dans le référentiel dérivé ci-dessous.
+  conc_mean_force:'conc_force_impulse_asym',
+  force_peak_power:'force_peak_power_asym',
+  landing_peak_force:'landing_peak_force_asym'
 };
+// Dérive le référentiel principales/secondaires/contextuelles d'UNE phase à partir de
+// CMJ_VAR_META + ASYM_PERFORMANCE_EQUIVALENT + effectiveBiomecaTier() (respecte les
+// dérogations de configuration du praticien, jamais une copie figée au chargement du fichier).
+// p2_conc_impulse_asym existe dans TBK mais sa correspondance avec une variable de performance
+// précise n'est pas confirmée ("P2" pourrait désigner une sous-phase de la propulsion non nommée
+// telle quelle dans CMJ_VAR_META) — placé en contextuelle de Concentric (explique, jamais ne
+// conclut) plutôt qu'inventer un rattachement principale/secondaire non démontré. À clarifier.
+function effectiveAsymPhaseVariables(phaseKey){
+  var principales=[],secondaires=[],contextuelles=[];
+  Object.keys(CMJ_VAR_META).forEach(function(perfKey){
+    var meta=CMJ_VAR_META[perfKey];
+    if(meta.phase!==phaseKey)return;
+    var asymKey=ASYM_PERFORMANCE_EQUIVALENT[perfKey];
+    if(!asymKey)return;
+    var tier=effectiveBiomecaTier(perfKey);
+    if(tier==='master')principales.push(asymKey);
+    else if(tier==='support')secondaires.push(asymKey);
+    else contextuelles.push(asymKey);
+  });
+  if(phaseKey==='concentric')contextuelles.push('p2_conc_impulse_asym');
+  return{principales:principales,secondaires:secondaires,contextuelles:contextuelles};
+}
 // Paires de valeurs brutes Gauche/Droite disponibles pour déterminer le "côté dominant" — UNIQUEMENT
 // pour les KPIs d'asymétrie où VALD expose les deux côtés séparément dans ForceDecks. Pour les
 // autres (ecc_decel_impulse_asym, conc_force_impulse_asym, force_peak_power_asym,
@@ -2551,7 +2579,9 @@ function computeMoteurAlerte(phases,profileResults,functionScores,raisonnementBi
 // analyse de plus, jamais mélangée aux autres). Réutilise entièrement l'architecture déjà
 // construite (ThresholdBandClassifier, Specification Pattern, Moteur de Confiance générique,
 // validateClinicalConcordance) — aucune règle métier nouvelle codée en dur, tout vit dans
-// ASYM_PHASE_VARIABLES/ASYM_SIDE_PAIRS (référentiels, plus haut dans ce fichier).
+// ASYM_PERFORMANCE_EQUIVALENT/effectiveAsymPhaseVariables/ASYM_SIDE_PAIRS (référentiels, plus
+// haut dans ce fichier). Miroir exact du Moteur Biomécanique de performance : mêmes 5 phases,
+// même mécanique de percentile/cohérence/confiance, seules les données changent.
 //
 // ÉTAPE 1+2+3 — par phase : percentile de chaque variable d'asymétrie (normPercentile, comme
 // n'importe quelle autre variable CMJ — la direction 'min' déjà déclarée dans TBK fait qu'un
@@ -2566,9 +2596,9 @@ function asymEntryBuild(kpiKey,role,cmjValues,pop,age){
   var pct=normPercentile('cmj',kpiKey,pop,age,raw,cmjKpiDir(kpiKey));
   return{kpiKey:kpiKey,role:role,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
 }
-// Côté dominant : uniquement pour les variables où une paire G/D brute existe (ASYM_SIDE_PAIRS) —
-// "indéterminé" sinon, jamais déduit d'une convention non confirmée (ex. signe de la valeur).
-function asymCoteDominant(principalesKpiKeys,cmjValues){
+// Membre dominant : uniquement pour les variables où une paire G/D brute existe (ASYM_SIDE_PAIRS)
+// — "Indéterminé" sinon, jamais déduit d'une convention non confirmée (ex. signe de la valeur).
+function asymMembreDominant(principalesKpiKeys,cmjValues){
   for(var i=0;i<principalesKpiKeys.length;i++){
     var pair=ASYM_SIDE_PAIRS[principalesKpiKeys[i]];
     if(!pair)continue;
@@ -2576,13 +2606,13 @@ function asymCoteDominant(principalesKpiKeys,cmjValues){
     if(lRaw==null||rRaw==null)continue;
     var dir=cmjKpiDir(pair.L); // même dir des deux côtés par construction
     var lMeilleur=dir==='min'?lRaw<rRaw:lRaw>rRaw;
-    if(lRaw===rRaw)return{cote:'aucun',kpiSource:principalesKpiKeys[i]};
-    return{cote:lMeilleur?'G':'D',kpiSource:principalesKpiKeys[i]};
+    if(lRaw===rRaw)return{membre:'Aucun',kpiSource:principalesKpiKeys[i]};
+    return{membre:lMeilleur?'Gauche':'Droit',kpiSource:principalesKpiKeys[i]};
   }
-  return{cote:'indéterminé',kpiSource:null};
+  return{membre:'Indéterminé',kpiSource:null};
 }
 function computeAsymPhase(phaseKey,cmjValues,pop,age){
-  var def=ASYM_PHASE_VARIABLES[phaseKey]||{principales:[],secondaires:[],contextuelles:[]};
+  var def=effectiveAsymPhaseVariables(phaseKey);
   var principales=def.principales.map(function(k){return asymEntryBuild(k,'principale',cmjValues,pop,age);});
   var secondaires=def.secondaires.map(function(k){return asymEntryBuild(k,'secondaire',cmjValues,pop,age);});
   var contextuelles=def.contextuelles.map(function(k){return asymEntryBuild(k,'contextuelle',cmjValues,pop,age);});
@@ -2591,7 +2621,7 @@ function computeAsymPhase(phaseKey,cmjValues,pop,age){
   if(!principales.length||principalesOk.length/principales.length<threshold){
     return{
       phase:phaseKey,sufficient:false,score:null,
-      reason:!principales.length?'Aucune variable d\'asymétrie principale identifiée pour cette phase.':
+      reason:!principales.length?'Aucune variable d\'asymétrie principale identifiée pour cette phase (aucun équivalent d\'asymétrie confirmé pour les variables de performance de cette phase).':
         'Données insuffisantes ('+principalesOk.length+'/'+principales.length+' variables principales disponibles, seuil requis '+Math.round(threshold*100)+'%).',
       principales:principales,secondaires:secondaires,contextuelles:contextuelles
     };
@@ -2607,17 +2637,31 @@ function computeAsymPhase(phaseKey,cmjValues,pop,age){
     principales:principales,secondaires:secondaires,contextuelles:contextuelles,
     variablesResponsables:principalesOk.filter(function(e){return e.percentile<40;}),
     variablesSecondairesConfirmatoires:secondairesOk.filter(function(e){return e.percentile<40;}),
-    coteDominant:asymCoteDominant(def.principales,cmjValues)
+    membreDominant:asymMembreDominant(def.principales,cmjValues)
   };
 }
-// ── Specification Pattern (Étape 6) : une asymétrie n'est retenue que si les 3 conditions sont
-// réunies simultanément — même gate à 3 conditions que BiomecaSpecs.facteurLimitantBiomecanique,
-// appliqué ici au niveau d'asymétrie plutôt qu'au niveau absolu de phase.
+// ── Specification Pattern (RÈGLES DE CONCLUSION) : une asymétrie n'est retenue que si les 4
+// conditions sont réunies simultanément — même architecture de gate que
+// BiomecaSpecs.facteurLimitantBiomecanique, avec une condition supplémentaire explicitement
+// demandée ("une asymétrie ne doit jamais être conclue sur une seule variable").
+//
+// ⚠️ CONSÉQUENCE FACTUELLE À SIGNALER : avec les correspondances CONFIRMÉES aujourd'hui
+// (ASYM_PERFORMANCE_EQUIVALENT), aucune phase n'a plus d'UNE seule variable principale
+// (Braking:1, Concentric:1, Landing:1, Unloading:0, Flight:0). La condition "plusieurs
+// variables principales convergent" (>=2) ne peut donc être satisfaite par AUCUNE phase avec
+// les données actuellement disponibles dans ForceDecks/KINEXUS — implémentée telle quelle,
+// sans l'assouplir unilatéralement. Toute phase visiblement asymétrique sera donc classée
+// "Asymétrie non concluante" tant que ce point n'est pas tranché avec le praticien.
 var AsymSpecs={
   asymetrieSousLesNormes:makeSpec('Asymétrie sous les normes de symétrie',function(ctx){
     var band=ctx.asym.niveau;
     var sousNormes=!!band&&['Asymétrie importante','Asymétrie majeure','Asymétrie à surveiller'].indexOf(band.label)>=0;
     return{result:sousNormes,reason:band?('Niveau d\'asymétrie classé "'+band.label+'" (score '+ctx.asym.score.toFixed(1)+').'):'Score d\'asymétrie indisponible.'};
+  }),
+  plusieursVariablesPrincipalesConvergentes:makeSpec('Plusieurs variables principales convergent',function(ctx){
+    var principalesOk=ctx.asym.principales.filter(function(e){return e.status==='ok';});
+    var convergentes=principalesOk.filter(function(e){return e.percentile<40;});
+    return{result:convergentes.length>=2,reason:convergentes.length+'/'+principalesOk.length+' variable(s) principale(s) convergente(s) (asymétrique, <40e percentile) — au moins 2 requises pour conclure.'};
   }),
   coherenceInterneSuffisante:makeSpec('Cohérence interne des variables principales suffisante',function(ctx){
     var band=ctx.asym.coherenceBand;
@@ -2630,7 +2674,10 @@ var AsymSpecs={
     return{result:suffisante,reason:band?('Confiance classée "'+band.label+'".'):'Confiance indisponible.'};
   })
 };
-AsymSpecs.asymetrieRetenue=AsymSpecs.asymetrieSousLesNormes.and(AsymSpecs.coherenceInterneSuffisante).and(AsymSpecs.confianceSuffisante);
+AsymSpecs.asymetrieRetenue=AsymSpecs.asymetrieSousLesNormes
+  .and(AsymSpecs.plusieursVariablesPrincipalesConvergentes)
+  .and(AsymSpecs.coherenceInterneSuffisante)
+  .and(AsymSpecs.confianceSuffisante);
 // ── Moteur de Confiance (couche transversale déjà construite) appliqué à l'asymétrie de phase —
 // référentiel de signaux dédié (CONFIANCE_SIGNAUX_ASYMETRIE), aucune logique nouvelle dans
 // computeIndiceConfiance() lui-même.
@@ -2682,13 +2729,34 @@ function computeAsymEngine(cmjValues,pop,age){
   var symetriques=evaluables.filter(function(e){return!AsymSpecs.asymetrieSousLesNormes.isSatisfiedBy({asym:e.asym}).result;});
   var top3=asymetriques.slice(0,3);
   var secondaires=asymetriques.slice(3);
-  return{
+  var resultat={
     phases:phases,confiances:confiances,
     priorite1:top3[0]||null,priorite2:top3[1]||null,priorite3:top3[2]||null,
     asymetriesSecondaires:secondaires,
     nonConcluantes:nonConcluantes, // asymétrie visible mais gate non satisfait ("asymétrie non concluante")
     phasesSymetriques:symetriques.map(function(e){return e.phase;})
   };
+  resultat.cartographie=cartographieAsymetries(resultat);
+  return resultat;
+}
+// CARTOGRAPHIE — synthèse structurée exigée par le praticien : une ligne par phase
+// {phase, niveau (bande complète, jamais juste le %), conclusion (catégorie contrôlée, jamais
+// une phrase — "Aucun texte clinique n'est généré", la rédaction finale revient au Moteur de
+// Synthèse)}. Composeur pur : ne recalcule rien, ne fait que relire ce que computeAsymEngine a
+// déjà classé ci-dessus.
+var ASYM_CARTO_CONCLUSIONS=['Asymétrie principale','Asymétrie secondaire','Asymétrie non concluante','Symétrique','Données insuffisantes'];
+function cartographieAsymetries(asymEngineResult){
+  var conclusionParPhase={};
+  if(asymEngineResult.priorite1)conclusionParPhase[asymEngineResult.priorite1.phase]='Asymétrie principale';
+  [asymEngineResult.priorite2,asymEngineResult.priorite3].concat(asymEngineResult.asymetriesSecondaires).forEach(function(e){
+    if(e)conclusionParPhase[e.phase]='Asymétrie secondaire';
+  });
+  asymEngineResult.nonConcluantes.forEach(function(e){conclusionParPhase[e.phase]='Asymétrie non concluante';});
+  return CMJ_PHASES.map(function(p){
+    var ph=asymEngineResult.phases[p];
+    if(!ph.sufficient)return{phase:p,niveau:null,conclusion:'Données insuffisantes'};
+    return{phase:p,niveau:ph.niveau,conclusion:conclusionParPhase[p]||'Symétrique'};
+  });
 }
 // ÉTAPE 8 — Relation avec les autres moteurs : ne modifie JAMAIS les profils/qualités/scores de
 // phase. Le Moteur de Raisonnement recherche la convergence avec le Moteur Biomécanique en

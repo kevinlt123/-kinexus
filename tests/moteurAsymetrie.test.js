@@ -1,12 +1,17 @@
-// Tests unitaires — Moteur d'Analyse des Asymétries par Phase (04/08).
+// Tests unitaires — Moteur d'Analyse des Asymétries par Phase (04/08, v2 — miroir du Moteur
+// Biomécanique de performance).
 //
-// Spécification du praticien : identifier si une asymétrie significative est présente, dans
-// quelle phase, quelles variables l'expliquent, et si elle constitue une priorité clinique —
-// totalement indépendant des profils biomécaniques, des qualités physiques et des percentiles
-// absolus. Réutilise entièrement l'architecture déjà construite (ThresholdBandClassifier,
-// Specification Pattern, Moteur de Confiance générique, validateClinicalConcordance) : ce fichier
-// vérifie que cette réutilisation fonctionne correctement, pas les primitives elles-mêmes (déjà
-// testées dans leurs propres suites).
+// Décision d'architecture du praticien : ce moteur doit être le miroir exact du Moteur
+// Biomécanique de performance (CMJ_VAR_META) — chaque variable de performance a son équivalent
+// d'asymétrie quand celui-ci existe, avec le même rôle conservé (master->principale,
+// support->secondaire, info->contextuelle). Une asymétrie ne doit jamais être conclue sur une
+// seule variable (>=2 principales convergentes requises). Ce fichier vérifie :
+//  1. effectiveAsymPhaseVariables() : la dérivation miroir depuis CMJ_VAR_META.
+//  2. computeAsymPhase() : le calcul par phase (score/cohérence/membre dominant).
+//  3. AsymSpecs : le gate à 4 conditions, y compris la règle ">=2 principales" testée
+//     indépendamment de la disponibilité réelle des données (avec un ctx fabriqué).
+//  4. computeAsymEngine()/cartographieAsymetries() : la synthèse structurée par phase.
+//  5. croisementAsymetriePhase() : les 2 exemples qualitatifs du praticien (inchangés).
 //
 // Exécution : node tests/moteurAsymetrie.test.js — aucune dépendance externe.
 const fs = require('fs');
@@ -43,10 +48,8 @@ function test(name, fn) {
   }
 }
 
-// Population de normes fictive, injectée directement dans NORMS (déjà défini par l'eval), pour
-// tester le moteur sans dépendre de données normatives réelles (qui n'existent pas encore pour
-// les variables d'asymétrie — gap signalé séparément). Bandes = [p5,p25,p50,p75,p95], valeurs
-// brutes croissantes ; la direction 'min' déjà déclarée dans TBK pour ces KPIs fait le reste.
+// Population de normes fictive (gap réel signalé séparément : aucune norme d'asymétrie n'existe
+// encore dans NORMS aujourd'hui). Bandes = [p5,p25,p50,p75,p95], valeurs brutes croissantes.
 NORMS.test_pop = {
   cmj_ecc_decel_rfd_asym: [1, 3, 6, 10, 20],
   cmj_ecc_decel_impulse_asym: [1, 3, 6, 10, 20],
@@ -58,92 +61,118 @@ NORMS.test_pop = {
 
 console.log('Moteur d\'Analyse des Asymétries par Phase');
 
-test('Unloading/Flight : aucune variable de référentiel -> toujours données insuffisantes, jamais une variable inventée', () => {
+// ── 1. Référentiel miroir ────────────────────────────────────────────────────────────────────
+test('effectiveAsymPhaseVariables : miroir fidèle de CMJ_VAR_META — Braking a 1 principale (EDRFD) + 1 secondaire (impulsion)', () => {
+  const def = effectiveAsymPhaseVariables('braking');
+  assert.deepStrictEqual(def.principales, ['ecc_decel_rfd_asym']);
+  assert.deepStrictEqual(def.secondaires, ['ecc_decel_impulse_asym']);
+});
+
+test('effectiveAsymPhaseVariables : Concentric a 1 principale (conc_force_impulse_asym, fusion VALD) + 1 secondaire + p2 en contextuelle', () => {
+  const def = effectiveAsymPhaseVariables('concentric');
+  assert.deepStrictEqual(def.principales, ['conc_force_impulse_asym']);
+  assert.deepStrictEqual(def.secondaires, ['force_peak_power_asym']);
+  assert.ok(def.contextuelles.includes('p2_conc_impulse_asym'));
+});
+
+test('effectiveAsymPhaseVariables : Unloading/Flight restent vides (aucun équivalent d\'asymétrie confirmé), jamais une variable inventée', () => {
+  assert.deepStrictEqual(effectiveAsymPhaseVariables('unloading'), { principales: [], secondaires: [], contextuelles: [] });
+  assert.deepStrictEqual(effectiveAsymPhaseVariables('flight'), { principales: [], secondaires: [], contextuelles: [] });
+});
+
+test('effectiveAsymPhaseVariables : Landing n\'a qu\'une seule variable (aucune secondaire possible avec les correspondances confirmées)', () => {
+  const def = effectiveAsymPhaseVariables('landing');
+  assert.deepStrictEqual(def.principales, ['landing_peak_force_asym']);
+  assert.deepStrictEqual(def.secondaires, []);
+});
+
+// ── 2. computeAsymPhase() ────────────────────────────────────────────────────────────────────
+test('Unloading/Flight : toujours données insuffisantes (0 variable principale)', () => {
   const u = computeAsymPhase('unloading', {}, 'test_pop', null);
   const f = computeAsymPhase('flight', {}, 'test_pop', null);
   assert.strictEqual(u.sufficient, false);
   assert.strictEqual(f.sufficient, false);
-  assert.ok(u.reason.includes('Aucune variable'));
 });
 
-test('Braking : asymétrie forte et cohérente sur les 2 principales -> niveau "Asymétrie importante"', () => {
+test('Braking : asymétrie forte sur son unique principale -> niveau "Asymétrie importante", cohérence triviale (une seule valeur)', () => {
   const asym = computeAsymPhase('braking', { ecc_decel_rfd_asym: 17, ecc_decel_impulse_asym: 16 }, 'test_pop', null);
   assert.strictEqual(asym.sufficient, true);
-  assert.ok(asym.score < 25, 'score attendu bas (asymétrie forte), obtenu ' + asym.score);
   assert.strictEqual(asym.niveau.label, 'Asymétrie importante');
-  assert.strictEqual(asym.variablesResponsables.length, 2);
+  assert.strictEqual(asym.coherenceInterne, 0, 'stdDevOf sur une seule valeur = 0 (déjà le comportement existant, pas une invention)');
 });
 
-test('Concentric : quasi-symétrique sur les 2 principales -> niveau "Symétrique", ne doit pas être retenu comme prioritaire', () => {
+test('Concentric : quasi-symétrique -> niveau "Symétrique"', () => {
   const asym = computeAsymPhase('concentric', { conc_force_impulse_asym: 2, force_peak_power_asym: 2 }, 'test_pop', null);
   assert.strictEqual(asym.sufficient, true);
-  assert.ok(asym.score > 75, 'score attendu haut (symétrique), obtenu ' + asym.score);
-  const proof = AsymSpecs.asymetrieRetenue.isSatisfiedBy({ asym, confiance: computeConfianceAsymetrie(asym) });
-  assert.strictEqual(proof.result, false);
+  assert.ok(asym.score > 75);
 });
 
-test('Landing : une seule variable principale disponible -> reste calculable, secondaires vides gérées sans planter', () => {
-  const asym = computeAsymPhase('landing', { landing_peak_force_asym: 15 }, 'test_pop', null);
-  assert.strictEqual(asym.sufficient, true);
-  assert.strictEqual(asym.principales.length, 1);
-  assert.strictEqual(asym.secondaires.length, 0);
-  const conf = computeConfianceAsymetrie(asym);
-  assert.strictEqual(conf.exclus.some(e => e.cle === 'donnees_secondaires'), true, 'le signal donnees_secondaires doit être exclu (jamais un 0 inventé) quand il n\'y a aucune secondaire définie');
-});
-
-test('côté dominant : déterminé quand une paire G/D existe (Braking), "indéterminé" sinon (Concentric)', () => {
-  const brakingWithSides = computeAsymPhase('braking', {
-    ecc_decel_rfd_asym: 17, ecc_decel_impulse_asym: 16,
-    ecc_decel_rfd_L: 4000, ecc_decel_rfd_R: 4800
+test('membre dominant : déterminé quand une paire G/D existe (Braking), "Indéterminé" sinon (Concentric, aucune paire connue)', () => {
+  const braking = computeAsymPhase('braking', {
+    ecc_decel_rfd_asym: 17, ecc_decel_rfd_L: 4000, ecc_decel_rfd_R: 4800
   }, 'test_pop', null);
-  assert.strictEqual(brakingWithSides.coteDominant.cote, 'D', 'RFD plus élevé à droite (dir max) -> côté droit dominant');
+  assert.strictEqual(braking.membreDominant.membre, 'Droit', 'RFD plus élevé à droite (dir max) -> membre droit dominant');
 
-  const concentric = computeAsymPhase('concentric', { conc_force_impulse_asym: 15, force_peak_power_asym: 15 }, 'test_pop', null);
-  assert.strictEqual(concentric.coteDominant.cote, 'indéterminé', 'aucune paire G/D définie pour les KPIs concentriques -> jamais un côté inventé');
+  const concentric = computeAsymPhase('concentric', { conc_force_impulse_asym: 15 }, 'test_pop', null);
+  assert.strictEqual(concentric.membreDominant.membre, 'Indéterminé');
 });
 
-test('Moteur de Confiance générique réutilisé fidèlement : mêmes structures que computeIndiceConfiance', () => {
+// ── 3. AsymSpecs (gate à 4 conditions) ───────────────────────────────────────────────────────
+test('CONSÉQUENCE SIGNALÉE : avec les données actuelles (<=1 principale par phase), AsymSpecs.asymetrieRetenue ne peut jamais être vrai', () => {
   const asym = computeAsymPhase('braking', { ecc_decel_rfd_asym: 17, ecc_decel_impulse_asym: 16 }, 'test_pop', null);
-  const conf = computeConfianceAsymetrie(asym);
-  assert.ok('composite' in conf && 'band' in conf && 'signaux' in conf && 'exclus' in conf);
-});
-
-test("computeAsymEngine : classement multi-phases — Braking (forte asymétrie cohérente) prioritaire, Concentric symétrique jamais promu", () => {
-  const cmjValues = {
-    ecc_decel_rfd_asym: 17, ecc_decel_impulse_asym: 16,
-    conc_force_impulse_asym: 2, force_peak_power_asym: 2,
-    landing_peak_force_asym: 15
-  };
-  const r = computeAsymEngine(cmjValues, 'test_pop', null);
-  assert.ok(r.priorite1, 'attendu une priorité n°1');
-  assert.strictEqual(r.priorite1.phase, 'braking');
-  assert.ok(r.phasesSymetriques.includes('concentric'));
-});
-
-test('AsymSpecs.asymetrieRetenue : "asymétrie non concluante" quand la cohérence interne est trop faible malgré un score bas', () => {
-  // Les deux principales de Braking tirent dans des sens opposés (une très asymétrique, une très
-  // symétrique) -> score global bas mais cohérence interne faible -> jamais retenu tel quel.
-  const asym = computeAsymPhase('braking', { ecc_decel_rfd_asym: 19, ecc_decel_impulse_asym: 1 }, 'test_pop', null);
   const conf = computeConfianceAsymetrie(asym);
   const proof = AsymSpecs.asymetrieRetenue.isSatisfiedBy({ asym, confiance: conf });
   assert.strictEqual(proof.result, false);
-  assert.strictEqual(AsymSpecs.coherenceInterneSuffisante.isSatisfiedBy({ asym }).result, false);
+  const detail = AsymSpecs.plusieursVariablesPrincipalesConvergentes.isSatisfiedBy({ asym });
+  assert.strictEqual(detail.result, false, 'une seule principale ne peut jamais satisfaire ">=2 convergentes"');
 });
 
-test('croisementAsymetriePhase : phase déficitaire + asymétrie importante -> convergent (Cas 1), jamais "isolée" (exemple du praticien)', () => {
-  const phaseResult = { sufficient: true, score: 20 };
-  const asymResult = { sufficient: true, score: 15 };
-  const r = croisementAsymetriePhase('braking', phaseResult, asymResult);
-  assert.strictEqual(r.concordance.cas, 1);
-  assert.strictEqual(r.asymetrieIsolee, false);
+test('AsymSpecs.plusieursVariablesPrincipalesConvergentes : la règle elle-même est correcte, vérifiée avec un ctx fabriqué à 2 principales (indépendamment de la disponibilité réelle des données)', () => {
+  const asymDeuxPrincipalesConvergentes = {
+    principales: [
+      { status: 'ok', percentile: 15 },
+      { status: 'ok', percentile: 10 }
+    ]
+  };
+  const asymUneSeuleConvergente = {
+    principales: [
+      { status: 'ok', percentile: 15 },
+      { status: 'ok', percentile: 80 }
+    ]
+  };
+  assert.strictEqual(AsymSpecs.plusieursVariablesPrincipalesConvergentes.isSatisfiedBy({ asym: asymDeuxPrincipalesConvergentes }).result, true);
+  assert.strictEqual(AsymSpecs.plusieursVariablesPrincipalesConvergentes.isSatisfiedBy({ asym: asymUneSeuleConvergente }).result, false);
 });
 
-test('croisementAsymetriePhase : phase normale + asymétrie importante -> discordance -> "asymétrie isolée sans déficit global" (2e exemple du praticien)', () => {
-  const phaseResult = { sufficient: true, score: 70 };
-  const asymResult = { sufficient: true, score: 15 };
-  const r = croisementAsymetriePhase('concentric', phaseResult, asymResult);
-  assert.notStrictEqual(r.concordance.cas, 1);
-  assert.strictEqual(r.asymetrieIsolee, true);
+// ── 4. computeAsymEngine() + cartographie ────────────────────────────────────────────────────
+test('computeAsymEngine : Braking visiblement asymétrique mais non concluant (1 seule principale) apparaît en "Asymétrie non concluante", jamais promu prioritaire', () => {
+  const cmjValues = {
+    ecc_decel_rfd_asym: 17, ecc_decel_impulse_asym: 16,
+    conc_force_impulse_asym: 2, force_peak_power_asym: 2,
+    landing_peak_force_asym: 3
+  };
+  const r = computeAsymEngine(cmjValues, 'test_pop', null);
+  assert.strictEqual(r.priorite1, null, 'aucune phase ne peut être promue tant que la règle ">=2 principales" n\'est pas assouplie ou les données enrichies');
+  assert.ok(r.nonConcluantes.some(e => e.phase === 'braking'));
+  assert.ok(r.phasesSymetriques.includes('concentric'));
+  assert.ok(r.phasesSymetriques.includes('landing'));
+});
+
+test('cartographie : une ligne par phase, conclusion catégorielle contrôlée (jamais une phrase)', () => {
+  const cmjValues = {
+    ecc_decel_rfd_asym: 17, ecc_decel_impulse_asym: 16,
+    conc_force_impulse_asym: 2, force_peak_power_asym: 2
+  };
+  const r = computeAsymEngine(cmjValues, 'test_pop', null);
+  assert.strictEqual(r.cartographie.length, 5);
+  const byPhase = {};
+  r.cartographie.forEach(row => { byPhase[row.phase] = row; });
+  assert.strictEqual(byPhase.unloading.conclusion, 'Données insuffisantes');
+  assert.strictEqual(byPhase.flight.conclusion, 'Données insuffisantes');
+  assert.strictEqual(byPhase.braking.conclusion, 'Asymétrie non concluante');
+  assert.strictEqual(byPhase.concentric.conclusion, 'Symétrique');
+  ASYM_CARTO_CONCLUSIONS.forEach(() => {}); // référentiel des conclusions valides, sanity import
+  r.cartographie.forEach(row => assert.ok(ASYM_CARTO_CONCLUSIONS.indexOf(row.conclusion) >= 0));
 });
 
 test("l'asymétrie ne modifie jamais les résultats reçus en entrée (lecture seule)", () => {
@@ -151,6 +180,19 @@ test("l'asymétrie ne modifie jamais les résultats reçus en entrée (lecture s
   const before = JSON.parse(JSON.stringify(cmjValues));
   computeAsymEngine(cmjValues, 'test_pop', null);
   assert.deepStrictEqual(cmjValues, before);
+});
+
+// ── 5. croisementAsymetriePhase() — exemples qualitatifs du praticien (inchangé) ────────────
+test('croisementAsymetriePhase : phase déficitaire + asymétrie importante -> convergent (Cas 1), jamais "isolée"', () => {
+  const r = croisementAsymetriePhase('braking', { sufficient: true, score: 20 }, { sufficient: true, score: 15 });
+  assert.strictEqual(r.concordance.cas, 1);
+  assert.strictEqual(r.asymetrieIsolee, false);
+});
+
+test('croisementAsymetriePhase : phase normale + asymétrie importante -> discordance -> "asymétrie isolée sans déficit global"', () => {
+  const r = croisementAsymetriePhase('concentric', { sufficient: true, score: 70 }, { sufficient: true, score: 15 });
+  assert.notStrictEqual(r.concordance.cas, 1);
+  assert.strictEqual(r.asymetrieIsolee, true);
 });
 
 console.log('');
