@@ -727,6 +727,17 @@ var BIOMECA_DEFAULT_BANDS={
     {min:20,max:35,label:'Modérément hétérogène',color:'#eab308'},
     {min:35,max:50,label:'Hétérogène',color:'#f97316'},
     {min:50,max:1001,label:'Très hétérogène',color:'#ef4444'}
+  ],
+  // Indice de cohérence biomécanique (Moteur de Raisonnement) — détermine si les profils
+  // biomécaniques et les phases racontent la même histoire. Score composite 0-100 (Cas 1
+  // convergent=100 / Cas 2 discordance partielle=50 / Cas 3 discordance importante=0, moyenné
+  // sur les correspondances profil<->phase exploitables). Seuils Kinexus, configurables.
+  coherenceBiomecanique:[
+    {min:85,max:101,label:'Très forte cohérence',color:'#22c55e'},
+    {min:65,max:85,label:'Forte cohérence',color:'#84cc16'},
+    {min:45,max:65,label:'Cohérence modérée',color:'#eab308'},
+    {min:25,max:45,label:'Faible cohérence',color:'#f97316'},
+    {min:-1,max:25,label:'Incohérence majeure',color:'#ef4444'}
   ]
 };
 // ThresholdBandClassifier générique — composant UNIQUE réutilisé par toutes les
@@ -1936,6 +1947,96 @@ function computeSyntheseExperteKinexus(syntheseBiomecanique,signatureBiomecaniqu
     phasePhrase:phasePhrase,
     syntheseCombinee:syntheseCombinee,
     reglePriorite:'Les recommandations s\'appuient prioritairement sur les phases biomécaniques déficitaires (priorité d\'intervention) et intègrent les profils biomécaniques (compréhension de la stratégie) — les profils ne remplacent jamais l\'analyse par phase, et réciproquement.'
+  };
+}
+
+// ── MOTEUR DE RAISONNEMENT BIOMÉCANIQUE ──────────────────────────────────────────────────────
+// Décision du praticien (04/08) : ne plus analyser indépendamment profils et phases — croiser
+// automatiquement les deux pour répondre à 3 questions : (1) quelle stratégie ? -> profils,
+// (2) quelle phase limitante ? -> analyse par phase, (3) les deux sont-elles cohérentes ? -> ce
+// moteur. Troisième niveau, au-dessus des deux premiers — ne modifie JAMAIS les profils, les
+// phases ni les qualités physiques ; qualifie uniquement la ROBUSTESSE de l'interprétation.
+//
+// RÉUTILISATION (aucune duplication de logique métier) : le croisement profil<->phase applique
+// EXACTEMENT le même mécanisme que l'Étape 7 de computeSyntheseBiomecanique (comparaison
+// qualités vs phases) — ordinalLevel() + validateClinicalConcordance(), jamais réécrits. La
+// stratégie dominante et la phase limitante réutilisent computeSignatureBiomecanique et
+// computeSyntheseExperteKinexus tels quels.
+//
+// PROVENANCE — IMPORTANT : la correspondance profil -> phase/transition ci-dessous est donnée
+// explicitement par le praticien via ses 4 exemples (04/08) : Absorbeur<->Braking,
+// Propulsif<->Concentric, Réactif<->transition Braking->Concentric, Contrôle<->Landing. AUCUNE
+// correspondance n'est donnée pour Explosif — volontairement non mappé (jamais une équivalence
+// biomécanique inventée), à définir ensemble.
+var PROFIL_PHASE_CORRESPONDENCE=[
+  {profil:'Absorbeur',type:'phase',cible:'braking'},
+  {profil:'Propulsif',type:'phase',cible:'concentric'},
+  {profil:'Réactif',type:'transition',cible:'braking_concentric'},
+  {profil:'Contrôle',type:'phase',cible:'landing'}
+  // Explosif : aucune correspondance donnée par le praticien — à définir avec lui avant ajout.
+];
+// Croise UN profil avec sa cible (phase ou transition). Une transition est jugée "performante"
+// (équivalent ordinal 'eleve') si le Moteur de Cohérence Inter-Phases l'a classée "similaire"
+// (cohérente), sinon 'faible' — la transition n'a pas de percentile propre, seulement un sens.
+function croisementProfilPhase(corr,profileResults,phases,coherenceResult){
+  var pr=(profileResults||[]).filter(function(p){return p.nom===corr.profil;})[0];
+  if(!pr||!pr.result||!pr.result.sufficient){
+    return{profil:corr.profil,cible:corr.cible,type:corr.type,sufficient:false,reason:'Profil '+corr.profil+' non calculable (données insuffisantes).'};
+  }
+  var profilOrdinal=ordinalLevel(pr.result.percentileGlobal);
+  var cibleOrdinal,cibleLabelText;
+  if(corr.type==='phase'){
+    var ph=phases[corr.cible];
+    if(!ph||!ph.sufficient)return{profil:corr.profil,cible:corr.cible,type:corr.type,sufficient:false,reason:'Phase '+CMJ_PHASE_LABEL[corr.cible]+' non calculable (données insuffisantes).'};
+    cibleOrdinal=ordinalLevel(ph.score);
+    cibleLabelText='phase '+CMJ_PHASE_LABEL[corr.cible];
+  }else{
+    var trans=((coherenceResult||{}).transitions||[]).filter(function(t){return t.key===corr.cible;})[0];
+    if(!trans||!trans.sufficient)return{profil:corr.profil,cible:corr.cible,type:corr.type,sufficient:false,reason:'Transition "'+corr.cible+'" non calculable (données insuffisantes).'};
+    cibleOrdinal=trans.sens==='similaire'?'eleve':'faible';
+    cibleLabelText='transition '+CMJ_PHASE_LABEL[trans.from]+' → '+CMJ_PHASE_LABEL[trans.to];
+  }
+  var concordance=validateClinicalConcordance(profilOrdinal,cibleOrdinal);
+  return{
+    profil:corr.profil,cible:corr.cible,type:corr.type,sufficient:true,
+    profilOrdinal:profilOrdinal,cibleOrdinal:cibleOrdinal,cibleLabelText:cibleLabelText,
+    concordance:concordance
+  };
+}
+// Point d'entrée du moteur. Input : UNIQUEMENT les résultats déjà calculés des modules
+// précédents (jamais les variables brutes) — profileResults (Niveau 1), phases + coherenceResult
+// (Niveau 2, Moteur Biomécanique + Moteur de Cohérence Inter-Phases), syntheseBiomecanique
+// (priorités/variables responsables déjà calculées).
+function computeMoteurRaisonnementBiomecanique(profileResults,phases,coherenceResult,syntheseBiomecanique){
+  var signature=computeSignatureBiomecanique(profileResults);
+  var croisements=PROFIL_PHASE_CORRESPONDENCE.map(function(c){return croisementProfilPhase(c,profileResults,phases,coherenceResult);});
+  var exploitables=croisements.filter(function(c){return c.sufficient;});
+  // Indice de cohérence biomécanique : Cas 1 (convergent)=100, Cas 2 (discordance partielle)=50,
+  // Cas 3 (discordance importante)=0, moyenné sur les croisements exploitables — choix Kinexus,
+  // configurable via la bande 'coherenceBiomecanique'.
+  var scores=exploitables.map(function(c){var cas=c.concordance.cas;return cas===1?100:(cas===2?50:0);});
+  var indiceGlobal=scores.length?scores.reduce(function(a,b){return a+b;},0)/scores.length:null;
+  var indiceBand=indiceGlobal!=null?classifyBand(effectiveBiomecaBands('coherenceBiomecanique'),indiceGlobal):null;
+  var incoherences=exploitables.filter(function(c){return c.concordance.cas===3;});
+  // Synthèse finale (5 points imposés par le praticien) — réutilise computeSyntheseExperteKinexus
+  // pour les points 1/2/5, n'ajoute que les variables responsables (point 3) et l'indice de
+  // cohérence (point 4).
+  var experte=computeSyntheseExperteKinexus(syntheseBiomecanique,signature);
+  var principal=syntheseBiomecanique.priorites.principale[0];
+  var variablesResponsables=(principal&&phases[principal.phase]&&phases[principal.phase].sufficient)?phases[principal.phase].variablesResponsables:[];
+  return{
+    signature:signature,
+    croisements:croisements,
+    incoherences:incoherences,
+    indiceCoherenceGlobale:{score:indiceGlobal,band:indiceBand},
+    syntheseFinale:{
+      strategieDominante:experte.profilPhrase,
+      phaseLimitantePrioritaire:experte.phasePhrase,
+      variablesResponsables:variablesResponsables,
+      coherenceBiomecanique:indiceBand?('Cohérence entre profils et phases classée "'+indiceBand.label+'".'):'Cohérence entre profils et phases non calculable (données insuffisantes).',
+      axesDeTravail:experte.syntheseCombinee,
+      incoherencesDetectees:incoherences.map(function(c){return c.profil+' ('+c.profilOrdinal+') vs '+c.cibleLabelText+' ('+c.cibleOrdinal+') : '+c.concordance.reason;})
+    }
   };
 }
 
