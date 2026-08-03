@@ -2040,6 +2040,108 @@ function computeMoteurRaisonnementBiomecanique(profileResults,phases,coherenceRe
   };
 }
 
+// ── MOTEUR DE PRIORISATION CLINIQUE ──────────────────────────────────────────────────────────
+// Décision du praticien (04/08) : transforme les analyses biomécaniques en priorités
+// d'intervention (Priorité 1/2/3). N'effectue AUCUN nouveau calcul biomécanique — consomme
+// uniquement les résultats déjà produits par les moteurs précédents (Moteur Biomécanique,
+// Moteur des Qualités, Profils Biomécaniques, Moteur de Cohérence Inter-Phases, Moteur de
+// Raisonnement Biomécanique).
+//
+// GAP DE DONNÉES CONNU (à signaler, pas à combler ici) : le praticien liste "les composites
+// mécaniques" (DSI/EUR/RSI-Mod/FT:CT en tant que composites comparant plusieurs tests, ex. DSI =
+// CMJ vs IMTP) et "les asymétries" (CMJ_ASYM_FAMILIES, définies mais jamais encore consommées)
+// parmi les entrées attendues. AUCUN moteur ne les calcule encore aujourd'hui (RSI-Mod/FT:CT
+// existent déjà comme variables de phase simples, pas comme composites inter-tests ; DSI/EUR
+// nécessiteraient IMTP/SJ, non câblés). Ce moteur fonctionne donc avec les 6 niveaux de preuve
+// qui ONT déjà un moteur : niveau absolu, phase déficitaire, variables responsables, profil
+// biomécanique, qualité physique, cohérence biomécanique. Composites et asymétries s'ajouteront
+// comme niveaux de preuve supplémentaires quand leurs moteurs existeront — sans modification de
+// celui-ci au-delà de l'ajout des champs correspondants dans le dossier de preuves.
+//
+// UNITÉ D'HYPOTHÈSE : chaque candidat est une PHASE (cf. règle déjà établie : "les phases
+// biomécaniques identifient les priorités d'amélioration"). Seules les phases dont le niveau
+// absolu est sous les normes sont candidates (réutilise BiomecaSpecs.niveauInferieurAuxNormes,
+// jamais un nouveau seuil dupliqué) — une phase "dans les normes" ou meilleure n'est jamais un
+// candidat, quel que soit le reste (cf. exemple "Propulsion 55e percentile -> pas de priorité").
+//
+// SYSTÈME DE PREUVES par candidat (réutilise entièrement l'existant, aucune duplication) :
+//  1. Niveau absolu    -> phase.niveau (Moteur Biomécanique)
+//  2. Phase déficitaire -> le filtre de candidature lui-même (ci-dessus)
+//  3. Variables responsables -> phase.variablesResponsables (Moteur Biomécanique)
+//  4. Profil biomécanique correspondant -> PROFIL_PHASE_CORRESPONDENCE (reverse lookup) +
+//     ordinalLevel() sur son percentile (déjà utilisés par le Moteur de Raisonnement)
+//  5. Qualité physique associée -> CMJ_PHASE_TO_QUALITY (déjà défini pour l'Étape 7 de
+//     computeSyntheseBiomecanique) + ordinalLevel()
+//  6. Cohérence biomécanique -> le croisement correspondant du Moteur de Raisonnement
+//     (concordance.cas===1), ou à défaut l'indice global
+//
+// RÈGLE DE PRIORISATION (interprétation explicite d'une règle du praticien formulée en deux
+// blocs qui se recoupent — "Très forte" et "Forte" partagent le seuil "plusieurs/deux moteurs" ;
+// lu ici comme : 2 moteurs confirmants = Forte, et 2 moteurs + cohérence forte + plusieurs
+// variables = Très forte, cf. exemple Braking où les 3 conditions sont réunies simultanément).
+// countMoteurs = nombre de {profil correspondant, qualité associée} déficients (0-2).
+//   Très forte : countMoteurs>=2 ET cohérence forte ET >=2 variables responsables
+//   Forte      : countMoteurs>=2 (sans les deux conditions supplémentaires)
+//   Modérée    : countMoteurs===1
+//   Faible     : countMoteurs===0 (déficit isolé)
+// RÈGLE IMPORTANTE (praticien) : un candidat "Faible" (déficit isolé) n'est JAMAIS promu en
+// Priorité 1/2/3, quel que soit son classement — il reste en "autres observations", visible mais
+// jamais prioritaire. Une priorité nécessite toujours plusieurs éléments convergents.
+function dossierPreuvesPhase(phaseKey,phases,coherenceResult,profileResults,functionScores,raisonnementBiomecanique){
+  var ph=phases[phaseKey];
+  var corrEntry=PROFIL_PHASE_CORRESPONDENCE.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0];
+  var profilNom=corrEntry?corrEntry.profil:null;
+  var profilEntry=profilNom?(profileResults||[]).filter(function(pr){return pr.nom===profilNom;})[0]:null;
+  var profilDeficient=!!(profilEntry&&profilEntry.result&&profilEntry.result.sufficient&&ordinalLevel(profilEntry.result.percentileGlobal)==='faible');
+  var qualiteNom=CMJ_PHASE_TO_QUALITY[phaseKey]||null;
+  var qualiteScore=(qualiteNom&&functionScores)?functionScores[qualiteNom]:null;
+  var qualiteDeficiente=qualiteScore!=null&&ordinalLevel(qualiteScore)==='faible';
+  var croisement=(profilNom&&raisonnementBiomecanique)?raisonnementBiomecanique.croisements.filter(function(c){return c.profil===profilNom;})[0]:null;
+  var coherenceForte;
+  if(croisement&&croisement.sufficient){
+    coherenceForte=croisement.concordance.cas===1;
+  }else if(raisonnementBiomecanique&&raisonnementBiomecanique.indiceCoherenceGlobale.band){
+    coherenceForte=['Très forte cohérence','Forte cohérence'].indexOf(raisonnementBiomecanique.indiceCoherenceGlobale.band.label)>=0;
+  }else{
+    coherenceForte=false;
+  }
+  var variablesResponsables=ph.variablesResponsables||[];
+  var countMoteurs=(profilDeficient?1:0)+(qualiteDeficiente?1:0);
+  var niveauPriorite;
+  if(countMoteurs>=2&&coherenceForte&&variablesResponsables.length>=2)niveauPriorite='Très forte';
+  else if(countMoteurs>=2)niveauPriorite='Forte';
+  else if(countMoteurs===1)niveauPriorite='Modérée';
+  else niveauPriorite='Faible';
+  return{
+    phase:phaseKey,score:ph.score,niveauPriorite:niveauPriorite,
+    variablesResponsables:variablesResponsables,
+    profilCorrespondant:profilNom,profilDeficient:profilDeficient,
+    qualiteAssociee:qualiteNom,qualiteDeficiente:qualiteDeficiente,
+    coherenceForte:coherenceForte,countMoteurs:countMoteurs
+  };
+}
+var PRIORITE_TIER_ORDER={'Très forte':3,'Forte':2,'Modérée':1,'Faible':0};
+// Point d'entrée. Input : UNIQUEMENT les résultats déjà calculés (jamais les variables brutes) —
+// phases+coherenceResult (Moteur Biomécanique/Cohérence), profileResults (Profils Biomécaniques),
+// functionScores (Moteur des Qualités, déjà existant dans KINEXUS), raisonnementBiomecanique
+// (Moteur de Raisonnement, optionnel — dégrade sur l'indice global si absent).
+function computePriorisationClinique(phases,coherenceResult,profileResults,functionScores,raisonnementBiomecanique){
+  var candidats=CMJ_PHASES.filter(function(p){
+    return phases[p]&&phases[p].sufficient&&BiomecaSpecs.niveauInferieurAuxNormes.isSatisfiedBy({phase:phases[p]}).result;
+  }).map(function(phaseKey){return dossierPreuvesPhase(phaseKey,phases,coherenceResult,profileResults,functionScores,raisonnementBiomecanique);});
+  var classes=candidats.slice().sort(function(a,b){
+    if(PRIORITE_TIER_ORDER[b.niveauPriorite]!==PRIORITE_TIER_ORDER[a.niveauPriorite])return PRIORITE_TIER_ORDER[b.niveauPriorite]-PRIORITE_TIER_ORDER[a.niveauPriorite];
+    return a.score-b.score; // à tier de preuve égal : la phase la plus déficitaire d'abord
+  });
+  var eligibles=classes.filter(function(c){return c.niveauPriorite!=='Faible';});
+  var top3=[eligibles[0]||null,eligibles[1]||null,eligibles[2]||null];
+  var autresObservations=classes.filter(function(c){return top3.indexOf(c)<0;});
+  return{
+    priorite1:top3[0],priorite2:top3[1],priorite3:top3[2],
+    autresObservations:autresObservations
+  };
+}
+
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
 // sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
 // les seuils génériques dans THRESHOLDS.
