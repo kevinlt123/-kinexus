@@ -2804,22 +2804,37 @@ function croisementAsymetriePhase(phaseKey,phaseResult,asymResult){
 //
 // PÉRIMÈTRE V1 (praticien) : RSI-Mod et FT:CT restent de simples variables CMJ déjà existantes
 // (déjà utilisées par le profil Réactif) — ce moteur ne fait qu'ajouter une interprétation
-// complémentaire, aucun recalcul. DSI est un véritable indice inter-tests (CMJ vs IMTP) — calculé
-// ici pour la première fois. EUR est explicitement reporté en V2 (le test Squat Jump n'existe pas
-// encore dans KINEXUS ; aucune infrastructure de test supplémentaire construite pour cet indice
-// seul, comme demandé).
+// complémentaire, aucun recalcul. L'INDICE D'EXPRESSION DYNAMIQUE DE LA FORCE (ci-dessous) est un
+// véritable indice inter-tests, calculé ici pour la première fois. EUR est explicitement reporté
+// en V2 (le test Squat Jump n'existe pas encore dans KINEXUS ; aucune infrastructure de test
+// supplémentaire construite pour cet indice seul, comme demandé).
 //
-// DSI = CMJ Peak Force / IMTP Peak Force. Numérateur CMJ choisi : conc_peak_force (Concentric
-// Peak Force) — c'est la variable CMJ représentant le pic de force réellement atteint pendant le
-// mouvement (la propulsion concentrique produit le pic de force le plus élevé du saut dans
-// l'immense majorité des cas, contrairement à force_zero_vel/force_peak_power qui ciblent un
-// instant précis différent). CHOIX À CONFIRMER : je n'ai pas de documentation VALD consultée
-// directement confirmant ce mapping exact — c'est ma meilleure inférence à partir des variables
-// CMJ disponibles, pas une certitude établie.
-// GAP DE DONNÉES CONNU (à signaler, pas comblé ici, même schéma que les normes d'asymétrie) :
-// aucune donnée normative DSI n'existe aujourd'hui dans NORMS — le ratio brut est toujours
-// calculable si les deux tests sont renseignés, mais son percentile (et donc son niveau
-// d'interprétation) reste indisponible tant qu'une table de normes DSI n'est pas fournie.
+// INDICE D'EXPRESSION DYNAMIQUE DE LA FORCE (remplace définitivement l'hypothèse IMTP comme
+// référence unique, décision du praticien 04/08) — CMJ Peak Force / Force isométrique maximale,
+// où le test isométrique de référence est un PARAMÈTRE DE CONFIGURATION, jamais un test câblé en
+// dur dans l'algorithme : "DSI" (littérature, spécifique à l'IMTP) n'est qu'UN cas particulier de
+// ce concept plus général, quand le test configuré est l'IMTP. Référence par défaut V1 : Iso Belt
+// Squat (effectiveIndiceExpressionDynamiqueDenominateur() ci-dessous) — IMTP reste utilisable en
+// changeant la configuration, sans modifier l'algorithme ; Iso Squat ou tout autre test
+// isométrique compatible pourra être ajouté de la même façon plus tard (aucune infrastructure
+// nouvelle nécessaire, juste une valeur de configuration).
+// Numérateur CMJ choisi : conc_peak_force (Concentric Peak Force) — c'est la variable CMJ
+// représentant le pic de force réellement atteint pendant le mouvement (la propulsion concentrique
+// produit le pic de force le plus élevé du saut dans l'immense majorité des cas, contrairement à
+// force_zero_vel/force_peak_power qui ciblent un instant précis différent). CHOIX À CONFIRMER : je
+// n'ai pas de documentation VALD consultée directement confirmant ce mapping exact — c'est ma
+// meilleure inférence à partir des variables CMJ disponibles, pas une certitude établie.
+// INTERPRÉTATION (règle explicite du praticien) : AUCUN seuil DSI historique (publié pour l'IMTP)
+// n'est appliqué ici, quel que soit le test isométrique configuré — ces seuils ne sont pas
+// transposables automatiquement à un autre test. La table de normes recherchée est isolée PAR
+// test isométrique configuré (clé virtuelle "<test>_iedf", jamais une norme IMTP réutilisée pour
+// un autre test) : le ratio brut est toujours affiché, son percentile ne devient interprétable
+// que lorsqu'une norme spécifique à CE test isométrique est renseignée dans NORMS — même gap déjà
+// signalé pour les autres indices, non comblé ici.
+function effectiveIndiceExpressionDynamiqueDenominateur(){
+  var cfg=activeBiomecaProfile().config||{};
+  return cfg.indiceExpressionDynamiqueDenominateur||'iso_belt_squat';
+}
 var INDICES_BIOMECANIQUES=[
   {
     id:'rsi_mod',nom:'RSI-Mod',
@@ -2842,18 +2857,19 @@ var INDICES_BIOMECANIQUES=[
     }
   },
   {
-    id:'dsi',nom:'DSI',
+    id:'indice_expression_dynamique',nom:'Indice d\'expression dynamique de la force',
     resolve:function(valuesByTest,pop,age){
+      var denomTest=effectiveIndiceExpressionDynamiqueDenominateur();
       var cmjForce=(valuesByTest.cmj||{}).conc_peak_force;
-      var imtpForce=(valuesByTest.imtp||{}).nkg;
+      var denomForce=(valuesByTest[denomTest]||{}).nkg;
       var techCmj=validateTechnical('conc_peak_force',cmjForce);
-      var techImtp=validateTechnical('nkg',imtpForce);
-      if(!techCmj.ok)return{sufficient:false,value:null,percentile:null,reason:techCmj.reason};
-      if(!techImtp.ok)return{sufficient:false,value:null,percentile:null,reason:techImtp.reason};
-      if(!imtpForce)return{sufficient:false,value:null,percentile:null,reason:'Force IMTP nulle ou indisponible : ratio DSI non calculable.'};
-      var ratio=cmjForce/imtpForce;
-      var pct=normPercentile('dsi','ratio',pop,age,ratio,'max');
-      return{sufficient:pct!=null,value:ratio,percentile:pct,reason:pct==null?'Ratio DSI calculé ('+ratio.toFixed(2)+') mais aucune donnée normative DSI disponible — percentile non interprétable.':null};
+      var techDenom=validateTechnical('nkg',denomForce);
+      if(!techCmj.ok)return{sufficient:false,value:null,percentile:null,denominateurTest:denomTest,reason:techCmj.reason};
+      if(!techDenom.ok)return{sufficient:false,value:null,percentile:null,denominateurTest:denomTest,reason:techDenom.reason};
+      if(!denomForce)return{sufficient:false,value:null,percentile:null,denominateurTest:denomTest,reason:'Force isométrique ('+denomTest+') nulle ou indisponible : ratio non calculable.'};
+      var ratio=cmjForce/denomForce;
+      var pct=normPercentile(denomTest+'_iedf','ratio',pop,age,ratio,'max');
+      return{sufficient:pct!=null,value:ratio,percentile:pct,denominateurTest:denomTest,reason:pct==null?'Ratio calculé ('+ratio.toFixed(2)+', dénominateur : '+denomTest+') mais aucune donnée normative disponible pour ce test isométrique — percentile non interprétable.':null};
     }
   }
 ];
