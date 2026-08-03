@@ -1381,6 +1381,162 @@ function computePhaseConfidence(phaseResult,coherenceResult){
   return{phase:phaseResult.phase,composite:composite,band:band,niveaux:{variables:lv,phase:lp,transition:lt}};
 }
 
+// ── BIOMECHANICAL PROFILE ENGINE : modèles métier ────────────────────────────────────────────
+// Moteur générique demandé par le praticien (03/08) pour calculer N'IMPORTE QUEL profil
+// biomécanique — le moteur ne connaît JAMAIS la logique d'un profil particulier (jamais
+// "Propulsif", "Absorbeur", etc. codés en dur). Toute la logique métier vit dans le référentiel
+// BiomechanicalProfiles (section suivante), qui est une simple liste de données : ajouter un
+// profil = ajouter un objet dans le référentiel, aucune modification du moteur.
+//
+// Conservé dans ce même fichier (index.html) plutôt que scindé en modules séparés (ex.
+// "BiomechanicalProfiles.ts" suggéré dans la demande) : l'application n'a pas de système de
+// build/bundling aujourd'hui, un fichier séparé ne serait pas chargé. La séparation demandée est
+// respectée au niveau logique (sections clairement délimitées, zéro dépendance du référentiel
+// vers le moteur) plutôt qu'au niveau fichier.
+//
+// RÉUTILISATION (contrainte explicite du praticien, aucune duplication de logique métier) :
+//  - cohérence interne -> stdDevOf() + classifyBand(effectiveBiomecaBands('coherenceInterne'))
+//  - niveau absolu -> classifyBand(effectiveBiomecaBands('niveauAbsolu'))
+//  - percentiles -> normPercentile()/testKpiDir()/validateTechnical() (déjà développés pour le
+//    Moteur Biomécanique des phases et le référentiel PTM existant)
+// Aucune de ces briques n'est réécrite ici — uniquement appelée.
+
+// ProfileVariable : une variable au sein d'un profil. Aucune autre logique que ces deux champs.
+function ProfileVariable(variableId,role){
+  return{variableId:variableId,role:role}; // role : 'discriminante'|'confirmatoire'|'descriptive'
+}
+// BiomechanicalProfileDefinition : décrit ENTIÈREMENT un profil biomécanique. Pure donnée —
+// aucun calcul, aucune méthode. C'est le référentiel qui construit ces objets, jamais le moteur.
+function BiomechanicalProfileDefinition(id,nom,description,variablesDiscriminantes,variablesConfirmatoires,variablesDescriptives){
+  return{
+    id:id,nom:nom,description:description||'',
+    variablesDiscriminantes:variablesDiscriminantes||[],
+    variablesConfirmatoires:variablesConfirmatoires||[],
+    variablesDescriptives:variablesDescriptives||[]
+  };
+}
+// BiomechanicalProfileResult : forme du résultat produit par BiomechanicalProfileEngine.compute().
+// {sufficient, reason?, percentileGlobal, niveau, coherenceInterne, coherenceBand,
+//  variablesFortes, variablesFaibles, conclusionAutomatique, entries}
+// ("sufficient"/"reason"/"entries" ne figurent pas dans la liste initiale du praticien mais sont
+// nécessaires pour la dégradation propre en cas de données manquantes/absentes — priorité
+// Robustesse. Les 6 champs demandés sont tous présents.)
+
+// BiomechanicalProfileEngine — moteur UNIQUE et générique. Reçoit uniquement une
+// BiomechanicalProfileDefinition + les percentiles déjà calculés des variables disponibles
+// (jamais les valeurs brutes : la résolution percentile est un préalable, voir
+// resolveProfilePercentiles ci-dessous, hors du moteur). Retourne un BiomechanicalProfileResult.
+var BiomechanicalProfileEngine=(function(){
+  var ROLE_WEIGHT_DEFAULT={discriminante:1,confirmatoire:0.5,descriptive:0};
+  // Poids par rôle, configurables (mêmes valeurs par défaut que master/support/info du Moteur
+  // Biomécanique des phases — même philosophie, vocabulaire différent pour ce moteur générique).
+  function effectiveRoleWeights(){
+    var cfg=activeBiomecaProfile().config||{};
+    return cfg.profileEngineRoleWeights||ROLE_WEIGHT_DEFAULT;
+  }
+  function listVariables(definition){
+    return[]
+      .concat((definition.variablesDiscriminantes||[]).map(function(v){return{variableId:v.variableId,role:'discriminante'};}))
+      .concat((definition.variablesConfirmatoires||[]).map(function(v){return{variableId:v.variableId,role:'confirmatoire'};}))
+      .concat((definition.variablesDescriptives||[]).map(function(v){return{variableId:v.variableId,role:'descriptive'};}));
+  }
+  function buildConclusion(definition,percentileGlobal,niveau,coherenceBand,variablesFortes,variablesFaibles){
+    var niveauLabel=niveau?niveau.label:'indéterminé';
+    var cohLabel=coherenceBand?coherenceBand.label:'indéterminée';
+    var heterogene=!!coherenceBand&&['Faible cohérence','Très faible cohérence'].indexOf(coherenceBand.label)>=0;
+    var text;
+    if(heterogene){
+      text='Le profil "'+definition.nom+'" est hétérogène (cohérence interne "'+cohLabel+'") : ses variables ne racontent pas la même histoire. Le percentile global ('+percentileGlobal.toFixed(0)+') ne doit pas être interprété seul.';
+    }else{
+      var qualif=['Exceptionnel','Excellent','Très bon'].indexOf(niveauLabel)>=0?'élevé':(niveauLabel==='Dans les normes'?'dans les normes':'faible');
+      text='Le profil "'+definition.nom+'" est '+qualif+' ('+percentileGlobal.toFixed(0)+'e percentile, niveau "'+niveauLabel+'"), avec une cohérence interne "'+cohLabel+'".';
+    }
+    if(variablesFortes.length)text+=' Variable(s) forte(s) : '+variablesFortes.map(function(e){return e.variableId+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
+    if(variablesFaibles.length)text+=' Variable(s) faible(s) : '+variablesFaibles.map(function(e){return e.variableId+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
+    return{text:text,heterogene:heterogene};
+  }
+  // compute() : l'algorithme de l'Étape 3 (praticien, 03/08), littéralement.
+  function compute(definition,percentilesByVariable){
+    percentilesByVariable=percentilesByVariable||{};
+    var weights=effectiveRoleWeights();
+    // Lire les variables disponibles, ignorer automatiquement celles qui sont absentes — jamais
+    // d'équivalence inventée pour une variable manquante.
+    var entries=listVariables(definition).map(function(v){
+      var pct=percentilesByVariable[v.variableId];
+      var available=pct!=null;
+      return{variableId:v.variableId,role:v.role,weight:weights[v.role]!=null?weights[v.role]:0,percentile:available?pct:null,available:available};
+    });
+    var discriminantes=entries.filter(function(e){return e.role==='discriminante';});
+    var discriminantesOk=discriminantes.filter(function(e){return e.available;});
+    var threshold=effectiveMissingDataThreshold();
+    var ratio=discriminantes.length?discriminantesOk.length/discriminantes.length:0;
+    if(discriminantes.length===0||ratio<threshold){
+      return{
+        sufficient:false,percentileGlobal:null,
+        reason:discriminantes.length===0?'Aucune variable discriminante définie pour ce profil (référentiel non encore renseigné).':'Données insuffisantes pour calculer ce profil ('+discriminantesOk.length+'/'+discriminantes.length+' variables discriminantes disponibles).',
+        entries:entries
+      };
+    }
+    // Calculer le percentile global (moyenne pondérée par rôle — Discriminante=1, Confirmatoire=
+    // 0.5, Descriptive=0 par défaut, configurable).
+    var usable=entries.filter(function(e){return e.available&&e.weight>0;});
+    var sumW=0,sumWP=0;
+    usable.forEach(function(e){sumW+=e.weight;sumWP+=e.weight*e.percentile;});
+    var percentileGlobal=sumW>0?sumWP/sumW:null;
+    // Cohérence interne — RÉUTILISE exactement le mécanisme du Moteur Biomécanique des phases,
+    // jamais dupliqué : stdDevOf() sur les percentiles des variables discriminantes disponibles,
+    // classifyBand() sur la même bande 'coherenceInterne'.
+    var coherenceInterne=stdDevOf(discriminantesOk.map(function(e){return e.percentile;}));
+    var niveau=classifyBand(effectiveBiomecaBands('niveauAbsolu'),percentileGlobal);
+    var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceInterne'),coherenceInterne);
+    var variablesFortes=usable.filter(function(e){return e.percentile>=60;});
+    var variablesFaibles=usable.filter(function(e){return e.percentile<40;});
+    return{
+      sufficient:true,
+      percentileGlobal:percentileGlobal,niveau:niveau,
+      coherenceInterne:coherenceInterne,coherenceBand:coherenceBand,
+      variablesFortes:variablesFortes,variablesFaibles:variablesFaibles,
+      conclusionAutomatique:buildConclusion(definition,percentileGlobal,niveau,coherenceBand,variablesFortes,variablesFaibles),
+      entries:entries,discriminantesAvailable:discriminantesOk.length,discriminantesTotal:discriminantes.length
+    };
+  }
+  return{compute:compute,listVariables:listVariables};
+})();
+// Étape de préparation (hors du moteur générique — RÉUTILISE validateTechnical()/normPercentile()
+// /testKpiDir() déjà développés, jamais réécrits) : résout les percentiles de toutes les
+// variables d'une définition à partir des valeurs brutes de l'athlète. variableId suit la
+// convention "testKey:kpiKey" (même convention que PTM). Une variable absente ou techniquement
+// invalide est simplement omise du dict retourné — jamais une équivalence inventée.
+function resolveProfilePercentiles(definition,valuesByTest,pop,age){
+  valuesByTest=valuesByTest||{};
+  var out={};
+  BiomechanicalProfileEngine.listVariables(definition).forEach(function(v){
+    var parts=v.variableId.split(':'),testKey=parts[0],kpiKey=parts[1];
+    var raw=(valuesByTest[testKey]||{})[kpiKey];
+    var tech=validateTechnical(kpiKey,raw);
+    if(!tech.ok)return;
+    var pct=normPercentile(testKey,kpiKey,pop,age,raw,testKpiDir(testKey,kpiKey));
+    if(pct!=null)out[v.variableId]=pct;
+  });
+  return out;
+}
+
+// ── BIOMECHANICAL PROFILES (référentiel) ─────────────────────────────────────────────────────
+// Fichier/section INDÉPENDANTE du moteur — BiomechanicalProfileEngine ci-dessus ne contient
+// AUCUNE définition de profil et ne les importe jamais par leur nom. Ajouter un profil = ajouter
+// un objet BiomechanicalProfileDefinition ici, aucune modification du moteur nécessaire (Data
+// Driven, Étape 5 du praticien).
+//
+// VOLONTAIREMENT VIDE (décision explicite du praticien, 03/08) : les variables de chaque profil
+// seront définies ensemble dans une étape suivante — ne pas remplir sans validation.
+var BiomechanicalProfiles=[
+  // BiomechanicalProfileDefinition('propulsif','Propulsif','...',[/* ProfileVariable[] */],[],[]),
+  // BiomechanicalProfileDefinition('absorbeur','Absorbeur','...',[],[],[]),
+  // BiomechanicalProfileDefinition('reactif','Réactif','...',[],[],[]),
+  // BiomechanicalProfileDefinition('explosif','Explosif','...',[],[],[]),
+  // BiomechanicalProfileDefinition('controle','Contrôle','...',[],[],[])
+];
+
 // ── PROFILS BIOMÉCANIQUES ────────────────────────────────────────────────────────────────────
 // Troisième niveau d'analyse, INDÉPENDANT des qualités fonctionnelles et des phases
 // biomécaniques (décision explicite du praticien, 02-03/08) :
