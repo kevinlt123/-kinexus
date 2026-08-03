@@ -290,6 +290,20 @@ var FD_TEST_TYPE_MAP={
 };
 // kpi key -> metric name prefix as it appears in the ForceDecks column header
 // (matched case-insensitively as a "starts with", ignoring the unit suffix)
+//
+// Correctif d'infrastructure (04/08, demande du praticien) : le test 'cmj' (bilatéral) utilise
+// les clés conc_peak_force/conc_peak_vel/braking_peak_force, mais ce dictionnaire les enregistrait
+// sous des noms INVERSÉS (peak_conc_force/peak_conc_vel/peak_braking_force) — elles ne
+// correspondaient donc jamais aux clés kpi réellement utilisées par CMJ_VAR_META/TBK pour 'cmj',
+// et n'étaient jamais importées depuis un export ForceDecks réel. Corrigé en ajoutant les bonnes
+// clés — les anciennes (peak_conc_force/peak_conc_vel/peak_braking_force) sont CONSERVÉES car le
+// test 'slcmj' (Single Leg Jump) utilise réellement cette orthographe pour ses propres kpis
+// (incohérence de nommage préexistante entre 'cmj' et 'slcmj', non traitée ici — hors périmètre
+// des profils biomécaniques, qui ne portent que sur 'cmj'). Ajout par la même occasion de tous
+// les motifs manquants pour les variables utilisées par les 5 profils biomécaniques (référentiel
+// scientifique reconstruit), afin qu'elles soient importées automatiquement dès qu'elles sont
+// présentes dans le fichier — aucune nouvelle variable inventée, uniquement des motifs de
+// colonnes pour des KPIs déjà existants dans TBK/CMJ_VAR_META.
 var FD_KPI_PATTERNS={
   height:['Jump Height'],rsi_mod:['RSI-modified'],rsi:['RSI'],
   peak_power:['Peak Power / BM','Peak Power/BM','Peak Power'],conc_impulse:['Concentric Impulse'],peak_vel:['Peak Velocity'],
@@ -298,10 +312,13 @@ var FD_KPI_PATTERNS={
   peak_prop_power:['Peak Propulsive Power','Peak Instantaneous Power / BM','Peak Instantaneous Power/BM'],landing_impulse:['Landing Impulse'],
   leg_stiffness:['Leg Stiffness'],tts:['Time to Stabilise','Time to Stabilization','Time to Stabilisation'],
   peak_landing_force:['Peak Landing Force','Peak Drop Landing Force'],landing_peak_force:['Peak Landing Force','Peak Drop Landing Force'],
+  landing_peak_force_asym:['Peak Landing Force','Peak Drop Landing Force'],
   n:['Peak Force','Peak Vertical Force'],nkg:['Peak Force / BM','Peak Force/BM','Peak Vertical Force / BM','Peak Vertical Force/BM'],
-  peak_conc_force:['Peak Concentric Force'],peak_conc_vel:['Peak Concentric Velocity'],
-  braking_rfd:['Braking RFD'],peak_braking_force:['Peak Braking Force'],
-  braking_impulse:['Braking Impulse'],contraction_time:['Contraction Time'],
+  conc_peak_force:['Concentric Peak Force','Peak Concentric Force'],conc_peak_vel:['Concentric Peak Velocity','Peak Concentric Velocity'],
+  peak_conc_force:['Peak Concentric Force','Concentric Peak Force'],peak_conc_vel:['Peak Concentric Velocity','Concentric Peak Velocity'],
+  braking_rfd:['Braking RFD','Eccentric Deceleration RFD','EDRFD'],braking_peak_force:['Braking Peak Force','Peak Braking Force'],
+  peak_braking_force:['Peak Braking Force','Braking Peak Force'],
+  braking_impulse:['Braking Impulse','Eccentric Deceleration Impulse'],contraction_time:['Contraction Time'],
   ecc_duration:['Eccentric Duration'],conc_duration:['Concentric Duration'],
   time_to_stab:['Time to Stabilization','Time to Stabilise','Time to Stabilisation'],
   rfd50:['RFD - 50ms','RFD 0-50ms','RFD50'],rfd100:['RFD - 100ms','RFD 0-100ms','RFD100'],
@@ -311,7 +328,21 @@ var FD_KPI_PATTERNS={
   cop_range_ap:['CoP Range - Anterior-Posterior','CoP Range Anterior-Posterior'],
   mean_velocity:['Mean Velocity'],
   mean_height:['Mean Jump Height'],mean_rsi:['Mean RSI'],mean_peak_force:['Mean Peak Force'],
-  n_hops:['Number of Hops/Reps','Number of Hops','Number of Reps']
+  n_hops:['Number of Hops/Reps','Number of Hops','Number of Reps'],
+  // ── Ajouts (04/08) : variables utilisées par le référentiel des profils biomécaniques ──
+  conc_mean_force:['Concentric Mean Force'],conc_mean_power:['Concentric Mean Power'],conc_mean_vel:['Concentric Mean Velocity'],
+  force_peak_power:['Force at Peak Power'],conc_displacement:['Concentric Displacement'],
+  force_zero_vel:['Force at Zero Velocity'],
+  ecc_mean_power:['Eccentric Mean Power'],ecc_mean_force:['Eccentric Mean Force'],
+  ecc_peak_force:['Eccentric Peak Force'],ecc_peak_vel:['Peak Eccentric Velocity','Eccentric Peak Velocity'],
+  ecc_decel:['Eccentric Deceleration'],braking_eff:['Braking Efficiency'],propulsion_eff:['Propulsion Efficiency'],
+  braking_duration:['Eccentric Deceleration Phase Duration','Braking Phase Duration'],
+  ft_ct_ratio:['FT:CT Ratio','FT:CT'],flight_time:['Flight Time'],
+  landing_mean_force:['Landing Mean Force'],landing_rfd:['Landing RFD'],
+  landing_duration:['Landing Phase Duration'],landing_mean_power:['Landing Mean Power'],
+  post_landing_stability:['Post Landing Stability'],
+  conc_impulse_100:['Concentric Impulse 100ms','Concentric Impulse @ 100ms','Concentric Impulse (100ms)','Concentric Impulse at 100ms'],
+  conc_rfd:['Concentric RFD','Concentric Rate of Force']
 };
 function fdColSuffix(header){
   var t=header.trim();
@@ -338,6 +369,9 @@ function fdFindCol(headers,patterns,side){
       if(side===null&&sfx===null)return hd;
       if(side==='L'&&sfx==='L')return hd;
       if(side==='R'&&sfx==='R')return hd;
+      // Asymétrie (04/08) : un kpi "*_asym" partage le motif de colonne de la variable de base
+      // et se distingue uniquement par le suffixe "(Asym)" déjà détecté par fdColSuffix.
+      if(side==='asym'&&sfx==='asym')return hd;
     }
   }
   return null;
@@ -372,7 +406,10 @@ function importForceDecks(parsed){
       if(!result[testKey])result[testKey]={active:true,trials:{}};
       test.kpis.forEach(function(kpi){
         var patterns=FD_KPI_PATTERNS[kpi.key];if(!patterns)return;
-        var col=fdFindCol(headers,patterns,null);if(!col)return;
+        // Un kpi "*_asym" est une colonne à part (suffixe "(Asym)"), jamais la valeur non
+        // suffixée de la variable de base — cf. fdColSuffix/fdFindCol ci-dessus.
+        var side=/_asym$/.test(kpi.key)?'asym':null;
+        var col=fdFindCol(headers,patterns,side);if(!col)return;
         var v=fdVal(row[col],kpi.label,col,bw);
         if(v!=null){if(!result[testKey].trials[kpi.key])result[testKey].trials[kpi.key]=[];result[testKey].trials[kpi.key].push(v);}
       });
