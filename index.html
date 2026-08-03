@@ -208,10 +208,29 @@ var CMJ_VAR_META={
 // percentiles, métriques interchangeables. Kinexus les fusionne en UNE seule information
 // logique (kpi 'conc_force_impulse_asym') pour ne jamais compter deux fois la même preuve dans
 // le moteur de raisonnement (Règle 2 : 2 variables maîtresses concordantes requises).
-var CMJ_ASYM_FAMILIES={
-  eccentric:{label:'Asymétries excentriques (freinage)',vars:['ecc_decel_rfd_asym','ecc_decel_impulse_asym']},
-  concentric:{label:'Asymétries concentriques (propulsion)',vars:['conc_force_impulse_asym','force_peak_power_asym','p2_conc_impulse_asym']},
-  landing:{label:'Asymétries de réception',vars:['landing_peak_force_asym']}
+// Référentiel (données) désormais keyé par PHASE (mêmes 5 clés que CMJ_PHASES, le même axe que
+// le Moteur Biomécanique) plutôt que par famille mécanique — nécessaire pour le Moteur d'Analyse
+// des Asymétries par Phase (04/08). Chaque variable a un rôle, exactement comme le référentiel
+// des profils biomécaniques : principales (construisent le score), secondaires (renforcent
+// uniquement la confiance), contextuelles (expliquent, jamais ne concluent). Unloading et Flight
+// n'ont aujourd'hui AUCUNE variable d'asymétrie identifiée dans ForceDecks — aucune inventée,
+// ces deux phases seront simplement "données insuffisantes" pour l'asymétrie. Landing n'a qu'UNE
+// seule variable disponible (aucune secondaire possible, cf. limite documentée plus loin).
+var ASYM_PHASE_VARIABLES={
+  unloading:{principales:[],secondaires:[],contextuelles:[]},
+  braking:{principales:['ecc_decel_rfd_asym','ecc_decel_impulse_asym'],secondaires:[],contextuelles:[]},
+  concentric:{principales:['conc_force_impulse_asym','force_peak_power_asym'],secondaires:['p2_conc_impulse_asym'],contextuelles:[]},
+  flight:{principales:[],secondaires:[],contextuelles:[]},
+  landing:{principales:['landing_peak_force_asym'],secondaires:[],contextuelles:[]}
+};
+// Paires de valeurs brutes Gauche/Droite disponibles pour déterminer le "côté dominant" — UNIQUEMENT
+// pour les KPIs d'asymétrie où VALD expose les deux côtés séparément dans ForceDecks. Pour les
+// autres (ecc_decel_impulse_asym, conc_force_impulse_asym, force_peak_power_asym,
+// p2_conc_impulse_asym), aucune paire G/D n'existe dans TBK aujourd'hui — le côté dominant reste
+// "indéterminé" pour ces variables, jamais déduit du signe ou d'une autre invention.
+var ASYM_SIDE_PAIRS={
+  ecc_decel_rfd_asym:{L:'ecc_decel_rfd_L',R:'ecc_decel_rfd_R'},
+  landing_peak_force_asym:{L:'landing_peak_force_L',R:'landing_peak_force_R'}
 };
 
 // ── CSV IMPORT MAPPERS ───────────────────────────────────────────────────────
@@ -700,6 +719,19 @@ var BIOMECA_DEFAULT_BANDS={
     {min:25,max:40,label:'À surveiller',color:'#f97316'},
     {min:10,max:25,label:'Déficitaire',color:'#ef4444'},
     {min:-1,max:10,label:'Déficit majeur',color:'#b91c1c'}
+  ],
+  // Niveau d'asymétrie d'une phase (Moteur d'Analyse des Asymétries par Phase, 04/08) — mêmes
+  // seuils numériques que niveauAbsolu (aucun nouveau seuil inventé), seuls les libellés changent :
+  // le score est le percentile moyen des variables d'asymétrie principales (dir déjà appliqué en
+  // amont par normPercentile, donc percentile haut = symétrique, percentile bas = asymétrie forte).
+  niveauAsymetrie:[
+    {min:95,max:101,label:'Symétrie exceptionnelle',color:'#0ea5e9'},
+    {min:90,max:95,label:'Très symétrique',color:'#22c55e'},
+    {min:75,max:90,label:'Symétrique',color:'#22c55e'},
+    {min:40,max:75,label:'Asymétrie dans les normes',color:'#eab308'},
+    {min:25,max:40,label:'Asymétrie à surveiller',color:'#f97316'},
+    {min:10,max:25,label:'Asymétrie importante',color:'#ef4444'},
+    {min:-1,max:10,label:'Asymétrie majeure',color:'#b91c1c'}
   ],
   // |Δ relatif| = |score(phase) - moyenne(autres phases)|. Le sens (point fort / point faible)
   // est déterminé par le moteur à partir du signe de Δ, jamais par cette classification.
@@ -2122,10 +2154,11 @@ function computeMoteurRaisonnementBiomecanique(profileResults,phases,coherenceRe
 //
 // GAP DE DONNÉES CONNU (à signaler, pas à combler ici) : le praticien liste "les composites
 // mécaniques" (DSI/EUR/RSI-Mod/FT:CT en tant que composites comparant plusieurs tests, ex. DSI =
-// CMJ vs IMTP) et "les asymétries" (CMJ_ASYM_FAMILIES, définies mais jamais encore consommées)
-// parmi les entrées attendues. AUCUN moteur ne les calcule encore aujourd'hui (RSI-Mod/FT:CT
-// existent déjà comme variables de phase simples, pas comme composites inter-tests ; DSI/EUR
-// nécessiteraient IMTP/SJ, non câblés). Ce moteur fonctionne donc avec les 6 niveaux de preuve
+// CMJ vs IMTP) et "les asymétries" (désormais couvertes par le Moteur d'Analyse des Asymétries
+// par Phase, plus loin dans ce fichier — pas encore croisé avec la priorisation clinique elle-
+// même) parmi les entrées attendues. AUCUN moteur ne calcule encore les composites inter-tests
+// aujourd'hui (RSI-Mod/FT:CT existent déjà comme variables de phase simples, pas comme composites
+// inter-tests ; DSI/EUR nécessiteraient IMTP/SJ, non câblés). Ce moteur fonctionne donc avec les 6 niveaux de preuve
 // qui ONT déjà un moteur : niveau absolu, phase déficitaire, variables responsables, profil
 // biomécanique, qualité physique, cohérence biomécanique. Composites et asymétries s'ajouteront
 // comme niveaux de preuve supplémentaires quand leurs moteurs existeront — sans modification de
@@ -2509,6 +2542,173 @@ function computeMoteurAlerte(phases,profileResults,functionScores,raisonnementBi
   });
   var context={phases:phases,profileResults:profileResults,functionScores:functionScores,raisonnementBiomecanique:raisonnementBiomecanique,globalWarnings:globalWarnings,confiances:confiances};
   return evaluateAlertRules(ALERT_RULES,context);
+}
+
+// ── MOTEUR D'ANALYSE DES ASYMÉTRIES PAR PHASE ────────────────────────────────────────────────
+// Spécification du praticien (04/08) : identifier si une asymétrie significative est présente,
+// dans quelle phase, quelles variables l'expliquent, et si elle constitue une priorité — TOTALEMENT
+// indépendant des profils biomécaniques, des qualités physiques et des percentiles absolus (une
+// analyse de plus, jamais mélangée aux autres). Réutilise entièrement l'architecture déjà
+// construite (ThresholdBandClassifier, Specification Pattern, Moteur de Confiance générique,
+// validateClinicalConcordance) — aucune règle métier nouvelle codée en dur, tout vit dans
+// ASYM_PHASE_VARIABLES/ASYM_SIDE_PAIRS (référentiels, plus haut dans ce fichier).
+//
+// ÉTAPE 1+2+3 — par phase : percentile de chaque variable d'asymétrie (normPercentile, comme
+// n'importe quelle autre variable CMJ — la direction 'min' déjà déclarée dans TBK fait qu'un
+// percentile ÉLEVÉ = symétrique et un percentile BAS = asymétrie importante, exactement la même
+// convention que le reste de KINEXUS), score = moyenne des principales, cohérence interne =
+// stdDevOf (même mécanisme que computeBiomecaPhase), variables responsables = principales
+// percentile<40 (même seuil que partout ailleurs, jamais un nouveau seuil inventé).
+function asymEntryBuild(kpiKey,role,cmjValues,pop,age){
+  var raw=(cmjValues||{})[kpiKey];
+  var tech=validateTechnical(kpiKey,raw);
+  if(!tech.ok)return{kpiKey:kpiKey,role:role,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
+  var pct=normPercentile('cmj',kpiKey,pop,age,raw,cmjKpiDir(kpiKey));
+  return{kpiKey:kpiKey,role:role,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
+}
+// Côté dominant : uniquement pour les variables où une paire G/D brute existe (ASYM_SIDE_PAIRS) —
+// "indéterminé" sinon, jamais déduit d'une convention non confirmée (ex. signe de la valeur).
+function asymCoteDominant(principalesKpiKeys,cmjValues){
+  for(var i=0;i<principalesKpiKeys.length;i++){
+    var pair=ASYM_SIDE_PAIRS[principalesKpiKeys[i]];
+    if(!pair)continue;
+    var lRaw=(cmjValues||{})[pair.L],rRaw=(cmjValues||{})[pair.R];
+    if(lRaw==null||rRaw==null)continue;
+    var dir=cmjKpiDir(pair.L); // même dir des deux côtés par construction
+    var lMeilleur=dir==='min'?lRaw<rRaw:lRaw>rRaw;
+    if(lRaw===rRaw)return{cote:'aucun',kpiSource:principalesKpiKeys[i]};
+    return{cote:lMeilleur?'G':'D',kpiSource:principalesKpiKeys[i]};
+  }
+  return{cote:'indéterminé',kpiSource:null};
+}
+function computeAsymPhase(phaseKey,cmjValues,pop,age){
+  var def=ASYM_PHASE_VARIABLES[phaseKey]||{principales:[],secondaires:[],contextuelles:[]};
+  var principales=def.principales.map(function(k){return asymEntryBuild(k,'principale',cmjValues,pop,age);});
+  var secondaires=def.secondaires.map(function(k){return asymEntryBuild(k,'secondaire',cmjValues,pop,age);});
+  var contextuelles=def.contextuelles.map(function(k){return asymEntryBuild(k,'contextuelle',cmjValues,pop,age);});
+  var principalesOk=principales.filter(function(e){return e.status==='ok';});
+  var threshold=effectiveMissingDataThreshold();
+  if(!principales.length||principalesOk.length/principales.length<threshold){
+    return{
+      phase:phaseKey,sufficient:false,score:null,
+      reason:!principales.length?'Aucune variable d\'asymétrie principale identifiée pour cette phase.':
+        'Données insuffisantes ('+principalesOk.length+'/'+principales.length+' variables principales disponibles, seuil requis '+Math.round(threshold*100)+'%).',
+      principales:principales,secondaires:secondaires,contextuelles:contextuelles
+    };
+  }
+  var score=principalesOk.reduce(function(s,e){return s+e.percentile;},0)/principalesOk.length;
+  var coherenceInterne=stdDevOf(principalesOk.map(function(e){return e.percentile;}));
+  var niveau=classifyBand(effectiveBiomecaBands('niveauAsymetrie'),score);
+  var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceInterne'),coherenceInterne);
+  var secondairesOk=secondaires.filter(function(e){return e.status==='ok';});
+  return{
+    phase:phaseKey,sufficient:true,score:score,niveau:niveau,
+    coherenceInterne:coherenceInterne,coherenceBand:coherenceBand,
+    principales:principales,secondaires:secondaires,contextuelles:contextuelles,
+    variablesResponsables:principalesOk.filter(function(e){return e.percentile<40;}),
+    variablesSecondairesConfirmatoires:secondairesOk.filter(function(e){return e.percentile<40;}),
+    coteDominant:asymCoteDominant(def.principales,cmjValues)
+  };
+}
+// ── Specification Pattern (Étape 6) : une asymétrie n'est retenue que si les 3 conditions sont
+// réunies simultanément — même gate à 3 conditions que BiomecaSpecs.facteurLimitantBiomecanique,
+// appliqué ici au niveau d'asymétrie plutôt qu'au niveau absolu de phase.
+var AsymSpecs={
+  asymetrieSousLesNormes:makeSpec('Asymétrie sous les normes de symétrie',function(ctx){
+    var band=ctx.asym.niveau;
+    var sousNormes=!!band&&['Asymétrie importante','Asymétrie majeure','Asymétrie à surveiller'].indexOf(band.label)>=0;
+    return{result:sousNormes,reason:band?('Niveau d\'asymétrie classé "'+band.label+'" (score '+ctx.asym.score.toFixed(1)+').'):'Score d\'asymétrie indisponible.'};
+  }),
+  coherenceInterneSuffisante:makeSpec('Cohérence interne des variables principales suffisante',function(ctx){
+    var band=ctx.asym.coherenceBand;
+    var suffisante=!!band&&['Très forte cohérence','Bonne cohérence','Cohérence moyenne'].indexOf(band.label)>=0;
+    return{result:suffisante,reason:band?('Cohérence interne classée "'+band.label+'".'):'Cohérence interne indisponible.'};
+  }),
+  confianceSuffisante:makeSpec('Indice de confiance suffisant',function(ctx){
+    var band=ctx.confiance&&ctx.confiance.band;
+    var suffisante=!!band&&['Très élevée','Élevée','Modérée'].indexOf(band.label)>=0;
+    return{result:suffisante,reason:band?('Confiance classée "'+band.label+'".'):'Confiance indisponible.'};
+  })
+};
+AsymSpecs.asymetrieRetenue=AsymSpecs.asymetrieSousLesNormes.and(AsymSpecs.coherenceInterneSuffisante).and(AsymSpecs.confianceSuffisante);
+// ── Moteur de Confiance (couche transversale déjà construite) appliqué à l'asymétrie de phase —
+// référentiel de signaux dédié (CONFIANCE_SIGNAUX_ASYMETRIE), aucune logique nouvelle dans
+// computeIndiceConfiance() lui-même.
+var CONFIANCE_SIGNAUX_ASYMETRIE=[
+  {cle:'variables_principales',poidsDefaut:1,extractor:function(ctx){
+    if(!ctx.asym||!ctx.asym.sufficient)return null;
+    var entries=ctx.asym.principales.map(function(e){return{tier:'principale',status:e.status,percentile:e.percentile};});
+    return variableConcordance(ctx.asym.score,entries,'principale').score;
+  }},
+  {cle:'coherence_interne',poidsDefaut:1,extractor:function(ctx){
+    if(!ctx.asym||!ctx.asym.sufficient)return null;
+    return coherenceBandScore(ctx.asym.coherenceBand);
+  }},
+  {cle:'donnees_secondaires',poidsDefaut:1,extractor:function(ctx){
+    if(!ctx.asym||!ctx.asym.sufficient||!ctx.asym.secondaires.length)return null;
+    var secOk=ctx.asym.secondaires.filter(function(e){return e.status==='ok';}).length;
+    return Math.round((secOk/ctx.asym.secondaires.length)*100);
+  }}
+];
+function effectiveConfianceAsymetrieWeights(){
+  var cfg=activeBiomecaProfile().config||{};
+  var custom=cfg.confianceAsymetrieWeights||{};
+  var out={};
+  CONFIANCE_SIGNAUX_ASYMETRIE.forEach(function(def){out[def.cle]=custom[def.cle]!=null?custom[def.cle]:def.poidsDefaut;});
+  return out;
+}
+function computeConfianceAsymetrie(asymPhase){
+  var signaux=CONFIANCE_SIGNAUX_ASYMETRIE.map(function(def){return{cle:def.cle,poidsDefaut:def.poidsDefaut,score:def.extractor({asym:asymPhase}),source:def.cle};});
+  return computeIndiceConfiance(signaux,effectiveConfianceAsymetrieWeights());
+}
+// ÉTAPE 4+6+7 — Point d'entrée du module. Calcule les 5 phases indépendamment, classe (la plus
+// asymétrique -> Priorité 1/2/3 parmi celles RETENUES par le gate ; jamais un déficit isolé/non
+// concluant promu, même principe que le Moteur de Priorisation Clinique), identifie les phases
+// symétriques. Interprétation explicite (le praticien ne détaille pas de paliers Très forte/
+// Forte/Modérée pour CETTE priorisation, contrairement à la Priorisation Clinique) : seules les
+// phases dont l'asymétrie est RETENUE (AsymSpecs.asymetrieRetenue) sont éligibles à une priorité,
+// classées par sévérité (score croissant = plus asymétrique d'abord) — à confirmer/ajuster.
+function computeAsymEngine(cmjValues,pop,age){
+  var phases={};
+  CMJ_PHASES.forEach(function(p){phases[p]=computeAsymPhase(p,cmjValues,pop,age);});
+  var confiances={};
+  CMJ_PHASES.forEach(function(p){if(phases[p].sufficient)confiances[p]=computeConfianceAsymetrie(phases[p]);});
+  var evaluables=CMJ_PHASES.filter(function(p){return phases[p].sufficient;}).map(function(p){
+    var proof=AsymSpecs.asymetrieRetenue.isSatisfiedBy({asym:phases[p],confiance:confiances[p]});
+    return{phase:p,asym:phases[p],confiance:confiances[p],retenue:proof.result,proof:proof};
+  });
+  var asymetriques=evaluables.filter(function(e){return e.retenue;}).sort(function(a,b){return a.asym.score-b.asym.score;});
+  var nonConcluantes=evaluables.filter(function(e){return!e.retenue&&AsymSpecs.asymetrieSousLesNormes.isSatisfiedBy({asym:e.asym}).result;});
+  var symetriques=evaluables.filter(function(e){return!AsymSpecs.asymetrieSousLesNormes.isSatisfiedBy({asym:e.asym}).result;});
+  var top3=asymetriques.slice(0,3);
+  var secondaires=asymetriques.slice(3);
+  return{
+    phases:phases,confiances:confiances,
+    priorite1:top3[0]||null,priorite2:top3[1]||null,priorite3:top3[2]||null,
+    asymetriesSecondaires:secondaires,
+    nonConcluantes:nonConcluantes, // asymétrie visible mais gate non satisfait ("asymétrie non concluante")
+    phasesSymetriques:symetriques.map(function(e){return e.phase;})
+  };
+}
+// ÉTAPE 8 — Relation avec les autres moteurs : ne modifie JAMAIS les profils/qualités/scores de
+// phase. Le Moteur de Raisonnement recherche la convergence avec le Moteur Biomécanique en
+// réutilisant EXACTEMENT le même mécanisme déjà employé pour profil<->phase et qualité<->phase
+// (ordinalLevel + validateClinicalConcordance) — aucune nouvelle comparaison inventée. Cas 1
+// (les deux 'faible' : phase déficitaire ET asymétrie importante) -> très forte cohérence,
+// conforme à l'exemple du praticien. Phase normale + asymétrie importante -> discordance ->
+// "asymétrie isolée sans déficit global", conforme au second exemple.
+function croisementAsymetriePhase(phaseKey,phaseResult,asymResult){
+  if(!phaseResult||!phaseResult.sufficient||!asymResult||!asymResult.sufficient){
+    return{phase:phaseKey,sufficient:false,reason:'Phase ou asymétrie non exploitable pour cette comparaison.'};
+  }
+  var niveauPhase=ordinalLevel(phaseResult.score);
+  var niveauAsym=ordinalLevel(asymResult.score);
+  var concordance=validateClinicalConcordance(niveauPhase,niveauAsym);
+  var isolee=concordance.cas!=null&&concordance.cas!==1&&niveauAsym==='faible'&&niveauPhase!=='faible';
+  return{
+    phase:phaseKey,sufficient:true,niveauPhase:niveauPhase,niveauAsym:niveauAsym,concordance:concordance,
+    asymetrieIsolee:isolee
+  };
 }
 
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
