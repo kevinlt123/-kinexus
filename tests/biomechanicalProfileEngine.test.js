@@ -14,9 +14,9 @@ const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m =
 const code = scripts.filter(s => !s.includes('cdnjs')).join('\n');
 
 // La slice doit couvrir le moteur générique ET ses dépendances déclarées plus loin dans le
-// fichier (testKpiDir, effectiveProfilTier, etc., dans la section historique "PROFILS
-// BIOMÉCANIQUES") : le hoisting des déclarations de fonction au sein d'un même eval() les rend
-// disponibles quel que soit leur ordre, tant qu'elles sont incluses dans la slice.
+// fichier (le référentiel BiomechanicalProfiles, la Signature biomécanique) : le hoisting des
+// déclarations de fonction au sein d'un même eval() les rend disponibles quel que soit leur
+// ordre, tant qu'elles sont incluses dans la slice.
 const start = code.indexOf('var TESTS=[');
 const endMarker = '// ── MOTEUR DE SYNTHÈSE BIOMÉCANIQUE ──';
 const end = code.indexOf(endMarker);
@@ -168,10 +168,16 @@ test('pondération par rôle : confirmatoire pèse 0.5, descriptive pèse 0 (par
   assert.ok(Math.abs(result.percentileGlobal - 66.666667) < 0.01, 'obtenu: ' + result.percentileGlobal);
 });
 
-test('le moteur ne connaît aucun profil par son nom (référentiel vide par défaut)', () => {
-  assert.strictEqual(Array.isArray(BiomechanicalProfiles), true);
-  assert.strictEqual(BiomechanicalProfiles.length, 0,
-    'BiomechanicalProfiles doit rester vide tant que les profils ne sont pas définis avec le praticien');
+test('poids par défaut robustes même avec profileEngineRoleWeights:{} en config (régression)', () => {
+  // Le profil de config "Par défaut" seed profileEngineRoleWeights:{} (objet vide mais présent).
+  // Un repli naïf ("cfg.profileEngineRoleWeights || DEFAULT") retomberait sur {} (truthy) et
+  // mettrait tous les poids à 0 -> percentileGlobal toujours null. Non-régression explicite.
+  const def = BiomechanicalProfileDefinition('t9b', 'TestPoidsDefaut', 'desc', [
+    ProfileVariable('cmj:var_a', 'discriminante')
+  ], [], []);
+  const result = BiomechanicalProfileEngine.compute(def, { 'cmj:var_a': 42 });
+  assert.strictEqual(result.sufficient, true);
+  assert.strictEqual(result.percentileGlobal, 42);
 });
 
 test('resolveProfilePercentiles : réutilise normPercentile, ignore les variables absentes/invalides', () => {
@@ -183,6 +189,61 @@ test('resolveProfilePercentiles : réutilise normPercentile, ignore les variable
   const percentiles = resolveProfilePercentiles(def, { cmj: { var_a: 50 } }, '__test_pop', 26);
   assert.strictEqual(percentiles['cmj:var_a'], 50);
   assert.strictEqual('cmj:var_b' in percentiles, false);
+});
+
+test('BiomechanicalProfiles : référentiel migré (5 profils, structure Discriminante/Confirmatoire/Descriptive)', () => {
+  assert.strictEqual(Array.isArray(BiomechanicalProfiles), true);
+  assert.strictEqual(BiomechanicalProfiles.length, 5);
+  const ids = BiomechanicalProfiles.map(p => p.id).sort();
+  assert.deepStrictEqual(ids, ['absorbeur', 'controle', 'explosif', 'propulsif', 'reactif']);
+  BiomechanicalProfiles.forEach(def => {
+    assert.ok(def.variablesDiscriminantes.length >= 1, def.nom + ' doit avoir au moins 1 variable discriminante');
+    const allRoles = BiomechanicalProfileEngine.listVariables(def).map(v => v.role);
+    allRoles.forEach(r => assert.ok(['discriminante', 'confirmatoire', 'descriptive'].includes(r)));
+  });
+});
+
+test('BiomechanicalProfileEngine : ne référence jamais un nom de profil dans sa propre logique', () => {
+  // Vérification structurelle : le moteur ne doit connaître aucun des 5 libellés de profil.
+  const engineSource = BiomechanicalProfileEngine.compute.toString() + BiomechanicalProfileEngine.listVariables.toString();
+  ['Propulsif', 'Absorbeur', 'Réactif', 'Explosif', 'Contrôle'].forEach(label => {
+    assert.ok(!engineSource.includes(label), 'le moteur ne doit jamais mentionner "' + label + '"');
+  });
+});
+
+test('intégration : computeAllBiomechanicalProfiles + computeSignatureBiomecanique bout en bout', () => {
+  // Population de normes synthétique couvrant toutes les variables réellement utilisées par les
+  // 5 profils migrés (voir BiomechanicalProfiles), pour un test d'intégration réaliste.
+  const vars = ['peak_power', 'peak_vel', 'conc_impulse', 'force_peak_power', 'conc_mean_power',
+    'height', 'flight_time', 'force_zero_vel', 'braking_rfd', 'landing_peak_force', 'landing_impulse',
+    'ecc_mean_power', 'time_to_stab', 'landing_duration', 'rsi_mod', 'ft_ct_ratio', 'conc_impulse_100',
+    'landing_peak_force_asym', 'ecc_decel_rfd_asym', 'force_peak_power_asym', 'depth'];
+  const pop = {};
+  vars.forEach(v => { pop['cmj_' + v] = [10, 25, 50, 75, 90]; });
+  pop.dj_rsi = [1.0, 1.5, 2.0, 2.5, 3.0];
+  NORMS.__integration_pop = pop;
+
+  const valuesByTest = {
+    cmj: {
+      peak_power: 60, peak_vel: 3.0, conc_impulse: 2.6, force_peak_power: 22, conc_mean_power: 40,
+      height: 40, flight_time: 570, force_zero_vel: 20, braking_rfd: 3400, landing_peak_force: 36,
+      landing_impulse: 2.2, ecc_mean_power: 23, time_to_stab: 0.55, landing_duration: 240,
+      rsi_mod: 0.65, ft_ct_ratio: 1.35, conc_impulse_100: 1.2,
+      landing_peak_force_asym: 5, ecc_decel_rfd_asym: 6, force_peak_power_asym: 4, depth: 33
+    },
+    dj: { rsi: 2.2 }
+  };
+
+  const profileResults = computeAllBiomechanicalProfiles(valuesByTest, '__integration_pop', 26);
+  assert.strictEqual(profileResults.length, 5);
+  profileResults.forEach(pr => {
+    assert.ok(pr.result.sufficient, pr.nom + ' devrait être calculable avec ce jeu de données complet');
+  });
+
+  const signature = computeSignatureBiomecanique(profileResults);
+  assert.strictEqual(signature.sufficient, true);
+  assert.ok(typeof signature.signature === 'string' && signature.signature.startsWith('Signature biomécanique'));
+  assert.ok(Array.isArray(signature.facteursLimitantsRelatifs));
 });
 
 console.log('');

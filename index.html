@@ -882,7 +882,7 @@ function validateClinicalConcordance(biomecaLevel,qualiteLevel){
 var BIOMECA_PROFILES_LS_KEY='kinexus_biomeca_profiles';
 var DEFAULT_BIOMECA_PROFILE_ID='default';
 function defaultBiomecaProfilesState(){
-  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,profilTiers:{},profilTierWeights:{}}}]};
+  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,profileEngineRoleWeights:{}}}]};
 }
 function loadBiomecaProfilesState(){
   try{
@@ -1430,9 +1430,17 @@ var BiomechanicalProfileEngine=(function(){
   var ROLE_WEIGHT_DEFAULT={discriminante:1,confirmatoire:0.5,descriptive:0};
   // Poids par rôle, configurables (mêmes valeurs par défaut que master/support/info du Moteur
   // Biomécanique des phases — même philosophie, vocabulaire différent pour ce moteur générique).
+  // Repli par CHAMP (pas par objet entier) : un profil de config par défaut avec
+  // profileEngineRoleWeights:{} (objet vide mais présent, cf. defaultBiomecaProfilesState) ne
+  // doit jamais faire retomber tous les poids à 0 — seul un champ explicitement surchargé change.
   function effectiveRoleWeights(){
     var cfg=activeBiomecaProfile().config||{};
-    return cfg.profileEngineRoleWeights||ROLE_WEIGHT_DEFAULT;
+    var custom=cfg.profileEngineRoleWeights||{};
+    return{
+      discriminante:custom.discriminante!=null?custom.discriminante:ROLE_WEIGHT_DEFAULT.discriminante,
+      confirmatoire:custom.confirmatoire!=null?custom.confirmatoire:ROLE_WEIGHT_DEFAULT.confirmatoire,
+      descriptive:custom.descriptive!=null?custom.descriptive:ROLE_WEIGHT_DEFAULT.descriptive
+    };
   }
   function listVariables(definition){
     return[]
@@ -1502,11 +1510,15 @@ var BiomechanicalProfileEngine=(function(){
   }
   return{compute:compute,listVariables:listVariables};
 })();
+function testKpiDir(testKey,kpiKey){
+  var kpi=TBK[testKey]&&TBK[testKey].kpis.filter(function(k){return k.key===kpiKey;})[0];
+  return kpi?kpi.dir:'max';
+}
 // Étape de préparation (hors du moteur générique — RÉUTILISE validateTechnical()/normPercentile()
 // /testKpiDir() déjà développés, jamais réécrits) : résout les percentiles de toutes les
 // variables d'une définition à partir des valeurs brutes de l'athlète. variableId suit la
-// convention "testKey:kpiKey" (même convention que PTM). Une variable absente ou techniquement
-// invalide est simplement omise du dict retourné — jamais une équivalence inventée.
+// convention "testKey:kpiKey". Une variable absente ou techniquement invalide est simplement
+// omise du dict retourné — jamais une équivalence inventée.
 function resolveProfilePercentiles(definition,valuesByTest,pop,age){
   valuesByTest=valuesByTest||{};
   var out={};
@@ -1522,239 +1534,95 @@ function resolveProfilePercentiles(definition,valuesByTest,pop,age){
 }
 
 // ── BIOMECHANICAL PROFILES (référentiel) ─────────────────────────────────────────────────────
-// Fichier/section INDÉPENDANTE du moteur — BiomechanicalProfileEngine ci-dessus ne contient
-// AUCUNE définition de profil et ne les importe jamais par leur nom. Ajouter un profil = ajouter
-// un objet BiomechanicalProfileDefinition ici, aucune modification du moteur nécessaire (Data
-// Driven, Étape 5 du praticien).
+// Section INDÉPENDANTE du moteur — BiomechanicalProfileEngine ci-dessus ne contient AUCUNE
+// définition de profil et ne les importe jamais par leur nom. Ajouter un profil = ajouter un
+// objet BiomechanicalProfileDefinition ici, aucune modification du moteur nécessaire (Data
+// Driven, Étape 5 du praticien). SEULE source de vérité pour les profils biomécaniques —
+// l'ancien référentiel PTM (Master/Support/Info) a été supprimé (04/08).
 //
-// VOLONTAIREMENT VIDE (décision explicite du praticien, 03/08) : les variables de chaque profil
-// seront définies ensemble dans une étape suivante — ne pas remplir sans validation.
+// MIGRATION (04/08) : les 5 profils ci-dessous reprennent tels quels les variables déjà
+// définies avec le praticien (02-03/08) dans l'ancien référentiel PTM. Migration jugée
+// automatique et sans risque de dénaturation biomécanique — master/support/info ->
+// discriminante/confirmatoire/descriptive est une pure convention de nommage (mêmes poids par
+// défaut, 1/0.5/0, déjà validés) et chaque variable ci-dessous est identique, au nom près, à ce
+// que le praticien avait explicitement spécifié. Aucune variable nécessitant une interprétation
+// n'a été ajoutée ici : "Contact Time" (Réactif) et "Phase Consistency" (Contrôle) restent
+// absentes, comme décidé précédemment — à discuter ensemble avant tout ajout.
 var BiomechanicalProfiles=[
-  // BiomechanicalProfileDefinition('propulsif','Propulsif','...',[/* ProfileVariable[] */],[],[]),
-  // BiomechanicalProfileDefinition('absorbeur','Absorbeur','...',[],[],[]),
-  // BiomechanicalProfileDefinition('reactif','Réactif','...',[],[],[]),
-  // BiomechanicalProfileDefinition('explosif','Explosif','...',[],[],[]),
-  // BiomechanicalProfileDefinition('controle','Contrôle','...',[],[],[])
+  BiomechanicalProfileDefinition('propulsif','Propulsif','Est-ce que l\'athlète est capable de produire une forte propulsion ?',[
+    ProfileVariable('cmj:peak_power','discriminante'),
+    ProfileVariable('cmj:peak_vel','discriminante'),
+    ProfileVariable('cmj:conc_impulse','discriminante'),
+    ProfileVariable('cmj:force_peak_power','discriminante')
+  ],[
+    ProfileVariable('cmj:conc_mean_power','confirmatoire')
+  ],[
+    ProfileVariable('cmj:height','descriptive'),
+    ProfileVariable('cmj:flight_time','descriptive')
+  ]),
+  BiomechanicalProfileDefinition('absorbeur','Absorbeur','Est-ce que l\'athlète absorbe efficacement les contraintes ?',[
+    ProfileVariable('cmj:force_zero_vel','discriminante'),
+    ProfileVariable('cmj:braking_rfd','discriminante'), // EDRFD
+    ProfileVariable('cmj:landing_peak_force','discriminante'),
+    ProfileVariable('cmj:landing_impulse','discriminante')
+  ],[
+    ProfileVariable('cmj:ecc_mean_power','confirmatoire'),
+    ProfileVariable('cmj:time_to_stab','confirmatoire')
+  ],[
+    ProfileVariable('cmj:landing_duration','descriptive')
+  ]),
+  BiomechanicalProfileDefinition('reactif','Réactif','Est-ce que l\'athlète recycle efficacement l\'énergie élastique ?',[
+    ProfileVariable('cmj:rsi_mod','discriminante'),
+    ProfileVariable('cmj:ft_ct_ratio','discriminante'),
+    ProfileVariable('dj:rsi','discriminante') // "Reactive Strength (DJ)" — variable cross-test
+  ],[],[]),
+  BiomechanicalProfileDefinition('explosif','Explosif','Est-ce que l\'athlète développe très rapidement sa propulsion ?',[
+    ProfileVariable('cmj:conc_impulse_100','discriminante'),
+    ProfileVariable('cmj:peak_power','discriminante'),
+    ProfileVariable('cmj:peak_vel','discriminante')
+  ],[
+    ProfileVariable('cmj:rsi_mod','confirmatoire')
+  ],[
+    ProfileVariable('cmj:height','descriptive')
+  ]),
+  BiomechanicalProfileDefinition('controle','Contrôle','Est-ce que l\'athlète exécute le mouvement de façon stable et organisée ?',[
+    ProfileVariable('cmj:time_to_stab','discriminante'),
+    ProfileVariable('cmj:landing_peak_force_asym','discriminante'), // "Landing Asymmetry"
+    ProfileVariable('cmj:ecc_decel_rfd_asym','discriminante'), // "EDRFD Asymmetry"
+    ProfileVariable('cmj:force_peak_power_asym','discriminante')
+  ],[],[
+    ProfileVariable('cmj:depth','descriptive') // "Countermovement Depth"
+  ])
 ];
-
-// ── PROFILS BIOMÉCANIQUES ────────────────────────────────────────────────────────────────────
-// Troisième niveau d'analyse, INDÉPENDANT des qualités fonctionnelles et des phases
-// biomécaniques (décision explicite du praticien, 02-03/08) :
-//   - les qualités décrivent des capacités physiques (Force, Puissance, Réactivité...) ;
-//   - les phases décrivent l'exécution du mouvement (Unloading, Braking, Concentric...) ;
-//   - les PROFILS biomécaniques regroupent des variables qui décrivent LE MÊME MÉCANISME —
-//     jamais une qualité, une phase ou un résultat.
-// Ces trois niveaux sont complémentaires et ne doivent jamais être confondus.
-//
-// TERMINOLOGIE (précision du praticien, 03/08) : "Profil biomécanique" désigne une des 5
-// catégories ci-dessous (Propulsif, Absorbeur, Réactif, Explosif, Contrôle). Le terme
-// "Dominance" est réservé EXCLUSIVEMENT à la comparaison entre profils (le fait que l'un soit
-// significativement plus développé que les autres chez un même athlète) — voir le module
-// ANALYSE DE DOMINANCE RELATIVE plus bas. Les deux notions ne doivent jamais être confondues,
-// dans le code comme dans le rapport.
-//
-// 5 profils (le praticien a demandé l'ajout d'un 5e, Contrôle, absent de la proposition initiale
-// à 4 — deux athlètes à puissance/propulsion/RSI identiques peuvent avoir une organisation du
-// mouvement très différente ; aucun des 4 premiers profils ne le décrit) : Propulsif, Absorbeur,
-// Réactif, Explosif, Contrôle. Chaque profil répond à une question mécanique précise
-// (PROFIL_QUESTION ci-dessous) ; les variables de RÉSULTAT (ex. Jump Height pour Propulsif — un
-// résultat, pas un mécanisme de propulsion) sont reléguées en tier 'info', jamais en
-// 'master'/'support'.
-//
-// Structure imposée par le praticien, jamais dépassée : 3-5 variables 'master', 2-3 'support',
-// 0-2 'info' par profil (mêmes noms de tier que CMJ_VAR_META). Poids par TIER uniquement (pas
-// par variable) tant que le référentiel n'a pas été calibré sur des données réelles (~200 CMJ)
-// — voir effectiveProfilTierWeights().
-//
-// Chaque profil est calculé selon DEUX dimensions distinctes et jamais confondues (règle du
-// praticien, 03/08) :
-//  A. NIVEAU ABSOLU (computeProfilBiomecanique ci-dessous) — comparaison aux normes de
-//     référence : percentile individuel conservé par variable, dispersion/cohérence interne,
-//     variables fortes/faibles, conclusion absolue. EXACTEMENT la même mécanique qu'une phase
-//     (computeBiomecaPhase) : le percentile global n'est jamais un jugement en soi.
-//  B. SIGNATURE BIOMÉCANIQUE (computeSignatureBiomecanique, module séparé plus bas) — comparaison
-//     INTRA-individuelle des profils entre eux, totalement indépendante des normes. Un profil
-//     peut être excellent sans être dominant, moyen tout en étant le profil dominant, ou faible
-//     tout en restant le moins faible des profils : ce sont deux informations complémentaires,
-//     jamais résumables à un seul score.
-//
-// Module INDÉPENDANT : ne modifie JAMAIS les scores des qualités, les scores biomécaniques des
-// phases, ni les hypothèses cliniques. Couche DESCRIPTIVE, pas décisionnelle — le Moteur de
-// Synthèse ne consomme pas ce module (cf. note d'architecture plus haut).
-//
-// VARIABLES CROSS-TESTS : certaines variables proviennent d'un test autre que le CMJ (ex.
-// Reactive Strength du Drop Jump pour Réactif). Chaque variable est donc identifiée par
-// "testKey:kpiKey" et computeProfilBiomecanique reçoit l'ensemble des valeurs de l'athlète, pas
-// seulement le CMJ (valuesByTest = {testKey:{kpiKey:valeur}}).
-//
-// PROVENANCE — IMPORTANT : le document source ne fournit aucun critère pour ces profils. Le
-// référentiel PTM ci-dessous reprend la proposition du praticien (02/08) telle quelle — non
-// validée scientifiquement, à ajuster après calibration sur données réelles. Une variable
-// demandée par le praticien n'est PAS implémentée, par principe : si une variable n'existe pas
-// pour un test donné (ou n'a pas d'équivalent démontré), elle est simplement absente du calcul
-// — jamais remplacée par une équivalence biomécanique non démontrée (le moteur est conçu pour
-// fonctionner avec des données partielles) :
-//  - "Phase Consistency" (support du profil Contrôle) : mesure dérivée (consistance essai-à-
-//    essai ou inter-phases) sans formule définie et sans variable brute existante.
-// ("Contact Time" du profil Réactif a été retiré sur consigne explicite du praticien — TTO et
-// Contact Time sont deux notions différentes ; un vrai kpi 'contact_time' existe sur le Drop
-// Jump mais n'a pas été ajouté sans confirmation.)
-var PROFILS_BIOMECANIQUES=['Propulsif','Absorbeur','Réactif','Explosif','Contrôle'];
-var PROFIL_QUESTION={
-  'Propulsif':'Est-ce que l\'athlète est capable de produire une forte propulsion ?',
-  'Absorbeur':'Est-ce que l\'athlète absorbe efficacement les contraintes ?',
-  'Réactif':'Est-ce que l\'athlète recycle efficacement l\'énergie élastique ?',
-  'Explosif':'Est-ce que l\'athlète développe très rapidement sa propulsion ?',
-  'Contrôle':'Est-ce que l\'athlète exécute le mouvement de façon stable et organisée ?'
-};
-// PTM (Profil-Test Matrix, miroir de TFM) : {'testKey:kpiKey':{profilLabel:{tier}}}.
-// tier : 'master'|'support'|'info'.
-var PTM={
-  'cmj:peak_power':        {Propulsif:{tier:'master'}, Explosif:{tier:'master'}},
-  'cmj:peak_vel':          {Propulsif:{tier:'master'}, Explosif:{tier:'master'}},
-  'cmj:conc_impulse':      {Propulsif:{tier:'master'}},
-  'cmj:force_peak_power':  {Propulsif:{tier:'master'}},
-  'cmj:conc_mean_power':   {Propulsif:{tier:'support'}},
-  'cmj:height':            {Propulsif:{tier:'info'}, Réactif:{tier:'support'}, Explosif:{tier:'info'}},
-  'cmj:flight_time':       {Propulsif:{tier:'info'}},
-
-  'cmj:force_zero_vel':    {Absorbeur:{tier:'master'}},
-  'cmj:braking_rfd':       {Absorbeur:{tier:'master'}}, // EDRFD
-  'cmj:landing_peak_force':{Absorbeur:{tier:'master'}},
-  'cmj:landing_impulse':   {Absorbeur:{tier:'master'}},
-  'cmj:ecc_mean_power':    {Absorbeur:{tier:'support'}},
-  'cmj:time_to_stab':      {Absorbeur:{tier:'support'}, Contrôle:{tier:'master'}},
-  'cmj:landing_duration':  {Absorbeur:{tier:'info'}},
-
-  'cmj:rsi_mod':           {Réactif:{tier:'master'}, Explosif:{tier:'support'}},
-  'cmj:ft_ct_ratio':       {Réactif:{tier:'master'}},
-  'dj:rsi':                {Réactif:{tier:'master'}}, // "Reactive Strength (DJ)"
-  // Réactif reste à 3 variables maîtresses (dans la règle 3-5), pas 4 : "Contact Time" retiré,
-  // cf. note de provenance ci-dessus.
-
-  'cmj:conc_impulse_100':  {Explosif:{tier:'master'}},
-
-  'cmj:landing_peak_force_asym':{Contrôle:{tier:'master'}}, // "Landing Asymmetry"
-  'cmj:ecc_decel_rfd_asym':     {Contrôle:{tier:'master'}}, // "EDRFD Asymmetry"
-  'cmj:force_peak_power_asym':  {Contrôle:{tier:'master'}},
-  'cmj:depth':                  {Contrôle:{tier:'info'}} // "Countermovement Depth"
-};
-function effectiveProfilTier(varKey,profilLabel){
-  var cfg=activeBiomecaProfile().config||{};
-  if(cfg.profilTiers&&cfg.profilTiers[varKey]&&cfg.profilTiers[varKey][profilLabel])return cfg.profilTiers[varKey][profilLabel];
-  var ref=PTM[varKey]&&PTM[varKey][profilLabel];
-  return ref&&ref.tier?ref.tier:null;
-}
-// Poids par TIER (pas par variable) — décision du praticien : "toutes les Master = même poids,
-// toutes les Support = même poids, tant qu'on n'a pas calibré sur des données réelles". Valeurs
-// de départ arbitraires (1 / 0.5), entièrement configurables.
-function effectiveProfilTierWeights(){
-  var cfg=activeBiomecaProfile().config||{};
-  return cfg.profilTierWeights||{master:1,support:0.5};
-}
-function effectiveProfilWeight(varKey,profilLabel){
-  var tier=effectiveProfilTier(varKey,profilLabel);
-  var w=effectiveProfilTierWeights();
-  if(tier==='master')return w.master!=null?w.master:1;
-  if(tier==='support')return w.support!=null?w.support:0.5;
-  return 0; // 'info' ou non défini : jamais dans le calcul, uniquement affiché en contexte.
-}
-function testKpiDir(testKey,kpiKey){
-  var kpi=TBK[testKey]&&TBK[testKey].kpis.filter(function(k){return k.key===kpiKey;})[0];
-  return kpi?kpi.dir:'max';
-}
-// A. NIVEAU ABSOLU — calcule le résultat d'UN profil biomécanique. Même mécanique que
-// computeBiomecaPhase (percentile continu, dispersion, cohérence interne, variables
-// fortes/faibles) mais indexée sur PTM et potentiellement multi-tests.
-// valuesByTest = {testKey:{kpiKey:valeur}}.
-function computeProfilBiomecanique(profilLabel,valuesByTest,pop,age){
-  valuesByTest=valuesByTest||{};
-  var varKeys=Object.keys(PTM).filter(function(k){return PTM[k][profilLabel];});
-  var entries=varKeys.map(function(varKey){
-    var parts=varKey.split(':'),testKey=parts[0],kpiKey=parts[1];
-    var raw=(valuesByTest[testKey]||{})[kpiKey];
-    var tier=effectiveProfilTier(varKey,profilLabel);
-    var weight=effectiveProfilWeight(varKey,profilLabel);
-    var tech=validateTechnical(kpiKey,raw);
-    if(!tech.ok)return{varKey:varKey,testKey:testKey,kpiKey:kpiKey,tier:tier,weight:weight,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
-    var pct=normPercentile(testKey,kpiKey,pop,age,raw,testKpiDir(testKey,kpiKey));
-    return{varKey:varKey,testKey:testKey,kpiKey:kpiKey,tier:tier,weight:weight,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
+// Point d'entrée pratique (Niveau 1) : calcule le résultat de TOUS les profils du référentiel
+// BiomechanicalProfiles pour un athlète donné. Pure orchestration, aucune logique propre —
+// utilisé pour l'affichage individuel des profils et comme entrée de computeSignatureBiomeca
+// nique (Niveau 2, ci-dessous).
+function computeAllBiomechanicalProfiles(valuesByTest,pop,age){
+  return BiomechanicalProfiles.map(function(definition){
+    var percentiles=resolveProfilePercentiles(definition,valuesByTest,pop,age);
+    return{id:definition.id,nom:definition.nom,definition:definition,result:BiomechanicalProfileEngine.compute(definition,percentiles)};
   });
-  var masterVars=entries.filter(function(e){return e.tier==='master';});
-  var masterOk=masterVars.filter(function(e){return e.status==='ok';});
-  var threshold=effectiveMissingDataThreshold();
-  var ratio=masterVars.length?masterOk.length/masterVars.length:0;
-  if(masterVars.length===0||ratio<threshold){
-    return{
-      profil:profilLabel,sufficient:false,score:null,
-      reason:masterVars.length===0?'Aucune variable maîtresse définie pour ce profil (référentiel non encore calibré).':'Données insuffisantes pour calculer ce profil ('+masterOk.length+'/'+masterVars.length+' variables maîtresses disponibles).',
-      entries:entries
-    };
-  }
-  // Le percentile global n'est qu'une moyenne pondérée de SYNTHÈSE — chaque percentile
-  // individuel, la dispersion entre variables et la cohérence interne restent exposés
-  // séparément, et l'interprétation (profilConclusionAbsolue ci-dessous) ne se fonde JAMAIS sur
-  // le seul percentile global.
-  var usable=entries.filter(function(e){return e.status==='ok'&&(e.tier==='master'||e.tier==='support');});
-  var sumW=0,sumWP=0;
-  usable.forEach(function(e){sumW+=e.weight;sumWP+=e.weight*e.percentile;});
-  var score=sumW>0?sumWP/sumW:null;
-  var coherenceInterne=stdDevOf(masterOk.map(function(e){return e.percentile;}));
-  var niveau=classifyBand(effectiveBiomecaBands('niveauAbsolu'),score);
-  var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceInterne'),coherenceInterne);
-  return{
-    profil:profilLabel,sufficient:true,score:score,percentile:score,niveau:niveau,
-    coherenceInterne:coherenceInterne,coherenceBand:coherenceBand,
-    entries:entries,masterAvailable:masterOk.length,masterTotal:masterVars.length,
-    variablesFaibles:usable.filter(function(e){return e.percentile<40;}),
-    variablesFortes:usable.filter(function(e){return e.percentile>=60;})
-  };
-}
-// Conclusion ABSOLUE d'un profil — répond à "quel est le niveau de ce profil par rapport à la
-// population de référence ?", jamais à sa dominance relative (module séparé). Expose TOUJOURS le
-// raisonnement (percentile global + cohérence interne + variables fortes/faibles), jamais un
-// jugement fondé sur le seul percentile global.
-function profilConclusionAbsolue(profilResult){
-  if(!profilResult.sufficient)return{text:profilResult.reason};
-  var niveauLabel=profilResult.niveau?profilResult.niveau.label:'indéterminé';
-  var cohLabel=profilResult.coherenceBand?profilResult.coherenceBand.label:'indéterminée';
-  var heterogene=!!profilResult.coherenceBand&&['Faible cohérence','Très faible cohérence'].indexOf(profilResult.coherenceBand.label)>=0;
-  var text;
-  if(heterogene){
-    text='Le profil "'+profilResult.profil+'" est hétérogène (cohérence interne "'+cohLabel+'") : ses variables ne racontent pas la même histoire. Le percentile global ('+profilResult.score.toFixed(0)+') ne doit pas être interprété seul — se référer aux variables individuelles ci-dessous.';
-  }else{
-    var qualif=['Exceptionnel','Excellent','Très bon'].indexOf(niveauLabel)>=0?'élevé':(niveauLabel==='Dans les normes'?'dans les normes':'faible');
-    text='Le profil "'+profilResult.profil+'" est '+qualif+' ('+profilResult.score.toFixed(0)+'e percentile, niveau "'+niveauLabel+'"), avec une cohérence interne "'+cohLabel+'" entre ses variables.';
-  }
-  if(profilResult.variablesFortes.length)text+=' Variable(s) forte(s) : '+profilResult.variablesFortes.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
-  if(profilResult.variablesFaibles.length)text+=' Variable(s) faible(s) : '+profilResult.variablesFaibles.map(function(e){return e.kpiKey+' ('+e.percentile.toFixed(0)+'e percentile)';}).join(', ')+'.';
-  return{text:text,heterogene:heterogene};
-}
-// Point d'entrée du niveau absolu. Input : valuesByTest = {testKey:{kpiKey:valeur}} — l'ensemble
-// des valeurs de l'athlète (CMJ et, le cas échéant, Drop Jump), pas seulement le CMJ. Output :
-// les 5 profils, chacun indépendamment traçable.
-function computeProfilsBiomecaniquesEngine(valuesByTest,pop,age){
-  var out={};
-  PROFILS_BIOMECANIQUES.forEach(function(p){out[p]=computeProfilBiomecanique(p,valuesByTest,pop,age);});
-  return out;
 }
 
 // ── SIGNATURE BIOMÉCANIQUE ───────────────────────────────────────────────────────────────────
 // Nomenclature finale (praticien, 03/08) : le rapport est organisé en deux niveaux, jamais
 // fusionnés —
-//   Niveau 1 — PROFILS BIOMÉCANIQUES (module ci-dessus) : présentation individuelle de chaque
-//     profil, analyse ABSOLUE par rapport aux normes ("quels mécanismes cet athlète a-t-il
-//     développés par rapport aux normes ?").
+//   Niveau 1 — PROFILS BIOMÉCANIQUES (BiomechanicalProfileEngine + référentiel BiomechanicalPro
+//     files ci-dessus) : présentation individuelle de chaque profil, analyse ABSOLUE par rapport
+//     aux normes ("quels mécanismes cet athlète a-t-il développés par rapport aux normes ?").
 //   Niveau 2 — SIGNATURE BIOMÉCANIQUE (ce module) : analyse COMPARATIVE entre les profils
 //     ("comment ces profils s'organisent-ils entre eux chez cet athlète ?"). Le mot "Dominance"
 //     est réservé exclusivement au résultat de cette comparaison (une propriété de
 //     l'organisation biomécanique, jamais d'un profil pris isolément).
 //
-// Module INDÉPENDANT, exécuté UNIQUEMENT après le calcul des profils biomécaniques
-// (computeProfilsBiomecaniquesEngine ci-dessus). Ne modifie JAMAIS les percentiles des profils,
-// les qualités, les phases, les transitions ni les hypothèses cliniques — produit uniquement une
-// synthèse comparative. Consomme UNIQUEMENT les percentiles globaux déjà calculés, jamais les
-// variables brutes.
+// Module INDÉPENDANT, exécuté UNIQUEMENT après le calcul des profils biomécaniques (Niveau 1).
+// Ne modifie JAMAIS les percentiles des profils, les qualités, les phases, les transitions ni
+// les hypothèses cliniques — produit uniquement une synthèse comparative. Consomme UNIQUEMENT
+// les percentiles globaux déjà calculés, jamais les variables brutes. Ne connaît, comme le
+// moteur générique, AUCUN profil par son nom : profileResults est une liste quelconque
+// {id, nom, result:BiomechanicalProfileResult} construite par l'appelant à partir de
+// BiomechanicalProfiles — ajouter/retirer un profil du référentiel ne modifie jamais ce module.
 //
 // Calcul (règle du praticien) :
 //  - Profil dominant + intensité de la dominance : écart = percentile du profil le plus élevé -
@@ -1769,9 +1637,9 @@ function computeProfilsBiomecaniquesEngine(valuesByTest,pop,age){
 //  - Équilibre biomécanique global : dispersion (écart-type) des percentiles de TOUS les profils
 //    exploitables, classée via 'equilibreProfils' — une vue complémentaire qui peut diverger de
 //    l'intensité de dominance (ex. un profil très en avance mais les autres eux-mêmes dispersés).
-function computeSignatureBiomecanique(profilsResult){
-  var suff=PROFILS_BIOMECANIQUES.filter(function(p){return profilsResult[p]&&profilsResult[p].sufficient;})
-    .map(function(p){return{profil:p,percentile:profilsResult[p].score};})
+function computeSignatureBiomecanique(profileResults){
+  var suff=(profileResults||[]).filter(function(pr){return pr.result&&pr.result.sufficient;})
+    .map(function(pr){return{profil:pr.nom,percentile:pr.result.percentileGlobal};})
     .sort(function(a,b){return b.percentile-a.percentile;});
   if(suff.length<2){
     return{
@@ -1860,12 +1728,12 @@ function syntheseOrganisationBiomecanique(phases){
   return{label:'Organisation homogène faible',reason:'Aucune phase individuellement limitante, mais niveau moyen classé "'+(niveauMoyenBand?niveauMoyenBand.label:'indéterminé')+'".'};
 }
 
-// (Les profils biomécaniques — Propulsif/Absorbeur/Réactif/Explosif/Contrôle — et leur analyse
-// (leur signature biomécanique) NE sont PAS calculés ici : sur décision explicite du praticien,
-// ils constituent un troisième niveau d'analyse indépendant des phases, avec leur propre
-// référentiel de variables/poids. Voir les modules "PROFILS BIOMÉCANIQUES" et "SIGNATURE
-// BIOMÉCANIQUE" plus haut (computeProfilsBiomecaniquesEngine, computeSignatureBiomecanique) —
-// jamais consommés par la Synthèse, qui reste limitée aux phases/transitions/confiance.)
+// (Les profils biomécaniques — Propulsif/Absorbeur/Réactif/Explosif/Contrôle — et leur signature
+// biomécanique NE sont PAS calculés ici : sur décision explicite du praticien, ils constituent un
+// troisième niveau d'analyse indépendant des phases, avec leur propre référentiel de variables
+// (BiomechanicalProfiles). Voir "BIOMECHANICAL PROFILE ENGINE" et "SIGNATURE BIOMÉCANIQUE" plus
+// haut (computeAllBiomechanicalProfiles, computeSignatureBiomecanique) — jamais consommés par la
+// Synthèse, qui reste limitée aux phases/transitions/confiance.)
 
 // ÉTAPE 4 — potentiel de progression : échelle UNIQUE validée (Faible/Modéré/Important/Très
 // important), amplitude = meilleure phase - moins bonne phase parmi les phases exploitables.
@@ -1975,7 +1843,7 @@ function syntheseResumeExecutif(phases,coherence,organisation,potentiel,priorite
 // variables brutes). functionScores (optionnel, issu de computeMoteur() déjà existant dans
 // KINEXUS) permet l'Étape 7 (cohérence avec le moteur des qualités). Ne calcule PAS les profils
 // biomécaniques ni leur signature biomécanique (modules indépendants,
-// computeProfilsBiomecaniquesEngine/computeSignatureBiomecanique — jamais une entrée de la
+// computeAllBiomechanicalProfiles/computeSignatureBiomecanique — jamais une entrée de la
 // Synthèse, cf. décision du praticien : couche descriptive, non décisionnelle).
 function computeSyntheseBiomecanique(phases,coherence,functionScores){
   var organisation=syntheseOrganisationBiomecanique(phases);
