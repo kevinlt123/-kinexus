@@ -1860,6 +1860,85 @@ function computeSyntheseBiomecanique(phases,coherence,functionScores){
   };
 }
 
+// ── SYNTHÈSE EXPERTE KINEXUS (double niveau : Profils + Phases) ─────────────────────────────
+// Décision d'architecture du praticien (04/08) : deux analyses biomécaniques INDÉPENDANTES mais
+// TOUJOURS présentées conjointement, jamais l'une au détriment de l'autre —
+//   Niveau 1 — Profils biomécaniques (Signature biomécanique, ci-dessus) : "Quel type de
+//     stratégie biomécanique caractérise ce sportif ?" — DESCRIPTIF, ne détermine jamais les
+//     priorités d'entraînement.
+//   Niveau 2 — Analyse par phase (Moteur de Synthèse Biomécanique, ci-dessus) : "Quelle phase du
+//     mouvement limite actuellement sa performance ?" — détermine les priorités d'intervention.
+// Ce module est une troisième couche de pure COMPOSITION : il ne modifie ni ne recalcule RIEN
+// des deux analyses (aucune modification des moteurs existants, cf. consigne du praticien), il
+// se contente de les combiner en une synthèse narrative. Distinct du "Moteur de Synthèse
+// Biomécanique" ci-dessus (qui reste strictement limité aux phases) — nom différent pour éviter
+// toute nouvelle ambiguïté de vocabulaire.
+//
+// RÈGLE ABSOLUE (praticien) : les recommandations s'appuient PRIORITAIREMENT sur les phases
+// déficitaires (priorité d'intervention) et intègrent les profils (compréhension de la
+// stratégie) — les profils ne remplacent jamais l'analyse par phase, et réciproquement.
+//
+// PROVENANCE : la conversion du libellé d'un profil en expression adjectivale ("Propulsif" ->
+// "stratégie propulsive") est un choix de formulation française pour un vocabulaire fixe et
+// connu (5 profils) — pas une équivalence biomécanique inventée. "Absorbeur" et "Contrôle" n'ont
+// pas d'adjectif naturel en français, d'où l'usage d'un complément de nom ("stratégie
+// d'absorption"/"stratégie de contrôle") plutôt qu'une inflexion grammaticale automatique.
+var PROFIL_STRATEGIE_PHRASE={
+  'Propulsif':'stratégie propulsive',
+  'Absorbeur':'stratégie d\'absorption',
+  'Réactif':'stratégie réactive',
+  'Explosif':'stratégie explosive',
+  'Contrôle':'stratégie de contrôle'
+};
+// Complément utilisé après "à dominante " (ex. "à dominante propulsive", "à dominante de
+// contrôle") — distinct de PROFIL_STRATEGIE_PHRASE qui s'utilise après "une "/"la".
+var PROFIL_DOMINANTE_PHRASE={
+  'Propulsif':'propulsive',
+  'Absorbeur':'d\'absorption',
+  'Réactif':'réactive',
+  'Explosif':'explosive',
+  'Contrôle':'de contrôle'
+};
+function profilStrategiePhrase(profilLabel){
+  return PROFIL_STRATEGIE_PHRASE[profilLabel]||('stratégie '+profilLabel.toLowerCase());
+}
+function profilDominantePhrase(profilLabel){
+  return PROFIL_DOMINANTE_PHRASE[profilLabel]||profilLabel.toLowerCase();
+}
+// Point d'entrée. Input : la sortie de computeSyntheseBiomecanique (Niveau 2, phases) + la
+// sortie de computeSignatureBiomecanique (Niveau 1, profils) — jamais les données brutes.
+function computeSyntheseExperteKinexus(syntheseBiomecanique,signatureBiomecanique){
+  var profilPhrase;
+  if(!signatureBiomecanique||!signatureBiomecanique.sufficient){
+    profilPhrase='Signature biomécanique non déterminable (données insuffisantes sur les profils).';
+  }else if(!signatureBiomecanique.profilDominant){
+    profilPhrase='Le sportif présente une signature biomécanique homogène, sans stratégie dominante identifiable.';
+  }else{
+    profilPhrase='Le sportif utilise principalement une '+profilStrategiePhrase(signatureBiomecanique.profilDominant)+'.';
+  }
+  var principal=syntheseBiomecanique.priorites.principale[0];
+  var phasePhrase=principal
+    ?('La principale limitation biomécanique concerne la phase de '+CMJ_PHASE_LABEL[principal.phase]+'.')
+    :'Aucune phase n\'a été identifiée comme facteur limitant biomécanique.';
+  var syntheseCombinee;
+  if(signatureBiomecanique&&signatureBiomecanique.sufficient&&signatureBiomecanique.profilDominant&&principal){
+    var phaseLabel=CMJ_PHASE_LABEL[principal.phase];
+    syntheseCombinee='Le sportif présente une signature biomécanique à dominante '+profilDominantePhrase(signatureBiomecanique.profilDominant)+
+      ', mais la phase de '+phaseLabel+' constitue le principal facteur limitant. Les axes de travail doivent prioritairement '+
+      'cibler les mécanismes de la phase de '+phaseLabel+', tout en tenant compte de la '+profilStrategiePhrase(signatureBiomecanique.profilDominant)+' déjà développée.';
+  }else{
+    // Données partielles sur l'un des deux niveaux : juxtaposer les deux phrases disponibles
+    // plutôt que fusionner (jamais inventer une synthèse sur une base incomplète).
+    syntheseCombinee=phasePhrase+' '+profilPhrase;
+  }
+  return{
+    profilPhrase:profilPhrase,
+    phasePhrase:phasePhrase,
+    syntheseCombinee:syntheseCombinee,
+    reglePriorite:'Les recommandations s\'appuient prioritairement sur les phases biomécaniques déficitaires (priorité d\'intervention) et intègrent les profils biomécaniques (compréhension de la stratégie) — les profils ne remplacent jamais l\'analyse par phase, et réciproquement.'
+  };
+}
+
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
 // sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
 // les seuils génériques dans THRESHOLDS.
