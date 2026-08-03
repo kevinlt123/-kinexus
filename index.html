@@ -706,6 +706,17 @@ var BIOMECA_DEFAULT_BANDS={
     {min:25,max:45,label:'Faible confiance',color:'#f97316'},
     {min:-1,max:25,label:'Interprétation prudente',color:'#ef4444'}
   ],
+  // Moteur de Confiance (praticien, 04/08) — indice de confiance accompagnant CHAQUE conclusion
+  // Kinexus, distinct de confianceGlobale ci-dessus (qui reste la confiance étroite de l'Étape 8,
+  // Variables→Phase→Transition, inchangée). Mêmes seuils numériques que confianceGlobale (aucun
+  // nouveau seuil inventé), seuls les libellés changent pour correspondre exactement à la demande.
+  confianceKinexus:[
+    {min:80,max:101,label:'Très élevée',color:'#22c55e'},
+    {min:65,max:80,label:'Élevée',color:'#84cc16'},
+    {min:45,max:65,label:'Modérée',color:'#eab308'},
+    {min:25,max:45,label:'Faible',color:'#f97316'},
+    {min:-1,max:25,label:'Très faible',color:'#ef4444'}
+  ],
   // Intensité de la dominance entre profils biomécaniques — écart = percentile du profil le plus
   // élevé moins la moyenne des autres profils (comparaison intra-individuelle, jamais aux
   // normes). Seuils calibrés par le praticien sur ses deux exemples de référence (écart 2 ->
@@ -2196,6 +2207,127 @@ function computePriorisationClinique(phases,coherenceResult,profileResults,funct
     autresObservations:autresObservations,
     prioritesSecondaires:prioritesSecondaires
   };
+}
+
+// ── MOTEUR DE CONFIANCE ───────────────────────────────────────────────────────────────────────
+// Demande du praticien (04/08) : "chaque conclusion générée par Kinexus doit être accompagnée
+// d'un indice de confiance [...] qui ne dépend jamais d'une seule variable [...] mais du niveau
+// de convergence entre les différents moteurs." Ce module calcule cet indice pour une conclusion
+// ANCRÉE SUR UNE PHASE (l'unité de conclusion la plus fréquente dans KINEXUS — cf. Moteur de
+// Priorisation Clinique) à partir des 6 facteurs listés explicitement par le praticien.
+//
+// DISTINCT de "confianceGlobale"/computePhaseConfidence (Hiérarchie de confiance unifiée,
+// Étape 8 du Moteur de Synthèse, plus haut dans ce fichier) : cette hiérarchie répond à une
+// question plus étroite ("le facteur limitant biomécanique de cette phase est-il fiable ?", 3
+// niveaux Variables/Phase-sous-les-normes/Transition) et reste inchangée pour ne pas régresser
+// l'Étape 8 déjà testée manuellement. Le Moteur de Confiance ci-dessous répond à la question plus
+// large posée maintenant ("quelle confiance accorder à N'IMPORTE QUELLE conclusion sur cette
+// phase ?") avec exactement les 6 facteurs demandés — aucune duplication de calcul : chaque
+// facteur RÉUTILISE un résultat déjà produit par un moteur existant, jamais une nouvelle mesure.
+//
+// Cas 1/2/3 de validateClinicalConcordance() réutilisés tels quels (convergent/discordance
+// partielle/discordance importante) et convertis en score de confiance — pas un nouveau barème.
+var CONCORDANCE_CAS_SCORE={1:100,2:50,3:0};
+// Score attribué à chaque palier de la bande 'coherenceInterne' déjà existante (phase ET profil
+// partagent la même bande) — reprend l'ordre déjà présent dans BIOMECA_DEFAULT_BANDS.coherenceInterne
+// (du plus vert au plus rouge), jamais un nouveau seuil numérique.
+var COHERENCE_BAND_SCORE={'Très forte cohérence':100,'Bonne cohérence':75,'Cohérence moyenne':50,'Faible cohérence':25,'Très faible cohérence':0};
+function coherenceBandScore(band){return band&&COHERENCE_BAND_SCORE[band.label]!=null?COHERENCE_BAND_SCORE[band.label]:null;}
+function effectiveConfianceKinexusWeights(){
+  var cfg=activeBiomecaProfile().config||{};
+  var custom=cfg.confianceKinexusWeights||{};
+  var d=1; // par défaut : les 6 facteurs pèsent le même poids (praticien ne précise pas de pondération relative)
+  return{
+    variables:custom.variables!=null?custom.variables:d,
+    profilInterne:custom.profilInterne!=null?custom.profilInterne:d,
+    phaseInterne:custom.phaseInterne!=null?custom.phaseInterne:d,
+    profilPhase:custom.profilPhase!=null?custom.profilPhase:d,
+    donnees:custom.donnees!=null?custom.donnees:d,
+    qualite:custom.qualite!=null?custom.qualite:d
+  };
+}
+// Facteur 1 — nombre de variables concordantes : réutilise intégralement variableConcordance()
+// (déjà construit pour la Hiérarchie de confiance unifiée), jamais recalculé.
+function confidenceLevelVariablesKinexus(phaseResult){
+  if(!phaseResult||!phaseResult.sufficient)return{level:'variables',score:null,reason:'Phase insuffisante : concordance des variables non évaluable.'};
+  var c=variableConcordance(phaseResult.score,phaseResult.entries,'master');
+  return{level:'variables',score:c.score,reason:c.reason};
+}
+// Facteur 2 — cohérence interne du profil biomécanique correspondant (BiomechanicalProfileEngine,
+// bande 'coherenceInterne' déjà calculée par le moteur générique).
+function confidenceLevelProfilInterne(profileResult){
+  if(!profileResult||!profileResult.sufficient)return{level:'profil_interne',score:null,reason:'Profil biomécanique non calculable : cohérence interne non évaluable.'};
+  var s=coherenceBandScore(profileResult.coherenceBand);
+  return{level:'profil_interne',score:s,reason:profileResult.coherenceBand?('Cohérence interne du profil classée "'+profileResult.coherenceBand.label+'".'):'Cohérence interne du profil indisponible.'};
+}
+// Facteur 3 — cohérence interne de la phase (Moteur Biomécanique, bande 'coherenceInterne' déjà
+// calculée dans computeBiomecaPhase — distinct du niveau "Phase" de la Hiérarchie de confiance
+// unifiée, qui teste autre chose : le niveau absolu sous les normes, pas la dispersion interne).
+function confidenceLevelPhaseInterne(phaseResult){
+  if(!phaseResult||!phaseResult.sufficient)return{level:'phase_interne',score:null,reason:'Phase insuffisante : cohérence interne non évaluable.'};
+  var s=coherenceBandScore(phaseResult.coherenceBand);
+  return{level:'phase_interne',score:s,reason:phaseResult.coherenceBand?('Cohérence interne de la phase classée "'+phaseResult.coherenceBand.label+'".'):'Cohérence interne de phase indisponible.'};
+}
+// Facteur 4 — cohérence entre profils et phases : réutilise directement le croisement déjà
+// calculé par le Moteur de Raisonnement Biomécanique (jamais recalculé ici).
+function confidenceLevelProfilPhase(phaseKey,raisonnementBiomecanique){
+  if(!raisonnementBiomecanique)return{level:'profil_phase',score:null,reason:'Moteur de Raisonnement Biomécanique non disponible.'};
+  var croisement=raisonnementBiomecanique.croisements.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0];
+  if(!croisement||!croisement.sufficient)return{level:'profil_phase',score:null,reason:croisement?croisement.reason:'Aucune correspondance profil<->phase définie pour cette phase.'};
+  var score=CONCORDANCE_CAS_SCORE[croisement.concordance.cas];
+  return{level:'profil_phase',score:score==null?null:score,reason:croisement.concordance.reason};
+}
+// Facteur 5 — qualité des données (variables manquantes) : réutilise directement
+// masterAvailable/masterTotal déjà calculés dans computeBiomecaPhase, jamais un nouveau ratio.
+function confidenceLevelDonnees(phaseResult){
+  if(!phaseResult||!phaseResult.sufficient||!phaseResult.masterTotal)return{level:'donnees',score:null,reason:'Complétude des données non évaluable.'};
+  var ratio=phaseResult.masterAvailable/phaseResult.masterTotal;
+  return{level:'donnees',score:Math.round(ratio*100),reason:phaseResult.masterAvailable+'/'+phaseResult.masterTotal+' variables maîtresses disponibles ('+Math.round(ratio*100)+'% de complétude).'};
+}
+// Facteur 6 — cohérence avec les qualités physiques : réutilise directement l'entrée déjà
+// calculée par syntheseCoherenceQualites() (Étape 7 du Moteur de Synthèse Biomécanique).
+function confidenceLevelQualite(phaseKey,coherenceQualites){
+  var entry=coherenceQualites?coherenceQualites[phaseKey]:null;
+  if(!entry||!entry.result)return{level:'qualite',score:null,reason:'Cohérence avec les qualités physiques non disponible.'};
+  var cas=entry.result.cas;
+  var score=CONCORDANCE_CAS_SCORE[cas];
+  return{level:'qualite',score:score==null?null:score,reason:entry.result.reason};
+}
+// Point d'entrée. Input : UNIQUEMENT des résultats déjà calculés (jamais de variable brute) —
+// phases (Moteur Biomécanique), profileResults (Profils Biomécaniques), functionScores (Moteur
+// des Qualités existant), raisonnementBiomecanique (Moteur de Raisonnement, pour le croisement
+// profil<->phase). Chaque facteur se dégrade en "non évaluable" (score null) si sa dépendance
+// est absente, plutôt que d'inventer une valeur — les facteurs non évaluables sont EXCLUS de la
+// moyenne pondérée (jamais comptés comme 0), même principe que l'indice de cohérence globale du
+// Moteur de Raisonnement.
+function computeConfianceKinexus(phaseKey,phases,profileResults,functionScores,raisonnementBiomecanique){
+  var phaseResult=phases[phaseKey];
+  var croisement=raisonnementBiomecanique?raisonnementBiomecanique.croisements.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0]:null;
+  var profilNom=croisement?croisement.profil:null;
+  var profileResult=profilNom?((profileResults||[]).filter(function(pr){return pr.nom===profilNom;})[0]||{}).result:null;
+  var coherenceQualites=syntheseCoherenceQualites(phases,functionScores);
+  var niveaux={
+    variables:confidenceLevelVariablesKinexus(phaseResult),
+    profilInterne:confidenceLevelProfilInterne(profileResult),
+    phaseInterne:confidenceLevelPhaseInterne(phaseResult),
+    profilPhase:confidenceLevelProfilPhase(phaseKey,raisonnementBiomecanique),
+    donnees:confidenceLevelDonnees(phaseResult),
+    qualite:confidenceLevelQualite(phaseKey,coherenceQualites)
+  };
+  var w=effectiveConfianceKinexusWeights();
+  var sumW=0,sumWS=0,disponibles=0;
+  Object.keys(niveaux).forEach(function(k){
+    var n=niveaux[k];
+    if(n.score==null)return;
+    disponibles++;
+    sumW+=w[k]||0;sumWS+=(w[k]||0)*n.score;
+  });
+  if(!disponibles||sumW<=0){
+    return{phase:phaseKey,composite:null,band:null,niveaux:niveaux,signauxDisponibles:disponibles,reason:'Aucun des 6 facteurs de confiance n\'est évaluable pour cette phase.'};
+  }
+  var composite=sumWS/sumW;
+  var band=classifyBand(effectiveBiomecaBands('confianceKinexus'),composite);
+  return{phase:phaseKey,composite:composite,band:band,niveaux:niveaux,signauxDisponibles:disponibles,reason:disponibles+'/6 facteurs de confiance évaluables (moyenne pondérée '+composite.toFixed(1)+').'};
 }
 
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
