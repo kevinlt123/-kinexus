@@ -1304,7 +1304,7 @@ function computeCoherenceEngine(phases){
   if(!analysable.length){
     conclusionGlobale='Données insuffisantes pour analyser la chaîne biomécanique.';
   }else if(analysable.length<CMJ_TRANSITIONS.length){
-    conclusionGlobale='Profil biomécanique complexe nécessitant une interprétation prudente.';
+    conclusionGlobale='Organisation biomécanique complexe nécessitant une interprétation prudente.';
   }else if(incoherentes.length===0){
     var toutesTresCoherentes=coherentes.every(function(t){return t.coherenceBand.label==='Très cohérente';});
     conclusionGlobale=toutesTresCoherentes?'Chaîne biomécanique très cohérente.':'Chaîne biomécanique globalement cohérente.';
@@ -1681,22 +1681,27 @@ function computeSignatureBiomecanique(profilsResult){
 // jamais les variables, les scores de phase, les qualités, les muscles, les systèmes ni les
 // hypothèses cliniques. Il synthétise uniquement des résultats déjà produits ailleurs.
 
-// ÉTAPE 1 — Profil biomécanique global : SYSTÈME UNIQUE à 6 catégories (fusion des 3 systèmes
-// concurrents identifiés à l'analyse de la spécification, validée avec le praticien).
-function syntheseProfilGlobal(phases){
+// ÉTAPE 1 — Organisation biomécanique : SYSTÈME UNIQUE à 6 catégories (fusion des 3 systèmes
+// concurrents identifiés à l'analyse de la spécification, validée avec le praticien). Décrit
+// EXCLUSIVEMENT l'organisation des 5 phases du mouvement — à ne jamais confondre avec les
+// "Profils biomécaniques" (Propulsif/Absorbeur/Réactif/Explosif/Contrôle, module séparé
+// ci-dessus) ni avec la "Signature biomécanique" (comparaison entre ces profils). Renommé le
+// 03/08 sur consigne du praticien : l'ancien terme "Profil biomécanique global" était devenu
+// ambigu depuis l'introduction des profils biomécaniques.
+function syntheseOrganisationBiomecanique(phases){
   var suffKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
   if(suffKeys.length<CMJ_PHASES.length){
-    return{label:'Profil biomécanique complexe',reason:'Au moins une phase n\'a pas pu être interprétée ('+suffKeys.length+'/'+CMJ_PHASES.length+' phases exploitables).'};
+    return{label:'Organisation biomécanique complexe',reason:'Au moins une phase n\'a pas pu être interprétée ('+suffKeys.length+'/'+CMJ_PHASES.length+' phases exploitables).'};
   }
   var limitantes=suffKeys.filter(function(p){return biomecaPhaseConclusion(phases[p]).label==='Principal facteur limitant biomécanique';});
   var niveauMoyen=suffKeys.reduce(function(s,p){return s+phases[p].score;},0)/suffKeys.length;
   var niveauMoyenBand=classifyBand(effectiveBiomecaBands('niveauAbsolu'),niveauMoyen);
-  if(limitantes.length>=3)return{label:'Profil biomécanique complexe',reason:limitantes.length+' phases identifiées comme facteur limitant biomécanique.'};
-  if(limitantes.length===2)return{label:'Profil avec deux phases limitantes',reason:'Phases '+limitantes.map(function(p){return CMJ_PHASE_LABEL[p];}).join(' et ')+' identifiées comme facteurs limitants.'};
-  if(limitantes.length===1)return{label:'Profil avec une phase limitante',reason:'Phase '+CMJ_PHASE_LABEL[limitantes[0]]+' identifiée comme facteur limitant.'};
-  if(niveauMoyenBand&&['Exceptionnel','Excellent','Très bon'].indexOf(niveauMoyenBand.label)>=0)return{label:'Profil homogène performant',reason:'Aucune phase limitante, niveau moyen classé "'+niveauMoyenBand.label+'".'};
-  if(niveauMoyenBand&&niveauMoyenBand.label==='Dans les normes')return{label:'Profil homogène dans les normes',reason:'Aucune phase limitante, niveau moyen dans les normes.'};
-  return{label:'Profil homogène faible',reason:'Aucune phase individuellement limitante, mais niveau moyen classé "'+(niveauMoyenBand?niveauMoyenBand.label:'indéterminé')+'".'};
+  if(limitantes.length>=3)return{label:'Organisation biomécanique complexe',reason:limitantes.length+' phases identifiées comme facteur limitant biomécanique.'};
+  if(limitantes.length===2)return{label:'Organisation avec plusieurs phases limitantes',reason:'Phases '+limitantes.map(function(p){return CMJ_PHASE_LABEL[p];}).join(' et ')+' identifiées comme facteurs limitants.'};
+  if(limitantes.length===1)return{label:'Organisation avec une phase limitante',reason:'Phase '+CMJ_PHASE_LABEL[limitantes[0]]+' identifiée comme facteur limitant.'};
+  if(niveauMoyenBand&&['Exceptionnel','Excellent','Très bon'].indexOf(niveauMoyenBand.label)>=0)return{label:'Organisation homogène performante',reason:'Aucune phase limitante, niveau moyen classé "'+niveauMoyenBand.label+'".'};
+  if(niveauMoyenBand&&niveauMoyenBand.label==='Dans les normes')return{label:'Organisation homogène dans les normes',reason:'Aucune phase limitante, niveau moyen dans les normes.'};
+  return{label:'Organisation homogène faible',reason:'Aucune phase individuellement limitante, mais niveau moyen classé "'+(niveauMoyenBand?niveauMoyenBand.label:'indéterminé')+'".'};
 }
 
 // (Les profils biomécaniques — Propulsif/Absorbeur/Réactif/Explosif/Contrôle — et leur analyse
@@ -1792,7 +1797,7 @@ function syntheseConfianceGlobale(phases,coherence){
 
 // ÉTAPE 9 — résumé exécutif. Structure obligatoire du document source, une phrase par section,
 // conclusion finale de 5 lignes maximum.
-function syntheseResumeExecutif(phases,coherence,profil,potentiel,priorites,coherenceQualites,confianceGlobale){
+function syntheseResumeExecutif(phases,coherence,organisation,potentiel,priorites,coherenceQualites,confianceGlobale){
   var suffKeys=CMJ_PHASES.filter(function(p){return phases[p].sufficient;});
   var niveauMoyen=suffKeys.length?suffKeys.reduce(function(s,p){return s+phases[p].score;},0)/suffKeys.length:null;
   var niveauBand=niveauMoyen!=null?classifyBand(effectiveBiomecaBands('niveauAbsolu'),niveauMoyen):null;
@@ -1800,7 +1805,7 @@ function syntheseResumeExecutif(phases,coherence,profil,potentiel,priorites,cohe
   var pointFortPhase=suffKeys.length?suffKeys.reduce(function(a,b){return phases[b].score>phases[a].score?b:a;}):null;
   return{
     niveauBiomecaniqueGlobal:niveauBand?('Le niveau biomécanique global est classé "'+niveauBand.label+'".'):'Le niveau biomécanique global n\'a pas pu être déterminé (données insuffisantes).',
-    profilBiomecanique:profil.label+'.',
+    organisationBiomecanique:organisation.label+'.',
     principalPointFort:pointFortPhase?('La phase '+CMJ_PHASE_LABEL[pointFortPhase]+' constitue le principal point fort biomécanique.'):'Aucun point fort ne peut être identifié (données insuffisantes).',
     principalFacteurLimitant:principal?('La phase '+CMJ_PHASE_LABEL[principal.phase]+' constitue le principal facteur limitant biomécanique.'):'Aucun facteur limitant biomécanique n\'a été identifié.',
     transitionLimitante:coherence.transitionLaPlusLimitante?(coherence.transitionLaPlusLimitante.key+' : '+coherence.transitionLaPlusLimitante.text):'Aucune transition limitante identifiée.',
@@ -1817,15 +1822,15 @@ function syntheseResumeExecutif(phases,coherence,profil,potentiel,priorites,cohe
 // computeProfilsBiomecaniquesEngine/computeSignatureBiomecanique — jamais une entrée de la
 // Synthèse, cf. décision du praticien : couche descriptive, non décisionnelle).
 function computeSyntheseBiomecanique(phases,coherence,functionScores){
-  var profil=syntheseProfilGlobal(phases);
+  var organisation=syntheseOrganisationBiomecanique(phases);
   var potentiel=synthesePotentielProgression(phases);
   var priorites=synthesePriorites(phases,coherence);
   var pointsAPreserver=synthesePointsAPreserver(phases,coherence);
   var coherenceQualites=syntheseCoherenceQualites(phases,functionScores);
   var confianceGlobale=syntheseConfianceGlobale(phases,coherence);
-  var resume=syntheseResumeExecutif(phases,coherence,profil,potentiel,priorites,coherenceQualites,confianceGlobale);
+  var resume=syntheseResumeExecutif(phases,coherence,organisation,potentiel,priorites,coherenceQualites,confianceGlobale);
   return{
-    profil:profil,potentiel:potentiel,priorites:priorites,
+    organisation:organisation,potentiel:potentiel,priorites:priorites,
     pointsAPreserver:pointsAPreserver,coherenceQualites:coherenceQualites,
     confianceGlobale:confianceGlobale,resume:resume
   };
