@@ -2640,28 +2640,24 @@ function computeAsymPhase(phaseKey,cmjValues,pop,age){
     membreDominant:asymMembreDominant(def.principales,cmjValues)
   };
 }
-// ── Specification Pattern (RÈGLES DE CONCLUSION) : une asymétrie n'est retenue que si les 4
+// ── Specification Pattern (RÈGLES DE CONCLUSION) : une asymétrie n'est retenue que si les 3
 // conditions sont réunies simultanément — même architecture de gate que
-// BiomecaSpecs.facteurLimitantBiomecanique, avec une condition supplémentaire explicitement
-// demandée ("une asymétrie ne doit jamais être conclue sur une seule variable").
+// BiomecaSpecs.facteurLimitantBiomecanique.
 //
-// ⚠️ CONSÉQUENCE FACTUELLE À SIGNALER : avec les correspondances CONFIRMÉES aujourd'hui
-// (ASYM_PERFORMANCE_EQUIVALENT), aucune phase n'a plus d'UNE seule variable principale
-// (Braking:1, Concentric:1, Landing:1, Unloading:0, Flight:0). La condition "plusieurs
-// variables principales convergent" (>=2) ne peut donc être satisfaite par AUCUNE phase avec
-// les données actuellement disponibles dans ForceDecks/KINEXUS — implémentée telle quelle,
-// sans l'assouplir unilatéralement. Toute phase visiblement asymétrique sera donc classée
-// "Asymétrie non concluante" tant que ce point n'est pas tranché avec le praticien.
+// PHILOSOPHIE (décision du praticien, 04/08, corrige la version précédente) : "une conclusion
+// doit toujours être proportionnelle au niveau de preuve disponible" — MAIS le nombre de
+// variables disponibles ne conditionne JAMAIS la possibilité de conclure, seulement le niveau de
+// confiance de la conclusion. Une seule variable principale peut donc suffire à retenir une
+// asymétrie (pas de condition "plusieurs principales" ici, contrairement à la version
+// précédente) — c'est CONFIANCE_SIGNAUX_ASYMETRIE ci-dessous qui adapte automatiquement l'indice
+// de confiance à la richesse de preuve réellement disponible, et confianceSuffisante qui agit
+// comme seul garde-fou (une conclusion fondée sur une preuve trop mince n'aura simplement pas une
+// confiance suffisante pour passer ce dernier filtre).
 var AsymSpecs={
   asymetrieSousLesNormes:makeSpec('Asymétrie sous les normes de symétrie',function(ctx){
     var band=ctx.asym.niveau;
     var sousNormes=!!band&&['Asymétrie importante','Asymétrie majeure','Asymétrie à surveiller'].indexOf(band.label)>=0;
     return{result:sousNormes,reason:band?('Niveau d\'asymétrie classé "'+band.label+'" (score '+ctx.asym.score.toFixed(1)+').'):'Score d\'asymétrie indisponible.'};
-  }),
-  plusieursVariablesPrincipalesConvergentes:makeSpec('Plusieurs variables principales convergent',function(ctx){
-    var principalesOk=ctx.asym.principales.filter(function(e){return e.status==='ok';});
-    var convergentes=principalesOk.filter(function(e){return e.percentile<40;});
-    return{result:convergentes.length>=2,reason:convergentes.length+'/'+principalesOk.length+' variable(s) principale(s) convergente(s) (asymétrique, <40e percentile) — au moins 2 requises pour conclure.'};
   }),
   coherenceInterneSuffisante:makeSpec('Cohérence interne des variables principales suffisante',function(ctx){
     var band=ctx.asym.coherenceBand;
@@ -2675,26 +2671,45 @@ var AsymSpecs={
   })
 };
 AsymSpecs.asymetrieRetenue=AsymSpecs.asymetrieSousLesNormes
-  .and(AsymSpecs.plusieursVariablesPrincipalesConvergentes)
   .and(AsymSpecs.coherenceInterneSuffisante)
   .and(AsymSpecs.confianceSuffisante);
 // ── Moteur de Confiance (couche transversale déjà construite) appliqué à l'asymétrie de phase —
 // référentiel de signaux dédié (CONFIANCE_SIGNAUX_ASYMETRIE), aucune logique nouvelle dans
 // computeIndiceConfiance() lui-même.
+//
+// RÈGLE UNIVERSELLE (praticien, 04/08) : "la confiance est toujours fonction du niveau de preuve
+// disponible, jamais d'un nombre arbitraire de variables." variables_principales et
+// coherence_interne mesurent une CONCORDANCE ENTRE plusieurs variables — avec une seule variable
+// disponible, cette notion est triviale (rien à comparer, stdDevOf=0 par construction) et donc
+// trompeuse si comptée comme une preuve à part entière : ces deux signaux ne s'appliquent
+// désormais que si >=2 variables principales sont disponibles. richesse_preuve (nouveau) porte
+// alors seul la confiance quand une seule variable existe, opérationnalisant explicitement les 3
+// exemples du praticien : 1 principale seule -> confiance limitée ; 1 principale + secondaire(s)
+// concordante(s) -> confiance augmentée ; plusieurs principales concordantes -> confiance
+// maximale. Barème Kinexus par défaut (50 de base, +20 par secondaire concordante, 100 dès 2
+// principales convergentes) — documenté ici, à valider, jamais un seuil cité sans trace.
 var CONFIANCE_SIGNAUX_ASYMETRIE=[
   {cle:'variables_principales',poidsDefaut:1,extractor:function(ctx){
     if(!ctx.asym||!ctx.asym.sufficient)return null;
-    var entries=ctx.asym.principales.map(function(e){return{tier:'principale',status:e.status,percentile:e.percentile};});
-    return variableConcordance(ctx.asym.score,entries,'principale').score;
+    var principalesOk=ctx.asym.principales.filter(function(e){return e.status==='ok';});
+    if(principalesOk.length<2)return null; // concordance non évaluable avec une seule variable
+    return variableConcordance(ctx.asym.score,ctx.asym.principales,'principale').score;
   }},
   {cle:'coherence_interne',poidsDefaut:1,extractor:function(ctx){
     if(!ctx.asym||!ctx.asym.sufficient)return null;
+    var principalesOk=ctx.asym.principales.filter(function(e){return e.status==='ok';});
+    if(principalesOk.length<2)return null; // cohérence non évaluable avec une seule variable (rien à comparer)
     return coherenceBandScore(ctx.asym.coherenceBand);
   }},
-  {cle:'donnees_secondaires',poidsDefaut:1,extractor:function(ctx){
-    if(!ctx.asym||!ctx.asym.sufficient||!ctx.asym.secondaires.length)return null;
-    var secOk=ctx.asym.secondaires.filter(function(e){return e.status==='ok';}).length;
-    return Math.round((secOk/ctx.asym.secondaires.length)*100);
+  {cle:'richesse_preuve',poidsDefaut:1,extractor:function(ctx){
+    if(!ctx.asym||!ctx.asym.sufficient)return null;
+    var principalesOk=ctx.asym.principales.filter(function(e){return e.status==='ok';});
+    var principalesConvergentes=principalesOk.filter(function(e){return e.percentile<40;}).length;
+    if(!principalesConvergentes)return null; // aucune asymétrie principale détectée -> signal non pertinent ici
+    if(principalesConvergentes>=2)return 100; // plusieurs principales concordantes -> confiance maximale
+    var secondairesOk=ctx.asym.secondaires.filter(function(e){return e.status==='ok';});
+    var secondairesConvergentes=secondairesOk.filter(function(e){return e.percentile<40;}).length;
+    return Math.min(100,50+20*secondairesConvergentes); // 1 seule principale : confiance limitée, augmentée par chaque secondaire concordante
   }}
 ];
 function effectiveConfianceAsymetrieWeights(){
