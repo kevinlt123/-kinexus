@@ -1792,15 +1792,38 @@ function synthesePointsAPreserver(phases,coherence){
   }).map(function(p){return{phase:p,score:phases[p].score,niveau:phases[p].niveau};});
 }
 
-// ÉTAPE 7 — cohérence entre les moteurs (biomécanique vs qualités fonctionnelles). PROVENANCE :
-// l'association phase -> qualité fonctionnelle est un choix Kinexus (le document ne le précise
-// pas), limitée aux 4 phases productrices de force les plus directement apparentées à une
-// qualité existante du moteur des qualités déjà présent dans KINEXUS — Unloading n'a pas
-// d'équivalent direct et n'est pas comparé. À valider avec l'équipe clinique.
-var CMJ_PHASE_TO_QUALITY={braking:'Force',concentric:'Puissance',flight:'Réactivité',landing:'Absorption'};
+// ÉTAPE 7 — cohérence entre les moteurs (biomécanique vs qualités fonctionnelles). MAPPING
+// OFFICIEL fourni par le praticien (04/08) — remplace l'ancien mapping provisoire Kinexus :
+//   Unloading -> Préparation du mouvement | Braking -> Absorption
+//   Concentric -> Propulsion / Production de force | Flight -> Projection
+//   Landing -> Contrôle / Dissipation des forces
+// Seul "Absorption" correspond aujourd'hui à une qualité réellement calculée par le moteur des
+// qualités existant (FUNCTIONS/functionScores : Mobilité/Force/Explosivité/Puissance/Réactivité/
+// Absorption/Stabilisation/Contrôle Frontal/Contrôle Sensoriel/Endurance). Les 4 autres libellés
+// sont les noms officiels désormais, mais AUCUNE qualité existante ne porte ce nom exact —
+// aucune équivalence n'est inventée ici : la comparaison biomécanique <-> qualité se dégrade
+// naturellement en "donnée insuffisante" pour ces 4 phases tant qu'un score correspondant
+// n'existe pas sous ce nom précis dans functionScores. À signaler au praticien.
+var CMJ_PHASE_TO_QUALITY={unloading:'Préparation du mouvement',braking:'Absorption',concentric:'Propulsion / Production de force',flight:'Projection',landing:'Contrôle / Dissipation des forces'};
 function ordinalLevel(score){
   if(score==null)return null;
   return score<40?'faible':(score<75?'normal':'eleve');
+}
+// functionScores[qualite] n'est jamais un percentile 0-100 : c'est un statut catégoriel
+// {status:'vert'|'jaune'|'orange'|'rouge',...} produit par computeMoteur(). BUG corrigé (04/08) :
+// ce module appelait auparavant ordinalLevel() directement sur cet objet (comparaison objet<40
+// toujours fausse en JS -> résultat 'eleve' systématique, jamais détecté car aucun test persisté
+// ne couvrait ce cas). Conversion via la même règle de regroupement rouge/orange="déficit" que le
+// reste de l'application (ex. calcul des déficits prioritaires : statut rouge ou orange), jamais un
+// nouveau seuil inventé.
+function qualiteStatutOrdinal(statusObj){
+  if(!statusObj||statusObj.status==null)return null;
+  switch(statusObj.status){
+    case'rouge':case'orange':return'faible';
+    case'jaune':return'normal';
+    case'vert':return'eleve';
+    default:return null;
+  }
 }
 function syntheseCoherenceQualites(phases,functionScores){
   var out={};
@@ -1812,7 +1835,7 @@ function syntheseCoherenceQualites(phases,functionScores){
       return;
     }
     var biomecaLevel=ordinalLevel(ph.score);
-    var qualiteLevel=ordinalLevel(functionScores[qualiteLabel]);
+    var qualiteLevel=qualiteStatutOrdinal(functionScores[qualiteLabel]);
     out[phaseKey]={qualite:qualiteLabel,biomecaLevel:biomecaLevel,qualiteLevel:qualiteLevel,result:validateClinicalConcordance(biomecaLevel,qualiteLevel)};
   });
   return out;
@@ -2071,7 +2094,8 @@ function computeMoteurRaisonnementBiomecanique(profileResults,phases,coherenceRe
 //  4. Profil biomécanique correspondant -> PROFIL_PHASE_CORRESPONDENCE (reverse lookup) +
 //     ordinalLevel() sur son percentile (déjà utilisés par le Moteur de Raisonnement)
 //  5. Qualité physique associée -> CMJ_PHASE_TO_QUALITY (déjà défini pour l'Étape 7 de
-//     computeSyntheseBiomecanique) + ordinalLevel()
+//     computeSyntheseBiomecanique) + qualiteStatutOrdinal() (jamais ordinalLevel(), qui attend un
+//     percentile 0-100 — functionScores contient un statut catégoriel, pas un percentile)
 //  6. Cohérence biomécanique -> le croisement correspondant du Moteur de Raisonnement
 //     (concordance.cas===1), ou à défaut l'indice global
 //
@@ -2094,8 +2118,8 @@ function dossierPreuvesPhase(phaseKey,phases,coherenceResult,profileResults,func
   var profilEntry=profilNom?(profileResults||[]).filter(function(pr){return pr.nom===profilNom;})[0]:null;
   var profilDeficient=!!(profilEntry&&profilEntry.result&&profilEntry.result.sufficient&&ordinalLevel(profilEntry.result.percentileGlobal)==='faible');
   var qualiteNom=CMJ_PHASE_TO_QUALITY[phaseKey]||null;
-  var qualiteScore=(qualiteNom&&functionScores)?functionScores[qualiteNom]:null;
-  var qualiteDeficiente=qualiteScore!=null&&ordinalLevel(qualiteScore)==='faible';
+  var qualiteStatut=(qualiteNom&&functionScores)?functionScores[qualiteNom]:null;
+  var qualiteDeficiente=qualiteStatutOrdinal(qualiteStatut)==='faible';
   var croisement=(profilNom&&raisonnementBiomecanique)?raisonnementBiomecanique.croisements.filter(function(c){return c.profil===profilNom;})[0]:null;
   var coherenceForte;
   if(croisement&&croisement.sufficient){
@@ -2121,6 +2145,36 @@ function dossierPreuvesPhase(phaseKey,phases,coherenceResult,profileResults,func
   };
 }
 var PRIORITE_TIER_ORDER={'Très forte':3,'Forte':2,'Modérée':1,'Faible':0};
+// Cas exceptionnel (précision du praticien, 04/08) : la phase reste TOUJOURS l'unité principale
+// de candidature. Un profil biomécanique ou une qualité physique ne peut devenir un candidat
+// SECONDAIRE que si aucune phase n'est réellement déficitaire (candidats phase = []). Ces
+// candidats secondaires ne sont jamais promus en Priorité 1/2/3 (ce champ reste réservé aux
+// phases) et sont toujours marqués secondaire:true pour ne jamais être confondus avec une
+// priorité clinique fondée sur une phase.
+// "Très déficitaire"/"déficit majeur" repris tel quel des seuils déjà existants, jamais un
+// nouveau seuil inventé : profil -> ordinalLevel (même seuil <40 que partout ailleurs) ; qualité
+// -> statut 'rouge' uniquement (le palier le plus sévère de l'échelle vert/jaune/orange/rouge déjà
+// utilisée dans tout KINEXUS), 'orange' n'est volontairement pas inclus ici (contrairement à
+// qualiteStatutOrdinal) car un candidat secondaire exige un déficit MAJEUR, pas simplement "faible".
+// "un autre moteur présentant un déficit majeur" (mentionné par le praticien) n'est pas implémenté
+// ici : aucun moteur candidat supplémentaire n'a été précisé -> non inventé, à clarifier.
+function candidatsSecondaires(profileResults,functionScores){
+  var out=[];
+  (profileResults||[]).forEach(function(pr){
+    if(pr.result&&pr.result.sufficient&&ordinalLevel(pr.result.percentileGlobal)==='faible'){
+      out.push({type:'profil',nom:pr.nom,percentile:pr.result.percentileGlobal,secondaire:true});
+    }
+  });
+  if(functionScores){
+    Object.keys(functionScores).forEach(function(fn){
+      var sc=functionScores[fn];
+      if(sc&&sc.status==='rouge'){
+        out.push({type:'qualite',nom:fn,status:sc.status,secondaire:true});
+      }
+    });
+  }
+  return out;
+}
 // Point d'entrée. Input : UNIQUEMENT les résultats déjà calculés (jamais les variables brutes) —
 // phases+coherenceResult (Moteur Biomécanique/Cohérence), profileResults (Profils Biomécaniques),
 // functionScores (Moteur des Qualités, déjà existant dans KINEXUS), raisonnementBiomecanique
@@ -2136,9 +2190,11 @@ function computePriorisationClinique(phases,coherenceResult,profileResults,funct
   var eligibles=classes.filter(function(c){return c.niveauPriorite!=='Faible';});
   var top3=[eligibles[0]||null,eligibles[1]||null,eligibles[2]||null];
   var autresObservations=classes.filter(function(c){return top3.indexOf(c)<0;});
+  var prioritesSecondaires=candidats.length===0?candidatsSecondaires(profileResults,functionScores):[];
   return{
     priorite1:top3[0],priorite2:top3[1],priorite3:top3[2],
-    autresObservations:autresObservations
+    autresObservations:autresObservations,
+    prioritesSecondaires:prioritesSecondaires
   };
 }
 
