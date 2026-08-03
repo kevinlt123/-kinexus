@@ -2330,6 +2330,65 @@ function computeConfianceKinexus(phaseKey,phases,profileResults,functionScores,r
   return{phase:phaseKey,composite:composite,band:band,niveaux:niveaux,signauxDisponibles:disponibles,reason:disponibles+'/6 facteurs de confiance évaluables (moyenne pondérée '+composite.toFixed(1)+').'};
 }
 
+// ── MOTEUR D'EXPLICATION ──────────────────────────────────────────────────────────────────────
+// Demande du praticien (04/08) : "toutes les conclusions générées par Kinexus doivent être
+// explicables [...] jamais une conclusion sans pouvoir expliquer précisément pourquoi elle a été
+// générée." Pour chaque conclusion, 7 éléments exigés : règles appliquées, variables utilisées,
+// percentiles concernés, seuils franchis, profils impliqués, phases impliquées, niveau de
+// confiance. Ce module est un COMPOSEUR PUR : il ne calcule rien de nouveau, il rassemble et
+// structure des informations déjà produites par les moteurs existants (chaque moteur biomécanique
+// de KINEXUS expose déjà .reason/.niveau/.entries/.coherenceBand/proof trees — le Moteur
+// d'Explication ne fait qu'organiser cette traçabilité déjà présente en un seul objet exploitable
+// par l'interface, jamais une nouvelle source de vérité).
+// Point d'entrée : explique la conclusion d'UNE phase (Moteur Biomécanique + tout ce qui en
+// découle). dossierPreuves (optionnel) = l'entrée correspondante de computePriorisationClinique
+// pour cette phase, si la conclusion à expliquer est une priorité clinique.
+function explicationConclusionPhase(phaseKey,phases,profileResults,functionScores,raisonnementBiomecanique,dossierPreuves){
+  var phaseResult=phases[phaseKey];
+  if(!phaseResult||!phaseResult.sufficient){
+    return{phase:phaseKey,explicable:false,raison:'Phase insuffisante ("'+(phaseResult&&phaseResult.reason?phaseResult.reason:'données manquantes')+'") : aucune conclusion à expliquer.'};
+  }
+  // 1. Règles appliquées : l'arbre de preuve du Specification Pattern déjà construit pour le gate
+  // "facteur limitant biomécanique", plus (si fourni) la règle de priorisation clinique déjà
+  // calculée par dossierPreuvesPhase — jamais une nouvelle évaluation de règle.
+  var gateFacteurLimitant=BiomecaSpecs.facteurLimitantBiomecanique.isSatisfiedBy({phase:phaseResult});
+  var regleDePriorisation=dossierPreuves?{
+    niveauPriorite:dossierPreuves.niveauPriorite,countMoteurs:dossierPreuves.countMoteurs,
+    coherenceForte:dossierPreuves.coherenceForte,variablesResponsablesCount:(dossierPreuves.variablesResponsables||[]).length
+  }:null;
+  // 2 + 3. Variables utilisées + percentiles concernés : entries déjà calculées par computeBiomecaPhase.
+  var variablesUtilisees=(phaseResult.entries||[]).filter(function(e){return e.status==='ok';}).map(function(e){
+    return{kpi:e.valdName||e.kpiKey,tier:e.tier,percentile:e.percentile};
+  });
+  var percentilesConcernes=variablesUtilisees.map(function(v){return{kpi:v.kpi,percentile:v.percentile};});
+  // 4. Seuils franchis : les bandes déjà attribuées par computeBiomecaPhase (jamais recalculées).
+  var seuilsFranchis=[];
+  if(phaseResult.niveau)seuilsFranchis.push({critere:'Niveau absolu',label:phaseResult.niveau.label});
+  if(phaseResult.deltaBand)seuilsFranchis.push({critere:'Écart relatif (Δ)',label:phaseResult.deltaBand.label});
+  if(phaseResult.coherenceBand)seuilsFranchis.push({critere:'Cohérence interne',label:phaseResult.coherenceBand.label});
+  // 5. Profils impliqués : même correspondance profil<->phase déjà utilisée par le Moteur de
+  // Raisonnement et le Moteur de Priorisation Clinique (jamais une nouvelle règle de mapping).
+  var corrEntry=PROFIL_PHASE_CORRESPONDENCE.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0];
+  var profilNom=corrEntry?corrEntry.profil:null;
+  var profilEntry=profilNom?(profileResults||[]).filter(function(pr){return pr.nom===profilNom;})[0]:null;
+  var profilsImpliques=profilNom?[{nom:profilNom,percentileGlobal:profilEntry&&profilEntry.result?profilEntry.result.percentileGlobal:null,sufficient:!!(profilEntry&&profilEntry.result&&profilEntry.result.sufficient)}]:[];
+  // 6. Phases impliquées : la phase elle-même + les transitions adjacentes déjà définies par le
+  // Moteur de Cohérence Inter-Phases (CMJ_TRANSITIONS), jamais une nouvelle relation entre phases.
+  var transitionsAdjacentes=CMJ_TRANSITIONS.filter(function(t){return t.from===phaseKey||t.to===phaseKey;}).map(function(t){return t.key;});
+  // 7. Niveau de confiance : réutilise intégralement le Moteur de Confiance construit ci-dessus.
+  var niveauConfiance=computeConfianceKinexus(phaseKey,phases,profileResults,functionScores,raisonnementBiomecanique);
+  return{
+    phase:phaseKey,explicable:true,
+    reglesAppliquees:{gateFacteurLimitant:gateFacteurLimitant,priorisation:regleDePriorisation},
+    variablesUtilisees:variablesUtilisees,
+    percentilesConcernes:percentilesConcernes,
+    seuilsFranchis:seuilsFranchis,
+    profilsImpliques:profilsImpliques,
+    phasesImpliquees:[phaseKey].concat(transitionsAdjacentes),
+    niveauConfiance:niveauConfiance
+  };
+}
+
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
 // sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
 // les seuils génériques dans THRESHOLDS.
