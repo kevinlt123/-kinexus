@@ -2905,6 +2905,156 @@ function croisementIndiceConclusion(indiceResultat,scoreExterne){
   };
 }
 
+function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=null&&x!=='';}).map(Number);if(!v.length)return null;return dir==='min'?Math.min.apply(null,v):Math.max.apply(null,v);}
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// MOUVEMENT — ORCHESTRATION + PRÉSENTATION ("La Lecture du Mouvement")
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// Ce bloc ne contient AUCUNE nouvelle règle métier : il (1) résout les valeurs CMJ brutes d'un
+// bilan vers le format attendu par les moteurs déjà figés ci-dessus, (2) les appelle dans l'ordre
+// déjà établi par leurs propres dépendances, (3) traduit leur sortie structurée en texte affichable
+// en réutilisant systématiquement les phrases DÉJÀ PRODUITES par les moteurs (biomecaPhaseConclusion,
+// computeSyntheseExperteKinexus, computeSignatureBiomecanique) plutôt que d'en inventer de
+// nouvelles. La couche UI (MouvementView, plus bas) ne consomme que le résultat de ce bloc.
+//
+// PROFIL_PHASE_CORRESPONDENCE volontairement NON modifié ici : le référentiel validé par le
+// praticien (04/08) assigne à plusieurs profils à la fois une phase ET une transition, mais deux
+// de ces cibles se recoupent (Propulsif ET Explosif -> phase concentric ; Réactif, Propulsif ET
+// Explosif -> transition braking_concentric). Les moteurs consommateurs (dossierPreuvesPhase,
+// explicationConclusionPhase, computeConfianceKinexus) supposent tous UNE correspondance par
+// phase. Étendre le référentiel sans trancher comment agréger plusieurs profils sur une même cible
+// changerait silencieusement le comportement testé de ces moteurs — gap identifié, à traiter
+// séparément avec le praticien, jamais deviné ici.
+
+// Résout cmjValues={kpiKey:valeur} depuis les essais bruts importés (bilan.testData.cmj.trials) —
+// un seul point de résolution par kpi (bestVal, déjà utilisé partout ailleurs dans KINEXUS).
+function resolveCmjValues(bilan){
+  var trials=(((bilan||{}).testData||{}).cmj||{}).trials||{};
+  var out={};
+  Object.keys(CMJ_VAR_META).forEach(function(k){
+    if(!trials[k])return;
+    var v=bestVal(trials[k],cmjKpiDir(k));
+    if(v!=null)out[k]=v;
+  });
+  return out;
+}
+
+// Point d'entrée unique : orchestre les 9 moteurs déjà figés pour UN bilan CMJ. N'effectue aucun
+// calcul biomécanique lui-même — assemble uniquement leurs sorties, dans l'ordre de dépendance déjà
+// défini par les moteurs eux-mêmes (Phases -> Cohérence -> Profils -> Signature -> Synthèse ->
+// Raisonnement -> Priorisation -> Indices -> Confiance/Explication/Alerte par phase).
+// functionScores (Moteur des Qualités, système distinct de celui-ci) volontairement omis pour
+// cette première intégration : chaque moteur en aval dégrade proprement en son absence (mécanisme
+// déjà prévu dans leur conception), jamais un recalcul de substitution improvisé ici.
+function computeMouvementAnalysis(bilan,pop,age){
+  var cmjValues=resolveCmjValues(bilan);
+  var valuesByTest={cmj:cmjValues};
+  var biomeca=computeBiomecaEngine(cmjValues,pop,age);
+  var phases=biomeca.phases;
+  var coherence=computeCoherenceEngine(phases);
+  var profileResults=computeAllBiomechanicalProfiles(valuesByTest,pop,age);
+  var signature=computeSignatureBiomecanique(profileResults);
+  var syntheseBiomecanique=computeSyntheseBiomecanique(phases,coherence,null);
+  var raisonnement=computeMoteurRaisonnementBiomecanique(profileResults,phases,coherence,syntheseBiomecanique);
+  var priorisation=computePriorisationClinique(phases,coherence,profileResults,null,raisonnement);
+  var indices=computeIndicesBiomecaniques(valuesByTest,pop,age);
+  var dossiersByPhase={};
+  [priorisation.priorite1,priorisation.priorite2,priorisation.priorite3].forEach(function(d){if(d)dossiersByPhase[d.phase]=d;});
+  var confiances={},explications={};
+  CMJ_PHASES.forEach(function(p){
+    if(phases[p]&&phases[p].sufficient){
+      confiances[p]=computeConfianceKinexus(p,phases,profileResults,null,raisonnement);
+      explications[p]=explicationConclusionPhase(p,phases,profileResults,null,raisonnement,dossiersByPhase[p]||null);
+    }
+  });
+  var alertes=computeMoteurAlerte(phases,profileResults,null,raisonnement,biomeca.globalWarnings);
+  return{
+    cmjValues:cmjValues,phases:phases,coherence:coherence,profileResults:profileResults,signature:signature,
+    syntheseBiomecanique:syntheseBiomecanique,raisonnement:raisonnement,priorisation:priorisation,indices:indices,
+    dossiersByPhase:dossiersByPhase,confiances:confiances,explications:explications,alertes:alertes
+  };
+}
+
+// ── Couche de présentation : formatage pur, aucune décision clinique. Chaque fonction ci-dessous
+// met seulement en forme un champ déjà décidé par un moteur — jamais un nouveau seuil, jamais une
+// nouvelle règle. Quand une phrase existe déjà (biomecaPhaseConclusion, syntheseCombinee,
+// signature), elle est reprise telle quelle plutôt que reformulée.
+
+// Traduit un percentile en phrase compréhensible sans traduction mentale (demande du praticien) :
+// "22e percentile" -> "Plus faible que 78 % de la population de référence."
+function pctlContext(p){
+  if(p==null)return null;
+  return p<50?('Plus faible que '+Math.round(100-p)+' % de la population de référence'):('Plus élevé que '+Math.round(p)+' % de la population de référence');
+}
+
+// Couleur d'une phase : reflète la PRIORITÉ clinique réelle (déjà décidée par
+// computePriorisationClinique), jamais le score brut seul — une phase non retenue comme priorité
+// reste neutre, jamais teintée sans raison (parcimonie des couleurs, demande du praticien).
+function phaseColor(phaseKey,analysis){
+  var pri=analysis.priorisation;
+  if(pri.priorite1&&pri.priorite1.phase===phaseKey)return C.rouge;
+  if((pri.priorite2&&pri.priorite2.phase===phaseKey)||(pri.priorite3&&pri.priorite3.phase===phaseKey))return C.orange;
+  var ph=analysis.phases[phaseKey];
+  if(ph&&ph.sufficient&&ph.niveau&&['Exceptionnel','Excellent','Très bon'].indexOf(ph.niveau.label)>=0)return C.vert;
+  return C.muted;
+}
+
+// Preuves convergentes d'une phase : variables maîtresses/support utilisées + croisement profil
+// (si ce profil correspond à cette phase) + croisement indice (si un indice a été comparé à cette
+// phase) — chaque ligne provient d'une donnée déjà calculée, jamais recalculée ici.
+function phaseEvidence(phaseKey,analysis){
+  var ph=analysis.phases[phaseKey];
+  if(!ph||!ph.sufficient)return[];
+  var rows=[];
+  (ph.entries||[]).filter(function(e){return e.status==='ok'&&(e.tier==='master'||e.tier==='support');})
+    .sort(function(a,b){return a.percentile-b.percentile;})
+    .forEach(function(e){
+      rows.push({tag:e.tier==='master'?'Variable':'Variable secondaire',label:e.valdName||e.kpiKey,val:pctlContext(e.percentile)});
+    });
+  var corr=PROFIL_PHASE_CORRESPONDENCE.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0];
+  if(corr){
+    var croisement=(analysis.raisonnement.croisements||[]).filter(function(c){return c.profil===corr.profil&&c.cible===corr.cible;})[0];
+    if(croisement&&croisement.sufficient){
+      var pr=(analysis.profileResults||[]).filter(function(p){return p.nom===corr.profil;})[0];
+      rows.unshift({tag:'Stratégie',label:'Profil '+corr.profil,val:pctlContext(pr&&pr.result?pr.result.percentileGlobal:null)});
+    }
+  }
+  var indiceCroisements=[];
+  Object.keys(analysis.indices||{}).forEach(function(id){
+    var ind=analysis.indices[id];
+    if(!ind.resultat||!ind.resultat.sufficient)return;
+    var cr=croisementIndiceConclusion(ind.resultat,ph.score);
+    if(cr.sufficient)indiceCroisements.push({tag:'Indice',label:ind.nom,val:(cr.role==='confirme'?'Confirme le constat':'Nuance le constat')});
+  });
+  return rows.concat(indiceCroisements);
+}
+
+// Rassemble tout ce dont l'écran a besoin pour UNE phase — la seule fonction que MouvementView
+// appelle réellement pour construire son contenu.
+function phasePresentation(phaseKey,analysis){
+  var ph=analysis.phases[phaseKey];
+  var conf=analysis.confiances[phaseKey];
+  var dossier=analysis.dossiersByPhase[phaseKey];
+  if(!ph||!ph.sufficient){
+    return{sufficient:false,phase:phaseKey,reason:ph?ph.reason:'Données indisponibles.'};
+  }
+  var conclusion=biomecaPhaseConclusion(ph);
+  var isTopPriority=!!(analysis.priorisation.priorite1&&analysis.priorisation.priorite1.phase===phaseKey);
+  var headline=isTopPriority&&analysis.raisonnement.syntheseFinale.phaseLimitantePrioritaire
+    ?analysis.raisonnement.syntheseFinale.phaseLimitantePrioritaire
+    :(CMJ_PHASE_LABEL[phaseKey]+' — '+(ph.niveau?ph.niveau.label:'niveau indéterminé'));
+  var liens=(analysis.coherence.transitions||[])
+    .filter(function(t){return(t.from===phaseKey||t.to===phaseKey)&&t.sufficient&&t.sens!=='similaire';})
+    .map(function(t){var other=t.from===phaseKey?t.to:t.from;return{phase:other,label:CMJ_PHASE_LABEL[other],text:t.text};});
+  return{
+    sufficient:true,phase:phaseKey,score:Math.round(ph.score),color:phaseColor(phaseKey,analysis),
+    headline:headline,pourquoi:conclusion.text,niveauPriorite:dossier?dossier.niveauPriorite:null,
+    confiance:conf&&conf.composite!=null?{composite:Math.round(conf.composite),band:conf.band?conf.band.label:null}:null,
+    preuves:phaseEvidence(phaseKey,analysis),
+    liens:liens,
+    axeDeTravail:isTopPriority?analysis.raisonnement.syntheseFinale.axesDeTravail:null
+  };
+}
+
 // Population de normes à utiliser : celle choisie explicitement pour l'athlète,
 // sinon la population générale par âge/sexe (VALD ForceDecks), sinon (sexe inconnu)
 // les seuils génériques dans THRESHOLDS.
@@ -2935,9 +3085,103 @@ function normRefText(testKey,kpiKey,pop,age){
   var t=THRESHOLDS[key];
   return(t&&t.dir==='min'?'≤ ':'≥ ')+v;
 }
-function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=null&&x!=='';}).map(Number);if(!v.length)return null;return dir==='min'?Math.min.apply(null,v):Math.max.apply(null,v);}
 function roundStep(v,step){if(v==null)return v;var decimals=2;if(step!=null)decimals=step<1?Math.max(0,Math.round(-Math.log10(step))):0;var f=Math.pow(10,decimals);return Math.round(v*f)/f;}
 function autoLSI(D,G){if(D==null||G==null||D===0||G===0)return null;return Math.round((Math.min(D,G)/Math.max(D,G))*1000)/10;}
+
+// ── UI : "La Lecture du Mouvement" ───────────────────────────────────────────────────────────
+// Port du prototype figé (kinexus_movement_experience.html) en composant réel. Ne calcule rien —
+// consomme uniquement phasePresentation()/phaseColor() ci-dessus. Couleurs reprises du système
+// existant (C.rouge/orange/vert/muted), jamais une seconde palette introduite pour cet écran.
+var CMJ_POSES={
+  debout:     {head:[30,10],sh:[30,18],hip:[30,46],knee:[30,64],ank:[30,82],elb:[25,30],hand:[22,42],grounded:true},
+  unloading:  {head:[32,14],sh:[32,22],hip:[31,48],knee:[26,64],ank:[29,82],elb:[23,26],hand:[14,18],grounded:true},
+  braking:    {head:[35,24],sh:[34,32],hip:[31,52],knee:[21,64],ank:[27,80],elb:[19,32],hand:[8,28], grounded:true},
+  concentric: {head:[27,6], sh:[28,14],hip:[30,40],knee:[31,60],ank:[32,80],elb:[22,8], hand:[16,3], grounded:true},
+  flight:     {head:[28,16],sh:[29,24],hip:[30,42],knee:[35,54],ank:[38,64],elb:[22,18],hand:[15,10],grounded:false},
+  landing:    {head:[33,22],sh:[32,30],hip:[30,52],knee:[23,64],ank:[27,82],elb:[21,32],hand:[12,26],grounded:true}
+};
+var CMJ_POSE_LABEL={debout:'Debout',unloading:'Descente',braking:'Freinage',concentric:'Propulsion',flight:'Vol',landing:'Réception'};
+var CMJ_ANCHOR_X={unloading:120,braking:330,concentric:560,flight:760,landing:900};
+var CMJ_ANCHOR_Y={unloading:50,braking:150,concentric:22,flight:8,landing:135};
+var CMJ_ZONE_X={unloading:[0,240],braking:[240,400],concentric:[400,600],flight:[600,860],landing:[860,1200]};
+function poseSilhouette(poseKey,color,size){
+  var p=CMJ_POSES[poseKey];size=size||34;
+  var lim=function(a,b,key){return h('line',{key:key,x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:color,strokeWidth:5,strokeLinecap:'round',strokeLinejoin:'round'});};
+  var kids=[];
+  if(p.grounded)kids.push(h('line',{key:'g',x1:14,y1:86,x2:46,y2:86,stroke:C.border,strokeWidth:3,strokeLinecap:'round'}));
+  kids.push(
+    lim(p.hip,p.knee,'a'),lim(p.knee,p.ank,'b'),
+    h('line',{key:'f',x1:p.ank[0],y1:p.ank[1],x2:p.ank[0]+9,y2:p.ank[1],stroke:color,strokeWidth:5,strokeLinecap:'round'}),
+    lim(p.sh,p.hip,'c'),lim(p.sh,p.elb,'d'),lim(p.elb,p.hand,'e'),
+    h('circle',{key:'hd',cx:p.head[0],cy:p.head[1],r:7,fill:color})
+  );
+  return h('svg',{viewBox:'0 0 60 90',width:size,height:size*1.5},kids);
+}
+function MouvementView(props){
+  var analysis=props.analysis;
+  var order=CMJ_PHASES;
+  var available=order.filter(function(p){return analysis.phases[p]&&analysis.phases[p].sufficient;});
+  var defaultPhase=(analysis.priorisation.priorite1&&analysis.priorisation.priorite1.phase)||available[0]||order[0];
+  var st=useState(defaultPhase),active=st[0],setActive=st[1];
+  var pres=phasePresentation(active,analysis);
+  var pri1=analysis.priorisation.priorite1,pri2=analysis.priorisation.priorite2;
+  return h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:14,padding:'28px 30px',maxWidth:920}},
+    h('div',{style:{fontSize:10,fontWeight:800,letterSpacing:'.1em',textTransform:'uppercase',color:C.muted,marginBottom:14}},'Counter Movement Jump'),
+    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',padding:'0 4px 10px'}},
+      order.map(function(p){
+        var ph=analysis.phases[p];
+        var sufficient=!!(ph&&ph.sufficient);
+        var col=sufficient?phaseColor(p,analysis):C.border;
+        var isActive=p===active;
+        return h('div',{key:p,onClick:sufficient?function(){setActive(p);}:null,
+          style:{cursor:sufficient?'pointer':'default',textAlign:'center',width:'18%',opacity:sufficient?1:.35,transform:isActive?'scale(1.12)':'scale(1)',transition:'transform .25s'}},
+          poseSilhouette(p,isActive?C.petrol:col,32),
+          h('div',{style:{fontSize:9.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',color:isActive?C.text:C.muted,marginTop:3}},CMJ_POSE_LABEL[p]),
+          sufficient&&h('div',{style:{fontSize:12,fontWeight:800,color:col,fontFamily:'monospace',marginTop:1}},Math.round(ph.score))
+        );
+      })
+    ),
+    h('svg',{viewBox:'0 0 1200 190',style:{width:'100%',height:'auto',display:'block',marginTop:6}},
+      order.map(function(p){
+        var z=CMJ_ZONE_X[p];
+        var sufficient=!!(analysis.phases[p]&&analysis.phases[p].sufficient);
+        return h('rect',{key:p,x:z[0],y:0,width:z[1]-z[0],height:190,
+          fill:sufficient?phaseColor(p,analysis):C.muted,opacity:p===active?.12:0,
+          style:{cursor:sufficient?'pointer':'default'},
+          onClick:sufficient?function(){setActive(p);}:null});
+      }),
+      h('path',{d:'M40,50 C120,50 170,54 220,58 C260,62 300,105 330,150 C380,110 480,28 560,22 C620,18 700,10 760,8 C820,7 868,55 900,135 C950,168 1080,98 1160,88',fill:'none',stroke:C.border,strokeWidth:2}),
+      pri1&&h('circle',{cx:CMJ_ANCHOR_X[pri1.phase],cy:CMJ_ANCHOR_Y[pri1.phase],r:6,fill:C.rouge}),
+      pri2&&h('circle',{cx:CMJ_ANCHOR_X[pri2.phase],cy:CMJ_ANCHOR_Y[pri2.phase],r:5,fill:C.orange}),
+      h('circle',{cx:CMJ_ANCHOR_X[active],cy:CMJ_ANCHOR_Y[active],r:4.5,fill:C.petrol,stroke:'#fff',strokeWidth:1.5})
+    ),
+    !pres.sufficient
+      ?h('div',{style:{padding:'30px 4px',color:C.muted,fontSize:13}},pres.reason)
+      :h('div',{style:{marginTop:24}},
+        h('div',{style:{fontSize:22,fontWeight:700,color:C.text,lineHeight:1.3,marginBottom:8}},pres.headline),
+        pres.confiance&&h('div',{style:{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:100,background:C.surface,border:'1px solid '+C.border,marginBottom:6}},
+          h('span',{style:{width:6,height:6,borderRadius:'50%',background:pres.color}}),
+          'Confiance '+(pres.confiance.band||'').toLowerCase()+' · '+pres.confiance.composite+'%'
+        ),
+        h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'.1em',textTransform:'uppercase',color:C.muted,margin:'18px 0 8px'}},'Pourquoi'),
+        h('div',{style:{fontSize:14,lineHeight:1.65,color:C.text}},pres.pourquoi),
+        pres.preuves.length>0&&h('div',{style:{marginTop:22}},
+          h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'.1em',textTransform:'uppercase',color:C.muted,marginBottom:8}},'Preuves convergentes'),
+          h('div',{style:{borderTop:'1px solid '+C.border}},
+            pres.preuves.map(function(pv,i){return h('div',{key:i,style:{display:'flex',gap:14,padding:'10px 2px',borderBottom:'1px solid '+C.border,fontSize:12.5}},
+              h('div',{style:{width:120,flexShrink:0,fontSize:9.5,fontWeight:800,textTransform:'uppercase',color:C.muted}},pv.tag),
+              h('div',{style:{width:180,flexShrink:0,fontWeight:700,color:C.text}},pv.label),
+              h('div',{style:{color:C.muted}},pv.val)
+            );})
+          )
+        ),
+        pres.liens.length>0&&h('div',{style:{marginTop:16,display:'flex',gap:8,flexWrap:'wrap'}},
+          pres.liens.map(function(l,i){return h('button',{key:i,onClick:function(){setActive(l.phase);},style:{fontSize:12,fontWeight:600,padding:'6px 12px',borderRadius:100,border:'1px solid '+C.border,background:C.surface,cursor:'pointer'}},'Lié à '+l.label);})
+        ),
+        pres.axeDeTravail&&h('div',{style:{marginTop:22,paddingTop:16,borderTop:'1px solid '+C.border,fontSize:13.5,lineHeight:1.6,color:C.text,fontStyle:'italic'}},pres.axeDeTravail)
+      )
+  );
+}
 function s2sc(s){return{vert:3,jaune:2,orange:1,rouge:0}[s];}
 function sc2s(s){if(s>=2.5)return'vert';if(s>=1.8)return'jaune';if(s>=1.0)return'orange';return'rouge';}
 
@@ -4752,6 +4996,9 @@ function AnalyseView(props){
   var [showPrintMenu,setShowPrintMenu]=useState(false);
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
   var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge);},[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
+  var mouvementAnalysis=useMemo(function(){
+    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),athleteAge):null;
+  },[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
   var fSc=res.functionScores,sysSc=res.systemScores;
   var pri=res.priorities||[];
@@ -4985,9 +5232,10 @@ function AnalyseView(props){
         )
       ),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
-        [['expert','Expert'],['historique','Historique']].map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        (mouvementAnalysis?[['expert','Expert'],['mouvement','Mouvement'],['historique','Historique']]:[['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge}),
+      view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
       view==='historique'&&h(HistoriqueView,{athlete:athlete,currentBilan:bilan}),
       !validated&&h('div',{className:'no-print',style:{marginTop:20,padding:'14px 18px',background:C.teal+'10',border:'1px solid '+C.teal+'40',borderRadius:12}},
         h('div',{style:{color:C.teal,fontWeight:700,fontSize:13,marginBottom:4}},'🔍 Validation expert requise'),
