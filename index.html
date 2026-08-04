@@ -2096,18 +2096,50 @@ function computeSyntheseExperteKinexus(syntheseBiomecanique,signatureBiomecaniqu
 // stratégie dominante et la phase limitante réutilisent computeSignatureBiomecanique et
 // computeSyntheseExperteKinexus tels quels.
 //
-// PROVENANCE — IMPORTANT : la correspondance profil -> phase/transition ci-dessous est donnée
-// explicitement par le praticien via ses 4 exemples (04/08) : Absorbeur<->Braking,
-// Propulsif<->Concentric, Réactif<->transition Braking->Concentric, Contrôle<->Landing. AUCUNE
-// correspondance n'est donnée pour Explosif — volontairement non mappé (jamais une équivalence
-// biomécanique inventée), à définir ensemble.
+// PROVENANCE — IMPORTANT : référentiel figé par le praticien (04/08, complété ensuite) —
+// Absorbeur<->Braking (+transition Unloading->Braking), Propulsif<->Concentric (+transition
+// Braking->Concentric), Réactif<->transition Braking->Concentric UNIQUEMENT (aucune phase
+// propre), Explosif<->Concentric (+transition Braking->Concentric), Contrôle<->Landing
+// (+transition Flight->Landing).
+//
+// STRUCTURE (correctif d'infrastructure, 04/08 — pas une évolution métier) : chaque profil
+// référence des COLLECTIONS phases[]/transitions[] (0, 1 ou plusieurs), plutôt qu'une seule
+// correspondance de type figé. Ça représente fidèlement le référentiel ci-dessus (plusieurs
+// profils ont à la fois une phase ET une transition) et absorbe sans nouvelle migration l'ajout
+// futur d'autres tests (Drop Jump, SLCMJ, Hop Tests...).
+//
+// COLLISION CONNUE, VOLONTAIREMENT NON TRANCHÉE ICI : Propulsif ET Explosif référencent tous deux
+// la phase 'concentric' ; Réactif, Propulsif ET Explosif référencent tous trois la transition
+// 'braking_concentric'. Les consommateurs qui ont besoin d'UN SEUL profil représentatif pour une
+// cible (dossierPreuvesPhase, computeConfianceKinexus) utilisent une règle de repli minimale et
+// explicite (OR pour un booléen de déficience, premier profil listé pour un signal scalaire) —
+// documentée à chaque usage, jamais une pondération inventée entre profils concurrents.
 var PROFIL_PHASE_CORRESPONDENCE=[
-  {profil:'Absorbeur',type:'phase',cible:'braking'},
-  {profil:'Propulsif',type:'phase',cible:'concentric'},
-  {profil:'Réactif',type:'transition',cible:'braking_concentric'},
-  {profil:'Contrôle',type:'phase',cible:'landing'}
-  // Explosif : aucune correspondance donnée par le praticien — à définir avec lui avant ajout.
+  {profil:'Absorbeur',phases:['braking'],transitions:['unloading_braking']},
+  {profil:'Propulsif',phases:['concentric'],transitions:['braking_concentric']},
+  {profil:'Réactif',phases:[],transitions:['braking_concentric']},
+  {profil:'Explosif',phases:['concentric'],transitions:['braking_concentric']},
+  {profil:'Contrôle',phases:['landing'],transitions:['flight_landing']}
 ];
+// Aplatit le référentiel en paires {profil,type,cible} — la forme que croisementProfilPhase()
+// consomme déjà (moteur inchangé). Un profil avec 1 phase + 1 transition produit 2 paires ; un
+// profil avec plusieurs phases en produirait autant. Pure lecture du référentiel, aucune règle.
+function profilCorrespondancesFlat(){
+  var out=[];
+  PROFIL_PHASE_CORRESPONDENCE.forEach(function(entry){
+    (entry.phases||[]).forEach(function(p){out.push({profil:entry.profil,type:'phase',cible:p});});
+    (entry.transitions||[]).forEach(function(t){out.push({profil:entry.profil,type:'transition',cible:t});});
+  });
+  return out;
+}
+// Reverse lookup : quels profils référencent cette cible (phase ou transition) ? Renvoie 0, 1 ou
+// plusieurs noms — généralisation directe de la recherche qui, avant l'extension du modèle de
+// données, ne pouvait renvoyer qu'une seule correspondance.
+function profilsCorrespondantA(type,cible){
+  return PROFIL_PHASE_CORRESPONDENCE.filter(function(entry){
+    return((type==='phase'?entry.phases:entry.transitions)||[]).indexOf(cible)>=0;
+  }).map(function(entry){return entry.profil;});
+}
 // Croise UN profil avec sa cible (phase ou transition). Une transition est jugée "performante"
 // (équivalent ordinal 'eleve') si le Moteur de Cohérence Inter-Phases l'a classée "similaire"
 // (cohérente), sinon 'faible' — la transition n'a pas de percentile propre, seulement un sens.
@@ -2142,7 +2174,7 @@ function croisementProfilPhase(corr,profileResults,phases,coherenceResult){
 // (priorités/variables responsables déjà calculées).
 function computeMoteurRaisonnementBiomecanique(profileResults,phases,coherenceResult,syntheseBiomecanique){
   var signature=computeSignatureBiomecanique(profileResults);
-  var croisements=PROFIL_PHASE_CORRESPONDENCE.map(function(c){return croisementProfilPhase(c,profileResults,phases,coherenceResult);});
+  var croisements=profilCorrespondancesFlat().map(function(c){return croisementProfilPhase(c,profileResults,phases,coherenceResult);});
   var exploitables=croisements.filter(function(c){return c.sufficient;});
   // Indice de cohérence biomécanique : Cas 1 (convergent)=100, Cas 2 (discordance partielle)=50,
   // Cas 3 (discordance importante)=0, moyenné sur les croisements exploitables — choix Kinexus,
@@ -2224,10 +2256,16 @@ function computeMoteurRaisonnementBiomecanique(profileResults,phases,coherenceRe
 // jamais prioritaire. Une priorité nécessite toujours plusieurs éléments convergents.
 function dossierPreuvesPhase(phaseKey,phases,coherenceResult,profileResults,functionScores,raisonnementBiomecanique){
   var ph=phases[phaseKey];
-  var corrEntry=PROFIL_PHASE_CORRESPONDENCE.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0];
-  var profilNom=corrEntry?corrEntry.profil:null;
-  var profilEntry=profilNom?(profileResults||[]).filter(function(pr){return pr.nom===profilNom;})[0]:null;
-  var profilDeficient=!!(profilEntry&&profilEntry.result&&profilEntry.result.sufficient&&ordinalLevel(profilEntry.result.percentileGlobal)==='faible');
+  // Plusieurs profils peuvent référencer la même phase (ex. Propulsif ET Explosif -> concentric).
+  // Repli minimal explicite (cf. commentaire du référentiel) : un profil correspondant compte
+  // comme déficient si AU MOINS UN des profils référençant cette phase l'est (OR) — généralisation
+  // directe d'un booléen à un ensemble, aucune pondération nouvelle entre profils concurrents.
+  var profilNoms=profilsCorrespondantA('phase',phaseKey);
+  var profilNom=profilNoms[0]||null; // profil "représentatif" pour les champs à valeur unique ci-dessous
+  var profilDeficient=profilNoms.some(function(nom){
+    var pe=(profileResults||[]).filter(function(pr){return pr.nom===nom;})[0];
+    return!!(pe&&pe.result&&pe.result.sufficient&&ordinalLevel(pe.result.percentileGlobal)==='faible');
+  });
   var qualiteNom=CMJ_PHASE_TO_QUALITY[phaseKey]||null;
   var qualiteStatut=(qualiteNom&&functionScores)?functionScores[qualiteNom]:null;
   var qualiteDeficiente=qualiteStatutOrdinal(qualiteStatut)==='faible';
@@ -2250,7 +2288,7 @@ function dossierPreuvesPhase(phaseKey,phases,coherenceResult,profileResults,func
   return{
     phase:phaseKey,score:ph.score,niveauPriorite:niveauPriorite,
     variablesResponsables:variablesResponsables,
-    profilCorrespondant:profilNom,profilDeficient:profilDeficient,
+    profilCorrespondant:profilNom,profilsCorrespondants:profilNoms,profilDeficient:profilDeficient,
     qualiteAssociee:qualiteNom,qualiteDeficiente:qualiteDeficiente,
     coherenceForte:coherenceForte,countMoteurs:countMoteurs
   };
@@ -2423,6 +2461,10 @@ function effectiveConfianceKinexusWeights(){
 // tout le calcul à computeIndiceConfiance() + au référentiel CONFIANCE_SIGNAUX_PHASE.
 function computeConfianceKinexus(phaseKey,phases,profileResults,functionScores,raisonnementBiomecanique){
   var phaseResult=phases[phaseKey];
+  // Signaux profilInterne/profilPhase ci-dessous sont scalaires (un seul score par phase) : quand
+  // plusieurs profils référencent la même phase (ex. Propulsif ET Explosif -> concentric), on
+  // retient le premier listé dans PROFIL_PHASE_CORRESPONDENCE (ordre du référentiel) plutôt que
+  // d'inventer une agrégation entre profils concurrents pour un signal de confiance.
   var croisement=raisonnementBiomecanique?raisonnementBiomecanique.croisements.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0]:null;
   var profilNom=croisement?croisement.profil:null;
   var profileResult=profilNom?((profileResults||[]).filter(function(pr){return pr.nom===profilNom;})[0]||{}).result:null;
@@ -2468,10 +2510,14 @@ function explicationConclusionPhase(phaseKey,phases,profileResults,functionScore
   if(phaseResult.niveau)seuilsFranchis.push({critere:'niveau_absolu',label:phaseResult.niveau.label});
   if(phaseResult.deltaBand)seuilsFranchis.push({critere:'ecart_relatif',label:phaseResult.deltaBand.label});
   if(phaseResult.coherenceBand)seuilsFranchis.push({critere:'coherence_interne',label:phaseResult.coherenceBand.label});
-  var corrEntry=PROFIL_PHASE_CORRESPONDENCE.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0];
-  var profilNom=corrEntry?corrEntry.profil:null;
-  var profilEntry=profilNom?(profileResults||[]).filter(function(pr){return pr.nom===profilNom;})[0]:null;
-  var profilsImpliques=profilNom?[{nom:profilNom,percentileGlobal:profilEntry&&profilEntry.result?profilEntry.result.percentileGlobal:null,sufficient:!!(profilEntry&&profilEntry.result&&profilEntry.result.sufficient)}]:[];
+  // Plusieurs profils peuvent référencer la même phase (ex. Propulsif ET Explosif -> concentric) —
+  // profilsImpliques les liste TOUS, aucune sélection arbitraire (contrairement à dossierPreuvesPhase
+  // qui a besoin d'un signal booléen unique, ce champ de traçabilité peut légitimement en montrer
+  // plusieurs).
+  var profilsImpliques=profilsCorrespondantA('phase',phaseKey).map(function(nom){
+    var profilEntry=(profileResults||[]).filter(function(pr){return pr.nom===nom;})[0];
+    return{nom:nom,percentileGlobal:profilEntry&&profilEntry.result?profilEntry.result.percentileGlobal:null,sufficient:!!(profilEntry&&profilEntry.result&&profilEntry.result.sufficient)};
+  });
   var transitionsAdjacentes=CMJ_TRANSITIONS.filter(function(t){return t.from===phaseKey||t.to===phaseKey;}).map(function(t){return t.key;});
   var niveauConfiance=computeConfianceKinexus(phaseKey,phases,profileResults,functionScores,raisonnementBiomecanique);
   var sections={
@@ -3010,14 +3056,16 @@ function phaseEvidence(phaseKey,analysis){
     .forEach(function(e){
       rows.push({tag:e.tier==='master'?'Variable':'Variable secondaire',label:e.valdName||e.kpiKey,val:pctlContext(e.percentile)});
     });
-  var corr=PROFIL_PHASE_CORRESPONDENCE.filter(function(c){return c.type==='phase'&&c.cible===phaseKey;})[0];
-  if(corr){
-    var croisement=(analysis.raisonnement.croisements||[]).filter(function(c){return c.profil===corr.profil&&c.cible===corr.cible;})[0];
+  // Tous les profils référençant cette phase (pas de sélection arbitraire quand plusieurs
+  // profils correspondent, ex. Propulsif ET Explosif -> concentric) — une ligne de preuve par
+  // croisement exploitable, dans l'ordre du référentiel.
+  profilsCorrespondantA('phase',phaseKey).forEach(function(nom){
+    var croisement=(analysis.raisonnement.croisements||[]).filter(function(c){return c.profil===nom&&c.type==='phase'&&c.cible===phaseKey;})[0];
     if(croisement&&croisement.sufficient){
-      var pr=(analysis.profileResults||[]).filter(function(p){return p.nom===corr.profil;})[0];
-      rows.unshift({tag:'Stratégie',label:'Profil '+corr.profil,val:pctlContext(pr&&pr.result?pr.result.percentileGlobal:null)});
+      var pr=(analysis.profileResults||[]).filter(function(p){return p.nom===nom;})[0];
+      rows.unshift({tag:'Stratégie',label:'Profil '+nom,val:pctlContext(pr&&pr.result?pr.result.percentileGlobal:null)});
     }
-  }
+  });
   var indiceCroisements=[];
   Object.keys(analysis.indices||{}).forEach(function(id){
     var ind=analysis.indices[id];
@@ -3045,13 +3093,23 @@ function phasePresentation(phaseKey,analysis){
   var liens=(analysis.coherence.transitions||[])
     .filter(function(t){return(t.from===phaseKey||t.to===phaseKey)&&t.sufficient&&t.sens!=='similaire';})
     .map(function(t){var other=t.from===phaseKey?t.to:t.from;return{phase:other,label:CMJ_PHASE_LABEL[other],text:t.text};});
+  // Conclusion factuelle uniquement (demande explicite du praticien) : nomme la phase et son
+  // rang de priorité déjà décidé par computePriorisationClinique — jamais un objectif de travail,
+  // une conséquence fonctionnelle ni une stratégie de rééducation (réservés à une V2 avec un
+  // moteur dédié, non construit ici).
+  var conclusionFactuelle=null;
+  if(isTopPriority){
+    conclusionFactuelle=CMJ_PHASE_LABEL[phaseKey]+' est identifié comme le principal point limitant du CMJ.';
+  }else if(dossier&&dossier.niveauPriorite&&dossier.niveauPriorite!=='Faible'){
+    conclusionFactuelle=CMJ_PHASE_LABEL[phaseKey]+' constitue une priorité clinique secondaire de ce bilan ('+dossier.niveauPriorite.toLowerCase()+').';
+  }
   return{
     sufficient:true,phase:phaseKey,score:Math.round(ph.score),color:phaseColor(phaseKey,analysis),
     headline:headline,pourquoi:conclusion.text,niveauPriorite:dossier?dossier.niveauPriorite:null,
     confiance:conf&&conf.composite!=null?{composite:Math.round(conf.composite),band:conf.band?conf.band.label:null}:null,
     preuves:phaseEvidence(phaseKey,analysis),
     liens:liens,
-    axeDeTravail:isTopPriority?analysis.raisonnement.syntheseFinale.axesDeTravail:null
+    conclusion:conclusionFactuelle
   };
 }
 
@@ -3178,7 +3236,7 @@ function MouvementView(props){
         pres.liens.length>0&&h('div',{style:{marginTop:16,display:'flex',gap:8,flexWrap:'wrap'}},
           pres.liens.map(function(l,i){return h('button',{key:i,onClick:function(){setActive(l.phase);},style:{fontSize:12,fontWeight:600,padding:'6px 12px',borderRadius:100,border:'1px solid '+C.border,background:C.surface,cursor:'pointer'}},'Lié à '+l.label);})
         ),
-        pres.axeDeTravail&&h('div',{style:{marginTop:22,paddingTop:16,borderTop:'1px solid '+C.border,fontSize:13.5,lineHeight:1.6,color:C.text,fontStyle:'italic'}},pres.axeDeTravail)
+        pres.conclusion&&h('div',{style:{marginTop:22,paddingTop:16,borderTop:'1px solid '+C.border,fontSize:14,fontWeight:700,color:C.text}},pres.conclusion)
       )
   );
 }

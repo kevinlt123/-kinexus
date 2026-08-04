@@ -131,9 +131,22 @@ test("incohérence : Propulsif TRÈS élevé + Concentric faible -> discordance 
   assert.ok(r.syntheseFinale.incoherencesDetectees[0].includes('Propulsif'));
 });
 
-test('Explosif : aucune correspondance définie (non mappé par le praticien), jamais inventée', () => {
-  const mapped = PROFIL_PHASE_CORRESPONDENCE.map(c => c.profil);
-  assert.ok(!mapped.includes('Explosif'), 'Explosif ne doit avoir aucune correspondance tant que le praticien ne l\'a pas définie');
+test('référentiel figé (04/08) : Explosif référence Concentric + transition Braking->Concentric, comme Propulsif', () => {
+  const explosif = PROFIL_PHASE_CORRESPONDENCE.find(c => c.profil === 'Explosif');
+  assert.ok(explosif, 'Explosif doit maintenant avoir une correspondance (référentiel complété par le praticien)');
+  assert.deepStrictEqual(explosif.phases, ['concentric']);
+  assert.deepStrictEqual(explosif.transitions, ['braking_concentric']);
+});
+
+test('collection : Propulsif ET Explosif référencent tous deux concentric -> 2 croisements exploitables, aucun écrasé', () => {
+  const profiles = fakeProfileResults({ Propulsif: 90, Explosif: 85 });
+  const phases = fakePhases({ concentric: 88 });
+  const coherence = fakeCoherence({});
+  const synthese = fakeSyntheseBiomecanique(null);
+  const r = computeMoteurRaisonnementBiomecanique(profiles, phases, coherence, synthese);
+  const concentriques = r.croisements.filter(c => c.type === 'phase' && c.cible === 'concentric');
+  assert.strictEqual(concentriques.length, 2, 'Propulsif et Explosif doivent produire chacun leur propre croisement');
+  assert.deepStrictEqual(concentriques.map(c => c.profil).sort(), ['Explosif', 'Propulsif']);
 });
 
 test('indice de cohérence globale : 100% de convergence -> Très forte cohérence', () => {
