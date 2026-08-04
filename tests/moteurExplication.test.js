@@ -106,7 +106,7 @@ test('les catégories exigées par le praticien sont toutes présentes pour une 
   const phases = fakePhases({
     braking: {
       score: 20, niveauLabel: 'Déficitaire', deltaLabel: 'Écart majeur', coherenceLabel: 'Bonne cohérence',
-      entries: [{ tier: 'master', status: 'ok', percentile: 18, kpiKey: 'brk_x', valdName: 'Braking X' }]
+      entries: [{ tier: 'principale', status: 'ok', percentile: 18, kpiKey: 'brk_x', valdName: 'Braking X' }]
     }
   });
   const r = explicationConclusionPhase('braking', phases, [], {}, null, null);
@@ -120,8 +120,8 @@ test('variables utilisées + percentiles concernés reflètent fidèlement les e
     braking: {
       score: 20, coherenceLabel: 'Bonne cohérence',
       entries: [
-        { tier: 'master', status: 'ok', percentile: 18, kpiKey: 'brk_x', valdName: 'Braking X' },
-        { tier: 'master', status: 'technical_error', percentile: null, kpiKey: 'brk_y', valdName: 'Braking Y' }
+        { tier: 'principale', status: 'ok', percentile: 18, kpiKey: 'brk_x', valdName: 'Braking X' },
+        { tier: 'principale', status: 'technical_error', percentile: null, kpiKey: 'brk_y', valdName: 'Braking Y' }
       ]
     }
   });

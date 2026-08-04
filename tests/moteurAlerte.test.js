@@ -144,7 +144,7 @@ test('confiance faible (via computeConfianceKinexus, réutilisée et non recalcu
   const phases = fakePhases({
     braking: {
       coherenceLabel: 'Très faible cohérence', masterAvailable: 1, masterTotal: 4,
-      entries: [{ tier: 'master', status: 'ok', percentile: 10 }]
+      entries: [{ tier: 'principale', status: 'ok', percentile: 10 }]
     }
   });
   const r = computeMoteurAlerte(phases, [], {}, null, []);

@@ -163,6 +163,20 @@ var TBK={};TESTS.forEach(function(t){TBK[t.key]=t;});
 //    variable propre à cette phase dans le référentiel source (pages 1-20 du cahier des
 //    charges). Affichée en contexte dans le rapport, mais exclue du score de phase pondéré
 //    (poids 0 implicite, jamais "master" ni "support").
+//
+// Décision d'architecture du praticien (04/08) — nouvelle philosophie du Moteur Biomécanique
+// par phase : la qualité scientifique prime sur la symétrie du modèle. Le tier ci-dessous
+// (master/support/info) reste le tag éditorial STATIQUE qui distingue seulement "variable
+// biomécaniquement pertinente pour cette phase" (master OU support) de "variable purement
+// contextuelle" (info) — il ne détermine plus, à lui seul, si une variable participe au score.
+// Cette décision est désormais DYNAMIQUE (voir phaseVarCategorie() plus bas) : parmi les
+// variables biomécaniquement pertinentes (master/support), celles dont NORMS possède des
+// percentiles pour la population active deviennent "principales" (seules à participer au score
+// de phase) ; les autres restent "secondaires" (jamais dans le score, uniquement dans les
+// explications et le niveau Expert). Une variable "secondaire" devient automatiquement
+// "principale" dès que NORMS reçoit des bandes fiables pour elle, sans aucune modification du
+// moteur ni de ce référentiel — "l'objectif est d'utiliser les meilleures variables
+// disponibles, pas le même nombre de variables pour chaque phase."
 var CMJ_PHASES=['unloading','braking','concentric','flight','landing'];
 var CMJ_PHASE_LABEL={unloading:'Unloading',braking:'Braking',concentric:'Concentric',flight:'Flight',landing:'Landing'};
 var CMJ_VAR_META={
@@ -771,7 +785,7 @@ var BIOMECA_DEFAULT_BANDS={
     {min:51,max:101,label:'Rupture biomécanique majeure',color:'#ef4444'}
   ],
   // Cohérence interne d'une phase — dispersion (écart-type) des percentiles des variables
-  // maîtresses de la phase.
+  // principales de la phase.
   coherenceInterne:[
     {min:0,max:10,label:'Très forte cohérence',color:'#22c55e'},
     {min:10,max:20,label:'Bonne cohérence',color:'#84cc16'},
@@ -1003,7 +1017,7 @@ function validateClinicalConcordance(biomecaLevel,qualiteLevel){
 var BIOMECA_PROFILES_LS_KEY='kinexus_biomeca_profiles';
 var DEFAULT_BIOMECA_PROFILE_ID='default';
 function defaultBiomecaProfilesState(){
-  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,profileEngineRoleWeights:{}}}]};
+  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,minVariablesPrincipales:2,profileEngineRoleWeights:{}}}]};
 }
 function loadBiomecaProfilesState(){
   try{
@@ -1044,15 +1058,49 @@ function effectiveBiomecaBands(classifierKey){
   if(cfg.bands&&cfg.bands[classifierKey]&&cfg.bands[classifierKey].length)return cfg.bands[classifierKey];
   return BIOMECA_DEFAULT_BANDS[classifierKey]||[];
 }
-// Seuil de disponibilité minimale des variables maîtresses d'une phase (proportion 0-1)
+// Seuil de disponibilité minimale des variables principales d'une phase (proportion 0-1)
 // en dessous duquel le score de phase n'est PAS calculé (cf. gestion des données manquantes).
 // Résout une ambiguïté du document source ("moins de 50% des variables principales") en
-// explicitant le dénominateur : le nombre de variables tier 'master' de CMJ_VAR_META pour
-// cette phase dans le référentiel de RÉFÉRENCE (pas le nombre de variables tentées par le
-// testeur) — choix Kinexus, configurable.
+// explicitant le dénominateur : le nombre de variables biomécaniquement pertinentes ET normées
+// pour cette population (catégorie EFFECTIVE 'principale', cf. phaseVarCategorie() — dynamique,
+// plus le tag statique 'master' d'origine) — choix Kinexus, configurable. Complété par un
+// plancher absolu, cf. effectiveMinVariablesPrincipales() ci-dessous.
 function effectiveMissingDataThreshold(){
   var cfg=activeBiomecaProfile().config||{};
   return cfg.missingDataThreshold!=null?cfg.missingDataThreshold:0.5;
+}
+// Nombre minimum de variables "principales" (biomécaniquement pertinentes ET normées) requis
+// pour qu'une phase soit exploitable, quel que soit le ratio ci-dessus — règle explicite du
+// praticien (04/08) : "minimum 2 variables principales normées". Empêche qu'une phase ne
+// possédant qu'1 seule variable normée disponible soit jugée suffisante par le seul ratio
+// (1/1 = 100% passerait le seuil par défaut alors que l'exigence de robustesse porte sur un
+// COMPTE minimal, pas seulement une proportion).
+function effectiveMinVariablesPrincipales(){
+  var cfg=activeBiomecaProfile().config||{};
+  return cfg.minVariablesPrincipales!=null?cfg.minVariablesPrincipales:2;
+}
+// Disponibilité de normes fiables (percentiles) pour une variable de phase CMJ, dans la
+// population active — pure question de DONNÉES, indépendante du bilan en cours d'analyse.
+// Miroir de la clé effectivement recherchée par normPercentile('cmj',kpiKey,...) : 'cmj_'+kpiKey.
+function phaseVarHasNorms(kpiKey,pop){
+  return!!(pop&&NORMS[pop]&&NORMS[pop]['cmj_'+kpiKey]!=null);
+}
+// Catégorie EFFECTIVE d'une variable de phase CMJ pour le calcul du score (nouvelle philosophie
+// du praticien, 04/08) — distincte de effectiveBiomecaTier() qui reste le tag éditorial statique
+// master/support/info utilisé ailleurs (ex. miroir du Moteur d'Analyse des Asymétries, hors
+// périmètre de ce changement). Trois catégories, jamais figées :
+//  - 'contextuelle' : tier 'info' du référentiel — jamais dans le score, purement descriptive.
+//  - 'principale'    : biomécaniquement pertinente (tier master/support) ET des normes existent
+//                      pour cette population — seule catégorie qui participe au score de phase.
+//  - 'secondaire'    : biomécaniquement pertinente mais pas encore de normes disponibles —
+//                      n'entre jamais dans le score, sert uniquement à enrichir le raisonnement
+//                      clinique (explications, niveau Expert). Redevient 'principale'
+//                      automatiquement dès que NORMS reçoit des bandes pour elle, sans aucune
+//                      modification du moteur.
+function phaseVarCategorie(kpiKey,pop){
+  var tier=effectiveBiomecaTier(kpiKey);
+  if(tier==='info')return'contextuelle';
+  return phaseVarHasNorms(kpiKey,pop)?'principale':'secondaire';
 }
 
 // Compensations attendues en cas de déficit, par système — issues du référentiel de raisonnement
@@ -1244,38 +1292,47 @@ function cmjKpiDir(kpiKey){
 function computeBiomecaPhase(phaseKey,cmjValues,pop,age){
   cmjValues=cmjValues||{};
   var phaseVarKeys=Object.keys(CMJ_VAR_META).filter(function(k){return CMJ_VAR_META[k].phase===phaseKey&&effectiveBiomecaTier(k)!=='info';});
+  // tier stocke ici la catégorie EFFECTIVE ('principale'/'secondaire') — dynamique, voir
+  // phaseVarCategorie() : dépend de la disponibilité des normes pour (kpiKey,pop), jamais d'un
+  // tag éditorial figé. Une variable ne peut avoir status==='ok' que si elle est 'principale'
+  // (normPercentile exige NORMS[pop][cmj_+kpiKey]) — une variable 'secondaire' garde toujours son
+  // rawVal (pour les explications/le niveau Expert) mais jamais de percentile.
   var entries=phaseVarKeys.map(function(k){
     var raw=cmjValues[k];
-    var tier=effectiveBiomecaTier(k);
+    var categorie=phaseVarCategorie(k,pop);
     var weight=effectiveBiomecaWeight(k);
     var valdName=(CMJ_VAR_META[k]||{}).valdName||k;
     var tech=validateTechnical(k,raw);
-    if(!tech.ok)return{kpiKey:k,valdName:valdName,tier:tier,weight:weight,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
+    if(!tech.ok)return{kpiKey:k,valdName:valdName,tier:categorie,weight:weight,rawVal:raw,percentile:null,status:raw==null?'missing':'technical_error',reason:tech.reason};
     var pct=normPercentile('cmj',k,pop,age,raw,cmjKpiDir(k));
-    return{kpiKey:k,valdName:valdName,tier:tier,weight:weight,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
+    return{kpiKey:k,valdName:valdName,tier:categorie,weight:weight,rawVal:raw,percentile:pct,status:pct==null?'no_norm_data':'ok'};
   });
-  var masterEntries=entries.filter(function(e){return e.tier==='master';});
-  var masterOk=masterEntries.filter(function(e){return e.status==='ok';});
+  var principaleEntries=entries.filter(function(e){return e.tier==='principale';});
+  var principaleOk=principaleEntries.filter(function(e){return e.status==='ok';});
   var threshold=effectiveMissingDataThreshold();
-  var ratio=masterEntries.length?masterOk.length/masterEntries.length:0;
-  if(masterEntries.length===0||ratio<threshold){
+  var minRequis=effectiveMinVariablesPrincipales();
+  var ratio=principaleEntries.length?principaleOk.length/principaleEntries.length:0;
+  if(principaleEntries.length===0||principaleOk.length<minRequis||ratio<threshold){
     return{
       phase:phaseKey,sufficient:false,score:null,
-      reason:'Données insuffisantes pour interpréter cette phase ('+masterOk.length+'/'+masterEntries.length+' variables maîtresses disponibles, seuil requis '+Math.round(threshold*100)+'%).',
-      entries:entries,masterAvailable:masterOk.length,masterTotal:masterEntries.length
+      reason:'Données insuffisantes pour interpréter cette phase ('+principaleOk.length+'/'+principaleEntries.length+' variables principales disponibles, minimum requis '+minRequis+', seuil '+Math.round(threshold*100)+'%).',
+      entries:entries,masterAvailable:principaleOk.length,masterTotal:principaleEntries.length
     };
   }
-  var usable=entries.filter(function(e){return e.status==='ok'&&(e.tier==='master'||e.tier==='support');});
+  // Les variables secondaires ne participent JAMAIS au score, quel que soit leur nombre ou leur
+  // valeur — seules les variables principales (biomécaniquement pertinentes ET normées, status
+  // 'ok') entrent dans la moyenne pondérée.
+  var usable=principaleOk;
   var sumW=0,sumWP=0;
   usable.forEach(function(e){sumW+=e.weight;sumWP+=e.weight*e.percentile;});
   var score=sumW>0?sumWP/sumW:null;
-  var coherenceInterne=stdDevOf(masterOk.map(function(e){return e.percentile;}));
+  var coherenceInterne=stdDevOf(principaleOk.map(function(e){return e.percentile;}));
   var niveau=classifyBand(effectiveBiomecaBands('niveauAbsolu'),score);
   var coherenceBand=classifyBand(effectiveBiomecaBands('coherenceInterne'),coherenceInterne);
   return{
     phase:phaseKey,sufficient:true,score:score,percentile:score,niveau:niveau,
     coherenceInterne:coherenceInterne,coherenceBand:coherenceBand,
-    entries:entries,masterAvailable:masterOk.length,masterTotal:masterEntries.length,
+    entries:entries,masterAvailable:principaleOk.length,masterTotal:principaleEntries.length,
     variablesResponsables:usable.filter(function(e){return e.percentile<40;}),
     variablesPreservees:usable.filter(function(e){return e.percentile>=60&&e.percentile<90;}),
     variablesExceptionnelles:usable.filter(function(e){return e.percentile>=90;})
@@ -1450,7 +1507,7 @@ function computeCoherenceEngine(phases){
 // hiérarchie, entièrement traçable : chaque niveau consomme le résultat du niveau précédent,
 // jamais les données brutes directement, et le résultat final expose toujours la trace des 3
 // niveaux — jamais un chiffre seul.
-// Niveau 1 — Variables : les variables maîtresses de la phase pointent-elles individuellement
+// Niveau 1 — Variables : les variables principales de la phase pointent-elles individuellement
 //   dans le même sens que le score global de la phase (concordance) ?
 // Niveau 2 — Phase : la phase est-elle elle-même classée sous les normes (réutilise
 //   BiomecaSpecs.niveauInferieurAuxNormes, jamais une nouvelle comparaison numérique) ?
@@ -1463,7 +1520,7 @@ function effectiveConfidenceWeights(){
   return cfg.confidenceWeights||{variable:30,phase:30,transition:40};
 }
 // Concordance individuelle des variables d'un tier donné avec le sens du score global — utilisée
-// par la confiance de phase (tier 'master', ci-dessous). Générique par tierLabel au cas où
+// par la confiance de phase (tier 'principale', ci-dessous). Générique par tierLabel au cas où
 // d'autres modules en auraient besoin plus tard.
 function variableConcordance(score,entries,tierLabel){
   var tierOk=(entries||[]).filter(function(e){return e.tier===tierLabel&&e.status==='ok';});
@@ -1475,7 +1532,7 @@ function variableConcordance(score,entries,tierLabel){
 }
 function confidenceLevelVariables(phaseResult){
   if(!phaseResult.sufficient)return{level:'variables',score:0,reason:'Phase insuffisante : niveau Variables non évaluable.'};
-  var c=variableConcordance(phaseResult.score,phaseResult.entries,'master');
+  var c=variableConcordance(phaseResult.score,phaseResult.entries,'principale');
   return{level:'variables',score:c.score,reason:c.reason};
 }
 function confidenceLevelPhase(phaseResult){
@@ -2417,12 +2474,14 @@ function coherenceBandScore(band){return band&&COHERENCE_BAND_SCORE[band.label]!
 //  - profilInterne  -> profileResult.coherenceBand (BiomechanicalProfileEngine)
 //  - phaseInterne   -> phaseResult.coherenceBand (Moteur Biomécanique)
 //  - profilPhase    -> croisement.concordance.cas (Moteur de Raisonnement Biomécanique)
-//  - donnees        -> phaseResult.masterAvailable/masterTotal (Moteur Biomécanique)
+//  - donnees        -> phaseResult.masterAvailable/masterTotal (Moteur Biomécanique — noms de
+//    champs conservés pour compatibilité, mais comptent désormais les variables "principales"
+//    au sens de la nouvelle philosophie dynamique, cf. phaseVarCategorie())
 //  - qualite        -> syntheseCoherenceQualites()[phase].result.cas (Étape 7)
 var CONFIANCE_SIGNAUX_PHASE=[
   {cle:'variables',poidsDefaut:1,extractor:function(ctx){
     if(!ctx.phaseResult||!ctx.phaseResult.sufficient)return null;
-    return variableConcordance(ctx.phaseResult.score,ctx.phaseResult.entries,'master').score;
+    return variableConcordance(ctx.phaseResult.score,ctx.phaseResult.entries,'principale').score;
   }},
   {cle:'profilInterne',poidsDefaut:1,extractor:function(ctx){
     if(!ctx.profileResult||!ctx.profileResult.sufficient)return null;
@@ -3044,17 +3103,24 @@ function phaseColor(phaseKey,analysis){
   return C.muted;
 }
 
-// Preuves convergentes d'une phase : variables maîtresses/support utilisées + croisement profil
-// (si ce profil correspond à cette phase) + croisement indice (si un indice a été comparé à cette
-// phase) — chaque ligne provient d'une donnée déjà calculée, jamais recalculée ici.
+// Preuves convergentes d'une phase : variables principales utilisées dans le score + croisement
+// profil (si ce profil correspond à cette phase) + croisement indice (si un indice a été comparé
+// à cette phase) — chaque ligne provient d'une donnée déjà calculée, jamais recalculée ici.
+// Les variables secondaires (biomécaniquement pertinentes mais sans norme disponible pour cette
+// population) n'entrent jamais dans le score mais apparaissent ici, explicitement signalées comme
+// non normées — jamais avec un percentile ou une interprétation inventée.
 function phaseEvidence(phaseKey,analysis){
   var ph=analysis.phases[phaseKey];
   if(!ph||!ph.sufficient)return[];
   var rows=[];
-  (ph.entries||[]).filter(function(e){return e.status==='ok'&&(e.tier==='master'||e.tier==='support');})
+  (ph.entries||[]).filter(function(e){return e.tier==='principale'&&e.status==='ok';})
     .sort(function(a,b){return a.percentile-b.percentile;})
     .forEach(function(e){
-      rows.push({tag:e.tier==='master'?'Variable':'Variable secondaire',label:e.valdName||e.kpiKey,val:pctlContext(e.percentile)});
+      rows.push({tag:'Variable',label:e.valdName||e.kpiKey,val:pctlContext(e.percentile)});
+    });
+  (ph.entries||[]).filter(function(e){return e.tier==='secondaire'&&e.rawVal!=null;})
+    .forEach(function(e){
+      rows.push({tag:'Variable secondaire',label:e.valdName||e.kpiKey,val:'Pas de norme disponible pour cette population'});
     });
   // Tous les profils référençant cette phase (pas de sélection arbitraire quand plusieurs
   // profils correspondent, ex. Propulsif ET Explosif -> concentric) — une ligne de preuve par

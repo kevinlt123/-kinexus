@@ -120,10 +120,10 @@ test('tous les signaux convergents (rouge/faible partout) -> confiance Très él
     braking: {
       score: 15, coherenceLabel: 'Très forte cohérence', masterAvailable: 4, masterTotal: 4,
       entries: [
-        { tier: 'master', status: 'ok', percentile: 10 },
-        { tier: 'master', status: 'ok', percentile: 15 },
-        { tier: 'master', status: 'ok', percentile: 20 },
-        { tier: 'master', status: 'ok', percentile: 12 }
+        { tier: 'principale', status: 'ok', percentile: 10 },
+        { tier: 'principale', status: 'ok', percentile: 15 },
+        { tier: 'principale', status: 'ok', percentile: 20 },
+        { tier: 'principale', status: 'ok', percentile: 12 }
       ]
     }
   });
