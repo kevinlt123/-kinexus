@@ -223,11 +223,15 @@ var CMJ_VAR_META={
 // logique (kpi 'conc_force_impulse_asym') pour ne jamais compter deux fois la même preuve dans
 // le moteur de raisonnement (Règle 2 : 2 variables maîtresses concordantes requises).
 // Décision d'architecture du praticien (04/08) : le Moteur d'Analyse des Asymétries par Phase
-// doit être le MIROIR EXACT du Moteur Biomécanique de performance (CMJ_VAR_META) — chaque
-// variable de performance possède son équivalent d'asymétrie LORSQUE CELUI-CI EXISTE, et le rôle
-// est conservé (master->principale, support->secondaire, info->contextuelle). Cette table ne
+// doit être le MIROIR EXACT du Moteur Biomécanique de performance (CMJ_VAR_META). Cette table ne
 // liste QUE les correspondances CONFIRMÉES (le KPI d'asymétrie existe réellement dans TBK
-// aujourd'hui) — aucune équivalence inventée. Conséquence factuelle importante, à signaler :
+// aujourd'hui) — aucune équivalence inventée ; effectiveBiomecaTier(perfKey)==='info' exclut
+// toujours une variable (contextuelle, jamais principale ni secondaire). Le rôle principale/
+// secondaire N'EST PLUS dérivé du tier master/support de la variable de performance : depuis le
+// 04/08 (extension au Moteur d'Asymétrie de la philosophie déjà appliquée au Moteur Biomécanique
+// de performance), il est dynamique — dépend de la disponibilité de normes d'asymétrie pour la
+// population active (cf. effectiveAsymPhaseVariables, phaseVarHasNorms). Conséquence factuelle
+// importante, à signaler :
 // la GRANDE MAJORITÉ des variables de performance CMJ_VAR_META n'ont AUCUN équivalent
 // d'asymétrie dans ForceDecks aujourd'hui (ex. ecc_mean_power, force_zero_vel, peak_power,
 // conc_impulse_100, time_to_stab, landing_impulse, height, ft_ct_ratio, rsi_mod, flight_time,
@@ -243,24 +247,36 @@ var ASYM_PERFORMANCE_EQUIVALENT={
   force_peak_power:'force_peak_power_asym',
   landing_peak_force:'landing_peak_force_asym'
 };
-// Dérive le référentiel principales/secondaires/contextuelles d'UNE phase à partir de
-// CMJ_VAR_META + ASYM_PERFORMANCE_EQUIVALENT + effectiveBiomecaTier() (respecte les
-// dérogations de configuration du praticien, jamais une copie figée au chargement du fichier).
-// p2_conc_impulse_asym existe dans TBK mais sa correspondance avec une variable de performance
-// précise n'est pas confirmée ("P2" pourrait désigner une sous-phase de la propulsion non nommée
-// telle quelle dans CMJ_VAR_META) — placé en contextuelle de Concentric (explique, jamais ne
-// conclut) plutôt qu'inventer un rattachement principale/secondaire non démontré. À clarifier.
-function effectiveAsymPhaseVariables(phaseKey){
+// Dérive le référentiel principales/secondaires/contextuelles d'UNE phase, pour UNE population de
+// normes donnée — à partir de CMJ_VAR_META + ASYM_PERFORMANCE_EQUIVALENT + effectiveBiomecaTier()
+// (respecte les dérogations de configuration du praticien, jamais une copie figée au chargement
+// du fichier). p2_conc_impulse_asym existe dans TBK mais sa correspondance avec une variable de
+// performance précise n'est pas confirmée ("P2" pourrait désigner une sous-phase de la propulsion
+// non nommée telle quelle dans CMJ_VAR_META) — placé en contextuelle de Concentric (explique,
+// jamais ne conclut) plutôt qu'inventer un rattachement principale/secondaire non démontré.
+//
+// Décision d'architecture du praticien (04/08) — même philosophie que le Moteur Biomécanique de
+// performance, "miroir conceptuel" exact : la classification principale/secondaire n'est plus
+// dérivée du tier ÉDITORIAL de la variable de PERFORMANCE équivalente (master->toujours
+// principale, support->toujours secondaire) mais de la DISPONIBILITÉ RÉELLE de normes
+// d'asymétrie pour cette population (phaseVarHasNorms(asymKey,pop), même primitive que le Moteur
+// Biomécanique — une variable d'asymétrie normée est 'cmj_'+asymKey dans NORMS, exactement comme
+// une variable de performance). effectiveBiomecaTier(perfKey) reste néanmoins le gate
+// "biomécaniquement pertinente" (tier 'info' => toujours contextuelle, jamais principale ni
+// secondaire, quelles que soient les normes) : ce n'est pas la population qui décide si une
+// variable EXISTE conceptuellement pour cette phase, seulement si elle est actuellement scorable.
+// Une variable secondaire est automatiquement promue principale dès que NORMS reçoit des bandes
+// d'asymétrie pour elle, sans aucune modification de ce référentiel ni du moteur.
+function effectiveAsymPhaseVariables(phaseKey,pop){
   var principales=[],secondaires=[],contextuelles=[];
   Object.keys(CMJ_VAR_META).forEach(function(perfKey){
     var meta=CMJ_VAR_META[perfKey];
     if(meta.phase!==phaseKey)return;
     var asymKey=ASYM_PERFORMANCE_EQUIVALENT[perfKey];
     if(!asymKey)return;
-    var tier=effectiveBiomecaTier(perfKey);
-    if(tier==='master')principales.push(asymKey);
-    else if(tier==='support')secondaires.push(asymKey);
-    else contextuelles.push(asymKey);
+    if(effectiveBiomecaTier(perfKey)==='info'){contextuelles.push(asymKey);return;}
+    if(phaseVarHasNorms(asymKey,pop))principales.push(asymKey);
+    else secondaires.push(asymKey);
   });
   if(phaseKey==='concentric')contextuelles.push('p2_conc_impulse_asym');
   return{principales:principales,secondaires:secondaires,contextuelles:contextuelles};
@@ -1075,9 +1091,19 @@ function effectiveMissingDataThreshold(){
 // possédant qu'1 seule variable normée disponible soit jugée suffisante par le seul ratio
 // (1/1 = 100% passerait le seuil par défaut alors que l'exigence de robustesse porte sur un
 // COMPTE minimal, pas seulement une proportion).
-function effectiveMinVariablesPrincipales(){
+// Plancher ADAPTATIF (praticien, 04/08, extension au Moteur d'Asymétrie) : min(configuré,
+// totalEligible) — jamais une exigence structurellement impossible à satisfaire. Si une phase ne
+// possède, par nature, qu'UNE seule variable biomécaniquement pertinente (ex. Landing pour le
+// Moteur d'Asymétrie : aucun équivalent d'asymétrie confirmé pour une 2e variable dans
+// ForceDecks), le plancher redescend à 1 pour cette phase plutôt que de la rendre à jamais
+// non-exploitable. Pour le Moteur Biomécanique de performance, chaque phase possède aujourd'hui
+// au moins 3 variables éligibles (cf. CMJ_VAR_META) : le plancher adaptatif s'y résout donc
+// toujours à la valeur configurée (2 par défaut), sans changement de comportement — appel avec
+// totalEligible omis ou >= au minimum configuré.
+function effectiveMinVariablesPrincipales(totalEligible){
   var cfg=activeBiomecaProfile().config||{};
-  return cfg.minVariablesPrincipales!=null?cfg.minVariablesPrincipales:2;
+  var configure=cfg.minVariablesPrincipales!=null?cfg.minVariablesPrincipales:2;
+  return totalEligible!=null?Math.min(configure,totalEligible):configure;
 }
 // Disponibilité de normes fiables (percentiles) pour une variable de phase CMJ, dans la
 // population active — pure question de DONNÉES, indépendante du bilan en cours d'analyse.
@@ -1310,7 +1336,7 @@ function computeBiomecaPhase(phaseKey,cmjValues,pop,age){
   var principaleEntries=entries.filter(function(e){return e.tier==='principale';});
   var principaleOk=principaleEntries.filter(function(e){return e.status==='ok';});
   var threshold=effectiveMissingDataThreshold();
-  var minRequis=effectiveMinVariablesPrincipales();
+  var minRequis=effectiveMinVariablesPrincipales(phaseVarKeys.length);
   var ratio=principaleEntries.length?principaleOk.length/principaleEntries.length:0;
   if(principaleEntries.length===0||principaleOk.length<minRequis||ratio<threshold){
     return{
@@ -2685,8 +2711,11 @@ function computeMoteurAlerte(phases,profileResults,functionScores,raisonnementBi
 // construite (ThresholdBandClassifier, Specification Pattern, Moteur de Confiance générique,
 // validateClinicalConcordance) — aucune règle métier nouvelle codée en dur, tout vit dans
 // ASYM_PERFORMANCE_EQUIVALENT/effectiveAsymPhaseVariables/ASYM_SIDE_PAIRS (référentiels, plus
-// haut dans ce fichier). Miroir exact du Moteur Biomécanique de performance : mêmes 5 phases,
-// même mécanique de percentile/cohérence/confiance, seules les données changent.
+// haut dans ce fichier). Miroir CONCEPTUEL du Moteur Biomécanique de performance : mêmes 5
+// phases, même mécanique de percentile/cohérence/confiance, ET depuis le 04/08 les mêmes règles
+// de classification principale/secondaire/contextuelle (dynamique, pilotée par NORMS — cf.
+// phaseVarCategorie/phaseVarHasNorms/effectiveMinVariablesPrincipales, partagées avec le Moteur
+// Biomécanique) — seules les données (quelles variables, quelles normes) changent.
 //
 // ÉTAPE 1+2+3 — par phase : percentile de chaque variable d'asymétrie (normPercentile, comme
 // n'importe quelle autre variable CMJ — la direction 'min' déjà déclarée dans TBK fait qu'un
@@ -2717,17 +2746,25 @@ function asymMembreDominant(principalesKpiKeys,cmjValues){
   return{membre:'Indéterminé',kpiSource:null};
 }
 function computeAsymPhase(phaseKey,cmjValues,pop,age){
-  var def=effectiveAsymPhaseVariables(phaseKey);
+  // Référentiel principale/secondaire/contextuelle DYNAMIQUE, dépendant de la population (voir
+  // effectiveAsymPhaseVariables) — même mécanisme que le Moteur Biomécanique de performance.
+  var def=effectiveAsymPhaseVariables(phaseKey,pop);
+  var totalEligible=def.principales.length+def.secondaires.length;
   var principales=def.principales.map(function(k){return asymEntryBuild(k,'principale',cmjValues,pop,age);});
   var secondaires=def.secondaires.map(function(k){return asymEntryBuild(k,'secondaire',cmjValues,pop,age);});
   var contextuelles=def.contextuelles.map(function(k){return asymEntryBuild(k,'contextuelle',cmjValues,pop,age);});
   var principalesOk=principales.filter(function(e){return e.status==='ok';});
   var threshold=effectiveMissingDataThreshold();
-  if(!principales.length||principalesOk.length/principales.length<threshold){
+  // Plancher ADAPTATIF partagé avec le Moteur Biomécanique (effectiveMinVariablesPrincipales) :
+  // min(2 par défaut, totalEligible). Certaines phases (ex. Landing) n'ont structurellement
+  // qu'UNE seule variable d'asymétrie biomécaniquement pertinente — le plancher y redescend à 1
+  // plutôt que de rendre la phase à jamais non-exploitable (décision praticien, 04/08).
+  var minRequis=effectiveMinVariablesPrincipales(totalEligible);
+  if(!principales.length||principalesOk.length<minRequis||principalesOk.length/principales.length<threshold){
     return{
       phase:phaseKey,sufficient:false,score:null,
-      reason:!principales.length?'Aucune variable d\'asymétrie principale identifiée pour cette phase (aucun équivalent d\'asymétrie confirmé pour les variables de performance de cette phase).':
-        'Données insuffisantes ('+principalesOk.length+'/'+principales.length+' variables principales disponibles, seuil requis '+Math.round(threshold*100)+'%).',
+      reason:!principales.length?'Aucune variable d\'asymétrie principale identifiée pour cette phase (aucun équivalent d\'asymétrie confirmé pour les variables de performance de cette phase, ou aucune norme d\'asymétrie disponible pour cette population).':
+        'Données insuffisantes ('+principalesOk.length+'/'+principales.length+' variables principales disponibles, minimum requis '+minRequis+', seuil '+Math.round(threshold*100)+'%).',
       principales:principales,secondaires:secondaires,contextuelles:contextuelles
     };
   }
@@ -2793,6 +2830,22 @@ AsymSpecs.asymetrieRetenue=AsymSpecs.asymetrieSousLesNormes
 // concordante(s) -> confiance augmentée ; plusieurs principales concordantes -> confiance
 // maximale. Barème Kinexus par défaut (50 de base, +20 par secondaire concordante, 100 dès 2
 // principales convergentes) — documenté ici, à valider, jamais un seuil cité sans trace.
+//
+// CONSÉQUENCE FACTUELLE du plancher adaptatif ajouté au 04/08 (effectiveMinVariablesPrincipales,
+// cf. computeAsymPhase) : pour qu'une phase soit "sufficient", il faut désormais AU MOINS
+// min(2,totalEligible) variables principales normées. Avec le référentiel ASYM_PERFORMANCE_
+// EQUIVALENT actuel, Braking et Concentric ont chacun 2 variables biomécaniquement pertinentes
+// (totalEligible=2 => plancher=2) : la phase n'est donc plus jamais "sufficient" avec exactement 1
+// principale + 1 secondaire — soit les 2 sont normées (0 secondaire restant), soit la phase est
+// insuffisante. Landing n'a QU'UNE seule variable pertinente (totalEligible=1 => plancher=1) mais,
+// par construction, aucune variable secondaire n'existe pour elle. Résultat : avec le référentiel
+// d'aujourd'hui, le palier intermédiaire "1 principale + secondaire(s) concordante(s) -> confiance
+// augmentée" décrit ci-dessus n'est actuellement JAMAIS atteint par computeAsymPhase (aucune phase
+// ne peut se retrouver "sufficient" avec 1 principale ET au moins 1 secondaire simultanément). La
+// mécanique reste intentionnellement en place (elle s'activera automatiquement si une phase reçoit
+// un 3e équivalent d'asymétrie confirmé un jour, ex. totalEligible=3 => plancher=2, laissant de la
+// place à 1 secondaire) — ce n'est pas un bug, c'est un palier aujourd'hui dormant, testé via un
+// contexte fabriqué (cf. tests/moteurAsymetrie.test.js) plutôt que via computeAsymPhase.
 var CONFIANCE_SIGNAUX_ASYMETRIE=[
   {cle:'variables_principales',poidsDefaut:1,extractor:function(ctx){
     if(!ctx.asym||!ctx.asym.sufficient)return null;
