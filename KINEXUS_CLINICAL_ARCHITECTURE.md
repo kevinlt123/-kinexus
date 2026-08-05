@@ -1,5 +1,10 @@
 # Architecture Clinique de Kinexus
 
+> Kinexus n'a pas pour objectif unique d'analyser des tests. Il a pour objectif d'aider le
+> clinicien à prendre une décision éclairée, que ce soit pour sécuriser un retour au sport ou
+> optimiser la performance, en expliquant de façon transparente les éléments qui conduisent à
+> cette décision.
+
 ## Statut de ce document
 
 Document de référence, validé par le praticien le 05/08/2026, à l'issue d'une discussion
@@ -18,7 +23,83 @@ l'ajout d'un futur test (Drop Jump, SLCMJ, Isométrie, batteries RTP...).
 
 ---
 
-## Le principe fondamental
+## La mission de Kinexus
+
+Ce principe précède tous les autres dans ce document. Il doit être lu et compris avant la
+description des trois niveaux qui suit — les trois niveaux ne sont pas l'objectif de Kinexus,
+ils sont les outils qui permettent de l'atteindre.
+
+Kinexus ne cherche pas à remplacer le raisonnement du clinicien. Il organise, hiérarchise et
+explique objectivement les informations issues des différents moteurs afin d'aider le praticien
+dans sa prise de décision.
+
+Tous les moteurs, toutes les analyses, toutes les interfaces construites dans Kinexus — les
+qualités physiques, les phases biomécaniques, les profils biomécaniques, les asymétries, les
+indices biomécaniques, les alertes, le Moteur de Confiance, Le Fil de Raisonnement — **ne sont
+pas une finalité en soi**. Ce sont des briques au service de deux objectifs cliniques majeurs,
+et de ces deux objectifs seulement.
+
+### 1. Retour au sport (RTP)
+
+La question à laquelle Kinexus doit être capable de répondre n'est pas "quelles sont les valeurs
+mesurées", mais :
+
+> Ce sportif est-il réellement prêt à retourner sur le terrain ?
+
+Et si la réponse est non, Kinexus doit pouvoir expliquer objectivement :
+
+- pourquoi il ne l'est pas ;
+- quelles qualités sont encore insuffisantes ;
+- quels déficits biomécaniques persistent ;
+- quelles asymétries restent présentes ;
+- quels éléments convergent vers cette conclusion ;
+- quel est le niveau de confiance de cette conclusion.
+
+Kinexus a vocation à dépasser les batteries RTP classiques, qui reposent souvent sur quelques
+seuils ou quelques tests isolés, au profit d'une analyse globale, multicritère, qui explique
+réellement le raisonnement clinique plutôt que de se limiter à un verdict.
+
+### 2. Performance
+
+L'objectif n'est pas seulement de détecter des déficits. Kinexus doit être capable d'identifier
+tout le potentiel du sportif :
+
+- ses principales qualités ;
+- ses points forts ;
+- ses points faibles ;
+- sa stratégie biomécanique ;
+- ses axes d'amélioration ;
+- ses axes d'optimisation.
+
+L'objectif est de comprendre le sportif dans sa globalité — pas uniquement de rechercher ce qui
+ne va pas.
+
+### Conséquence : les trois niveaux ne sont jamais des objectifs
+
+Ceci confirme et encadre le principe d'organisation décrit plus bas : les qualités physiques, les
+phases biomécaniques et les profils biomécaniques (ainsi que tout ce qui en dérive — asymétries,
+indices, alertes, confiance, narration) ne sont que des outils. Ils n'ont de valeur que dans la
+mesure où ils font progresser la réponse à l'une des deux questions ci-dessus.
+
+Note de cohérence avec les trois registres de narration (détaillés plus bas) : "Déficit confirmé"
+et "Signal biomécanique isolé" servent avant tout la question du Retour au sport ; "Observation de
+performance" sert la question de la Performance. Ce n'est pas une coïncidence — c'est la
+conséquence directe du fait que ces registres ont été pensés pour ces deux finalités.
+
+### Test de pertinence pour toute évolution future
+
+Avant d'ajouter une fonctionnalité au cœur de Kinexus, elle doit pouvoir répondre "oui" à cette
+question :
+
+> Est-ce que cette évolution améliore la capacité de Kinexus à répondre à l'un de ces deux
+> objectifs (Retour au sport ou Performance) ?
+
+Si la réponse est non, cette fonctionnalité n'a probablement pas sa place dans le cœur du
+logiciel — quelle que soit par ailleurs sa qualité technique ou son intérêt isolé.
+
+---
+
+## Principe d'organisation : la complémentarité des trois niveaux
 
 > Les qualités physiques, les phases biomécaniques et les profils biomécaniques ne sont pas
 > trois niveaux qui se remplacent l'un l'autre. Ce sont **trois lectures complémentaires d'un
