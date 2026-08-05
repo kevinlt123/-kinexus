@@ -118,6 +118,59 @@ test("phaseEvidence n'ajoute aucune ligne 'Asymétrie' quand la phase d'asymétr
   assert.ok(!preuves.some(p => p.tag === 'Asymétrie'), "une ligne 'Asymétrie' a été ajoutée alors que l'asymétrie de cette phase est insuffisante");
 });
 
+// ── Branchement functionScores (05/08) — prérequis identifié dans KINEXUS_CLINICAL_ARCHITECTURE.md
+// pour distinguer les trois registres de narration (déficit confirmé / signal isolé / observation
+// de performance). Population + valeurs reprises telles quelles de la fixture déjà vérifiée dans
+// rapportMouvementPDF.test.js/filDeRaisonnement.test.js : Braking déficitaire (profil Absorbeur
+// déficient), Landing sufficient mais dans les normes -> priorite1 systématiquement Braking.
+NORMS.test_mv_functionscores = {
+  cmj_ecc_mean_power: [10, 20, 40, 60, 75],
+  cmj_force_zero_vel: [10, 20, 40, 60, 75],
+  cmj_braking_rfd: [40, 60, 90, 130, 180],
+  cmj_landing_peak_force: [20, 30, 50, 70, 90],
+  cmj_landing_impulse: [1, 2, 4, 6, 8],
+  cmj_time_to_stab: [1, 2, 4, 6, 8]
+};
+function fsBilan() {
+  return { testData: { cmj: { active: true, trials: {
+    ecc_mean_power: [12], force_zero_vel: [12], braking_rfd: [45],
+    landing_peak_force: [22], landing_impulse: [1.2], time_to_stab: [1.2]
+  } } } };
+}
+
+test('sans 4e paramètre (comportement historique, avant le 05/08) : qualiteDeficiente reste toujours false, niveauPriorite plafonne à "Modérée"', () => {
+  const analysis = computeMouvementAnalysis(fsBilan(), 'test_mv_functionscores', 24);
+  assert.strictEqual(analysis.priorisation.priorite1.phase, 'braking');
+  assert.strictEqual(analysis.priorisation.priorite1.qualiteDeficiente, false, "sans functionScores, aucune qualité ne peut jamais être détectée déficitaire");
+  assert.strictEqual(analysis.priorisation.priorite1.niveauPriorite, 'Modérée', 'un seul moteur convergent (le profil) -> plafond Modérée sans functionScores');
+});
+
+test('avec functionScores fourni (05/08) et la qualité associée (Absorption) déficitaire : qualiteDeficiente devient true, niveauPriorite escalade vers "Très forte" (2 moteurs convergents)', () => {
+  const functionScores = { Absorption: { status: 'rouge' } };
+  const analysis = computeMouvementAnalysis(fsBilan(), 'test_mv_functionscores', 24, functionScores);
+  assert.strictEqual(analysis.priorisation.priorite1.phase, 'braking');
+  assert.strictEqual(analysis.priorisation.priorite1.qualiteAssociee, 'Absorption', 'CMJ_PHASE_TO_QUALITY doit mapper braking -> Absorption, indépendamment de functionScores');
+  assert.strictEqual(analysis.priorisation.priorite1.qualiteDeficiente, true, 'Absorption est rouge dans functionScores -> déficit confirmé (registre 1 de KINEXUS_CLINICAL_ARCHITECTURE.md)');
+  assert.strictEqual(analysis.priorisation.priorite1.countMoteurs, 2, 'profil ET qualité déficients -> 2 moteurs convergents');
+  assert.strictEqual(analysis.priorisation.priorite1.niveauPriorite, 'Très forte');
+});
+
+test('avec functionScores fourni mais la qualité associée (Absorption) NON déficitaire : qualiteDeficiente reste false -> signal biomécanique isolé (registre 2), niveauPriorite ne change pas', () => {
+  const functionScores = { Absorption: { status: 'vert' } };
+  const analysis = computeMouvementAnalysis(fsBilan(), 'test_mv_functionscores', 24, functionScores);
+  assert.strictEqual(analysis.priorisation.priorite1.qualiteDeficiente, false, "Absorption est verte -> le constat biomécanique n'a aucun écho fonctionnel, il doit rester un signal isolé, jamais un déficit confirmé");
+  assert.strictEqual(analysis.priorisation.priorite1.niveauPriorite, 'Modérée', "un seul moteur convergent (le profil) même avec functionScores fourni -> le plafond ne bouge pas sans convergence réelle");
+});
+
+test('functionScores se propage aussi à confiances[phase] et explications[phase] (une seule chaîne, jamais un second calcul de qualiteDeficiente)', () => {
+  const functionScores = { Absorption: { status: 'rouge' } };
+  const analysis = computeMouvementAnalysis(fsBilan(), 'test_mv_functionscores', 24, functionScores);
+  assert.ok(analysis.confiances.braking, 'la confiance de Braking doit être calculable');
+  assert.ok('qualite' in analysis.confiances.braking.signaux.reduce((m, s) => (m[s.cle] = true, m), {}) || analysis.confiances.braking.signaux.some(s => s.cle === 'qualite'), 'le signal "qualite" du Moteur de Confiance doit être exploitable dès que functionScores est fourni');
+  const regles = analysis.explications.braking.sections.reglesAppliquees;
+  assert.strictEqual(regles.priorisation.countMoteurs, 2, "explicationConclusionPhase doit refléter le même countMoteurs que la priorisation, jamais recalculé séparément");
+});
+
 console.log('');
 console.log(passed + ' réussi(s), ' + failed + ' échoué(s)');
 if (failed > 0) process.exit(1);

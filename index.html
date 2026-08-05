@@ -3334,7 +3334,15 @@ function resolveCmjValues(bilan){
 // functionScores (Moteur des Qualités, système distinct de celui-ci) volontairement omis pour
 // cette première intégration : chaque moteur en aval dégrade proprement en son absence (mécanisme
 // déjà prévu dans leur conception), jamais un recalcul de substitution improvisé ici.
-function computeMouvementAnalysis(bilan,pop,age){
+// functionScores (05/08) : optionnel, 4e paramètre — sortie déjà calculée par computeMoteur()
+// (Moteur des Qualités, système historique de KINEXUS), jamais recalculée ici. Absent/omis (comme
+// avant le 05/08), tout redégrade exactement comme avant (qualiteDeficiente reste toujours false,
+// aucune régression). Fourni, il permet enfin à dossierPreuvesPhase/explicationConclusionPhase de
+// distinguer les trois registres formalisés dans KINEXUS_CLINICAL_ARCHITECTURE.md : un constat
+// biomécanique qui CONFIRME une qualité déjà déficitaire (déficit confirmé), un constat qui ne
+// trouve aucun écho fonctionnel (signal isolé), ou — quand aucune phase n'est déficitaire — une
+// particularité de profil qui reste une observation de performance.
+function computeMouvementAnalysis(bilan,pop,age,functionScores){
   var cmjValues=resolveCmjValues(bilan);
   var valuesByTest={cmj:cmjValues};
   var biomeca=computeBiomecaEngine(cmjValues,pop,age);
@@ -3342,20 +3350,20 @@ function computeMouvementAnalysis(bilan,pop,age){
   var coherence=computeCoherenceEngine(phases);
   var profileResults=computeAllBiomechanicalProfiles(valuesByTest,pop,age);
   var signature=computeSignatureBiomecanique(profileResults);
-  var syntheseBiomecanique=computeSyntheseBiomecanique(phases,coherence,null);
+  var syntheseBiomecanique=computeSyntheseBiomecanique(phases,coherence,functionScores);
   var raisonnement=computeMoteurRaisonnementBiomecanique(profileResults,phases,coherence,syntheseBiomecanique);
-  var priorisation=computePriorisationClinique(phases,coherence,profileResults,null,raisonnement);
+  var priorisation=computePriorisationClinique(phases,coherence,profileResults,functionScores,raisonnement);
   var indices=computeIndicesBiomecaniques(valuesByTest,pop,age);
   var dossiersByPhase={};
   [priorisation.priorite1,priorisation.priorite2,priorisation.priorite3].forEach(function(d){if(d)dossiersByPhase[d.phase]=d;});
   var confiances={},explications={};
   CMJ_PHASES.forEach(function(p){
     if(phases[p]&&phases[p].sufficient){
-      confiances[p]=computeConfianceKinexus(p,phases,profileResults,null,raisonnement);
-      explications[p]=explicationConclusionPhase(p,phases,profileResults,null,raisonnement,dossiersByPhase[p]||null);
+      confiances[p]=computeConfianceKinexus(p,phases,profileResults,functionScores,raisonnement);
+      explications[p]=explicationConclusionPhase(p,phases,profileResults,functionScores,raisonnement,dossiersByPhase[p]||null);
     }
   });
-  var alertes=computeMoteurAlerte(phases,profileResults,null,raisonnement,biomeca.globalWarnings);
+  var alertes=computeMoteurAlerte(phases,profileResults,functionScores,raisonnement,biomeca.globalWarnings);
   // Moteur d'Analyse des Asymétries par Phase (computeAsymEngine, déjà figé et testé) — non
   // branché ici jusqu'au 05/08 : phaseEvidence()/phasePresentation() n'avaient donc jamais accès
   // à une conclusion d'asymétrie, y compris pour MouvementView déjà en production. Correction :
@@ -3365,7 +3373,11 @@ function computeMouvementAnalysis(bilan,pop,age){
     cmjValues:cmjValues,phases:phases,coherence:coherence,profileResults:profileResults,signature:signature,
     syntheseBiomecanique:syntheseBiomecanique,raisonnement:raisonnement,priorisation:priorisation,indices:indices,
     dossiersByPhase:dossiersByPhase,confiances:confiances,explications:explications,alertes:alertes,
-    asymEngine:asymEngine
+    asymEngine:asymEngine,
+    // Exposé tel quel (jamais recalculé) pour que la couche de présentation (buildRaisonnementBoardCMJ)
+    // puisse distinguer "qualité non évaluée" de "qualité évaluée mais non déficitaire" — un dossier
+    // de priorisation n'expose que le booléen qualiteDeficiente, insuffisant pour cette distinction.
+    functionScores:functionScores||null
   };
 }
 
@@ -3895,7 +3907,18 @@ function buildRaisonnementBoardCMJ(analysis,contextLabel){
       });
     }
     var qualiteNom=CMJ_PHASE_TO_QUALITY[phaseKey];
-    if(qualiteNom)liens.push({label:'Qualité associée : '+qualiteNom+(dossier.qualiteDeficiente?'':' (non évaluée dans ce bilan)'),onSelect:null});
+    if(qualiteNom){
+      // Bug corrigé (05/08, trouvé en vérifiant cette fonctionnalité sur des bilans réels) :
+      // dossier.qualiteDeficiente est un booléen qui vaut false aussi bien quand la qualité est
+      // "non évaluée" (functionScores absent) que quand elle est "évaluée mais non déficitaire"
+      // — deux situations très différentes pour le praticien. qualiteStatutOrdinal (déjà
+      // existant, jamais réinventé ici) permet de les distinguer : null -> non évaluée du tout ;
+      // une valeur -> évaluée, qu'elle soit déficitaire ou non.
+      var qualiteStatut=analysis.functionScores?analysis.functionScores[qualiteNom]:null;
+      var qualiteEvaluee=qualiteStatutOrdinal(qualiteStatut)!=null;
+      var qualiteSuffixe=!qualiteEvaluee?' (non évaluée dans ce bilan)':(dossier.qualiteDeficiente?' — déficitaire':' — non déficitaire');
+      liens.push({label:'Qualité associée : '+qualiteNom+qualiteSuffixe,onSelect:null});
+    }
     var preuves=pres.preuves||[];
     return{
       id:phaseKey,rang:i+1,tier:dossier.niveauPriorite,tierColor:tierColor,
@@ -4474,7 +4497,7 @@ function buildSportifReport(athlete,bilan,res){
   // Section Mouvement (CMJ) — décision du praticien (05/08) : 3e page dédiée, au même niveau de
   // détail que kinexus_rapport_pdf.html (référence UX officielle). N'apparaît que si un CMJ actif
   // existe pour ce bilan ; le nombre total de pages devient donc dynamique (2 ou 3), jamais figé.
-  var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),age):null;
+  var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),age,fSc):null;
   var totalPages=mouvementAnalysis?3:2;
 
   var colMap={vert:'#22c55e',jaune:'#FACC15',orange:'#f97316',rouge:'#ef4444'};
@@ -5846,8 +5869,8 @@ function AnalyseView(props){
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
   var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge);},[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
   var mouvementAnalysis=useMemo(function(){
-    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),athleteAge):null;
-  },[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
+    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),athleteAge,res.functionScores):null;
+  },[bilan,athlete.normPopulation,athlete.sexe,athleteAge,res]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
   var fSc=res.functionScores,sysSc=res.systemScores;
   var pri=res.priorities||[];

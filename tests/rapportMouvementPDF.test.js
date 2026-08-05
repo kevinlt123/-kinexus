@@ -112,15 +112,19 @@ test('bilan avec CMJ actif : le rapport passe à 3 pages, numérotation dynamiqu
   assert.ok(out.indexOf('COUNTER MOVEMENT JUMP') >= 0);
 });
 
-test('page 3 : la priorité clinique affichée est fidèle à computeMouvementAnalysis (Braking, Modérée), jamais un texte inventé', () => {
+test('page 3 : la priorité clinique affichée est fidèle à computeMouvementAnalysis (Braking, Très forte grâce à la convergence profil+qualité), jamais un texte inventé', () => {
   const bilan = cmjBilan();
   const res = computeMoteur(bilan.testData, bilan.questData, effectiveNormPop(athlete), 24);
-  const mv = computeMouvementAnalysis(bilan, effectiveNormPop(athlete), 24);
+  // computeMouvementAnalysis reçoit désormais functionScores (05/08) : avec cette fixture,
+  // Absorption (qualité associée à Braking) est aussi déficitaire -> countMoteurs=2 -> "Très
+  // forte" plutôt que "Modérée" (qui restait le plafond tant que functionScores valait null).
+  const mv = computeMouvementAnalysis(bilan, effectiveNormPop(athlete), 24, res.functionScores);
   assert.strictEqual(mv.priorisation.priorite1.phase, 'braking', 'prérequis du test : la fixture doit produire Braking comme priorité n°1');
-  assert.strictEqual(mv.priorisation.priorite1.niveauPriorite, 'Modérée');
+  assert.strictEqual(mv.priorisation.priorite1.niveauPriorite, 'Très forte');
+  assert.strictEqual(mv.priorisation.priorite1.qualiteDeficiente, true, 'Absorption doit être détectée déficitaire -> déficit confirmé (registre 1 de KINEXUS_CLINICAL_ARCHITECTURE.md)');
   assert.strictEqual(mv.priorisation.priorite2, null, 'prérequis du test : aucune priorité secondaire attendue avec cette fixture');
   const out = buildSportifReport(athlete, bilan, res);
-  assert.ok(out.indexOf('Priorité clinique · Modérée') >= 0, 'le rapport doit reprendre exactement le niveauPriorite déjà calculé');
+  assert.ok(out.indexOf('Priorité clinique · Très forte') >= 0, 'le rapport doit reprendre exactement le niveauPriorite déjà calculé, avec functionScores branché comme dans buildSportifReport');
   assert.ok(out.indexOf(CMJ_PHASE_LABEL.braking) >= 0, 'le rapport doit nommer la phase Braking');
   assert.ok(out.indexOf('Point de vigilance secondaire') < 0, 'aucune priorité 2 dans cette fixture -> aucune ligne de vigilance secondaire ne doit apparaître');
 });
@@ -128,7 +132,7 @@ test('page 3 : la priorité clinique affichée est fidèle à computeMouvementAn
 test("page 3 : l'asymétrie confirmée de Landing (membre Gauche) est reprise fidèlement depuis asymPhaseSummary/cartographieAsymetries", () => {
   const bilan = cmjBilan();
   const res = computeMoteur(bilan.testData, bilan.questData, effectiveNormPop(athlete), 24);
-  const mv = computeMouvementAnalysis(bilan, effectiveNormPop(athlete), 24);
+  const mv = computeMouvementAnalysis(bilan, effectiveNormPop(athlete), 24, res.functionScores);
   const cartoLanding = mv.asymEngine.cartographie.find(c => c.phase === 'landing');
   assert.strictEqual(cartoLanding.conclusion, 'Asymétrie principale', 'prérequis du test : Landing doit être retenue comme asymétrie principale');
   const out = buildSportifReport(athlete, bilan, res);
@@ -139,7 +143,7 @@ test("page 3 : l'asymétrie confirmée de Landing (membre Gauche) est reprise fi
 test('page 3 : synthèse reprend mot pour mot raisonnement.syntheseFinale.axesDeTravail, jamais reformulée', () => {
   const bilan = cmjBilan();
   const res = computeMoteur(bilan.testData, bilan.questData, effectiveNormPop(athlete), 24);
-  const mv = computeMouvementAnalysis(bilan, effectiveNormPop(athlete), 24);
+  const mv = computeMouvementAnalysis(bilan, effectiveNormPop(athlete), 24, res.functionScores);
   const out = buildSportifReport(athlete, bilan, res);
   assert.ok(out.indexOf(mv.raisonnement.syntheseFinale.axesDeTravail) >= 0, 'la phrase de synthèse doit être reprise à l\'identique, jamais réécrite dans le rapport');
 });

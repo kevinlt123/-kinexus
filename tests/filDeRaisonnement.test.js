@@ -141,6 +141,16 @@ test("threads : les liens incluent la qualité associée (mapping CMJ_PHASE_TO_Q
   assert.ok(lien.label.indexOf('non évaluée') >= 0, 'computeMouvementAnalysis ne fournit jamais functionScores -> jamais un statut de qualité inventé ici');
 });
 
+test('threads : bug corrigé (05/08, trouvé en vérifiant sur des bilans réels) — "évaluée mais non déficitaire" ne doit plus être confondue avec "non évaluée"', () => {
+  const mvDeficitaire = computeMouvementAnalysis(cmjBilan(), 'test_fdr_pop', 24, { Absorption: { status: 'rouge' } });
+  const lienDeficitaire = buildRaisonnementBoardCMJ(mvDeficitaire, '').threads[0].liens.find(l => l.label.indexOf('Qualité associée') === 0);
+  assert.ok(lienDeficitaire.label.indexOf('déficitaire') >= 0 && lienDeficitaire.label.indexOf('non évaluée') < 0, 'Absorption rouge -> doit dire "déficitaire", jamais "non évaluée" : ' + lienDeficitaire.label);
+
+  const mvNonDeficitaire = computeMouvementAnalysis(cmjBilan(), 'test_fdr_pop', 24, { Absorption: { status: 'vert' } });
+  const lienNonDeficitaire = buildRaisonnementBoardCMJ(mvNonDeficitaire, '').threads[0].liens.find(l => l.label.indexOf('Qualité associée') === 0);
+  assert.ok(lienNonDeficitaire.label.indexOf('non déficitaire') >= 0 && lienNonDeficitaire.label.indexOf('(non évaluée') < 0, 'Absorption verte (évaluée, saine) -> doit dire "non déficitaire", jamais être confondue avec "non évaluée" : ' + lienNonDeficitaire.label);
+});
+
 test('autresObservations : liste les phases exploitables mais non retenues en priorité, avec leur niveau déjà classé (jamais recalculé)', () => {
   const mv = computeMouvementAnalysis(cmjBilan(), 'test_fdr_pop', 24);
   const board = buildRaisonnementBoardCMJ(mv, '');
