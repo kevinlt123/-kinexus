@@ -1,0 +1,174 @@
+# Architecture Clinique de Kinexus
+
+## Statut de ce document
+
+Document de référence, validé par le praticien le 05/08/2026, à l'issue d'une discussion
+approfondie sur la manière dont Kinexus doit raisonner sur un sportif.
+
+Ce n'est pas une note technique décrivant un moteur particulier — c'est le document qui décrit
+**comment Kinexus pense**, indépendamment du test, du moteur ou de l'écran concerné. Toute
+évolution future du logiciel (nouveau test, nouvel écran, nouvelle narration) doit être cohérente
+avec ce document. En cas de conflit apparent entre une évolution envisagée et ce qui est décrit
+ici, la ligne directrice ne doit pas être modifiée sans validation explicite du praticien.
+
+Ce document a été formalisé alors que Kinexus n'implémente concrètement cette philosophie que
+pour un seul test (le CMJ). C'est volontaire : la philosophie est pensée dès le départ pour aller
+au-delà du CMJ, et sa formulation ne doit contenir aucune référence qui ne survivrait pas à
+l'ajout d'un futur test (Drop Jump, SLCMJ, Isométrie, batteries RTP...).
+
+---
+
+## Le principe fondamental
+
+> Les qualités physiques, les phases biomécaniques et les profils biomécaniques ne sont pas
+> trois niveaux qui se remplacent l'un l'autre. Ce sont **trois lectures complémentaires d'un
+> même sportif**.
+
+Selon les situations, ces trois lectures :
+
+- **peuvent converger** — elles racontent alors la même histoire depuis trois angles différents,
+  ce qui renforce la confiance dans la conclusion ;
+- **peuvent s'expliquer mutuellement** — l'une éclaire pourquoi l'autre observe ce qu'elle
+  observe ;
+- **peuvent attirer l'attention l'une sur l'autre** — une observation fine à un niveau peut
+  justifier de vérifier un autre niveau qui, seul, n'aurait rien signalé ;
+- **mais doivent toujours conserver leur indépendance conceptuelle**. Aucune des trois lectures
+  n'est structurellement subordonnée aux deux autres. Aucune ne doit être mise "au service" d'une
+  autre par construction logicielle.
+
+Ce principe a une conséquence directe sur la conception : **aucun écran, aucun moteur, aucune
+narration ne doit être construit en supposant qu'un de ces trois niveaux valide, dérive ou
+subordonne les deux autres.** Chacun doit pouvoir être interrogé, affiché et compris seul.
+
+---
+
+## Les trois niveaux de lecture
+
+### Niveau 1 — Les qualités physiques
+
+**Question clinique : Que limite le sportif ?**
+
+Lecture fonctionnelle et **transversale** : elle agrège les informations provenant de toute la
+batterie de tests réalisés par le sportif (pas seulement le test concerné par une analyse
+biomécanique donnée). C'est une évaluation de la capacité — ce que le sportif est capable de
+produire, indépendamment de la manière dont il l'obtient.
+
+C'est le niveau qui doit guider la décision clinique en premier lieu, et qui constitue **le
+langage principal du Dashboard** : c'est par une qualité physique qu'un praticien doit entrer
+dans un bilan, jamais par un test ou un moteur spécifique.
+
+*Traduction actuelle dans le code (index.html)* : `FUNCTIONS`, `computeMoteur()`, `functionScores`
+— construit à partir de `TFM` (Test-Fonction-Mapping), qui pondère la contribution de chaque test
+de la batterie (WBLT, Force Segmentaire, IMTP, CMJ, Hop Tests...) à chaque qualité (Force
+maximale, Absorption, Contrôle Frontal, Propulsion / Production de force, Mobilité...).
+
+### Niveau 2 — Les phases biomécaniques
+
+**Question clinique : Où se situe cette limitation dans le mouvement ?**
+
+Lecture biomécanique plus fine, **spécifique au test concerné** (le CMJ aujourd'hui). Elle
+localise un déficit dans la séquence du mouvement — à quelle étape précise (Unloading, Braking,
+Concentric, Flight, Landing pour le CMJ) la performance s'écarte des normes. C'est une lecture
+**absolue** (comparaison du sportif à une population de référence), simplement plus granulaire
+que le niveau 1.
+
+Ce niveau localise le déficit ; il ne décrit pas encore la stratégie motrice employée pour y
+arriver — c'est le rôle du niveau 3.
+
+*Traduction actuelle dans le code* : `CMJ_VAR_META`, `computeBiomecaEngine`/`computeBiomecaPhase`,
+les 5 `CMJ_PHASES`. Conçu explicitement pour être rejoué à l'identique sur un futur test
+biomécanique (même architecture moteur générique + référentiel de données par test).
+
+### Niveau 3 — Les profils biomécaniques
+
+**Question clinique : Comment le sportif réalise-t-il son mouvement ?**
+
+Lecture **comparative** : elle décrit la stratégie motrice employée par le sportif, en le
+comparant à lui-même plutôt qu'à une population de référence. Elle est **indépendante de la
+sévérité du déficit** — deux sportifs peuvent présenter le même déficit au niveau 1 ou au niveau
+2, avec des profils biomécaniques totalement différents (l'un compense en Absorbeur, l'autre en
+Propulsif), et inversement deux sportifs peuvent partager le même profil dominant sans partager
+le même niveau de performance absolue.
+
+*Traduction actuelle dans le code* : `BiomechanicalProfiles` (5 profils : Propulsif, Absorbeur,
+Réactif, Explosif, Contrôle), `BiomechanicalProfileEngine`, `computeSignatureBiomecanique`.
+
+### Synthèse des trois questions
+
+| Niveau | Question | Portée | Type de lecture |
+|---|---|---|---|
+| 1 — Qualités | Que limite le sportif ? | Toute la batterie de tests | Absolue, agrégée |
+| 2 — Phases | Où se situe cette limitation ? | Le test concerné (CMJ aujourd'hui) | Absolue, localisée |
+| 3 — Profils | Comment réalise-t-il son mouvement ? | Le test concerné (CMJ aujourd'hui) | Comparative (au sportif lui-même) |
+
+---
+
+## Les trois registres de narration
+
+Une conclusion biomécanique (niveau 2 ou 3) peut se trouver dans l'une de trois situations
+distinctes vis-à-vis du niveau 1, et **la narration doit le dire explicitement** plutôt que de
+présenter toute observation sur le même ton :
+
+1. **Déficit confirmé** — la qualité physique correspondante est elle-même déficitaire, et
+   l'observation biomécanique en explique le mécanisme. C'est le cas le plus fort : plusieurs
+   niveaux convergent vers la même conclusion.
+2. **Signal biomécanique isolé** — l'observation biomécanique révèle un écart aux normes qu'aucune
+   qualité physique ne signale encore (dilué dans une moyenne agrégée sur toute la batterie, ou
+   pas encore assez sévère pour faire basculer une qualité). Reste un signal à surveiller, mais
+   sans confirmation fonctionnelle à ce stade.
+3. **Observation de performance** — aucun déficit n'est identifié à aucun niveau ; l'observation
+   biomécanique met en évidence une particularité de stratégie (souvent au niveau 3, profils) qui
+   constitue un axe d'optimisation chez un sportif par ailleurs sain.
+
+**Ces trois registres ne doivent jamais être racontés avec le même vocabulaire.** Un axe
+d'optimisation présenté avec le vocabulaire d'une alerte clinique ("priorité", "déficitaire")
+serait trompeur et userait la confiance du praticien dans le système. La distinction doit être
+visible aussi bien dans le texte narratif que dans le traitement visuel (couleur, urgence,
+positionnement à l'écran).
+
+**Prérequis technique non résolu à ce jour** : distinguer ces trois registres suppose que le
+moteur produisant une observation aux niveaux 2/3 sache si la qualité physique correspondante
+(niveau 1) est ou non déficitaire pour ce même bilan. Aujourd'hui, `computeMouvementAnalysis()`
+n'a jamais accès à `functionScores` (passé `null` par choix explicite lors de la première
+intégration). Tant que ce branchement n'est pas fait, le système ne peut pas distinguer
+structurellement un "déficit confirmé" d'un "signal isolé" — il ne peut que produire un signal de
+niveau 2/3, sans savoir dans lequel des trois registres il se trouve. Ce branchement est donc un
+prérequis, pas une amélioration parmi d'autres.
+
+---
+
+## Comment ce principe doit guider la conception
+
+- **Dashboard** : structuré par les qualités physiques (niveau 1). Jamais par phase ou par profil
+  d'un test spécifique. Un utilisateur doit pouvoir comprendre "ce que ce sportif ne sait pas
+  encore bien faire" sans jamais avoir entendu parler de CMJ.
+- **Drill-down** : les niveaux 2 et 3 sont atteints *depuis* une qualité (ou depuis un bilan),
+  jamais présentés en concurrence frontale avec le niveau 1 sur le même écran d'entrée.
+- **Narration (Fil de Raisonnement et équivalents futurs)** : chaque conclusion doit indiquer
+  explicitement dans lequel des trois registres (déficit confirmé / signal isolé / observation de
+  performance) elle se situe, avec un vocabulaire et un traitement visuel distincts pour chacun.
+- **Futurs modules** : tout nouveau test qui construit une lecture "où" (localisation) ou
+  "comment" (stratégie) s'inscrit dans les niveaux 2/3 — jamais un niveau 4 séparé. Le niveau 1
+  reste unique et transversal par construction (`TFM` s'étend naturellement à un nouveau test sans
+  changer de logique).
+- **Aucun nouveau seuil clinique n'est défini par ce document.** Il décrit une relation entre trois
+  lectures déjà produites par des moteurs existants — il ne remplace, ni ne contourne, l'exigence
+  déjà en vigueur dans Kinexus de ne jamais inventer une équivalence, un mapping ou un seuil
+  clinique sans confirmation explicite du praticien.
+
+---
+
+## État d'implémentation actuel
+
+À la date de ce document, seul le CMJ dispose des trois niveaux :
+
+- Niveau 1 (qualités) : opérationnel, transversal (déjà alimenté par plusieurs tests au-delà du
+  CMJ).
+- Niveau 2 (phases CMJ) et Niveau 3 (profils CMJ) : opérationnels pour le CMJ uniquement.
+- Le branchement niveau 1 ↔ niveaux 2/3 (`functionScores` dans `computeMouvementAnalysis`) reste
+  à faire — voir "Prérequis technique" ci-dessus.
+- La distinction visuelle des trois registres de narration dans Le Fil de Raisonnement reste à
+  faire.
+
+Ce document ne constitue pas une demande d'implémentation. Il fixe la référence à laquelle ces
+implémentations, une fois entreprises, devront se conformer.
