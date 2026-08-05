@@ -44,23 +44,25 @@ et de ces deux objectifs seulement.
 
 ### 1. Retour au sport (RTP)
 
-La question à laquelle Kinexus doit être capable de répondre n'est pas "quelles sont les valeurs
-mesurées", mais :
+La question à laquelle Kinexus doit permettre au praticien de répondre n'est pas "quelles sont les
+valeurs mesurées", mais :
 
 > Ce sportif est-il réellement prêt à retourner sur le terrain ?
 
-Et si la réponse est non, Kinexus doit pouvoir expliquer objectivement :
+**Kinexus ne répond jamais lui-même à cette question — il fournit au praticien tout ce qui est
+nécessaire pour qu'il y réponde.** Il doit pouvoir expliquer objectivement :
 
-- pourquoi il ne l'est pas ;
 - quelles qualités sont encore insuffisantes ;
 - quels déficits biomécaniques persistent ;
 - quelles asymétries restent présentes ;
-- quels éléments convergent vers cette conclusion ;
-- quel est le niveau de confiance de cette conclusion.
+- quels éléments convergent vers ce constat ;
+- quel est le niveau de confiance de chaque constat.
 
 Kinexus a vocation à dépasser les batteries RTP classiques, qui reposent souvent sur quelques
 seuils ou quelques tests isolés, au profit d'une analyse globale, multicritère, qui explique
-réellement le raisonnement clinique plutôt que de se limiter à un verdict.
+réellement le raisonnement clinique plutôt que de se limiter à un verdict. Voir "Les modes de
+lecture" plus bas : le Retour au sport n'est pas un bilan différent de la Performance, c'est une
+question différente posée au même bilan.
 
 ### 2. Performance
 
@@ -396,6 +398,80 @@ ne devra pas prendre une fois plusieurs tests en jeu.
 > interprétations ; la narration les rend compréhensibles ; l'orientation clinique les hiérarchise,
 > par-dessus tous les moteurs. La décision reste, à chaque niveau, celle du praticien.
 
+L'orientation clinique organise les conclusions de tous les moteurs sans tenir compte de la
+question clinique du praticien. Ce qui reste à préciser — pourquoi un même constat devient tantôt
+un axe d'optimisation, tantôt un élément de vigilance — est le rôle des modes de lecture,
+ci-dessous.
+
+---
+
+## Les modes de lecture : une seule évaluation, plusieurs questions cliniques
+
+> Un même bilan doit pouvoir répondre simultanément à plusieurs questions cliniques sans que son
+> raisonnement scientifique ne change.
+
+**Une seule batterie de tests, un seul bilan, un seul raisonnement scientifique — plusieurs modes
+de lecture selon la question clinique du praticien.** Kinexus ne construit jamais de bilan RTP et
+de bilan Performance séparés, avec des batteries ou des moteurs différents. Les tests sont les
+mêmes, les preuves sont les mêmes, les moteurs sont les mêmes, leurs conclusions sont les mêmes.
+Ce qui change n'est jamais le raisonnement scientifique : c'est la question clinique posée à ce
+même bilan, et donc la manière de hiérarchiser des conclusions déjà produites.
+
+- **Mode Performance** — met en avant les qualités à développer, les stratégies motrices, les
+  leviers de progression, les axes d'optimisation.
+- **Mode RTP** — met en avant les limitations persistantes, les asymétries, les déficits résiduels,
+  les convergences de preuves : tout ce qui permet d'apprécier où en est l'athlète dans son
+  processus de retour au sport.
+- Une même conclusion (par exemple une phase de freinage déficitaire) peut ainsi apparaître comme
+  un axe d'optimisation en mode Performance et comme un élément de vigilance en mode RTP, sans
+  qu'aucun moteur n'ait produit deux conclusions différentes. C'est la même conclusion, lue
+  différemment.
+
+**Kinexus ne produit jamais de décision — dans aucun mode, présent ou futur.** Il décrit l'état
+constaté de l'athlète à l'instant T, hiérarchisé et synthétisé selon la question clinique posée,
+avec le niveau de preuve et le niveau de confiance associés à chaque constat. Kinexus ne répond
+jamais à "cet athlète peut-il reprendre ?" — il fournit au praticien le maximum d'informations
+pertinentes, organisées, pour que ce soit lui qui réponde. Ce principe n'est pas spécifique au mode
+RTP : il vaut pour tout mode de lecture présent ou futur (Performance, et demain Prévention,
+Dépistage...). La décision reste, toujours, celle du praticien.
+
+### Ce qu'un mode de lecture peut faire librement, et ce qui bascule dans la gouvernance des moteurs
+
+Un mode de lecture peut **trier, filtrer, regrouper** des conclusions déjà produites — par
+confiance, par priorité, par domaine — sans jamais introduire de règle clinique nouvelle. Ce tri
+seul ne requiert aucune validation supplémentaire : il n'ajoute rien à ce que les moteurs ont déjà
+conclu.
+
+**Dès qu'un mode introduit un nouveau critère décisionnel, une règle de sélection, un seuil, ou
+toute autre logique qui ajoute une interprétation clinique aux conclusions déjà produites, cette
+règle doit être soumise exactement à la même gouvernance que les moteurs** : source, validation
+explicite du praticien, traçabilité — jamais d'invention. Un repère concret pour trancher les cas
+limites : trier des conclusions selon une valeur de confiance continue est un tri libre ; les
+regrouper sous une étiquette catégorielle ("confiance élevée", "convergence forte") suppose un
+seuil de coupure quelque part — ce seuil doit donc être validé comme n'importe quel seuil clinique
+de Kinexus.
+
+### Contrat minimal exposé par chaque moteur
+
+Quel que soit son niveau de sophistication interne (voir "Les trois niveaux de lecture" plus haut —
+un moteur n'a droit qu'au niveau de sophistication que la littérature scientifique et la valeur
+clinique du test justifient, jamais à celui d'un moteur plus riche pris comme modèle), chaque
+moteur expose au minimum, et uniquement, à l'orientation clinique et aux modes de lecture :
+
+- sa **question clinique** ;
+- sa ou ses **conclusions** ;
+- son **niveau de confiance** ;
+- son **domaine d'expertise**.
+
+Le registre (déficit confirmé / signal isolé / observation de performance, voir ci-dessus) reste
+optionnel : un moteur à un seul niveau ne peut pas le produire, et ce n'est pas une lacune — c'est
+la conséquence normale du principe qui précède.
+
+**L'orientation clinique et les modes de lecture ne consomment jamais que ce contrat.** Ils ne
+lisent jamais une variable brute, ni l'implémentation interne d'un moteur — seulement ce que le
+moteur expose explicitement. C'est la même discipline de lecture seule que le principe
+d'étanchéité, appliquée un cran plus loin dans le pipeline.
+
 ---
 
 ## Comment ce principe doit guider la conception
@@ -415,6 +491,11 @@ ne devra pas prendre une fois plusieurs tests en jeu.
   Toujours formulée à l'interrogatif ou au nominal ("Priorité d'investigation : Absorption"),
   jamais à l'impératif ("Renforcez l'absorption") : le mode grammatical est ce qui distingue
   concrètement une mise en perspective d'une prescription.
+- **Modes de lecture (Performance / RTP / futurs modes)** : jamais un verdict, jamais "prêt" ou
+  "non prêt" — uniquement une hiérarchisation et une synthèse de constats déjà produits par les
+  moteurs, avec leur niveau de preuve et de confiance explicites. La décision de retour au sport
+  n'est jamais calculée ; elle est toujours consignée par le praticien lui-même, jamais déduite
+  d'un statut calculé par Kinexus.
 - **Futurs modules** : tout nouveau test qui construit une lecture "où" (localisation) ou
   "comment" (stratégie) s'inscrit dans les niveaux 2/3 — jamais un niveau 4 séparé. Le niveau 1
   reste unique et transversal par construction (`TFM` s'étend naturellement à un nouveau test sans
@@ -443,6 +524,14 @@ ne devra pas prendre une fois plusieurs tests en jeu.
   `composeNarrativeParagraph()`) — voir "Orientation clinique" ci-dessus. Ce document ne prescrit
   pas de les corriger ; il fixe la référence à laquelle une future discipline de l'orientation
   clinique devra se conformer.
+- Les modes de lecture n'existent pas non plus comme couche à part. Le `rtpStatus` calculé dans
+  `computeMoteur()` (statut vert/jaune/rouge, seuils LSI≥95 % et ACL-RSI≥77 codés en dur) produit
+  aujourd'hui un verdict — exactement ce que le principe "Les modes de lecture" ci-dessus interdit
+  désormais. Le champ `rtpOverride` de l'UI, pensé comme une surcharge de ce statut calculé, devra
+  être repensé en décision consignée par le praticien, indépendante de tout statut calculé, plutôt
+  qu'une correction d'un verdict que Kinexus n'a plus vocation à produire. Ce document ne prescrit
+  pas de corriger ceci maintenant ; il fixe la référence à laquelle une future refonte du RTP devra
+  se conformer.
 
 Ce document ne constitue pas une demande d'implémentation. Il fixe la référence à laquelle ces
 implémentations, une fois entreprises, devront se conformer.
