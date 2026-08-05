@@ -175,13 +175,13 @@ il ne prescrit pas de le corriger.
 
 ---
 
-## Le pipeline : preuve → interprétation → conclusion → narration
+## Le pipeline : preuve → interprétation → conclusion → narration → orientation clinique
 
 > Une variable n'est pas, par elle-même, un signal clinique. C'est une **preuve**. Elle ne devient
 > un constat clinique que lorsqu'un moteur l'interprète.
 
-Tout moteur de Kinexus — présent ou futur — transforme l'information selon la même séquence à
-quatre étapes, quelle que soit la question clinique à laquelle il répond :
+Tout moteur de Kinexus — présent ou futur — transforme l'information selon la même séquence,
+quelle que soit la question clinique à laquelle il répond :
 
 1. **Variables (preuves objectives)** — les données élémentaires disponibles pour un test :
    valeurs brutes des KPIs (`TBK`).
@@ -198,6 +198,8 @@ quatre étapes, quelle que soit la question clinique à laquelle il répond :
 5. **Narration** — `composeNarrativeParagraph()` raconte une **conclusion**, jamais une preuve
    brute, et la situe dans l'un des trois registres (déficit confirmé / signal isolé / observation
    de performance — voir ci-dessous).
+6. **Orientation clinique** — met en perspective plusieurs conclusions déjà produites (par un ou
+   plusieurs moteurs) pour orienter le regard du praticien, sans jamais en formuler de nouvelle.
 
 **Règle qui en découle directement** : une variable, normalisée ou non, n'est jamais éligible à un
 registre narratif. Seule une conclusion produite par un moteur peut être "déficit confirmé", un
@@ -220,6 +222,56 @@ donné : un futur test (Isométrie, Hop Tests) peut n'avoir que le moteur des qu
 parfaitement cohérent avec cette architecture — les niveaux 2 et 3 (et toute dimension
 transversale comme l'asymétrie) ne s'ajoutent que lorsque le test s'y prête, sans jamais devenir un
 prérequis.
+
+### Orientation clinique (05/08)
+
+**Cette étape ne produit jamais une nouvelle connaissance clinique.** Elle ne fait que mettre en
+perspective des conclusions déjà produites par les moteurs. Elle ne doit jamais :
+
+- recalculer une conclusion déjà produite par un moteur ;
+- réinterpréter une preuve — elle ne lit jamais les variables ni les valeurs normalisées
+  directement, seulement les conclusions et les registres déjà produits (même contrainte de
+  lecture seule que le "Principe d'étanchéité" ci-dessus, un cran plus loin dans le pipeline) ;
+- introduire une nouvelle règle clinique (seuil, pondération, mapping) ;
+- proposer un raisonnement qui n'existe dans aucun moteur.
+
+Elle doit uniquement : hiérarchiser, synthétiser, orienter l'attention du praticien, faciliter la
+prise de décision — sans jamais la prendre à sa place. Un test simple pour vérifier qu'une phrase
+relève bien de cette étape et non d'une règle clinique cachée : *elle doit pouvoir être produite
+par pur tri, filtre ou regroupement de conclusions déjà existantes, sans inventer aucun seuil ni
+aucune règle nouvelle.* Si ce n'est pas le cas, ce n'est pas de l'orientation clinique — c'est une
+règle métier qui doit d'abord être validée avec le praticien, comme n'importe quel autre seuil de
+Kinexus.
+
+**Vocabulaire : deux usages, deux publics.** "Orientation clinique" est le terme d'architecture —
+il décrit la fonction de cette étape dans ce document. Dans l'interface utilisateur, le libellé
+retenu est **"Points d'attention clinique"** : plus immédiatement compréhensible pour le praticien,
+et il évite la collision avec le champ `orientation` déjà présent dans `computeMoteur()` (voir
+ci-dessous), dont la portée est différente. Le document décrit une fonction ; l'interface décrit ce
+que voit le praticien — les deux objectifs ne sont pas identiques, les deux vocabulaires n'ont pas
+à être identiques non plus.
+
+**État actuel dans le code : une version non disciplinée existe déjà, sous trois formes.** Ce
+n'est pas une capacité qui manque à Kinexus — c'est une discipline qui manque autour de ce qui
+existe déjà, mélangé directement dans les moteurs d'interprétation plutôt qu'isolé dans une étape à
+part :
+
+- `computeMoteur()` produit déjà, par priorité, un champ `hypothese` (affiché sous l'icône
+  "Pourquoi ?") et un champ `orientation` (affiché sous l'icône **"Actions"**, avec des verbes à
+  l'impératif — "Renforcer...", "Développer..."). C'est aujourd'hui le fragment le plus exposé au
+  risque de paraître prescriptif, alors même qu'il précède cette réflexion.
+- `composeNarrativeParagraph()` ajoute déjà une phrase de relance ("cette conclusion mérite d'être
+  recontrôlée...") quand la confiance est faible — une recommandation d'action glissée à
+  l'intérieur de la narration plutôt qu'isolée comme telle.
+
+Ce document ne prescrit pas de corriger ces trois fragments maintenant. Il documente leur existence
+pour qu'une future discipline de l'orientation clinique en tienne compte plutôt que d'en ajouter un
+quatrième non gouverné.
+
+> Kinexus ne fournit pas des réponses. Il organise des niveaux de preuve. Les variables sont des
+> preuves ; les moteurs interprètent ces preuves ; les conclusions synthétisent ces
+> interprétations ; la narration les rend compréhensibles ; l'orientation clinique les hiérarchise.
+> La décision reste, à chaque étape, celle du praticien.
 
 ---
 
@@ -329,6 +381,11 @@ est également implémentée. Voir "État d'implémentation actuel" ci-dessous.
 - **Narration (Fil de Raisonnement et équivalents futurs)** : chaque conclusion doit indiquer
   explicitement dans lequel des trois registres (déficit confirmé / signal isolé / observation de
   performance) elle se situe, avec un vocabulaire et un traitement visuel distincts pour chacun.
+- **Orientation clinique ("Points d'attention clinique" dans l'UI)** : ne lit jamais les preuves ni
+  les variables — uniquement les conclusions et registres déjà produits en amont. Toujours
+  formulée à l'interrogatif ou au nominal ("Priorité d'investigation : Absorption"), jamais à
+  l'impératif ("Renforcez l'absorption") : le mode grammatical est ce qui distingue concrètement
+  une mise en perspective d'une prescription.
 - **Futurs modules** : tout nouveau test qui construit une lecture "où" (localisation) ou
   "comment" (stratégie) s'inscrit dans les niveaux 2/3 — jamais un niveau 4 séparé. Le niveau 1
   reste unique et transversal par construction (`TFM` s'étend naturellement à un nouveau test sans
@@ -351,8 +408,11 @@ est également implémentée. Voir "État d'implémentation actuel" ci-dessous.
   fait (05/08), en lecture seule — voir "Principe d'étanchéité" ci-dessus.
 - La distinction visuelle des trois registres de narration dans Le Fil de Raisonnement est faite
   (05/08).
-- La distinction visuelle des trois registres de narration dans Le Fil de Raisonnement reste à
-  faire.
+- L'orientation clinique (étape 6 du pipeline) n'existe pas encore comme étape à part dans le
+  code. Trois fragments non disciplinés en tiennent lieu aujourd'hui (`hypothese`/`orientation`
+  dans `computeMoteur()`, la relance de confiance dans `composeNarrativeParagraph()`) — voir "Le
+  pipeline" ci-dessus. Ce document ne prescrit pas de les corriger ; il fixe la référence à
+  laquelle une future discipline de l'orientation clinique devra se conformer.
 
 Ce document ne constitue pas une demande d'implémentation. Il fixe la référence à laquelle ces
 implémentations, une fois entreprises, devront se conformer.
