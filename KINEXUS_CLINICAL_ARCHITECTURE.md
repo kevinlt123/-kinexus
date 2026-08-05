@@ -164,6 +164,63 @@ tout autre moteur spécialisé. `functionScores` (sa sortie) est transmis en 4�
 seule, à `computeMouvementAnalysis()` ; aucune écriture dans `functionScores` n'existe nulle part
 dans le code. Vérifié explicitement le 05/08 au moment du branchement CMJ ↔ qualités.
 
+**État de fait à ne pas travestir** : aujourd'hui, le moteur des qualités ne lit *pas* les
+variables individuellement. `computeMoteur()` s'appuie sur `tSt[testKey]`, un agrégat déjà moyenné
+par `computeTestStatus()` sur l'ensemble des KPIs d'un test, avant même que `TFM` n'intervienne. À
+l'inverse, les moteurs Phases (`CMJ_VAR_META`) et Profils (`BiomechanicalProfiles.
+variablesDiscriminantes`) lisent les variables brutes directement, sans agrégation intermédiaire.
+Le moteur des qualités est donc, à ce jour, l'exception plutôt que la référence pour la lecture
+directe des variables — voir le pipeline ci-dessous. Ce document décrit cet état tel qu'il est ;
+il ne prescrit pas de le corriger.
+
+---
+
+## Le pipeline : preuve → interprétation → conclusion → narration
+
+> Une variable n'est pas, par elle-même, un signal clinique. C'est une **preuve**. Elle ne devient
+> un constat clinique que lorsqu'un moteur l'interprète.
+
+Tout moteur de Kinexus — présent ou futur — transforme l'information selon la même séquence à
+quatre étapes, quelle que soit la question clinique à laquelle il répond :
+
+1. **Variables (preuves objectives)** — les données élémentaires disponibles pour un test :
+   valeurs brutes des KPIs (`TBK`).
+2. **Normalisation** — la comparaison de cette valeur à une population de référence (percentile,
+   bande vert/jaune/orange/rouge via `classifyBand`/`normPercentile`). **Cette étape appartient
+   encore à la preuve, pas à l'interprétation** : elle rend une valeur comparable, elle ne répond à
+   aucune question clinique.
+3. **Moteurs spécialisés (interprétation)** — Qualités, Phases, Profils, et tout futur moteur
+   (Drop Jump, Isométrie...). Chacun applique sa propre logique métier (pondérations, règles,
+   seuils, convergences — `TFM`, `ThresholdBandClassifier`, le Specification Pattern) à un
+   ensemble de preuves pour répondre à **une** question clinique qui lui est propre.
+4. **Conclusions cliniques** — le résultat produit par un moteur (`conclusionAutomatique`,
+   `conclusionRelative`, `phasePresentation().pourquoi`, le `dossier` de `dossierPreuvesPhase`).
+5. **Narration** — `composeNarrativeParagraph()` raconte une **conclusion**, jamais une preuve
+   brute, et la situe dans l'un des trois registres (déficit confirmé / signal isolé / observation
+   de performance — voir ci-dessous).
+
+**Règle qui en découle directement** : une variable, normalisée ou non, n'est jamais éligible à un
+registre narratif. Seule une conclusion produite par un moteur peut être "déficit confirmé", un
+"signal isolé" ou une "observation de performance". Une variable élevée ou abaissée à elle seule
+(ex. Contact Time augmenté au Drop Jump) reste une preuve tant qu'aucun moteur ne l'a interprétée
+— même si le moteur des qualités conclut, sur cette même variable combinée à d'autres, que la
+qualité correspondante reste satisfaisante. Les deux conclusions (qualité satisfaisante / preuve
+isolée à surveiller) peuvent coexister sans se contredire : elles répondent à des questions
+différentes, produites par des moteurs différents, à partir du même substrat de preuves.
+
+**L'asymétrie n'est pas une quatrième question clinique.** Elle ne répond ni à "que", ni à "où",
+ni à "comment" par elle-même : c'est une dimension transversale qui **qualifie** une lecture
+existante quand elle s'y prête, plutôt qu'une lecture indépendante. *Traduction actuelle dans le
+code* : `computeAsymEngine()` n'a pas de "question clinique" propre — son résultat apparaît comme
+une ligne supplémentaire ("Asymétrie") dans les preuves du moteur Phases via `phaseEvidence()`,
+jamais comme un moteur autonome au même rang que Qualités/Phases/Profils.
+
+Ce pipeline reste valable quel que soit le nombre de moteurs spécialisés disponibles pour un test
+donné : un futur test (Isométrie, Hop Tests) peut n'avoir que le moteur des qualités et rester
+parfaitement cohérent avec cette architecture — les niveaux 2 et 3 (et toute dimension
+transversale comme l'asymétrie) ne s'ajoutent que lorsque le test s'y prête, sans jamais devenir un
+prérequis.
+
 ---
 
 ## Les trois niveaux de lecture
