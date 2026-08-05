@@ -126,13 +126,20 @@ subordonne les deux autres.** Chacun doit pouvoir être interrogé, affiché et 
 
 ### Principe d'étanchéité : le moteur des qualités reste la seule source de vérité
 
-> Aucun moteur spécialisé (CMJ, Drop Jump, SLCMJ, Isométrie, etc.) ne peut modifier le calcul ni
-> les conclusions du moteur des qualités. Les moteurs spécialisés enrichissent exclusivement
-> l'interprétation clinique des résultats produits par le moteur des qualités.
+> Le moteur des qualités reste la seule source de vérité sur les capacités physiques du sportif.
 >
-> Les qualités répondent à "quelles capacités limitent le sportif ?" ; les moteurs spécialisés
-> expliquent pourquoi, où et comment ces limitations s'expriment, sans jamais redéfinir ces
-> capacités.
+> Les moteurs spécialisés (CMJ aujourd'hui, puis Drop Jump, SLCMJ, Isométrie, etc.) ne recalculent
+> jamais ces capacités.
+>
+> Leur rôle est d'enrichir leur interprétation clinique en répondant à trois questions
+> complémentaires :
+>
+> - Pourquoi cette limitation apparaît-elle ?
+> - Où se situe-t-elle dans le mouvement ?
+> - Comment le sportif réalise-t-il ce mouvement (stratégie biomécanique) ?
+>
+> Ils enrichissent donc la compréhension clinique du sportif sans jamais modifier l'évaluation des
+> qualités physiques.
 
 Ce principe rend explicite, pour tout moteur spécialisé présent ou futur, une contrainte qui
 découle directement de l'indépendance conceptuelle des trois niveaux ci-dessus : le flux
@@ -145,6 +152,11 @@ performance — voir "Les trois registres de narration" ci-dessous), mais ne doi
 - écrire dans `functionScores` (ou l'équivalent futur) une valeur dérivée d'un moteur spécialisé ;
 - conditionner le résultat d'une qualité à la présence, l'absence ou la valeur d'un test
   biomécanique spécifique.
+
+Les trois questions (Pourquoi / Où / Comment) ne créent pas un niveau supplémentaire aux trois
+niveaux de lecture ci-dessous : "Où" correspond au niveau 2 (phases), "Comment" au niveau 3
+(profils), et "Pourquoi" à la justification qui accompagne déjà chaque conclusion des niveaux 2 et
+3 (l'arbre de preuve du Specification Pattern, transversal aux deux — jamais un niveau séparé).
 
 *Traduction actuelle dans le code (index.html)* : `computeMoteur()` — signature
 `(testData, questData, normPop, normAge)`, aucune dépendance vers `computeMouvementAnalysis()` ou
@@ -238,14 +250,15 @@ serait trompeur et userait la confiance du praticien dans le système. La distin
 visible aussi bien dans le texte narratif que dans le traitement visuel (couleur, urgence,
 positionnement à l'écran).
 
-**Prérequis technique non résolu à ce jour** : distinguer ces trois registres suppose que le
-moteur produisant une observation aux niveaux 2/3 sache si la qualité physique correspondante
-(niveau 1) est ou non déficitaire pour ce même bilan. Aujourd'hui, `computeMouvementAnalysis()`
-n'a jamais accès à `functionScores` (passé `null` par choix explicite lors de la première
-intégration). Tant que ce branchement n'est pas fait, le système ne peut pas distinguer
-structurellement un "déficit confirmé" d'un "signal isolé" — il ne peut que produire un signal de
-niveau 2/3, sans savoir dans lequel des trois registres il se trouve. Ce branchement est donc un
-prérequis, pas une amélioration parmi d'autres.
+**Prérequis technique — résolu (05/08)** : distinguer ces trois registres suppose que le moteur
+produisant une observation aux niveaux 2/3 sache si la qualité physique correspondante (niveau 1)
+est ou non déficitaire pour ce même bilan. `computeMouvementAnalysis()` reçoit désormais
+`functionScores` en 4ᵉ paramètre (lecture seule, transmis depuis `computeMoteur()` — voir le
+"Principe d'étanchéité" ci-dessus), et `dossierPreuvesPhase()` en dérive `countMoteurs` : le
+système distingue donc structurellement un "déficit confirmé" (`countMoteurs>=2`, profil ET
+qualité déficients) d'un "signal isolé" (`countMoteurs===1`). La distinction visuelle des trois
+registres dans Le Fil de Raisonnement (badge par thread + section "Observation de performance")
+est également implémentée. Voir "État d'implémentation actuel" ci-dessous.
 
 ---
 
@@ -277,8 +290,10 @@ prérequis, pas une amélioration parmi d'autres.
 - Niveau 1 (qualités) : opérationnel, transversal (déjà alimenté par plusieurs tests au-delà du
   CMJ).
 - Niveau 2 (phases CMJ) et Niveau 3 (profils CMJ) : opérationnels pour le CMJ uniquement.
-- Le branchement niveau 1 ↔ niveaux 2/3 (`functionScores` dans `computeMouvementAnalysis`) reste
-  à faire — voir "Prérequis technique" ci-dessus.
+- Le branchement niveau 1 ↔ niveaux 2/3 (`functionScores` dans `computeMouvementAnalysis`) est
+  fait (05/08), en lecture seule — voir "Principe d'étanchéité" ci-dessus.
+- La distinction visuelle des trois registres de narration dans Le Fil de Raisonnement est faite
+  (05/08).
 - La distinction visuelle des trois registres de narration dans Le Fil de Raisonnement reste à
   faire.
 
