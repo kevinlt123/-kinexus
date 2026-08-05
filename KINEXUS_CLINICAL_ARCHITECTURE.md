@@ -124,6 +124,34 @@ Ce principe a une conséquence directe sur la conception : **aucun écran, aucun
 narration ne doit être construit en supposant qu'un de ces trois niveaux valide, dérive ou
 subordonne les deux autres.** Chacun doit pouvoir être interrogé, affiché et compris seul.
 
+### Principe d'étanchéité : le moteur des qualités reste la seule source de vérité
+
+> Aucun moteur spécialisé (CMJ, Drop Jump, SLCMJ, Isométrie, etc.) ne peut modifier le calcul ni
+> les conclusions du moteur des qualités. Les moteurs spécialisés enrichissent exclusivement
+> l'interprétation clinique des résultats produits par le moteur des qualités.
+>
+> Les qualités répondent à "quelles capacités limitent le sportif ?" ; les moteurs spécialisés
+> expliquent pourquoi, où et comment ces limitations s'expriment, sans jamais redéfinir ces
+> capacités.
+
+Ce principe rend explicite, pour tout moteur spécialisé présent ou futur, une contrainte qui
+découle directement de l'indépendance conceptuelle des trois niveaux ci-dessus : le flux
+d'information entre le niveau 1 (qualités) et les niveaux 2/3 (phases, profils) est **strictement
+à sens unique et en lecture seule**. Un moteur spécialisé peut *consulter* le statut d'une qualité
+pour qualifier sa propre conclusion (déficit confirmé / signal isolé / observation de
+performance — voir "Les trois registres de narration" ci-dessous), mais ne doit jamais :
+
+- recalculer, pondérer différemment, ou court-circuiter le moteur des qualités ;
+- écrire dans `functionScores` (ou l'équivalent futur) une valeur dérivée d'un moteur spécialisé ;
+- conditionner le résultat d'une qualité à la présence, l'absence ou la valeur d'un test
+  biomécanique spécifique.
+
+*Traduction actuelle dans le code (index.html)* : `computeMoteur()` — signature
+`(testData, questData, normPop, normAge)`, aucune dépendance vers `computeMouvementAnalysis()` ou
+tout autre moteur spécialisé. `functionScores` (sa sortie) est transmis en 4ᵉ paramètre, en lecture
+seule, à `computeMouvementAnalysis()` ; aucune écriture dans `functionScores` n'existe nulle part
+dans le code. Vérifié explicitement le 05/08 au moment du branchement CMJ ↔ qualités.
+
 ---
 
 ## Les trois niveaux de lecture
