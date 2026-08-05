@@ -3305,10 +3305,21 @@ function bestVal(trials,dir){var v=(trials||[]).filter(function(x){return x!=nul
 
 // Résout cmjValues={kpiKey:valeur} depuis les essais bruts importés (bilan.testData.cmj.trials) —
 // un seul point de résolution par kpi (bestVal, déjà utilisé partout ailleurs dans KINEXUS).
+// Clés résolues : les 19+1 variables de phase (CMJ_VAR_META) + les clés d'asymétrie et G/D
+// (05/08, ajouté en même temps que le branchement de computeAsymEngine dans
+// computeMouvementAnalysis) — sans cet ajout, computeAsymEngine recevrait toujours un cmjValues
+// vide pour toute clé d'asymétrie, quelles que soient les données réellement importées. Dérivées
+// des référentiels déjà déclarés (ASYM_PERFORMANCE_EQUIVALENT, ASYM_SIDE_PAIRS) — aucune clé
+// inventée ici.
 function resolveCmjValues(bilan){
   var trials=(((bilan||{}).testData||{}).cmj||{}).trials||{};
   var out={};
-  Object.keys(CMJ_VAR_META).forEach(function(k){
+  var keys=Object.keys(CMJ_VAR_META).concat(['p2_conc_impulse_asym']); // contextuelle Concentric, cf. effectiveAsymPhaseVariables
+  Object.keys(ASYM_PERFORMANCE_EQUIVALENT).forEach(function(perfKey){keys.push(ASYM_PERFORMANCE_EQUIVALENT[perfKey]);});
+  Object.keys(ASYM_SIDE_PAIRS).forEach(function(asymKey){keys.push(ASYM_SIDE_PAIRS[asymKey].L,ASYM_SIDE_PAIRS[asymKey].R);});
+  var seen={};
+  keys.forEach(function(k){
+    if(seen[k])return;seen[k]=true;
     if(!trials[k])return;
     var v=bestVal(trials[k],cmjKpiDir(k));
     if(v!=null)out[k]=v;
@@ -3345,10 +3356,16 @@ function computeMouvementAnalysis(bilan,pop,age){
     }
   });
   var alertes=computeMoteurAlerte(phases,profileResults,null,raisonnement,biomeca.globalWarnings);
+  // Moteur d'Analyse des Asymétries par Phase (computeAsymEngine, déjà figé et testé) — non
+  // branché ici jusqu'au 05/08 : phaseEvidence()/phasePresentation() n'avaient donc jamais accès
+  // à une conclusion d'asymétrie, y compris pour MouvementView déjà en production. Correction :
+  // simple ajout du résultat déjà calculé par ce moteur existant, aucun nouveau calcul.
+  var asymEngine=computeAsymEngine(cmjValues,pop,age);
   return{
     cmjValues:cmjValues,phases:phases,coherence:coherence,profileResults:profileResults,signature:signature,
     syntheseBiomecanique:syntheseBiomecanique,raisonnement:raisonnement,priorisation:priorisation,indices:indices,
-    dossiersByPhase:dossiersByPhase,confiances:confiances,explications:explications,alertes:alertes
+    dossiersByPhase:dossiersByPhase,confiances:confiances,explications:explications,alertes:alertes,
+    asymEngine:asymEngine
   };
 }
 
@@ -3376,12 +3393,28 @@ function phaseColor(phaseKey,analysis){
   return C.muted;
 }
 
+// Traduit la cartographie déjà produite par computeAsymEngine (05/08) en un résumé exploitable
+// pour UNE phase — jamais un nouveau calcul, relit uniquement cartographieAsymetries() +
+// membreDominant (déjà calculé par computeAsymPhase). Partagé par phaseEvidence() ci-dessous, la
+// vue "Fil de Raisonnement" et la section Mouvement du rapport PDF — une seule traduction,
+// jamais réécrite trois fois.
+function asymPhaseSummary(phaseKey,analysis){
+  var eng=analysis.asymEngine;
+  if(!eng)return null;
+  var carto=(eng.cartographie||[]).filter(function(c){return c.phase===phaseKey;})[0];
+  if(!carto)return null;
+  var asymPh=eng.phases[phaseKey];
+  var membre=(asymPh&&asymPh.sufficient&&asymPh.membreDominant)?asymPh.membreDominant.membre:null;
+  var sideTxt=(membre&&membre!=='Indéterminé'&&membre!=='Aucun')?(' — membre '+membre.toLowerCase()):'';
+  return{phase:phaseKey,conclusion:carto.conclusion,membre:membre,sideTxt:sideTxt};
+}
 // Preuves convergentes d'une phase : variables principales utilisées dans le score + croisement
 // profil (si ce profil correspond à cette phase) + croisement indice (si un indice a été comparé
-// à cette phase) — chaque ligne provient d'une donnée déjà calculée, jamais recalculée ici.
-// Les variables secondaires (biomécaniquement pertinentes mais sans norme disponible pour cette
-// population) n'entrent jamais dans le score mais apparaissent ici, explicitement signalées comme
-// non normées — jamais avec un percentile ou une interprétation inventée.
+// à cette phase) + conclusion d'asymétrie déjà classée par computeAsymEngine — chaque ligne
+// provient d'une donnée déjà calculée, jamais recalculée ici. Les variables secondaires
+// (biomécaniquement pertinentes mais sans norme disponible pour cette population) n'entrent
+// jamais dans le score mais apparaissent ici, explicitement signalées comme non normées — jamais
+// avec un percentile ou une interprétation inventée.
 function phaseEvidence(phaseKey,analysis){
   var ph=analysis.phases[phaseKey];
   if(!ph||!ph.sufficient)return[];
@@ -3412,6 +3445,12 @@ function phaseEvidence(phaseKey,analysis){
     var cr=croisementIndiceConclusion(ind.resultat,ph.score);
     if(cr.sufficient)indiceCroisements.push({tag:'Indice',label:ind.nom,val:(cr.role==='confirme'?'Confirme le constat':'Nuance le constat')});
   });
+  var asymSum=asymPhaseSummary(phaseKey,analysis);
+  if(asymSum&&(asymSum.conclusion==='Asymétrie principale'||asymSum.conclusion==='Asymétrie secondaire')){
+    rows.push({tag:'Asymétrie',label:asymSum.conclusion,val:'Confirmée'+asymSum.sideTxt});
+  }else if(asymSum&&asymSum.conclusion==='Asymétrie non concluante'){
+    rows.push({tag:'Asymétrie',label:'Asymétrie',val:'Détectée, non confirmée'});
+  }
   return rows.concat(indiceCroisements);
 }
 
