@@ -211,10 +211,34 @@ var CMJ_VAR_META={
   braking_rfd_abs:{phase:'braking',tier:'info',note:'Version absolue (N/s) de braking_rfd — décision du praticien (04/08) : affichée en contexte, jamais utilisée pour le score ni comparée aux normes.'},
   conc_peak_force:{phase:'concentric',tier:'info'},conc_mean_vel:{phase:'concentric',tier:'info'},conc_peak_vel:{phase:'concentric',tier:'info'},
   conc_rfd:{phase:'concentric',tier:'info'},conc_duration:{phase:'concentric',tier:'info'},conc_displacement:{phase:'concentric',tier:'info'},propulsion_eff:{phase:'concentric',tier:'info'},
-  landing_mean_force:{phase:'landing',tier:'info'},landing_rfd:{phase:'landing',tier:'info'},landing_duration:{phase:'landing',tier:'info'},
+  conc_mean_power:{phase:'concentric',tier:'info',note:'Utilisée par le profil Propulsif (confirmatoire). Décision du praticien (05/08) : identifiée comme candidate au socle des 20 métriques d\'export ForceDecks, mais écartée UNIQUEMENT faute de slot disponible (cf. CMJ_EXPORT_SOCLE_20 ci-dessous) — jamais à considérer comme abandonnée.'},
+  landing_mean_force:{phase:'landing',tier:'info'},landing_rfd:{phase:'landing',tier:'info'},
+  landing_duration:{phase:'landing',tier:'info',note:'Utilisée par le profil Absorbeur (descriptive, poids 0 — jamais scorée). Décision du praticien (05/08) : identifiée comme candidate au socle des 20 métriques d\'export ForceDecks, mais écartée UNIQUEMENT faute de slot disponible (cf. CMJ_EXPORT_SOCLE_20 ci-dessous) — jamais à considérer comme abandonnée.'},
   landing_mean_power:{phase:'landing',tier:'info'},post_landing_stability:{phase:'landing',tier:'info'},
   tto:{phase:null,tier:'info',note:'Time to Take Off = temps de contraction total, dénominateur de RSI-Mod/FT:CT ; pas une variable de phase VALD en soi.'}
 };
+// ── Socle des 20 métriques d'export ForceDecks (limite logicielle du client VALD) ──
+// Décision du praticien (05/08), à la suite d'un export réel vérifié :
+// - Les 19 variables de CMJ_VAR_META (tier master/support ci-dessus) restent le socle du moteur
+//   biomécanique par phase, INCHANGÉES.
+// - Le 20e slot est attribué à 'peak_vel' (Peak Velocity — colonne FD_KPI_PATTERNS.peak_vel,
+//   distincte de conc_peak_vel), retenue pour son impact transversal le plus fort : discriminante
+//   dans 2 profils biomécaniques (Propulsif ET Explosif), cf. BiomechanicalProfiles.
+// - Les colonnes d'asymétrie ('% (Asym)') ne réservent JAMAIS de slot séparé : elles sont
+//   rattachées au même choix d'export que leur variable de base et importées dès qu'elles sont
+//   présentes (cf. FD_KPI_PATTERNS / importForceDecks). Idem pour les colonnes Gauche/Droite,
+//   opportunistes, jamais supposées présentes (cf. note "robustesse import" dans importForceDecks).
+// - EDRFD : la variable clinique de référence est '/ BM' (relative). Si seule la version absolue
+//   est disponible dans l'export, fdVal() la convertit automatiquement via le poids du sportif.
+//
+// Deux variables ont été identifiées comme utiles (consommées par un profil biomécanique) mais
+// EXCLUES DU SOCLE UNIQUEMENT pour respecter la limite de 20 métriques de l'export — jamais
+// abandonnées, à réintégrer en priorité si cette contrainte disparaît un jour :
+//   - conc_mean_power (Concentric Mean Power) — confirmatoire, profil Propulsif.
+//   - landing_duration (Landing Duration) — descriptive, profil Absorbeur.
+// Voir leur entrée respective ci-dessus dans CMJ_VAR_META (tier 'info') pour le détail.
+var CMJ_EXPORT_SOCLE_20=['depth','ecc_peak_vel','braking_duration','ecc_mean_power','force_zero_vel','braking_rfd','braking_impulse','peak_power','conc_mean_force','conc_impulse_100','conc_impulse','force_peak_power','peak_vel','height','ft_ct_ratio','rsi_mod','flight_time','landing_peak_force','time_to_stab','landing_impulse'];
+var CMJ_EXPORT_SOCLE_20_CANDIDATS_EXCLUS=['conc_mean_power','landing_duration'];
 // ── Asymétries CMJ : 3 familles (référentiel VALD, philosophie "jamais de seuil universel") ──
 // Chaque métrique d'asymétrie possède sa propre distribution normative et doit être comparée à
 // ses propres percentiles (jamais un seuil unique type 10% pour toutes les métriques).
