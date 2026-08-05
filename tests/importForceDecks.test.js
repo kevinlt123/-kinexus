@@ -143,6 +143,52 @@ test("asymétrie : 'Peak Landing Force (Asym)' ne pollue pas la valeur non-suffi
   assert.strictEqual(r.cmj.trials.landing_peak_force_asym[0], 8.5);
 });
 
+test("robustesse import (05/08) : export CMJ sans colonnes Gauche/Droite -> valeur principale + Asym importées, aucune erreur, L/R simplement absents", () => {
+  const parsed = parseCSV(fdCsv({
+    'Eccentric Deceleration RFD / BM [N/s/kg]': '65.0',
+    'Peak Landing Force [N/kg]': '28.0',
+    'Peak Landing Force (Asym) [%]': '8.5'
+  }));
+  const r = importForceDecks(parsed);
+  assert.strictEqual(r.cmj.trials.braking_rfd[0], 65.0);
+  assert.strictEqual(r.cmj.trials.landing_peak_force[0], 28.0);
+  assert.strictEqual(r.cmj.trials.landing_peak_force_asym[0], 8.5);
+  assert.ok(!r.cmj.trials.ecc_decel_rfd_L, "ecc_decel_rfd_L doit rester absent, jamais une valeur inventée");
+  assert.ok(!r.cmj.trials.ecc_decel_rfd_R, "ecc_decel_rfd_R doit rester absent, jamais une valeur inventée");
+  assert.ok(!r.cmj.trials.landing_peak_force_L, "landing_peak_force_L doit rester absent, jamais une valeur inventée");
+  assert.ok(!r.cmj.trials.landing_peak_force_R, "landing_peak_force_R doit rester absent, jamais une valeur inventée");
+});
+
+test("bug corrigé (05/08) : quand l'export CMJ fournit les colonnes (L)/(R), ecc_decel_rfd_L/R et landing_peak_force_L/R sont désormais importés (avant ce correctif, FD_KPI_PATTERNS n'avait aucune entrée pour ces 4 clés -> jamais importables)", () => {
+  const parsed = parseCSV(fdCsv({
+    'Eccentric Deceleration RFD / BM [N/s/kg] (L)': '60.0',
+    'Eccentric Deceleration RFD / BM [N/s/kg] (R)': '70.0',
+    'Peak Landing Force [N/kg] (L)': '26.5',
+    'Peak Landing Force [N/kg] (R)': '29.5'
+  }));
+  const r = importForceDecks(parsed);
+  assert.strictEqual(r.cmj.trials.ecc_decel_rfd_L[0], 60.0);
+  assert.strictEqual(r.cmj.trials.ecc_decel_rfd_R[0], 70.0);
+  assert.strictEqual(r.cmj.trials.landing_peak_force_L[0], 26.5);
+  assert.strictEqual(r.cmj.trials.landing_peak_force_R[0], 29.5);
+});
+
+test("intégration : les valeurs G/D importées depuis un CSV réel alimentent asymMembreDominant sans configuration supplémentaire", () => {
+  const parsed = parseCSV(fdCsv({
+    'Peak Landing Force [N/kg]': '28.0',
+    'Peak Landing Force (Asym) [%]': '10.7',
+    'Peak Landing Force [N/kg] (L)': '26.5',
+    'Peak Landing Force [N/kg] (R)': '29.5'
+  }));
+  const r = importForceDecks(parsed);
+  const cmjValues = {};
+  Object.keys(r.cmj.trials).forEach(k => { cmjValues[k] = r.cmj.trials[k][0]; });
+  const dominant = asymMembreDominant(['landing_peak_force_asym'], cmjValues);
+  // landing_peak_force_L/R : dir='min' (force d'impact plus faible = meilleur) -> L (26.5) < R (29.5) -> Gauche est le membre dominant.
+  assert.strictEqual(dominant.membre, 'Gauche', 'L (26.5) < R (29.5), dir min -> Gauche doit être identifié comme membre dominant');
+  assert.strictEqual(dominant.kpiSource, 'landing_peak_force_asym');
+});
+
 console.log('');
 console.log(passed + ' réussi(s), ' + failed + ' échoué(s)');
 if (failed > 0) process.exit(1);

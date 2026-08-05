@@ -391,6 +391,8 @@ var FD_KPI_PATTERNS={
   leg_stiffness:['Leg Stiffness'],tts:['Time to Stabilise','Time to Stabilization','Time to Stabilisation'],
   peak_landing_force:['Peak Landing Force','Peak Drop Landing Force'],landing_peak_force:['Peak Landing Force','Peak Drop Landing Force'],
   landing_peak_force_asym:['Peak Landing Force','Peak Drop Landing Force'],
+  // Colonnes Gauche/Droite (04/08) — mêmes motifs que la variable de base, cf. note ecc_decel_rfd_L/R.
+  landing_peak_force_L:['Peak Landing Force','Peak Drop Landing Force'],landing_peak_force_R:['Peak Landing Force','Peak Drop Landing Force'],
   n:['Peak Force','Peak Vertical Force'],nkg:['Peak Force / BM','Peak Force/BM','Peak Vertical Force / BM','Peak Vertical Force/BM'],
   conc_peak_force:['Concentric Peak Force','Peak Concentric Force'],conc_peak_vel:['Concentric Peak Velocity','Peak Concentric Velocity'],
   peak_conc_force:['Peak Concentric Force','Concentric Peak Force'],peak_conc_vel:['Peak Concentric Velocity','Concentric Peak Velocity'],
@@ -404,6 +406,11 @@ var FD_KPI_PATTERNS={
   // complémentaire affichée mais jamais utilisée pour les scores/normes (CMJ_VAR_META tier 'info').
   braking_rfd:['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'],
   braking_rfd_abs:['Braking RFD','Eccentric Deceleration RFD','EDRFD'],
+  // Colonnes Gauche/Droite (04/08) : mêmes motifs que la variable de base — fdFindCol() détecte
+  // le suffixe "(L)"/"(R)" automatiquement (fdColSuffix), jamais un motif dédié inventé. Absentes
+  // si l'export ne les fournit pas (import robuste, aucune hypothèse de présence).
+  ecc_decel_rfd_L:['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'],
+  ecc_decel_rfd_R:['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'],
   braking_peak_force:['Braking Peak Force','Peak Braking Force'],
   peak_braking_force:['Peak Braking Force','Braking Peak Force'],
   braking_impulse:['Braking Impulse','Eccentric Deceleration Impulse'],contraction_time:['Contraction Time'],
@@ -494,9 +501,13 @@ function importForceDecks(parsed){
       if(!result[testKey])result[testKey]={active:true,trials:{}};
       test.kpis.forEach(function(kpi){
         var patterns=FD_KPI_PATTERNS[kpi.key];if(!patterns)return;
-        // Un kpi "*_asym" est une colonne à part (suffixe "(Asym)"), jamais la valeur non
-        // suffixée de la variable de base — cf. fdColSuffix/fdFindCol ci-dessus.
-        var side=/_asym$/.test(kpi.key)?'asym':null;
+        // Un kpi "*_asym"/"*_L"/"*_R" est une colonne à part (suffixe "(Asym)"/"(L)"/"(R)"),
+        // jamais la valeur non suffixée de la variable de base — cf. fdColSuffix/fdFindCol
+        // ci-dessus. Décision d'architecture du praticien (04/08) : import robuste, n'exploite
+        // QUE les colonnes réellement présentes dans l'export (jamais d'hypothèse sur leur
+        // présence) — un export sans les colonnes G/D pour un test bilatéral (CMJ) laisse
+        // simplement ces kpis absents, sans bloquer l'import du reste.
+        var side=/_asym$/.test(kpi.key)?'asym':(/_L$/.test(kpi.key)?'L':(/_R$/.test(kpi.key)?'R':null));
         var col=fdFindCol(headers,patterns,side);if(!col)return;
         var v=fdVal(row[col],kpi.label,col,bw);
         if(v!=null){if(!result[testKey].trials[kpi.key])result[testKey].trials[kpi.key]=[];result[testKey].trials[kpi.key].push(v);}
