@@ -5,6 +5,9 @@
 > optimiser la performance, en expliquant de façon transparente les éléments qui conduisent à
 > cette décision.
 
+> La mission de Kinexus n'est pas de produire davantage d'informations, mais de transformer des
+> données complexes en une décision clinique compréhensible, argumentée et exploitable.
+
 ## Statut de ce document
 
 Document de référence, validé par le praticien le 05/08/2026, à l'issue d'une discussion
