@@ -3700,6 +3700,30 @@ function raisonnementProofNode(node,depth){
   );
 }
 
+// Compose un paragraphe narratif à partir de données DÉJÀ décidées (conclusion textuelle produite
+// par le moteur de domaine, preuves déjà classées par phaseEvidence()/équivalent, confiance déjà
+// calculée) — jamais une nouvelle décision clinique, uniquement la mise en récit de faits déjà
+// établis. Générique : fonctionne avec n'importe quel {tag,label,val} et {band:{label}}, aucun nom
+// de domaine. Répond à la demande du praticien (05/08) : "l'utilisateur doit comprendre le
+// cheminement intellectuel ayant conduit à la conclusion, sans avoir à interpréter lui-même les
+// preuves" — la conclusion et leur convergence sont d'abord racontées en une phrase continue ;
+// les preuves détaillées restent affichées séparément, mais comme justification du récit, jamais
+// comme son remplacement.
+function composeNarrativeParagraph(conclusionText,preuves,confidence){
+  var sentences=[];
+  if(conclusionText)sentences.push(conclusionText);
+  if(preuves&&preuves.length){
+    var items=preuves.map(function(p){return p.label+(p.val?' ('+p.val+')':'');});
+    var joined=items.length===1?items[0]:(items.slice(0,-1).join(', ')+' et '+items[items.length-1]);
+    var n=preuves.length;
+    sentences.push((n>1?n+' signaux indépendants convergent':'Un signal confirme')+' vers cette conclusion : '+joined+'.');
+  }
+  if(confidence&&confidence.band&&['Faible','Très faible'].indexOf(confidence.band.label)>=0){
+    sentences.push('La confiance reste '+confidence.band.label.toLowerCase()+' à ce stade : cette conclusion mérite d\'être recontrôlée avant d\'être considérée comme acquise.');
+  }
+  return sentences.join(' ');
+}
+
 // ── Composant générique : ne connaît aucun nom de domaine (jamais "phase"/"CMJ"/"braking" dans
 // ce fichier au-delà des commentaires) — consomme exclusivement le contrat RaisonnementBoard
 // documenté ci-dessus. Reprend le markup/interactions de kinexus_reasoning_ui.html : rail sticky,
@@ -3770,13 +3794,19 @@ function FilDeRaisonnementView(props){
               h('span',{style:{color:C.muted,fontSize:13,transform:open?'rotate(90deg)':'none',transition:'transform .15s'}},'›')
             ),
             open&&h('div',{style:{padding:'0 18px 20px 18px'}},
-              h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:C.teal,marginBottom:6}},'Pourquoi'),
-              h('div',{style:{fontSize:13.5,lineHeight:1.6,color:C.text,marginBottom:16}},t.pourquoi),
+              // Le récit d'abord — la conclusion, tissée avec la convergence des preuves et une
+              // nuance de confiance si nécessaire (composeNarrativeParagraph, générique). C'est
+              // ce que le praticien lit en premier pour comprendre le cheminement, sans avoir à
+              // interpréter lui-même une liste de puces (demande du praticien, 05/08).
+              h('div',{style:{fontSize:15,lineHeight:1.7,color:C.text,marginBottom:18,fontWeight:500}},t.pourquoi),
+              // Les preuves : affichées ENSUITE, en appui du récit qui précède — jamais à sa
+              // place. Traitement visuel volontairement plus discret que le récit (taille,
+              // poids, intitulé de justification plutôt qu'un label de section concurrent).
               t.preuves.length>0&&h('div',{style:{marginBottom:16}},
-                h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:C.teal,marginBottom:8}},'Quelles preuves'),
-                h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
-                  t.preuves.map(function(p,i){return h('span',{key:i,style:{fontSize:12,fontWeight:600,background:C.surface,border:'1px solid '+C.border,padding:'7px 11px',borderRadius:9,color:C.text}},
-                    h('span',{style:{fontSize:9.5,fontWeight:800,textTransform:'uppercase',color:C.muted,marginRight:6}},p.tag),p.label+(p.val?' — '+p.val:'')
+                h('div',{style:{fontSize:11,color:C.muted,marginBottom:8,fontStyle:'italic'}},'À l\'appui de ce constat :'),
+                h('div',{style:{display:'flex',gap:7,flexWrap:'wrap'}},
+                  t.preuves.map(function(p,i){return h('span',{key:i,style:{fontSize:11,fontWeight:500,background:C.surface,border:'1px solid '+C.border,padding:'5px 9px',borderRadius:8,color:C.muted}},
+                    h('span',{style:{fontSize:8.5,fontWeight:800,textTransform:'uppercase',color:C.muted,marginRight:5,opacity:.75}},p.tag),h('span',{style:{color:C.text}},p.label+(p.val?' — '+p.val:''))
                   );})
                 )
               ),
@@ -3866,11 +3896,16 @@ function buildRaisonnementBoardCMJ(analysis,contextLabel){
     }
     var qualiteNom=CMJ_PHASE_TO_QUALITY[phaseKey];
     if(qualiteNom)liens.push({label:'Qualité associée : '+qualiteNom+(dossier.qualiteDeficiente?'':' (non évaluée dans ce bilan)'),onSelect:null});
+    var preuves=pres.preuves||[];
     return{
       id:phaseKey,rang:i+1,tier:dossier.niveauPriorite,tierColor:tierColor,
       titre:CMJ_PHASE_LABEL[phaseKey]+(pres.headline&&pres.headline!==CMJ_PHASE_LABEL[phaseKey]?' — '+pres.headline:''),
-      pourquoi:pres.pourquoi,confiance:conf||null,
-      preuves:pres.preuves||[],
+      // Récit clinique (05/08) : la conclusion déjà produite par biomecaPhaseConclusion, tissée
+      // avec la convergence des preuves déjà classées par phaseEvidence() et, si besoin, une
+      // nuance de confiance — jamais une nouvelle décision, uniquement leur mise en récit
+      // (composeNarrativeParagraph, générique).
+      pourquoi:composeNarrativeParagraph(pres.pourquoi,preuves,conf),confiance:conf||null,
+      preuves:preuves,
       variablesResponsables:(explication&&explication.sections&&explication.sections.variablesUtilisees)||[],
       proof:(explication&&explication.sections&&explication.sections.reglesAppliquees&&explication.sections.reglesAppliquees.gateFacteurLimitant)||null,
       liens:liens

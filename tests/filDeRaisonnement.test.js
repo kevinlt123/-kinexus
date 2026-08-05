@@ -100,7 +100,18 @@ test('threads : un thread par priorité retenue, fidèle à dossierPreuvesPhase 
   assert.strictEqual(t.id, 'braking');
   assert.strictEqual(t.rang, 1);
   assert.strictEqual(t.tier, mv.priorisation.priorite1.niveauPriorite);
-  assert.strictEqual(t.pourquoi, phasePresentation('braking', mv).pourquoi, 'le texte "pourquoi" doit être repris à l\'identique de phasePresentation, jamais reformulé');
+  const pres = phasePresentation('braking', mv);
+  assert.strictEqual(t.pourquoi, composeNarrativeParagraph(pres.pourquoi, pres.preuves, mv.confiances.braking), 'le récit doit être composé via composeNarrativeParagraph à partir de la conclusion et des preuves déjà calculées par phasePresentation/phaseEvidence, jamais un texte recalculé indépendamment');
+  assert.ok(t.pourquoi.indexOf(pres.pourquoi) === 0, 'le récit doit commencer par la conclusion déjà produite par le moteur (biomecaPhaseConclusion), jamais une reformulation');
+});
+
+test("threads : les preuves détaillées restent disponibles sur le thread (jamais remplacées par le récit, seulement mises en appui)", () => {
+  const mv = computeMouvementAnalysis(cmjBilan(), 'test_fdr_pop', 24);
+  const board = buildRaisonnementBoardCMJ(mv, '');
+  const t = board.threads[0];
+  const pres = phasePresentation('braking', mv);
+  assert.deepStrictEqual(t.preuves, pres.preuves, 'les preuves du thread doivent rester fidèles à phaseEvidence() via phasePresentation, disponibles telles quelles (le récit ne les masque ni ne les remplace)');
+  assert.ok(t.preuves.length > 0);
 });
 
 test('threads : proof reprend exactement explications[phase].sections.reglesAppliquees.gateFacteurLimitant (arbre de preuve déjà calculé, jamais recalculé)', () => {
@@ -177,6 +188,41 @@ test('alertes : traduites depuis les codes du Moteur d\'Alerte via ALERT_LABELS_
   const alerteManquante = board.alertes.find(a => a.id === 'donnees_manquantes_phase');
   assert.ok(alerteManquante, 'attendu au moins une alerte "données manquantes" (aucune norme fournie)');
   assert.strictEqual(alerteManquante.titre, ALERT_LABELS_CMJ.donnees_manquantes_phase);
+});
+
+console.log('composeNarrativeParagraph — récit clinique (05/08)');
+
+test('conclusion seule (aucune preuve) : le récit est exactement la conclusion, rien ajouté', () => {
+  assert.strictEqual(composeNarrativeParagraph('Braking est le principal facteur limitant.', [], null), 'Braking est le principal facteur limitant.');
+});
+
+test('une preuve unique : phrase au singulier ("Un signal confirme")', () => {
+  const r = composeNarrativeParagraph('Conclusion X.', [{ tag: 'Variable', label: 'Force at Zero Velocity', val: '19e percentile' }], null);
+  assert.strictEqual(r, 'Conclusion X. Un signal confirme vers cette conclusion : Force at Zero Velocity (19e percentile).');
+});
+
+test('plusieurs preuves : phrase au pluriel, jointes par une virgule puis "et" pour la dernière', () => {
+  const r = composeNarrativeParagraph('Conclusion X.', [
+    { tag: 'Stratégie', label: 'Profil Absorbeur', val: '24e percentile' },
+    { tag: 'Variable', label: 'EDRFD', val: '25e percentile' },
+    { tag: 'Indice', label: 'RSI-Mod', val: null }
+  ], null);
+  assert.strictEqual(r, 'Conclusion X. 3 signaux indépendants convergent vers cette conclusion : Profil Absorbeur (24e percentile), EDRFD (25e percentile) et RSI-Mod.');
+});
+
+test('confiance faible : une phrase de nuance est ajoutée, jamais une conclusion différente', () => {
+  const r = composeNarrativeParagraph('Conclusion X.', [], { band: { label: 'Faible' } });
+  assert.strictEqual(r, 'Conclusion X. La confiance reste faible à ce stade : cette conclusion mérite d\'être recontrôlée avant d\'être considérée comme acquise.');
+});
+
+test('confiance suffisante (Élevée/Très élevée/Modérée) : aucune phrase de nuance ajoutée', () => {
+  const r = composeNarrativeParagraph('Conclusion X.', [], { band: { label: 'Élevée' } });
+  assert.strictEqual(r, 'Conclusion X.');
+});
+
+test('les trois éléments se composent dans le bon ordre : conclusion, puis convergence des preuves, puis nuance de confiance', () => {
+  const r = composeNarrativeParagraph('Conclusion X.', [{ tag: 'Variable', label: 'A', val: null }], { band: { label: 'Très faible' } });
+  assert.strictEqual(r, 'Conclusion X. Un signal confirme vers cette conclusion : A. La confiance reste très faible à ce stade : cette conclusion mérite d\'être recontrôlée avant d\'être considérée comme acquise.');
 });
 
 console.log('');
