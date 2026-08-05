@@ -341,6 +341,10 @@ cohérence de tous les moteurs de tous les tests d'un même bilan.** Si elle ét
 aujourd'hui) — exactement l'écueil que le "Principe d'étanchéité" ci-dessus met déjà en garde
 contre, transposé un cran plus haut.
 
+**Aucun moteur ne peut, à lui seul, définir l'orientation clinique d'un bilan.** Celle-ci résulte
+toujours de la synthèse de l'ensemble des moteurs disponibles, pondérée par leur domaine
+d'expertise et la qualité des preuves qu'ils apportent.
+
 **Cette couche ne produit jamais une nouvelle connaissance clinique.** Elle ne fait qu'observer
 l'ensemble des conclusions déjà produites par les différents moteurs et les organiser pour le
 praticien. Elle ne doit jamais :
