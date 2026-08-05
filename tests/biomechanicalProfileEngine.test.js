@@ -226,7 +226,7 @@ test('intégration : computeAllBiomechanicalProfiles + computeSignatureBiomecani
   const valuesByTest = {
     cmj: {
       peak_power: 60, peak_vel: 3.0, conc_impulse: 2.6, force_peak_power: 22, conc_mean_power: 40,
-      height: 40, flight_time: 570, force_zero_vel: 20, braking_rfd: 3400, landing_peak_force: 36,
+      height: 40, flight_time: 570, force_zero_vel: 20, braking_rfd: 85, landing_peak_force: 36,
       landing_impulse: 2.2, ecc_mean_power: 23, time_to_stab: 0.55, landing_duration: 240,
       rsi_mod: 0.65, ft_ct_ratio: 1.35, conc_impulse_100: 1.2,
       landing_peak_force_asym: 5, ecc_decel_rfd_asym: 6, force_peak_power_asym: 4, depth: 33

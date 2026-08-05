@@ -108,7 +108,11 @@ test('toutes les variables principales/secondaires des 5 profils biomécaniques 
   const r = importForceDecks(parsed);
   const expected = {
     peak_power: 45.0, conc_mean_force: 18.2, conc_mean_power: 30.1, conc_impulse: 2.1,
-    force_peak_power: 16.0, force_zero_vel: 14.5, braking_rfd: 5200, ecc_mean_power: 12.3,
+    force_peak_power: 16.0, force_zero_vel: 14.5,
+    // braking_rfd (04/08) : variable clinique de référence désormais relative (N/kg/s). Cette
+    // colonne source ne fournit QUE la version absolue ("Eccentric Deceleration RFD [N/s]",
+    // sans "/BM") -> fdVal() la convertit automatiquement via BW (80 kg dans fdCsv()) : 5200/80=65.
+    braking_rfd: 65, braking_rfd_abs: 5200, ecc_mean_power: 12.3,
     braking_impulse: 1.1, rsi_mod: 0.55, ft_ct_ratio: 1.2, conc_impulse_100: 1.6, conc_rfd: 4100,
     conc_peak_vel: 2.8, time_to_stab: 0.45, landing_peak_force: 28.0, landing_peak_force_asym: 8.5,
     post_landing_stability: 0.9
@@ -117,6 +121,16 @@ test('toutes les variables principales/secondaires des 5 profils biomécaniques 
     assert.ok(r.cmj.trials[k], 'kpi manquant après import: ' + k);
     assert.strictEqual(r.cmj.trials[k][0], expected[k], 'valeur incorrecte pour ' + k);
   });
+});
+
+test("braking_rfd (04/08) : quand l'export expose les deux colonnes, /BM est prioritaire (aucune conversion) et braking_rfd_abs capte la version absolue séparément", () => {
+  const parsed = parseCSV(fdCsv({
+    'Eccentric Deceleration RFD / BM [N/s/kg]': '65.0',
+    'Eccentric Deceleration RFD [N/s]': '5200'
+  }));
+  const r = importForceDecks(parsed);
+  assert.strictEqual(r.cmj.trials.braking_rfd[0], 65.0, 'braking_rfd doit lire directement la colonne /BM, sans passer par la conversion BW');
+  assert.strictEqual(r.cmj.trials.braking_rfd_abs[0], 5200, 'braking_rfd_abs doit capter la colonne absolue séparément, jamais la /BM');
 });
 
 test("asymétrie : 'Peak Landing Force (Asym)' ne pollue pas la valeur non-suffixée landing_peak_force", () => {

@@ -48,7 +48,9 @@ console.log('Moteur Biomécanique par phase — catégorisation dynamique princi
 
 // Phase 'braking' : ecc_mean_power (w1.0), force_zero_vel (w1.5), braking_rfd (w2.0),
 // braking_impulse (w1.0, historiquement 'support') — 4 variables biomécaniquement pertinentes.
-const brakingVals = { ecc_mean_power: 40, force_zero_vel: 30, braking_rfd: 8000, braking_impulse: 3 };
+// braking_rfd (04/08) : variable clinique de référence désormais relative au poids de corps
+// (N/kg/s, plage plausible [1,1000]) — valeurs de ce fichier alignées sur cette échelle.
+const brakingVals = { ecc_mean_power: 40, force_zero_vel: 30, braking_rfd: 80, braking_impulse: 3 };
 
 test('une variable sans normes pour la population active est classée "secondaire", jamais dans le score', () => {
   NORMS.test_biomeca_partial = {
@@ -64,7 +66,7 @@ test('une variable sans normes pour la population active est classée "secondair
   assert.strictEqual(byKey('braking_impulse').tier, 'secondaire');
   // Les variables secondaires gardent leur valeur brute (pour les explications/niveau Expert)
   // mais n'ont jamais de percentile.
-  assert.strictEqual(byKey('braking_rfd').rawVal, 8000);
+  assert.strictEqual(byKey('braking_rfd').rawVal, 80);
   assert.strictEqual(byKey('braking_rfd').percentile, null);
 });
 
@@ -72,7 +74,7 @@ test('promotion automatique : la même variable devient "principale" dès que NO
   NORMS.test_biomeca_promu = {
     cmj_ecc_mean_power: [10, 20, 40, 60, 75],
     cmj_force_zero_vel: [8, 15, 30, 45, 55],
-    cmj_braking_rfd: [2000, 4000, 8000, 12000, 16000] // ajoutée après coup, aucune modif de code
+    cmj_braking_rfd: [20, 40, 80, 120, 160] // ajoutée après coup, aucune modif de code
   };
   const r = computeBiomecaPhase('braking', brakingVals, 'test_biomeca_promu', 24);
   const byKey = k => r.entries.find(e => e.kpiKey === k);
@@ -86,8 +88,8 @@ test('le score ne doit JAMAIS être influencé par une variable secondaire, mêm
     cmj_ecc_mean_power: [10, 20, 40, 60, 75],
     cmj_force_zero_vel: [8, 15, 30, 45, 55]
   };
-  const valsModeres = { ecc_mean_power: 40, force_zero_vel: 30, braking_rfd: 8000, braking_impulse: 3 };
-  const valsExtreme = { ecc_mean_power: 40, force_zero_vel: 30, braking_rfd: 19999, braking_impulse: 0.2 };
+  const valsModeres = { ecc_mean_power: 40, force_zero_vel: 30, braking_rfd: 80, braking_impulse: 3 };
+  const valsExtreme = { ecc_mean_power: 40, force_zero_vel: 30, braking_rfd: 999, braking_impulse: 0.2 };
   const rA = computeBiomecaPhase('braking', valsModeres, 'test_biomeca_score_a', 24);
   const rB = computeBiomecaPhase('braking', valsExtreme, 'test_biomeca_score_a', 24);
   assert.ok(rA.sufficient && rB.sufficient);
@@ -104,7 +106,7 @@ test('le score ne doit JAMAIS être influencé par une variable secondaire, mêm
 
 test('plancher "minimum 2 variables principales" : 1 seule variable normée -> phase insuffisante même si le ratio (1/1) passerait seul', () => {
   NORMS.test_biomeca_une_seule = {
-    cmj_braking_rfd: [2000, 4000, 8000, 12000, 16000]
+    cmj_braking_rfd: [20, 40, 80, 120, 160]
     // Seule braking_rfd est normée -> 1 principale disponible, ratio 1/1=100% mais < minimum 2.
   };
   const r = computeBiomecaPhase('braking', brakingVals, 'test_biomeca_une_seule', 24);
