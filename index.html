@@ -3736,11 +3736,30 @@ function composeNarrativeParagraph(conclusionText,preuves,confidence){
   return sentences.join(' ');
 }
 
+// Les trois registres de narration formalisés dans KINEXUS_CLINICAL_ARCHITECTURE.md — vocabulaire
+// et couleurs vivent ICI (couche générique), jamais dans un adaptateur de domaine : c'est un
+// principe transversal à tout Kinexus, pas une particularité du CMJ. Un adaptateur ne fait que
+// choisir LEQUEL des trois s'applique (t.registre) ; jamais son libellé ni sa couleur.
+//   - deficit_confirme : la qualité physique associée est elle-même déficitaire -> plusieurs
+//     niveaux convergent, c'est la conclusion la plus forte.
+//   - signal_isole : la qualité associée n'est pas déficitaire (ou pas encore mesurée) -> un
+//     signal biomécanique réel, mais sans confirmation fonctionnelle à ce stade.
+//   - observation_performance : aucun déficit identifié à aucun niveau ; la particularité mise en
+//     évidence (souvent un profil dominant) est un axe d'optimisation, pas une alerte.
+// Le document est explicite : "un axe d'optimisation présenté avec le vocabulaire d'une alerte
+// clinique serait trompeur" — ces trois entrées ne doivent donc jamais partager libellé ni couleur.
+var RAISONNEMENT_REGISTRES={
+  deficit_confirme:{label:'Déficit confirmé',color:C.rouge},
+  signal_isole:{label:'Signal isolé — à surveiller',color:C.jaune},
+  observation_performance:{label:'Observation de performance',color:C.teal}
+};
+
 // ── Composant générique : ne connaît aucun nom de domaine (jamais "phase"/"CMJ"/"braking" dans
 // ce fichier au-delà des commentaires) — consomme exclusivement le contrat RaisonnementBoard
 // documenté ci-dessus. Reprend le markup/interactions de kinexus_reasoning_ui.html : rail sticky,
 // puce de confiance en anneau conique, bulle d'alertes, threads en accordéon (le rang 1 ouvert
-// par défaut), grille "Autres observations" pour ce qui n'est pas remonté en priorité.
+// par défaut), grille "Autres observations" pour ce qui n'est pas remonté en priorité, et une
+// section distincte "Observation de performance" — jamais mêlée aux priorités cliniques.
 function FilDeRaisonnementView(props){
   var board=props.board;
   var firstThreadId=board.threads.length?board.threads[0].id:null;
@@ -3799,7 +3818,10 @@ function FilDeRaisonnementView(props){
             h('div',{onClick:function(){toggleThread(t.id);},style:{display:'flex',alignItems:'center',gap:14,padding:'16px 18px',cursor:'pointer'}},
               h('div',{style:{width:34,height:34,borderRadius:10,background:t.tierColor+'22',color:t.tierColor,fontWeight:800,fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},t.rang),
               h('div',{style:{flex:1,minWidth:0}},
-                h('div',{style:{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:t.tierColor,marginBottom:2}},'Priorité '+t.rang+' · '+t.tier),
+                h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:2}},
+                  h('span',{style:{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:t.tierColor}},'Priorité '+t.rang+' · '+t.tier),
+                  t.registre&&RAISONNEMENT_REGISTRES[t.registre]&&h('span',{style:{fontSize:9,fontWeight:800,letterSpacing:'.02em',padding:'2px 8px',borderRadius:100,background:RAISONNEMENT_REGISTRES[t.registre].color+'22',color:RAISONNEMENT_REGISTRES[t.registre].color,flexShrink:0}},RAISONNEMENT_REGISTRES[t.registre].label)
+                ),
                 h('h3',{style:{fontSize:15,fontWeight:700,margin:0,color:C.text}},t.titre)
               ),
               t.confiance&&h('div',{style:{fontSize:11,fontWeight:700,color:C.muted,flexShrink:0}},t.confiance.band?t.confiance.band.label:''),
@@ -3849,6 +3871,17 @@ function FilDeRaisonnementView(props){
           o.note&&h('div',{style:{fontSize:11.5,color:C.muted,marginTop:2}},o.note)
         );})
       )
+    ),
+    // Observation de performance — troisième registre (KINEXUS_CLINICAL_ARCHITECTURE.md) : jamais
+    // mêlée aux "Priorités cliniques" ni aux "Autres observations" ci-dessus, section à part avec
+    // un traitement visuel non alarmant (teal), même quand aucun déficit n'existe par ailleurs.
+    board.observationPerformance&&h('div',{style:{marginTop:22,padding:'18px 20px',background:C.card,border:'1px solid '+C.teal+'40',borderRadius:14}},
+      h('span',{style:{display:'inline-block',fontSize:9,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',padding:'3px 9px',borderRadius:100,background:C.teal+'22',color:C.teal,marginBottom:10}},RAISONNEMENT_REGISTRES.observation_performance.label),
+      h('h3',{style:{fontSize:14,fontWeight:700,margin:'2px 0 8px',color:C.text}},board.observationPerformance.label),
+      h('div',{style:{fontSize:13,lineHeight:1.6,color:C.text,marginBottom:board.observationPerformance.profils.length?12:0}},board.observationPerformance.description),
+      board.observationPerformance.profils.length>0&&h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        board.observationPerformance.profils.map(function(p,i){return h('span',{key:i,style:{fontSize:11.5,fontWeight:600,background:C.surface,border:'1px solid '+C.border,padding:'5px 10px',borderRadius:8,color:C.text}},p.nom+' · '+Math.round(p.percentile)+'e pctl');})
+      )
     )
   );
 }
@@ -3891,6 +3924,16 @@ function buildRaisonnementBoardCMJ(analysis,contextLabel){
   var confidenceGlobal=(cg&&cg.band)?{label:cg.band.label,percent:Math.round(cg.composite),color:cg.band.color}:null;
   var strategyChip=(analysis.signature&&analysis.signature.sufficient&&analysis.signature.profilDominant)
     ?{icon:'◆',label:analysis.signature.profilDominant+' dominant'}:null;
+  // Observation de performance (05/08) — troisième registre de KINEXUS_CLINICAL_ARCHITECTURE.md.
+  // Calculée indépendamment des priorités cliniques (threads ci-dessous) : un profil dominant
+  // reste une information de performance à part entière même quand une priorité clinique existe
+  // par ailleurs — jamais mêlée à elle, jamais conditionnée par l'absence de déficit. Reprend
+  // telle quelle la phrase déjà produite par computeSignatureBiomecanique, jamais reformulée.
+  var observationPerformance=(analysis.signature&&analysis.signature.sufficient&&analysis.signature.profilDominant)?{
+    label:analysis.signature.profilDominant+' dominant',
+    description:analysis.signature.signature,
+    profils:(analysis.profileResults||[]).filter(function(p){return p.result&&p.result.sufficient;}).map(function(p){return{nom:p.nom,percentile:p.result.percentileGlobal};})
+  }:null;
   var alertes=(analysis.alertes&&analysis.alertes.alertes||[]).map(function(a){
     return{id:a.id,gravite:a.gravite,titre:ALERT_LABELS_CMJ[a.id]||a.id,detail:raisonnementAlertDetail(a)};
   });
@@ -3900,6 +3943,12 @@ function buildRaisonnementBoardCMJ(analysis,contextLabel){
     var explication=analysis.explications[phaseKey];
     var conf=analysis.confiances[phaseKey];
     var tierColor=(dossier.niveauPriorite==='Très forte'||dossier.niveauPriorite==='Forte')?C.rouge:(dossier.niveauPriorite==='Modérée'?C.orange:C.muted);
+    // Registre (05/08, KINEXUS_CLINICAL_ARCHITECTURE.md) : countMoteurs>=2 signifie que le profil
+    // ET la qualité associée sont TOUS DEUX déficients (Forte/Très forte, jamais atteignable
+    // autrement, cf. computePriorisationClinique) -> déficit confirmé. countMoteurs===1 signifie
+    // qu'un seul axe converge (le profil seul, la qualité étant saine ou non mesurée) -> signal
+    // isolé. Dérivé de dossier.countMoteurs déjà calculé, jamais un nouveau seuil.
+    var registre=dossier.countMoteurs>=2?'deficit_confirme':'signal_isole';
     var liens=(pres.liens||[]).map(function(l){return{label:'Lié à '+l.label,onSelect:null};});
     if(explication&&explication.sections){
       (explication.sections.profilsImpliques||[]).forEach(function(pi){
@@ -3921,7 +3970,7 @@ function buildRaisonnementBoardCMJ(analysis,contextLabel){
     }
     var preuves=pres.preuves||[];
     return{
-      id:phaseKey,rang:i+1,tier:dossier.niveauPriorite,tierColor:tierColor,
+      id:phaseKey,rang:i+1,tier:dossier.niveauPriorite,tierColor:tierColor,registre:registre,
       titre:CMJ_PHASE_LABEL[phaseKey]+(pres.headline&&pres.headline!==CMJ_PHASE_LABEL[phaseKey]?' — '+pres.headline:''),
       // Récit clinique (05/08) : la conclusion déjà produite par biomecaPhaseConclusion, tissée
       // avec la convergence des preuves déjà classées par phaseEvidence() et, si besoin, une
@@ -3945,7 +3994,8 @@ function buildRaisonnementBoardCMJ(analysis,contextLabel){
   });
   return{
     contextLabel:contextLabel||'',strategyChip:strategyChip,confidenceGlobal:confidenceGlobal,
-    railItems:railItems,alertes:alertes,threads:threads,autresObservations:autresObservations
+    railItems:railItems,alertes:alertes,threads:threads,autresObservations:autresObservations,
+    observationPerformance:observationPerformance
   };
 }
 

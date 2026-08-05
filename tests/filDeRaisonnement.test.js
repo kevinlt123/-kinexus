@@ -200,6 +200,76 @@ test('alertes : traduites depuis les codes du Moteur d\'Alerte via ALERT_LABELS_
   assert.strictEqual(alerteManquante.titre, ALERT_LABELS_CMJ.donnees_manquantes_phase);
 });
 
+console.log('Les trois registres de narration (05/08) — KINEXUS_CLINICAL_ARCHITECTURE.md');
+
+// Référentiel : dossier.countMoteurs>=2 (profil ET qualité déficients, convergence réelle) ->
+// "Déficit confirmé" ; countMoteurs===1 (un seul moteur, quelle que soit sa nature) -> "Signal
+// isolé — à surveiller". Aucune 3e valeur n'est calculée ici : le registre est une simple
+// lecture de countMoteurs déjà produit par dossierPreuvesPhase, jamais un nouveau seuil.
+test('threads : registre = "signal_isole" quand un seul moteur converge (ici le profil, sans functionScores)', () => {
+  const mv = computeMouvementAnalysis(cmjBilan(), 'test_fdr_pop', 24);
+  assert.strictEqual(mv.priorisation.priorite1.countMoteurs, 1, 'prérequis du test : un seul moteur convergent dans cette fixture sans functionScores');
+  const board = buildRaisonnementBoardCMJ(mv, '');
+  assert.strictEqual(board.threads[0].registre, 'signal_isole');
+});
+
+test('threads : registre = "deficit_confirme" quand profil ET qualité convergent (functionScores fourni, Absorption déficitaire)', () => {
+  const mv = computeMouvementAnalysis(cmjBilan(), 'test_fdr_pop', 24, { Absorption: { status: 'rouge' } });
+  assert.strictEqual(mv.priorisation.priorite1.countMoteurs, 2, 'prérequis du test : profil ET qualité déficients dans cette fixture');
+  const board = buildRaisonnementBoardCMJ(mv, '');
+  assert.strictEqual(board.threads[0].registre, 'deficit_confirme');
+});
+
+test('observationPerformance : absent (null) quand la signature biomécanique est homogène (aucun profil dominant à mettre en avant)', () => {
+  const mv = computeMouvementAnalysis(cmjBilan(), 'test_fdr_pop', 24);
+  assert.strictEqual(mv.signature.profilDominant, null, 'prérequis du test : signature homogène (déjà vérifié par le test strategyChip ci-dessus)');
+  const board = buildRaisonnementBoardCMJ(mv, '');
+  assert.strictEqual(board.observationPerformance, null);
+});
+
+// Scénario "profil biomécanique particulier sans déficit clinique" (4e cas de vérification
+// demandé par le praticien pour le branchement functionScores, 05/08) : Propulsif nettement
+// dominant, Absorbeur dans les normes (ni déficitaire ni exceptionnel) -> aucune phase n'est
+// retenue en priorité (threads vide) mais la dominance de profil reste une observation utile,
+// jamais un déficit. Population + valeurs vérifiées par sondage (probe.js, cf. session) :
+// Propulsif 91e percentile vs Absorbeur 50e -> "Dominance très marquée", priorite1/2 = null.
+NORMS.test_fdr_perf = {
+  cmj_peak_power: [10, 20, 30, 40, 50],
+  cmj_peak_vel: [1, 2, 3, 4, 5],
+  cmj_conc_impulse: [1, 2, 3, 4, 5],
+  cmj_force_peak_power: [5, 10, 15, 20, 25],
+  cmj_force_zero_vel: [10, 20, 40, 60, 75],
+  cmj_braking_rfd: [40, 60, 90, 130, 180],
+  cmj_landing_peak_force: [20, 30, 50, 70, 90],
+  cmj_landing_impulse: [1, 2, 4, 6, 8]
+};
+function perfBilan() {
+  return {
+    id: 21, date: new Date().toISOString(),
+    testData: {
+      cmj: {
+        active: true,
+        trials: {
+          peak_power: [48], peak_vel: [4.8], conc_impulse: [4.8], force_peak_power: [24],
+          force_zero_vel: [40], braking_rfd: [90], landing_peak_force: [50], landing_impulse: [4]
+        }
+      }
+    }
+  };
+}
+
+test('observationPerformance : reflète fidèlement analysis.signature (label, description, profils) quand un profil est nettement dominant, même sans aucune priorité clinique', () => {
+  const mv = computeMouvementAnalysis(perfBilan(), 'test_fdr_perf', 24);
+  assert.strictEqual(mv.signature.profilDominant, 'Propulsif', 'prérequis du test : Propulsif doit être détecté dominant');
+  assert.strictEqual(mv.priorisation.priorite1, null, 'prérequis du test : aucune phase déficitaire dans cette fixture (observation de performance pure, pas un déficit)');
+  const board = buildRaisonnementBoardCMJ(mv, '');
+  assert.strictEqual(board.threads.length, 0, 'aucun thread clinique attendu — seule une observation de performance doit apparaître');
+  assert.ok(board.observationPerformance, 'observationPerformance doit être calculé indépendamment de la présence de threads');
+  assert.strictEqual(board.observationPerformance.label, 'Propulsif dominant');
+  assert.strictEqual(board.observationPerformance.description, mv.signature.signature, 'la description doit reprendre mot pour mot la phrase déjà composée par computeSignatureBiomecanique, jamais reformulée');
+  assert.deepStrictEqual(board.observationPerformance.profils, mv.profileResults.filter(p => p.result && p.result.sufficient).map(p => ({ nom: p.nom, percentile: p.result.percentileGlobal })), 'la liste des profils doit reprendre fidèlement les profils exploitables déjà calculés par computeAllBiomechanicalProfiles');
+});
+
 console.log('composeNarrativeParagraph — récit clinique (05/08)');
 
 test('conclusion seule (aucune preuve) : le récit est exactement la conclusion, rien ajouté', () => {
