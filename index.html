@@ -3631,6 +3631,266 @@ function MouvementView(props){
       )
   );
 }
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// ── LE FIL DE RAISONNEMENT : MOTEUR D'EXPLICATION DE KINEXUS (composant générique, 05/08) ──────
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// Décision du praticien (05/08) : ne pas construire "un écran CMJ de plus", mais LE composant
+// d'explication de Kinexus — réutilisable par tout futur module (Drop Jump, SLCMJ, Isométrie,
+// batteries RTP...) sans être reconstruit. Référence UX officielle : kinexus_reasoning_ui.html
+// ("Le Fil de Raisonnement") — markup, interactions (thread expand/collapse, bell popover, clic
+// sur le rail -> ouvre/scrolle le thread), palette et hiérarchie visuelle repris à l'identique
+// (couleurs C.* déjà existantes, jamais une seconde palette — même principe que MouvementView).
+//
+// CONSTAT CLÉ (fait avant toute ligne de code, comme demandé) : l'essentiel de ce moteur
+// d'explication EXISTE DÉJÀ, sous forme de primitives génériques + adaptateurs de domaine — même
+// architecture que BiomechanicalProfileEngine/BiomechanicalProfiles :
+//   - composeExplication()            -> primitive générique (aucune notion de "phase"/"CMJ")
+//   - computeIndiceConfiance()        -> primitive générique (signaux/poids arbitraires)
+//   - evaluateAlertRules()            -> primitive générique (règles/contexte arbitraires)
+//   - makeSpec/.and()/.or()/.not()    -> arbre de preuve générique, déjà traçable
+//   - explicationConclusionPhase(), computeConfianceKinexus(), computeMoteurAlerte(),
+//     phasePresentation(), phaseEvidence(), asymPhaseSummary() -> adaptateurs CMJ existants,
+//     appelant les primitives ci-dessus, jamais recalculés ici.
+// Il manquait uniquement la couche de PRÉSENTATION : un contrat générique ("RaisonnementBoard")
+// + un composant React qui le rend, + un adaptateur qui transforme la sortie CMJ déjà calculée
+// (computeMouvementAnalysis) en ce contrat. C'est tout ce que ce bloc ajoute — zéro nouvelle
+// décision clinique, uniquement du formatage de ce que les moteurs existants concluent déjà.
+//
+// CONTRAT GÉNÉRIQUE (RaisonnementBoard) — ce que FilDeRaisonnementView reçoit, sans jamais
+// connaître "phase", "CMJ" ou aucun nom de domaine :
+//   {
+//     contextLabel: string,                    // ex. "Sportif A. — CMJ bilatéral · 03/08/2026"
+//     strategyChip: {icon,label}|null,          // ex. {icon:'◆',label:'Propulsif dominant'}
+//     confidenceGlobal: {label,percent,color}|null,
+//     railItems: [{key,shortLabel,score,color,threadId,flagChar,flagTitle}],
+//     alertes: [{id,gravite,titre,detail}],     // déjà traduites depuis les codes du Moteur d'Alerte
+//     threads: [{
+//       id, rang, tier,                         // tier = niveau de priorité déjà décidé (ex. 'Modérée')
+//       titre, pourquoi,                        // texte déjà produit par l'adaptateur de domaine
+//       confiance:{composite,band}|null,
+//       preuves:[{tag,label,val}],               // déjà produit par <domaine>Evidence()
+//       variablesResponsables:[{kpi,tier,percentile}],
+//       proof: nœud d'arbre {name,result,reason,children}|null,   // "pourquoi CETTE hypothèse"
+//       liens:[{label,onSelect}]                 // qualités/profils/phases impliqués
+//     }],
+//     autresObservations: [{key,label,niveauLabel,niveauColor,note}]
+//   }
+// POUR AJOUTER UN FUTUR MODULE (Drop Jump, SLCMJ...) : écrire SON adaptateur (ex.
+// buildRaisonnementBoardDropJump(analysis)) qui remplit ce même contrat depuis ses propres
+// moteurs déjà existants (ou à construire selon la même architecture générique/adaptateur) —
+// FilDeRaisonnementView ci-dessous n'a besoin d'aucune modification.
+
+// Petit rendu récursif d'un nœud de preuve du Specification Pattern (makeSpec) — générique,
+// fonctionne avec N'IMPORTE QUEL arbre {name,result,reason,children[]}, jamais un nom de règle
+// connu en dur. C'est la réponse concrète à "pourquoi cette hypothèse plutôt qu'une autre" :
+// chaque condition considérée est visible, avec son verdict et sa raison déjà rédigée par le
+// moteur qui l'a évaluée.
+function raisonnementProofNode(node,depth){
+  if(!node)return null;
+  depth=depth||0;
+  return h('div',{key:node.name,style:{marginLeft:depth*16,marginTop:4}},
+    h('div',{style:{display:'flex',alignItems:'flex-start',gap:7,fontSize:12}},
+      h('span',{style:{color:node.result?C.vert:C.muted,fontWeight:800,flexShrink:0}},node.result?'✓':'✕'),
+      h('div',null,
+        h('span',{style:{color:C.text,fontWeight:600}},node.name),
+        h('span',{style:{color:C.muted}},' — '+node.reason)
+      )
+    ),
+    (node.children||[]).map(function(c){return raisonnementProofNode(c,depth+1);})
+  );
+}
+
+// ── Composant générique : ne connaît aucun nom de domaine (jamais "phase"/"CMJ"/"braking" dans
+// ce fichier au-delà des commentaires) — consomme exclusivement le contrat RaisonnementBoard
+// documenté ci-dessus. Reprend le markup/interactions de kinexus_reasoning_ui.html : rail sticky,
+// puce de confiance en anneau conique, bulle d'alertes, threads en accordéon (le rang 1 ouvert
+// par défaut), grille "Autres observations" pour ce qui n'est pas remonté en priorité.
+function FilDeRaisonnementView(props){
+  var board=props.board;
+  var firstThreadId=board.threads.length?board.threads[0].id:null;
+  var st=useState(firstThreadId?[firstThreadId]:[]),openIds=st[0],setOpenIds=st[1];
+  var bellSt=useState(false),bellOpen=bellSt[0],setBellOpen=bellSt[1];
+  function isOpen(id){return openIds.indexOf(id)>=0;}
+  function toggleThread(id){setOpenIds(function(p){return p.indexOf(id)>=0?p.filter(function(x){return x!==id;}):p.concat([id]);});}
+  function openThread(id){setOpenIds(function(p){return p.indexOf(id)>=0?p:p.concat([id]);});
+    setTimeout(function(){var el=document.getElementById('thread-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},50);
+  }
+  var cg=board.confidenceGlobal;
+  return h('div',null,
+    // Rail sticky (contexte + rail + stratégie + confiance globale + alertes)
+    h('div',{style:{position:'sticky',top:0,zIndex:5,background:C.bg,borderBottom:'1px solid '+C.border,padding:'12px 0',marginBottom:18,display:'flex',alignItems:'center',gap:18,flexWrap:'wrap'}},
+      board.contextLabel&&h('div',{style:{fontSize:12,color:C.muted}},board.contextLabel),
+      board.railItems.length>0&&h('div',{style:{display:'flex',gap:6}},
+        board.railItems.map(function(it){
+          return h('div',{key:it.key,onClick:it.threadId?function(){openThread(it.threadId);}:null,
+            title:it.flagTitle||'',
+            style:{width:38,height:38,borderRadius:9,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+              background:it.color+'22',color:it.color,cursor:it.threadId?'pointer':'default',position:'relative',flexShrink:0}},
+            it.flagChar&&h('div',{style:{position:'absolute',top:-3,right:-3,fontSize:9}},it.flagChar),
+            h('div',{style:{fontFamily:'monospace',fontWeight:800,fontSize:12}},it.score!=null?Math.round(it.score):'—'),
+            h('div',{style:{fontSize:6.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'.02em',opacity:.85}},it.shortLabel)
+          );
+        })
+      ),
+      board.strategyChip&&h('div',{style:{display:'flex',alignItems:'center',gap:7,fontSize:12.5,fontWeight:700,color:C.text}},
+        h('span',{style:{color:C.teal}},board.strategyChip.icon),board.strategyChip.label
+      ),
+      h('div',{style:{flex:1}}),
+      cg&&h('div',{style:{display:'flex',alignItems:'center',gap:7,fontSize:12,fontWeight:700,background:C.surface,border:'1px solid '+C.border,padding:'6px 12px 6px 8px',borderRadius:100}},
+        h('span',{style:{width:16,height:16,borderRadius:'50%',background:'conic-gradient('+cg.color+' 0 '+cg.percent+'%,'+C.border+' 0)'}}),
+        'Indice global de confiance : '+cg.label
+      ),
+      board.alertes.length>0&&h('div',{style:{position:'relative'}},
+        h('div',{onClick:function(){setBellOpen(!bellOpen);},style:{position:'relative',width:34,height:34,borderRadius:9,background:C.surface,border:'1px solid '+C.border,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:15}},
+          '🔔',
+          h('span',{style:{position:'absolute',top:-5,right:-5,background:C.orange,color:'#1a1200',fontSize:9.5,fontWeight:800,borderRadius:8,padding:'1px 4.5px'}},board.alertes.length)
+        ),
+        bellOpen&&h('div',{style:{position:'absolute',top:40,right:0,width:280,background:C.card,border:'1px solid '+C.border,borderRadius:12,boxShadow:'0 8px 24px rgba(0,0,0,.15)',padding:6,zIndex:6}},
+          board.alertes.map(function(a,i){return h('div',{key:i,style:{padding:'10px 10px',fontSize:12.5,color:C.muted,borderRadius:8}},
+            h('div',{style:{color:C.text,fontWeight:700,marginBottom:2}},a.titre),a.detail
+          );})
+        )
+      )
+    ),
+    // Threads (priorités)
+    board.threads.length===0
+      ?h('div',{style:{color:C.muted,fontSize:13,padding:'12px 2px'}},'Profil équilibré : aucune priorité identifiée sur ce bilan.')
+      :h('div',null,
+        h('div',{style:{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.1em',color:C.muted,margin:'0 0 12px'}},'Priorités cliniques'),
+        board.threads.map(function(t){
+          var open=isOpen(t.id);
+          return h('div',{key:t.id,id:'thread-'+t.id,style:{background:C.card,border:'1px solid '+C.border,borderRadius:14,marginBottom:12,overflow:'hidden'}},
+            h('div',{onClick:function(){toggleThread(t.id);},style:{display:'flex',alignItems:'center',gap:14,padding:'16px 18px',cursor:'pointer'}},
+              h('div',{style:{width:34,height:34,borderRadius:10,background:t.tierColor+'22',color:t.tierColor,fontWeight:800,fontFamily:'monospace',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},t.rang),
+              h('div',{style:{flex:1,minWidth:0}},
+                h('div',{style:{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:t.tierColor,marginBottom:2}},'Priorité '+t.rang+' · '+t.tier),
+                h('h3',{style:{fontSize:15,fontWeight:700,margin:0,color:C.text}},t.titre)
+              ),
+              t.confiance&&h('div',{style:{fontSize:11,fontWeight:700,color:C.muted,flexShrink:0}},t.confiance.band?t.confiance.band.label:''),
+              h('span',{style:{color:C.muted,fontSize:13,transform:open?'rotate(90deg)':'none',transition:'transform .15s'}},'›')
+            ),
+            open&&h('div',{style:{padding:'0 18px 20px 18px'}},
+              h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:C.teal,marginBottom:6}},'Pourquoi'),
+              h('div',{style:{fontSize:13.5,lineHeight:1.6,color:C.text,marginBottom:16}},t.pourquoi),
+              t.preuves.length>0&&h('div',{style:{marginBottom:16}},
+                h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:C.teal,marginBottom:8}},'Quelles preuves'),
+                h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+                  t.preuves.map(function(p,i){return h('span',{key:i,style:{fontSize:12,fontWeight:600,background:C.surface,border:'1px solid '+C.border,padding:'7px 11px',borderRadius:9,color:C.text}},
+                    h('span',{style:{fontSize:9.5,fontWeight:800,textTransform:'uppercase',color:C.muted,marginRight:6}},p.tag),p.label+(p.val?' — '+p.val:'')
+                  );})
+                )
+              ),
+              t.variablesResponsables.length>0&&h('div',{style:{marginBottom:16}},
+                h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:C.teal,marginBottom:8}},'Quelles variables responsables'),
+                h('div',{style:{display:'flex',flexDirection:'column',gap:5}},
+                  t.variablesResponsables.map(function(v,i){return h('div',{key:i,style:{fontSize:13,color:C.text}},'— '+v.kpi+(v.percentile!=null?' ('+Math.round(v.percentile)+'e percentile)':''));})
+                )
+              ),
+              t.proof&&h('div',{style:{marginBottom:16}},
+                h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'.08em',textTransform:'uppercase',color:C.teal,marginBottom:8}},'Pourquoi cette conclusion plutôt qu\'une autre'),
+                raisonnementProofNode(t.proof,0)
+              ),
+              t.liens.length>0&&h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+                t.liens.map(function(l,i){return h('span',{key:i,onClick:l.onSelect||null,style:{fontSize:12,fontWeight:600,padding:'6px 12px',borderRadius:100,border:'1px solid '+C.border,background:C.surface,color:C.text,cursor:l.onSelect?'pointer':'default'}},l.label);})
+              )
+            )
+          );
+        })
+      ),
+    // Autres observations (phases/tests exploitables mais non retenus comme priorité)
+    board.autresObservations.length>0&&h('div',{style:{marginTop:22}},
+      h('div',{style:{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.1em',color:C.muted,margin:'0 0 12px'}},'Autres observations — aucune action requise'),
+      h('div',{className:'g3',style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}},
+        board.autresObservations.map(function(o){return h('div',{key:o.key,style:{background:C.card,border:'1px solid '+C.border,borderRadius:12,padding:'14px 16px'}},
+          h('div',{style:{fontSize:13,fontWeight:700,color:C.text,marginBottom:6}},o.label),
+          h('div',{style:{fontSize:11.5,color:C.muted}},'Niveau ',h('b',{style:{color:o.niveauColor||C.text}},o.niveauLabel||'—')),
+          o.note&&h('div',{style:{fontSize:11.5,color:C.muted,marginTop:2}},o.note)
+        );})
+      )
+    )
+  );
+}
+
+// ── Adaptateur de domaine CMJ : SEUL endroit où "phase"/"CMJ"/CMJ_PHASES apparaît dans ce bloc.
+// Transforme la sortie déjà calculée par computeMouvementAnalysis() en RaisonnementBoard —
+// aucune décision clinique prise ici (pure fonction de formatage), exactement comme
+// phasePresentation()/phaseEvidence() pour MouvementView et la page 3 du rapport PDF. Un futur
+// module écrira sa propre fonction buildRaisonnementBoard<Module>(...), jamais une modification
+// de FilDeRaisonnementView ci-dessus.
+var ALERT_LABELS_CMJ={
+  incoherence_biomecanique:'Incohérence biomécanique détectée',
+  conclusions_contradictoires:'Conclusions contradictoires entre moteurs',
+  donnees_manquantes_phase:'Données manquantes pour une phase',
+  donnees_manquantes_profil:'Données manquantes pour un profil',
+  confiance_faible:'Confiance faible sur une conclusion'
+};
+function raisonnementAlertDetail(a){
+  if(a.id==='donnees_manquantes_phase')return CMJ_PHASE_LABEL[a.variablesConcernees[0]]+' — '+(a.preuves&&a.preuves.reason||'');
+  if(a.id==='confiance_faible')return(a.variablesConcernees[0]?CMJ_PHASE_LABEL[a.variablesConcernees[0]]+' — ':'')+'confiance '+(a.preuves&&a.preuves.confiance&&a.preuves.confiance.band?a.preuves.confiance.band.label.toLowerCase():'insuffisante');
+  if(a.preuves&&a.preuves.reason)return a.preuves.reason;
+  return(a.variablesConcernees||[]).join(', ')||'—';
+}
+function buildRaisonnementBoardCMJ(analysis,contextLabel){
+  var pri=[analysis.priorisation.priorite1,analysis.priorisation.priorite2,analysis.priorisation.priorite3].filter(Boolean);
+  var priPhases=pri.map(function(d){return d.phase;});
+  var railItems=CMJ_PHASES.map(function(p){
+    var ph=analysis.phases[p];
+    var suff=!!(ph&&ph.sufficient);
+    var asymSum=asymPhaseSummary(p,analysis);
+    var flagChar=asymSum&&asymSum.conclusion==='Asymétrie principale'?'⚠︎':(asymSum&&asymSum.conclusion==='Asymétrie non concluante'?'〜':null);
+    return{
+      key:p,shortLabel:(CMJ_POSE_LABEL[p]||p).slice(0,5),score:suff?ph.score:null,
+      color:suff?phaseColor(p,analysis):C.muted,
+      threadId:priPhases.indexOf(p)>=0?p:null,
+      flagChar:flagChar,flagTitle:asymSum?asymSum.conclusion+(asymSum.sideTxt||''):''
+    };
+  });
+  var cg=analysis.syntheseBiomecanique&&analysis.syntheseBiomecanique.confianceGlobale;
+  var confidenceGlobal=(cg&&cg.band)?{label:cg.band.label,percent:Math.round(cg.composite),color:cg.band.color}:null;
+  var strategyChip=(analysis.signature&&analysis.signature.sufficient&&analysis.signature.profilDominant)
+    ?{icon:'◆',label:analysis.signature.profilDominant+' dominant'}:null;
+  var alertes=(analysis.alertes&&analysis.alertes.alertes||[]).map(function(a){
+    return{id:a.id,gravite:a.gravite,titre:ALERT_LABELS_CMJ[a.id]||a.id,detail:raisonnementAlertDetail(a)};
+  });
+  var threads=pri.map(function(dossier,i){
+    var phaseKey=dossier.phase;
+    var pres=phasePresentation(phaseKey,analysis);
+    var explication=analysis.explications[phaseKey];
+    var conf=analysis.confiances[phaseKey];
+    var tierColor=(dossier.niveauPriorite==='Très forte'||dossier.niveauPriorite==='Forte')?C.rouge:(dossier.niveauPriorite==='Modérée'?C.orange:C.muted);
+    var liens=(pres.liens||[]).map(function(l){return{label:'Lié à '+l.label,onSelect:null};});
+    if(explication&&explication.sections){
+      (explication.sections.profilsImpliques||[]).forEach(function(pi){
+        if(pi.sufficient)liens.push({label:'Profil '+pi.nom+(pi.percentileGlobal!=null?' ('+Math.round(pi.percentileGlobal)+'e pctl)':''),onSelect:null});
+      });
+    }
+    var qualiteNom=CMJ_PHASE_TO_QUALITY[phaseKey];
+    if(qualiteNom)liens.push({label:'Qualité associée : '+qualiteNom+(dossier.qualiteDeficiente?'':' (non évaluée dans ce bilan)'),onSelect:null});
+    return{
+      id:phaseKey,rang:i+1,tier:dossier.niveauPriorite,tierColor:tierColor,
+      titre:CMJ_PHASE_LABEL[phaseKey]+(pres.headline&&pres.headline!==CMJ_PHASE_LABEL[phaseKey]?' — '+pres.headline:''),
+      pourquoi:pres.pourquoi,confiance:conf||null,
+      preuves:pres.preuves||[],
+      variablesResponsables:(explication&&explication.sections&&explication.sections.variablesUtilisees)||[],
+      proof:(explication&&explication.sections&&explication.sections.reglesAppliquees&&explication.sections.reglesAppliquees.gateFacteurLimitant)||null,
+      liens:liens
+    };
+  });
+  var autresObservations=CMJ_PHASES.filter(function(p){return analysis.phases[p]&&analysis.phases[p].sufficient&&priPhases.indexOf(p)<0;}).map(function(p){
+    var ph=analysis.phases[p];
+    var asymSum=asymPhaseSummary(p,analysis);
+    return{
+      key:p,label:CMJ_PHASE_LABEL[p],
+      niveauLabel:ph.niveau?ph.niveau.label:null,niveauColor:ph.niveau?ph.niveau.color:null,
+      note:asymSum?('Asymétrie : '+asymSum.conclusion.replace('Asymétrie ','')):null
+    };
+  });
+  return{
+    contextLabel:contextLabel||'',strategyChip:strategyChip,confidenceGlobal:confidenceGlobal,
+    railItems:railItems,alertes:alertes,threads:threads,autresObservations:autresObservations
+  };
+}
+
 function s2sc(s){return{vert:3,jaune:2,orange:1,rouge:0}[s];}
 function sc2s(s){if(s>=2.5)return'vert';if(s>=1.8)return'jaune';if(s>=1.0)return'orange';return'rouge';}
 
@@ -5786,10 +6046,15 @@ function AnalyseView(props){
         )
       ),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
-        (mouvementAnalysis?[['expert','Expert'],['mouvement','Mouvement'],['historique','Historique']]:[['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        (mouvementAnalysis?[['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
+      // "Fil de Raisonnement" (05/08) : moteur d'explication générique de Kinexus — CMJ est son
+      // premier cas d'usage, via l'adaptateur buildRaisonnementBoardCMJ (formatage pur, aucune
+      // décision clinique). Additif, ne remplace pas l'onglet Raisonnement historique (Expert >
+      // Raisonnement) tant que les deux approches n'ont pas été évaluées en conditions réelles.
+      view==='raisonnementClinique'&&mouvementAnalysis&&h(FilDeRaisonnementView,{board:buildRaisonnementBoardCMJ(mouvementAnalysis,athlete.prenom+' '+athlete.nom+' — CMJ bilatéral · '+new Date(bilan.date).toLocaleDateString('fr-FR'))}),
       view==='historique'&&h(HistoriqueView,{athlete:athlete,currentBilan:bilan}),
       !validated&&h('div',{className:'no-print',style:{marginTop:20,padding:'14px 18px',background:C.teal+'10',border:'1px solid '+C.teal+'40',borderRadius:12}},
         h('div',{style:{color:C.teal,fontWeight:700,fontSize:13,marginBottom:4}},'🔍 Validation expert requise'),
