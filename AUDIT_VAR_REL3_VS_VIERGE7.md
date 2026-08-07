@@ -19,6 +19,47 @@ signalée séparément, pas corrigée silencieusement.
 
 ---
 
+## 0. Anomalie technique transversale découverte pendant l'audit (indépendante de Vierge_7)
+
+**Constat** : `VAR_REL3` mélange, sur le champ `function`, deux orthographes différentes pour au
+moins 4 des 10 qualités — la forme accentuée officielle (celle qui figure dans `FUNCTIONS` /
+`FN_KEY`, ex. `"Réactivité"`) et une forme non accentuée qui n'existe nulle part ailleurs dans le
+code (ex. `"Reactivite"`). `computeQualityStatus()` (ligne 4070) compare par égalité stricte
+(`m.function===qualityName`) : toute entrée taguée avec l'orthographe non accentuée **ne compte
+donc jamais** dans le score de la qualité correspondante. Ce n'est pas une variante de lecture
+possible, c'est une donnée totalement inerte — vérifié en confirmant qu'aucune fonction du code
+(pas de normalisation d'accents) ne relit jamais cette orthographe.
+
+| Forme inerte trouvée | Nb d'entrées `measures`/`estimates` concernées |
+|---|---|
+| `"Reactivite"` (vs `"Réactivité"`) | 87 |
+| `"Explosivite"` (vs `"Explosivité"`) | 129 |
+| `"Controle Frontal"` (vs `"Contrôle Frontal"`) | 65 |
+| `"Mobilite"` (vs `"Mobilité"`) | 21 |
+
+Soit **302 relations variable→qualité** (sur les ~2000+ entrées de `VAR_REL3`) qui ont été
+saisies avec l'intention de compter dans le score actuel mais qui, en pratique, n'y contribuent
+pour rien depuis leur création — le comportement observé du moteur pondéré aujourd'hui est donc
+*encore plus étroit* que ce que la lecture brute de `VAR_REL3` laisse penser pour ces 4 qualités.
+
+**Pourquoi je le signale ici plutôt que de le corriger silencieusement** : corriger uniquement
+l'orthographe (sans revoir le bucket/poids) activerait d'un coup des variables jusqu'ici inertes,
+avec le poids (souvent `Determinante`) qu'elles portent déjà — ce qui peut introduire de nouvelles
+violations vis-à-vis de Vierge_7 plutôt que d'en résoudre. Exemple concret trouvé pendant l'audit
+Réactivité ci-dessous : les 7 variables `cmjr_*` sont taguées `"Reactivite"`/`Determinante`
+(inertes aujourd'hui) — un simple correctif d'orthographe les ferait entrer au niveau diagnostique
+maximal, alors que Vierge_7 les classe en confirmatives/explicatives biomécaniques, jamais en
+diagnostique.
+
+**Recommandation** : ne pas faire de correctif ponctuel isolé sur l'orthographe. Traiter cette
+anomalie comme faisant partie de la reconstruction de la Phase C (le rôle de chaque variable sera
+de toute façon réattribué à cette étape, à partir de Vierge_7). Si le praticien souhaite un
+correctif immédiat indépendant du calendrier Phase A→C (par exemple parce que cela fausse déjà des
+scores en production sur Explosivité/Contrôle Frontal/Mobilité), me le signaler explicitement —
+ce n'est pas une décision que je prends seul.
+
+---
+
 ## 1. Puissance
 
 ### 1.1 — Variables diagnostiques conformes (déjà correctes)
@@ -164,7 +205,149 @@ Puissance ?
 
 ---
 
-## 2. Force
+## 2. Réactivité
+
+*Tests Vierge_7 pour cette qualité : DJ, SLDJ, CMJR, tests horizontaux/fonctionnels (single/triple/
+crossover hop), test à rebonds répétés (repeated_hop). Note : le CMJ "simple" n'apparaît dans
+aucune section de Réactivité — seuls les tests de rebond/contact rapide y figurent.*
+
+### 2.1 — Variables diagnostiques conformes (déjà correctes)
+
+| Variable | Test | VAR_REL3 (bucket/poids) | Vierge_7 (rôle) |
+|---|---|---|---|
+| `dj_rsi` | DJ | measures / Determinante | Diagnostique principal |
+| `sldj_rsi` | SLDJ | measures / Determinante | Diagnostique principal unilatéral |
+
+Seules **2 variables** sur les 25 entrées actives (orthographe correcte) taguées "Réactivité"
+sont diagnostiques selon Vierge_7 — même ratio que pour Puissance. Note mineure : `dj_rsi` possède
+aussi une entrée `estimates`/Majeure dupliquée et sans effet (le code priorise `measures` si
+présent) — doublon de saisie sans conséquence, à nettoyer en Phase C.
+
+### 2.2 — Variables diagnostiques en excès (à retirer du diagnostic)
+
+| Variable(s) | VAR_REL3 aujourd'hui | Vierge_7 |
+|---|---|---|
+| `dj_contact_time` | measures / Determinante | Confirmative + explicative biomécanique |
+| `sldj_contact_time` | measures / Determinante | Confirmative + explicative biomécanique |
+| `repeated_hop_best_rsi`, `repeated_hop_mean_ct`, `repeated_hop_mean_rsi` | measures / Determinante | **Exclusion explicite** — "Variables d'endurance / fatigue" (voir 2.7, violation la plus sévère relevée à ce stade de l'audit) |
+
+**5 des 7 variables** actuellement au poids diagnostique maximal ne devraient pas y être — dont 3
+qui sont en réalité des exclusions explicites de Vierge_7, pas de simples reclassements.
+
+### 2.3 — Variables à reclasser en confirmatives
+
+| Variable | VAR_REL3 aujourd'hui | Vierge_7 |
+|---|---|---|
+| `dj_height` | estimates / Majeure | Confirmative |
+| `sldj_height` | estimates / Majeure | Confirmative |
+| `dj_peak_prop_force`, `dj_peak_prop_power` | estimates / Moderee | Confirmative + explicative biomécanique (double rôle, voir 2.8) |
+| `dj_leg_stiffness` | estimates / Majeure | Confirmative + explicative biomécanique (double rôle) |
+
+Ces 5 variables sont déjà dans le bon bucket directionnel (`estimates`, pas `measures`) — seul le
+rôle formel change, pas de correction de poids majeure attendue.
+
+### 2.4 — Variables à reclasser en explicatives physiologiques
+
+| Variable(s) | VAR_REL3 aujourd'hui | Note |
+|---|---|---|
+| `gastro_iso_rfd150`, `knee_ext_rfd150`, `soleus_iso_rfd150` | estimates / Majeure | Vierge_7 : "Production de force rapide" (RFD globale/segmentaire) — explicatif physiologique, jamais diagnostique/confirmatif |
+
+**Anomalie de tagging trouvée en marge (pas un simple reclassement)** : `gastro_iso_nkg`,
+`soleus_iso_nkg` (estimates/Moderee) et `knee_ext_nkg`, `knee_flex_nkg` (estimates/Mineure) sont
+également tagués Réactivité aujourd'hui. Or ce sont des KPIs de **force maximale** (`nkg`), pas de
+vitesse de production de force (`rfd`) — Vierge_7 ne cite strictement que la famille `*_rfd*` pour
+l'explicatif physiologique de Réactivité, jamais les KPIs de force max. Traitement recommandé :
+❌ retrait pur (mauvaise catégorie conceptuelle), pas reclassement — la force maximale segmentaire
+est déjà couverte comme explicatif physiologique de Puissance (voir audit 1.4), l'ajouter aussi à
+Réactivité revient à la même dilution "tout contribue à tout" identifiée sur Puissance.
+
+### 2.5 — Variables à reclasser en explicatives biomécaniques
+
+Même liste qu'en 2.3 (DJ : `dj_contact_time`, `dj_leg_stiffness`, `dj_peak_landing_force` [➕
+manquant, voir 2.6], `dj_landing_impulse` [➕ manquant], `dj_peak_prop_force`, `dj_peak_prop_power`
+— plus `dj_braking_impulse`, absent de Kinexus, voir 2.6). Vierge_7 documente la même variable à la
+fois comme confirmative et explicative biomécanique pour DJ/SLDJ — cf. 2.8 point 2, qui rejoint et
+renforce un constat déjà fait sur Puissance (CMJR).
+
+### 2.6 — Variables manquantes par rapport à Vierge_7 (➕)
+
+| Variable | Rôle Vierge_7 | Statut dans VAR_REL3 |
+|---|---|---|
+| `dj_landing_impulse`, `dj_peak_landing_force` | Confirmative + explicative biomécanique | Taguées, mais sous l'orthographe **inerte** `"Reactivite"` (voir section 0) — ne comptent pas aujourd'hui |
+| `sldj_tts`, `sldj_peak_prop_force`, `sldj_leg_stiffness`, `sldj_landing_impulse`, `sldj_peak_landing_force` | Confirmative + explicative biomécanique | Idem, orthographe inerte |
+| `sldj_peak_prop_power` | Confirmative + explicative biomécanique | Absente pour Réactivité sous toute orthographe (taguée uniquement Puissance) |
+| `dj_braking_impulse` | Explicative biomécanique | N'existe **pas du tout** comme variable dans `VAR_REL3`, quelle que soit la qualité — KPI absent de Kinexus |
+| `cmjr_mean_rsi`, `cmjr_mean_ct`, `cmjr_peak_power`, `cmjr_mean_rebound_height`, `cmjr_mean_stiffness`, `cmjr_rsi_decay`, `cmjr_stiffness_decay` | Confirmative (+ explicative biomécanique pour les 6 premières) | Taguées, mais toutes sous l'orthographe **inerte** `"Reactivite"`/Determinante — inertes aujourd'hui, et le poids qu'elles portent (Determinante) est de toute façon trop élevé par rapport à leur rôle Vierge_7 |
+| `single_hop_distance`, `triple_hop_distance`, `crossover_hop_distance` | Confirmative | Taguées Puissance/Propulsion, jamais Réactivité — alors que Vierge_7 les cite comme preuve confirmative des deux qualités simultanément |
+| `repeated_hop` (variable "test", sans suffixe KPI) | Confirmative | N'existe pas comme clé dans `VAR_REL3` — Kinexus ne modélise ce test qu'au niveau KPI (`repeated_hop_mean_rsi`, etc.), jamais au niveau test global. Décalage de granularité avec Vierge_7, voir 2.8 point 1 |
+| Familles RFD complètes (`rfd50/100/200/ttpf`) pour `knee_ext`, `gastro_iso`, `soleus_iso` (seul `rfd150` est tagué) + familles entièrement absentes pour Réactivité : `hip_flex_rfd*`, `hip_ext_rfd*`, `hip_abd_rfd*`, `hip_add_rfd*`, `df_iso_rfd*`, `inv_iso_rfd*`, `ev_iso_rfd*`, `sh_iso_9020/9090/3030/6060_rfd*`, `imtp_rfd100/200/ttpf`, `slimtp_rfd100/200/ttpf`, `iso_belt_squat_rfd*`, `sl_iso_push_rfd*`, `iso_squat_hold_rfd*`, `profil_fv_nkg/v0` | Explicative physiologique | Quasi totalement absentes du tag Réactivité — sur ~90 variables listées par Vierge_7 dans cette section, seules 3 (`*_rfd150` de 3 familles) sont taguées aujourd'hui |
+
+Le dernier point est le plus large en volume, mais le moins urgent cliniquement : ce sont des
+preuves explicatives (jamais diagnostiques), leur absence actuelle prive le Fil de Raisonnement de
+profondeur explicative mais ne fausse aucun score.
+
+### 2.7 — Variables explicitement exclues du diagnostic (🚫 violations trouvées)
+
+| Variable | VAR_REL3 aujourd'hui | Vierge_7 |
+|---|---|---|
+| `wblt_distance` | estimates / Mineure | **Exclusion explicite** — mobilité/équilibre/contrôle sensoriel ne doivent pas construire le diagnostic de réactivité (même violation que sur Puissance) |
+| `repeated_hop_best_rsi`, `repeated_hop_mean_ct`, `repeated_hop_mean_rsi` | measures / **Determinante** | **Exclusion explicite** — "Variables d'endurance / fatigue" |
+
+**C'est la violation la plus sévère identifiée dans l'audit à ce stade** : contrairement à
+`wblt_distance` (poids Mineure sur Puissance), ces 3 variables `repeated_hop` sont actives, taguées
+avec l'orthographe correcte, et pèsent au niveau **Determinante** — le niveau de poids maximal,
+identique à celui de `dj_rsi`/`sldj_rsi`. Concrètement, un athlète dont le RSI se dégrade sur des
+contacts répétés (signal de fatigue/endurance selon Vierge_7) peut aujourd'hui faire chuter le
+score de Réactivité au même titre qu'un déficit réel de restitution rapide de force au premier
+contact — deux phénomènes cliniquement différents que le modèle actuel ne distingue pas.
+
+Aucune variable d'asymétrie (`*_asym`) n'est taguée Réactivité dans `VAR_REL3` — conforme à
+l'exclusion Vierge_7 sur ce point (aucune violation trouvée ici, contrairement au point ci-dessus).
+
+### 2.8 — Incohérences relevées dans Vierge_7 lui-même (signalement, pas correction silencieuse)
+
+1. **Contradiction interne sur le rôle de `repeated_hop`.** La section "Preuves confirmatives"
+   cite le test `repeated_hop` (sans suffixe) comme confirmant "la capacité à répéter des contacts
+   et à maintenir une restitution efficace dans le temps". Quelques paragraphes plus loin, la
+   section "Variables exclues" liste explicitement `repeated_hop_mean_rsi`, `repeated_hop_mean_ct`,
+   `repeated_hop_best_rsi` (entre autres) comme des "variables d'endurance / fatigue" à exclure du
+   diagnostic de réactivité — ce sont précisément les KPIs qui mesureraient "la restitution
+   efficace dans le temps" évoquée en confirmative. Kinexus n'ayant pas de variable "test global"
+   `repeated_hop` (uniquement des KPIs suffixés), cette contradiction n'est pas seulement
+   rédactionnelle : elle empêche de savoir quel KPI concret rattacher à la preuve confirmative
+   promise par le document. À trancher avant Phase C : soit un sous-ensemble précis des KPIs
+   `repeated_hop_*` est confirmatif (lesquels ?), soit le test entier est exclu et la phrase
+   "Preuves confirmatives" doit être retirée ou reformulée.
+2. **Le chevauchement confirmative / explicative biomécanique observé sur CMJR (Puissance, voir
+   1.8 point 2) se reproduit à l'identique sur DJ et SLDJ.** `dj_contact_time`, `dj_leg_stiffness`,
+   `dj_peak_landing_force`, `dj_landing_impulse`, `dj_peak_prop_force`, `dj_peak_prop_power` (et
+   l'équivalent SLDJ) apparaissent mot pour mot dans les deux sections. Ce n'est donc plus un cas
+   isolé propre au CMJR : c'est un motif récurrent chez Vierge_7 (au moins 3 tests sur les 2
+   qualités auditées à ce stade). Je recommande de ne plus le signaler qualité par qualité mais de
+   le traiter une fois pour toutes en Phase B : soit codifier explicitement "une variable brute
+   de test peut être simultanément confirmative ET explicative biomécanique" comme règle générale
+   du modèle HYP###, soit fusionner ces deux sections quand leur contenu est identique.
+
+### 2.9 — Impact attendu sur le moteur après correction
+
+- Comme pour Puissance, le diagnostic de Réactivité reposera sur 2 variables (`dj_rsi`/`sldj_rsi`)
+  au lieu des 7 actuelles au poids maximal — confirmation d'un motif qui se dessine sur les deux
+  premières qualités auditées : Kinexus semble conçu autour d'un unique "KPI flagship" bilatéral +
+  unilatéral par qualité, le reste étant systématiquement démoté en confirmatif/explicatif. Utile à
+  garder en tête comme heuristique de conception pour la Phase B/C plutôt que de re-découvrir ce
+  schéma qualité par qualité.
+- Correction clinique la plus significative : un athlète en fatigue de contacts répétés (RSI qui
+  se dégrade sur `repeated_hop`) ne sera plus vu comme ayant une "Réactivité diminuée" par ce seul
+  signal — ce sera reclassé comme signal d'endurance/fatigue, une hypothèse clinique distincte.
+- La correction de l'orthographe inerte (section 0) devra être faite *en même temps* que la
+  requalification des rôles CMJR/DJ/SLDJ manquants (2.6), pas avant ni séparément — sinon elle
+  activerait 8 variables à Determinante que Vierge_7 ne veut jamais au niveau diagnostique.
+- Un déficit isolé de WBLT (mobilité) ne pourra plus abaisser, même marginalement, le score de
+  Réactivité (violation d'exclusion corrigée, même logique que pour Puissance).
+
+---
+
+## 3. Force
 
 *(en attente — la duplication identifiée dans Vierge_7 doit être résolue avant l'audit de cette
 qualité — voir échange initial)*
@@ -173,5 +356,5 @@ qualité — voir échange initial)*
 
 ## Qualités restantes à auditer
 
-Explosivité · Réactivité · Absorption · Stabilisation · Contrôle Frontal · Contrôle Sensoriel ·
-Endurance · Mobilité
+Absorption · Stabilisation · Mobilité (Cheville) · Force (bloquée, voir section 3) · Explosivité ·
+Contrôle Frontal · Contrôle Sensoriel · Endurance
