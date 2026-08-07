@@ -22,18 +22,50 @@ signalée séparément, pas corrigée silencieusement.
 variable/motif quand utile, et systématiquement en synthèse par qualité (point 9 de la structure
 ci-dessous).
 
-**Structure fixe par qualité, à partir de l'audit Absorption** (validée par le praticien le
-07/08) : 1. Résumé exécutif — 2. Variables diagnostiques conformes — 3. Variables diagnostiques en
-excès — 4. À reclasser en confirmatives — 5. À reclasser en explicatives physiologiques — 6. À
-reclasser en explicatives biomécaniques — 7. Exclues par Vierge_7 mais actuellement utilisées —
-8. Variables manquantes — 9. Gravité globale de l'écart — 10. Incohérences internes de Vierge_7 —
-11. Impact attendu sur le moteur HYP###. Les qualités Puissance/Réactivité ci-dessous suivent une
-structure en 9 points légèrement différente (pré-validation de ce standard) ; elles ne sont pas
-rétroactivement réécrites, seul le format des qualités suivantes change.
+**Structure fixe par qualité, à partir de l'audit Absorption, enrichie à partir de Stabilisation**
+(validée par le praticien le 07/08) : 1. Résumé exécutif — 2. Variables diagnostiques conformes —
+3. Variables diagnostiques en excès — 4. À reclasser en confirmatives — 5. À reclasser en
+explicatives physiologiques — 6. À reclasser en explicatives biomécaniques — 7. Exclues par
+Vierge_7 mais actuellement utilisées — 8. Variables manquantes — 9. Gravité globale de l'écart —
+10. Incohérences internes de Vierge_7 — 11. Impact attendu sur le moteur HYP### — **12. Impact
+produit** (nouveau). Les qualités Puissance/Réactivité ci-dessous suivent une structure en 9
+points légèrement différente (pré-validation de ce standard) ; elles ne sont pas rétroactivement
+réécrites, seul le format des qualités suivantes change.
+
+**Typologie des écarts** (validée le 07/08, à utiliser systématiquement pour qualifier chaque
+écart relevé, dans les points 3 à 8) :
+- **Écart de classification** — la variable existe et est correctement mesurée, mais son rôle
+  actuel (diagnostique/confirmative/explicative/poids) ne correspond pas à Vierge_7. Corrigible en
+  Phase C sans autre développement.
+- **Écart de couverture** — la variable attendue par Vierge_7 n'existe pas dans le catalogue de
+  KPIs de Kinexus (ni dans `VAR_REL3`, ni dans la définition du test). Nécessite un travail
+  produit/donnée, pas seulement une reclassification.
+- **Écart de nommage** — l'information existe très probablement des deux côtés, mais sous une
+  convention de nommage différente entre Vierge_7 et Kinexus (ex. `cmj_ecc_dec_rfd` vs
+  `cmj_braking_rfd`). À vérifier puis consigner dans "Normalisation du vocabulaire" (annexe en fin
+  de document), pas un vrai manque.
+- **Écart de spécification** — incohérence ou contradiction interne à Vierge_7 lui-même,
+  indépendante du code Kinexus.
+
+**Impact produit** (point 12, nouveau à partir de Stabilisation) : pour chaque qualité, qualifie
+ce que la correction de ses écarts nécessite réellement — reclassification pure (Phase C seule) /
+évolution du moteur d'inférence (HYP###) / enrichissement de l'import de données / évolution du
+pipeline d'acquisition (VALD/ForceDecks) / décision produit du praticien. Objectif : séparer ce qui
+relève du raisonnement clinique, de l'architecture logicielle, et de l'acquisition des données.
 
 **Politique sur les incohérences Vierge_7** : signalées systématiquement (où elles apparaissent,
 pourquoi elles semblent contradictoires, quelle serait la meilleure interprétation selon moi) mais
 **jamais corrigées ni tranchées unilatéralement** — la décision revient au praticien.
+
+**Points à arbitrer** : quand un écart apparent pourrait être expliqué par une séparation
+architecturale volontaire ailleurs dans Kinexus (ex. moteur d'asymétrie séparé) plutôt que par une
+vraie lacune, il est marqué **« Point à arbitrer »** plutôt que classé directement en manquant —
+tranché avec le praticien après l'audit complet, pas qualité par qualité.
+
+**À l'issue de la Phase A** : synthèse transversale demandée par le praticien (motifs récurrents),
+puis un document séparé `KINEXUS_TRACEABILITY_AUDIT.md` — référentiel de traçabilité
+spécification↔moteur (ce que demande Vierge_7, ce que fait le moteur actuel, écarts, gravité,
+décision retenue), destiné à la maintenance future, pas au moteur lui-même.
 
 ---
 
@@ -455,14 +487,15 @@ intégralement respectée dans l'audit.
 
 | Variable | Rôle Vierge_7 | Statut dans VAR_REL3 |
 |---|---|---|
-| `landing_uni_peak_landing_force`, `landing_uni_loading_rate`, `landing_uni_impulse`, `landing_uni_cop_path` | Diagnostique principal | **N'existent pas du tout** comme clés — `landing_uni_tts` est la seule variable que Kinexus capture pour ce test. Gap de données, pas de classification |
-| `landing_bi_peak_landing_force`, `landing_bi_loading_rate`, `landing_bi_impulse` | Diagnostique principal de base | Idem — `landing_bi_tts` est la seule variable existante |
+| `landing_uni_peak_landing_force`, `landing_uni_loading_rate`, `landing_uni_impulse`, `landing_uni_cop_path` | Diagnostique principal | **Écart de couverture.** Le catalogue de KPIs de `landing_uni` (ligne 128 de `index.html`) ne déclare que `tts` — aucune de ces 4 clés n'existe, même hors `VAR_REL3`. `landing_uni_tts` est la seule variable que Kinexus capture pour ce test |
+| `landing_bi_peak_landing_force` | Diagnostique principal de base | **Écart de classification, pas de couverture.** Contrairement à `landing_uni`, le catalogue de `landing_bi` (ligne 127) déclare bien `peak_landing_force` comme KPI — la donnée est saisissable/stockable, elle n'est simplement jamais tagué dans `VAR_REL3`. Origine probable : "disponible mais non utilisée" (oubli de câblage, pas un manque produit) |
+| `landing_bi_loading_rate`, `landing_bi_impulse` | Diagnostique principal de base | **Écart de couverture.** Ni dans le catalogue de KPIs ni dans `VAR_REL3`. Origine probable, par analogie avec SLLT (même famille de test, mêmes grandeurs physiques déjà calculées côté force-plate) : **"disponible sur l'appareil VALD mais non importée/non stockée"**, plutôt que "non extraite par l'appareil" — à confirmer avec le praticien selon le protocole ForceDecks réellement utilisé pour "Land and Hold" |
 | `cmj_ecc_peak_velocity`, `cmj_ecc_dec_rfd`, `cmj_ecc_dec_impulse` | Diagnostique principal indirect | `cmj_ecc_peak_vel` existe (probable même variable, nom légèrement différent) mais n'est taguée aucune qualité pour Absorption ; `cmj_ecc_dec_rfd`/`cmj_ecc_dec_impulse` n'existent sous ce nom nulle part — correspondance probable `cmj_braking_rfd`/`cmj_braking_impulse` (voir 3.1) |
 | `cmj_ecc_dec_impulse_asym`, `cmj_ecc_dec_rfd_asym` | Diagnostique principal indirect | N'existent sous aucun nom — Kinexus ne capture pas d'asymétrie de freinage excentrique pour le CMJ (mouvement bilatéral, cohérent, mais à confirmer que ce n'est pas un vrai manque produit) |
 | `cmj_countermovement_depth`, `cmj_ecc_duration`, `cmj_fts`, `cmj_peak_landing_force` | Confirmative | N'existent sous aucun nom (le "cmj_depth"/"cmj_tto" existants dans `VAR_REL3` sont peut-être les mêmes variables sous un autre nom — à vérifier) |
 | `cmj_rsi_mod` | Confirmative (bloc CMJ) | Existe, mais tagué seulement Réactivité/Propulsion — jamais Absorption |
 | `dj_contact_time`, `sldj_contact_time` | Confirmative | Existent, mais tagués seulement Réactivité — jamais Absorption (un test qui sert plusieurs qualités doit porter plusieurs tags, motif déjà vu sur Puissance/Réactivité avec `single_hop_distance` etc.) |
-| Asymétries de freinage (`ecc_decel_rfd_asym`, `ecc_decel_impulse_asym`, `landing_peak_force_asym`, `landing_impulse_asym`, `sllt_loading_rate_asym`, `sllt_tts_asym`) | Confirmative | N'existent sous aucun nom dans `VAR_REL3`. **Point à vérifier avec le praticien avant de les classer comme un vrai manque** : Kinexus a un moteur d'asymétrie séparé (`computeAsymEngine`, hors `VAR_REL3`) — il est possible que ce rôle confirmatif soit déjà couvert ailleurs dans le pipeline, auquel cas il ne s'agit pas d'une lacune mais d'une séparation architecturale volontaire à documenter, pas à corriger |
+| Asymétries de freinage (`ecc_decel_rfd_asym`, `ecc_decel_impulse_asym`, `landing_peak_force_asym`, `landing_impulse_asym`, `sllt_loading_rate_asym`, `sllt_tts_asym`) | Confirmative | **🔶 Point à arbitrer** (pas classé manquant). N'existent sous aucun nom dans `VAR_REL3`, mais Kinexus a un moteur d'asymétrie séparé (`computeAsymEngine`, hors `VAR_REL3`) — il est possible que ce rôle confirmatif soit déjà couvert ailleurs dans le pipeline, auquel cas il ne s'agit pas d'une lacune mais d'une séparation architecturale volontaire à documenter. Tranché avec le praticien après l'audit complet des 9 qualités, pas ici |
 | `postural_control`, `sensorimotor_control`, `single_leg_balance`, `reaction_to_perturbation` | Explicative physiologique | N'existent sous aucun nom Kinexus littéral. `sls_ttf` (Single Leg Stance, tagué Absorption/Majeure) est le seul proxy identifié ; `eo_surface`/`ef_surface`/`strobo_surface` existent aussi mais ne sont tagués que Stabilisation/Contrôle moteur, jamais Absorption |
 | Reste de la famille RFD "production de force excentrique" (`imtp_rfd100`, `iso_belt_squat_rfd100`, `knee_ext_rfd100/150`, `soleus_iso_rfd100`, `gastro_iso_rfd100`, `hip_ext_rfd100`, `hip_flex_rfd100`) | Explicative physiologique | Couverture partielle et irrégulière — le `rfd200` de chaque famille est souvent tagué, le `rfd100` souvent absent, sans logique apparente |
 
@@ -518,16 +551,232 @@ intégralement respectée dans l'audit.
   freinage (3.8) sont-elles déjà couvertes par le moteur d'asymétrie séparé, ou faut-il vraiment
   les ajouter comme preuves confirmatives dans le nouveau modèle de raisonnement ?
 
+### 3.12 — Impact produit
+
+| Écart | Nature | Ce qui est nécessaire |
+|---|---|---|
+| `wblt_distance` double-tag Determinante | Classification | Reclassification pure — Phase C seule suffit |
+| CMJ/DJ/SLDJ landing en excès diagnostique | Classification | Reclassification pure — Phase C seule suffit |
+| `landing_uni_*` (peak_landing_force/loading_rate/impulse/cop_path) | Couverture | **Décision produit** + évolution du pipeline d'acquisition (le test n'a même pas ces KPIs en base) |
+| `landing_bi_loading_rate`/`landing_bi_impulse` | Couverture | **Décision produit** + probable évolution de l'import VALD (à confirmer si le protocole les exporte déjà) |
+| `landing_bi_peak_landing_force` non tagué | Classification (donnée déjà là) | Câblage `VAR_REL3` seul — pas de développement |
+| `cmj_ecc_dec_*` / `ecc_decel_*` / `cmj_braking_*` | Nommage | Vérification + entrée dans "Normalisation du vocabulaire" — pas de développement si confirmé |
+| Asymétries de freinage | Point à arbitrer | Décision praticien sur l'architecture (fusion ou séparation avec `computeAsymEngine`) avant tout développement |
+| Reste de la famille RFD "force excentrique" | Classification (déjà bien bucketée) | Reclassification pure |
+
+**Synthèse Absorption** : c'est la première qualité où une partie de l'écart (Landing) ne se
+referme pas uniquement par le travail Phase B/C — elle a besoin d'une décision produit sur
+l'acquisition de données, indépendante du calendrier HYP###.
+
 ---
 
-## 4. Force
+## 4. Stabilisation
+
+### 4.1 — Résumé exécutif
+
+Stabilisation a 4 familles diagnostiques comme Absorption (Single Leg Stance, Eyes Open/Closed,
+Stroboscopic, Landing stability — 21 KPIs), mais le tableau est différent : ici le problème
+dominant n'est pas la couverture de données, c'est une **contamination croisée avec le diagnostic
+d'Absorption**, et une **contradiction interne de Vierge_7 sur `peak_landing_force`**.
+
+- **`sllt_peak_landing_force` et `sllt_loading_rate` tagués Determinante pour Stabilisation** alors
+  que Vierge_7 les exclut *explicitement et nommément* de ce diagnostic ("Variables d'absorption
+  pure"). Avec `sllt_ttplf`/`sllt_tts` (tagués Determinante mais absents de tout rôle Stabilisation
+  chez Vierge_7), c'est **toute la famille SLLT (4 KPIs) qui est traitée en diagnostic de
+  Stabilisation alors qu'elle appartient exclusivement au diagnostic d'Absorption** (déjà validé
+  100 % conforme en 3.2). Le moteur actuel fait donc compter deux fois le même test comme preuve
+  indépendante pour deux questions cliniques différentes — c'est exactement le type de confusion
+  diagnostique/explicative que l'architecture HYP### doit éliminer. 🔴
+- **Écart de spécification trouvé dans Vierge_7 lui-même** : la section diagnostique "Landing
+  stability" de Stabilisation liste `landing_uni_peak_landing_force`/`landing_bi_peak_landing_force`
+  comme preuve diagnostique, alors que la section "Variables exclues" de cette **même fiche**
+  classe ces deux mêmes variables comme "absorption pure" à exclure. Contradiction directe, à 3
+  paragraphes d'écart — voir 4.10.
+- **Écart de couverture, motif déjà vu en Absorption** : `landing_uni`/`landing_bi` n'ont que `tts`
+  dans le catalogue Kinexus ; `strobo` n'a que `surface` (pas de `cop_path`/`cop_vel`/`ttf`). Une
+  bonne partie des 21 KPIs diagnostiques attendus par Vierge_7 pour Stabilisation n'existe donc
+  simplement pas dans Kinexus, indépendamment de toute question de classification.
+- **Bonne nouvelle** : `eo_surface`, `ef_surface`, `strobo_surface` (les 3 seuls KPIs réellement
+  disponibles dans ces familles) sont déjà correctement tagués Determinante — 100 % conformes.
+  `wblt_distance` est également correctement bucketée en explicatif (`estimates`/Moderee, pas
+  diagnostique) — première qualité où ce n'est **pas** un écart.
+- Violation d'exclusion supplémentaire, gravité mineure : `gastro_iso_n` tagué Stabilisation/Mineure
+  alors que Vierge_7 exclut la force maximale sans contrainte posturale.
+
+### 4.2 — Variables diagnostiques conformes (déjà correctes)
+
+| Variable | Test | VAR_REL3 (bucket/poids) | Vierge_7 (rôle) |
+|---|---|---|---|
+| `eo_surface` | Eyes Open | measures / Determinante | Diagnostique principal sensoriel |
+| `ef_surface` | Eyes Closed | measures / Determinante | Diagnostique principal sensoriel |
+| `strobo_surface` | Stroboscopic | measures / Determinante | Diagnostique principal sous contrainte |
+| `landing_uni_tts` | Landing stability | measures / Determinante | Diagnostique principal contextuel |
+
+**Type : classification.** 4 variables conformes — meilleur ratio de l'audit à ce stade, mais
+trompeur : c'est parce que 3 des 4 familles diagnostiques (SLS, Landing bipodal, Stroboscopic
+complet) ont chacune 1 seul KPI réellement disponible dans Kinexus (voir 4.8), pas parce que la
+couverture est large.
+
+### 4.3 — Variables diagnostiques en excès (à retirer du diagnostic)
+
+| Variable(s) | VAR_REL3 aujourd'hui | Vierge_7 | Type |
+|---|---|---|---|
+| `sllt_peak_landing_force`, `sllt_loading_rate` | measures / Determinante | **Exclusion explicite** — "variables d'absorption pure" (voir 4.7) | Classification (🔴 le plus sévère de l'audit avec 2.2/2.7) |
+| `sllt_ttplf`, `sllt_tts` | measures / Determinante | N'apparaissent dans aucune section Stabilisation de Vierge_7 — appartiennent exclusivement au diagnostic d'Absorption (3.2) | Classification |
+| `landing_bi_tts` | estimates / **Moderee** (pas measures) | Diagnostique principal contextuel — devrait être au même niveau que `landing_uni_tts` (Determinante) | Classification — ici sous-pondéré, pas en excès, incohérence de traitement entre les deux landing plutôt qu'un vrai excès |
+
+**Constat principal** : le moteur actuel traite l'intégralité de la famille SLLT (4/4 KPIs) comme
+diagnostic de Stabilisation, alors que Vierge_7 la réserve entièrement à Absorption et exclut
+même explicitement 2 de ces 4 KPIs de Stabilisation par leur nom.
+
+### 4.4 — Variables à reclasser en confirmatives
+
+| Variable | VAR_REL3 aujourd'hui | Vierge_7 | Type |
+|---|---|---|---|
+| `sls_cop_path`, `sls_cop_vel`, `sls_ellipse_area` | estimates / Majeure | Confirmative (bloc SLS, identique au diagnostique — voir 4.6) | Classification |
+| `strobo_surface` | measures / Determinante (déjà couvert en 4.2) | Également listé confirmative — chevauchement diagnostique/confirmative habituel de Vierge_7, motif déjà noté (2.8 pt.2) | Nommage/motif récurrent, pas un nouvel écart |
+
+### 4.5 — Variables à reclasser en explicatives physiologiques
+
+| Variable(s) | VAR_REL3 aujourd'hui | Note | Type |
+|---|---|---|---|
+| Famille RFD "force des groupes stabilisateurs" (`hip_abd_rfd100/200`, `hip_ext_rfd100/200`, `hip_add_rfd100`, `inv_iso_rfd100`, `ev_iso_rfd100`, `df_iso_rfd100`) | estimates / Moderee, déjà bien bucketée | Bonne couverture globale (meilleure que sur Réactivité/Absorption) — quelques trous ponctuels (`hip_ext_rfd100` absent, seuls `rfd150`/`rfd200` présents) | Classification (formalisation du rôle) |
+| `wblt_distance` | estimates / **Moderee** | Déjà correctement en explicatif, pas diagnostique — 🟢 **première qualité sans écart sur cette variable** | Conforme |
+
+### 4.6 — Variables à reclasser en explicatives biomécaniques
+
+Chevauchement diagnostique/confirmative/explicative-biomécanique désormais observé sur toutes les
+qualités auditées : SLS (`sls_cop_path`/`cop_vel`/`ellipse_area`/`cop_range_ml`/`cop_range_ap`/
+`mean_velocity`) apparaît identique dans les 3 sections (diagnostique, confirmative, "Contrôle du
+centre de pression"). Landing stability aussi (diagnostique = confirmative = explicative
+biomécanique quasi mot pour mot). Motif désormais systématique — plus détaillé qualité par
+qualité (voir 2.8 pt.2), mais Stabilisation est la première qualité où il touche **3 sections à la
+fois** au lieu de 2, ce qui renforce l'idée qu'il s'agit d'une règle de fond de Vierge_7 à codifier
+plutôt que d'un doublon rédactionnel isolé.
+
+### 4.7 — Variables explicitement exclues mais actuellement utilisées (🚫)
+
+| Variable | VAR_REL3 aujourd'hui | Vierge_7 | Type / Gravité |
+|---|---|---|---|
+| `sllt_peak_landing_force` | measures / **Determinante** | Exclusion explicite — "variables d'absorption pure" | Classification — 🔴 critique |
+| `sllt_loading_rate` | measures / **Determinante** | Exclusion explicite — "variables d'absorption pure" | Classification — 🔴 critique |
+| `gastro_iso_n` | estimates / Mineure | Exclusion explicite — "force maximale sans contrainte posturale" | Classification — 🟡 mineur (poids faible) |
+
+`knee_ext_n`, `soleus_iso_n`, `imtp_n`, `imtp_nkg` (les 4 autres variables de cette liste
+d'exclusion) ne sont **pas** tagués Stabilisation — respectés. 3 violations sur 9 variables
+explicitement exclues au total (2 sévères sur SLLT, 1 mineure sur gastro_iso_n).
+
+### 4.8 — Variables manquantes par rapport à Vierge_7 (➕)
+
+| Variable | Rôle Vierge_7 | Statut dans VAR_REL3 | Type |
+|---|---|---|---|
+| `sls_ttf` | Diagnostique principal (bloc SLS) | **Écart de classification, pas de couverture.** Existe et est mesuré, mais tagué uniquement Absorption/Majeure (3.5) — jamais Stabilisation, alors que c'est justement le KPI *flagship* du Single Leg Stance pour cette qualité selon Vierge_7 | Classification — devrait être le KPI le plus important de 4.2, il en est absent |
+| `sls_cop_range_ml`, `sls_cop_range_ap`, `sls_mean_velocity` | Diagnostique (bloc SLS) | **Écart de classification, pas de couverture** — ces 3 KPIs existent dans le catalogue Kinexus (`sls` déclare bien `cop_range_ml`/`cop_range_ap`/`mean_velocity`, ligne 130), simplement jamais câblés dans `VAR_REL3` pour aucune qualité | Classification (câblage manquant, pas de développement) |
+| `strobo_cop_path`, `strobo_cop_vel`, `strobo_ttf` | Diagnostique + confirmative | **Écart de couverture réel.** Le catalogue Kinexus du test `strobo` (ligne 133) ne déclare que `surface` — ces 3 KPIs n'existent nulle part, même hors `VAR_REL3`. Origine probable à confirmer avec le praticien : le protocole stroboscopique VALD produit-il des données de COP exploitables comme pour `sls`/`sllt`, ou est-ce structurellement limité à la surface ? | Couverture — décision produit |
+| `landing_uni_cop_path`, `landing_uni_cop_vel`, `landing_uni_peak_landing_force`, `landing_uni_post_stability`, `landing_bi_cop_path`, `landing_bi_cop_vel`, `landing_bi_peak_landing_force`, `landing_bi_post_stability` | Diagnostique + confirmative + explicative biomécanique | Même gap que documenté en Absorption 3.8 : catalogue limité à `tts` (+ `peak_landing_force` pour `landing_bi` seul, non câblé). Pas re-détaillé ici, voir 3.8/3.12 pour l'analyse d'origine complète | Couverture (déjà qualifiée en Absorption) |
+| `sensorimotor_control`, `postural_control`, `balance_strategy`, `perturbation_response` | Explicative physiologique | N'existent sous aucun nom Kinexus littéral — même liste de noms génériques que dans Absorption (3.8), à ajouter à l'annexe vocabulaire une fois clarifié avec le praticien ce qu'ils recouvrent concrètement | Nommage / couverture (indéterminé sans clarification) |
+| `hip_ext_rfd100` | Explicative physiologique | Absent (seuls `rfd150`/`rfd200` tagués) | Classification (trou ponctuel) |
+
+### 4.9 — Gravité globale de l'écart
+
+**🔴 Critique.** Deux raisons principales :
+1. La famille SLLT entière (4 KPIs) est traitée en diagnostic Determinante de Stabilisation alors
+   qu'elle appartient à Absorption et que 2 de ses KPIs sont explicitement exclus de Stabilisation
+   par Vierge_7 — contamination croisée directe entre deux qualités cliniquement distinctes
+   ("encaisser" vs "maintenir le contrôle postural"), au niveau de poids maximal.
+2. `sls_ttf`, le KPI le plus emblématique du test Single Leg Stance, est absent du diagnostic de
+   Stabilisation (sa qualité naturelle) et présent ailleurs (Absorption) à un rôle que Vierge_7 ne
+   lui donne pas explicitement.
+
+### 4.10 — Incohérences internes de Vierge_7
+
+1. **Contradiction directe sur `landing_uni_peak_landing_force`/`landing_bi_peak_landing_force`
+   au sein de la même fiche Stabilisation.** *Où* : section "PREUVES DIAGNOSTIQUES > Landing
+   stability" les liste comme preuve diagnostique ; quelques paragraphes plus loin, section
+   "VARIABLES EXCLUES DU DIAGNOSTIC DE STABILISATION > Variables d'absorption pure" liste
+   exactement les deux mêmes noms comme à exclure, avec la justification "Elles relèvent
+   principalement de la capacité à encaisser la charge, pas du maintien du contrôle postural
+   secondaire". *Pourquoi c'est contradictoire* : ce n'est pas une nuance de degré, c'est une
+   inclusion et une exclusion du même KPI, pour la même qualité, dans le même document. *Mon
+   interprétation* : la section diagnostique "Landing stability" semble avoir été rédigée en
+   copiant la logique d'Absorption (où `peak_landing_force` est effectivement diagnostique) sans
+   retirer cette variable au moment d'écrire la version Stabilisation — la section "Variables
+   exclues", plus tardive et plus explicite sur le *pourquoi*, est probablement celle qui reflète
+   l'intention réelle. À trancher avec le praticien avant Phase C, car cela détermine si
+   `landing_uni_tts`/`landing_bi_tts` restent les 2 seuls diagnostics de Landing stability pour
+   Stabilisation, ou s'il faut vraiment leur adjoindre `peak_landing_force`.
+2. **Chevauchement diagnostique/confirmative/explicative biomécanique sur 3 sections à la fois**
+   (SLS, Landing stability) — motif déjà noté (2.8 pt.2), mais Stabilisation est la première
+   qualité où il s'étend aux 3 sections simultanément plutôt qu'à 2. Renforce la recommandation de
+   codifier une règle générale en Phase B plutôt que de continuer à le signaler qualité par
+   qualité.
+
+### 4.11 — Impact attendu sur le moteur HYP###
+
+- Une fois corrigé, le diagnostic de Stabilisation reposera sur `sls_*` (une fois `sls_ttf`
+  correctement rattaché), `eo_surface`/`ef_surface`, `strobo_surface`, et
+  `landing_uni_tts`/`landing_bi_tts` — plus la famille SLLT, qui redevient exclusivement une
+  preuve d'Absorption.
+- Correction clinique directe : un déficit de freinage pur (SLLT anormal, cause biomécanique
+  d'encaissement) ne pourra plus, à lui seul, faire chuter le score de Stabilisation — les deux
+  qualités redeviennent cliniquement distinctes comme le veut la définition même de Vierge_7
+  ("l'absorption = encaisser / freiner" vs "la stabilisation = maintenir le contrôle postural").
+  C'est la correction la plus significative identifiée depuis le début de l'audit, avec celle du
+  `repeated_hop` sur Réactivité.
+- Une fois la contradiction 4.10 pt.1 tranchée, le rôle exact de `peak_landing_force` pour Landing
+  stability sera fixé — en attendant, ne pas l'ajouter au diagnostic Stabilisation par défaut.
+
+### 4.12 — Impact produit
+
+| Écart | Nature | Ce qui est nécessaire |
+|---|---|---|
+| SLLT tagué Determinante pour Stabilisation | Classification | Reclassification pure — Phase C seule suffit (retirer les 4 tags) |
+| `sls_ttf` non rattaché à Stabilisation | Classification | Câblage `VAR_REL3` seul |
+| `sls_cop_range_ml`/`cop_range_ap`/`mean_velocity` non câblés | Classification (donnée déjà là) | Câblage `VAR_REL3` seul — pas de développement |
+| `landing_bi_tts` sous-pondéré (Moderee au lieu de Determinante) | Classification | Reclassification pure |
+| `strobo_cop_path`/`cop_vel`/`ttf` absents | Couverture | **Décision produit** — vérifier si le protocole VALD stroboscopique fournit ces données |
+| Landing (`cop_path`/`cop_vel`/`peak_landing_force`/`post_stability`) | Couverture | Déjà qualifié en Absorption 3.12 — même chantier produit, pas un nouveau |
+| Contradiction Vierge_7 sur `peak_landing_force` (4.10) | Spécification | **Décision praticien** avant toute Phase C — aucun développement tant que non tranché |
+| `gastro_iso_n` en excès mineur | Classification | Reclassification pure |
+
+**Synthèse Stabilisation** : contrairement à Absorption (où l'essentiel de l'écart était produit),
+ici l'essentiel est de nouveau classification — mais avec une gravité inédite : une contamination
+croisée entre deux qualités cliniquement opposées (Absorption vs Stabilisation), au poids maximal,
+sur toute une famille de tests.
+
+---
+
+## 5. Force
 
 *(en attente — la duplication identifiée dans Vierge_7 doit être résolue avant l'audit de cette
 qualité — voir échange initial)*
 
 ---
 
+## Annexe A — Normalisation du vocabulaire
+
+Dictionnaire cumulatif des cas où Vierge_7 et Kinexus semblent désigner la même information sous
+des noms différents (écart de nommage, jamais un vrai manque une fois confirmé). Alimenté au fil
+de l'audit ; objectif final : une nomenclature officielle unique pour tout Kinexus, choisie avec le
+praticien à l'issue de la Phase A.
+
+| Concept physique | Nom Vierge_7 | Nom Kinexus (`VAR_REL3`/catalogue) | Qualité(s) où observé | Statut |
+|---|---|---|---|---|
+| Freinage/décélération excentrique du CMJ (RFD) | `cmj_ecc_dec_rfd` / `ecc_decel_rfd` (2 graphies dans Vierge_7 lui-même, voir 3.10 pt.1) | `cmj_braking_rfd` | Absorption | À confirmer avec le praticien |
+| Freinage/décélération excentrique du CMJ (impulsion) | `cmj_ecc_dec_impulse` / `ecc_decel_impulse` | `cmj_braking_impulse` | Absorption | À confirmer |
+| Force de freinage au pic (CMJ) | *(implicite dans `cmj_ecc_dec_*`)* | `cmj_braking_peak_force` | Absorption | À confirmer |
+| Force au pic à l'atterrissage (CMJ) | `cmj_peak_landing_force` (ordre : peak avant landing) | `cmj_landing_peak_force` (ordre : landing avant peak) | Absorption | Quasi certain — juste l'ordre des mots inversé |
+| Puissance/pic concentrique du CMJ | `cmj_conc_peak_power` (Puissance, confirmative) | Existe côté Kinexus sous `cmj_conc_peak_force`/`cmj_conc_mean_force` (préfixe `force`, pas `power`) | Puissance | À vérifier — pourrait aussi être une vraie confusion puissance/force dans Vierge_7 (voir 1.6), pas seulement un nommage |
+| Temps de décollage (CMJ) | `cmj_time_to_take_off` | `cmj_tto` | Puissance | Quasi certain — simple abréviation |
+
+**Non-résolu à ce stade** : les 3 graphies internes à Vierge_7 lui-même pour le freinage
+excentrique (`cmj_ecc_dec_*` / `ecc_decel_*`, voir Absorption 3.10 pt.1) compliquent la
+correspondance — avant de figer une nomenclature officielle, il faut d'abord que Vierge_7 soit
+cohérent en interne sur ce point précis (à trancher avec le praticien).
+
+---
+
 ## Qualités restantes à auditer
 
-Stabilisation · Mobilité (Cheville) · Force (bloquée, voir section 4) · Explosivité ·
-Contrôle Frontal · Contrôle Sensoriel · Endurance
+Mobilité (Cheville) · Force (bloquée, voir section 5) · Explosivité · Contrôle Frontal ·
+Contrôle Sensoriel · Endurance
