@@ -192,9 +192,13 @@ quelle que soit la question clinique à laquelle il répond :
    encore à la preuve, pas à l'interprétation** : elle rend une valeur comparable, elle ne répond à
    aucune question clinique.
 3. **Moteurs spécialisés (interprétation)** — Qualités, Phases, Profils, et tout futur moteur
-   (Drop Jump, Isométrie...). Chacun applique sa propre logique métier (pondérations, règles,
-   seuils, convergences — `TFM`, `ThresholdBandClassifier`, le Specification Pattern) à un
-   ensemble de preuves pour répondre à **une** question clinique qui lui est propre.
+   (Drop Jump, Isométrie...). Chacun applique sa propre logique métier à un ensemble de preuves
+   pour répondre à **une** question clinique qui lui est propre. Cette logique métier prend deux
+   formes distinctes selon le moteur, à ne pas confondre : une **agrégation pondérée** (règles,
+   seuils, convergences — `ThresholdBandClassifier`, le Specification Pattern) pour Phases,
+   Profils et la Confiance globale ; un **raisonnement par hypothèses et niveaux de preuve, sans
+   pondération causale**, pour le moteur des Qualités (Niveau 1) depuis l'évolution validée du
+   07/08 — voir "Évolution validée (07/08)" ci-dessous.
 4. **Conclusions cliniques** — le résultat produit par un moteur (`conclusionAutomatique`,
    `conclusionRelative`, `phasePresentation().pourquoi`, le `dossier` de `dossierPreuvesPhase`).
 5. **Narration** — `composeNarrativeParagraph()` raconte une **conclusion**, jamais une preuve
@@ -246,9 +250,86 @@ langage principal du Dashboard** : c'est par une qualité physique qu'un pratici
 dans un bilan, jamais par un test ou un moteur spécifique.
 
 *Traduction actuelle dans le code (index.html)* : `FUNCTIONS`, `computeMoteur()`, `functionScores`
-— construit à partir de `TFM` (Test-Fonction-Mapping), qui pondère la contribution de chaque test
-de la batterie (WBLT, Force Segmentaire, IMTP, CMJ, Hop Tests...) à chaque qualité (Force
-maximale, Absorption, Contrôle Frontal, Propulsion / Production de force, Mobilité...).
+— construit à partir de `TFM` (Test-Fonction-Mapping) et de `VAR_REL3`, qui pondèrent aujourd'hui
+la contribution de chaque test/variable de la batterie à chaque qualité. **Ce mécanisme est en
+cours de remplacement par un raisonnement par hypothèses cliniques, sans pondération causale —
+voir "Évolution validée (07/08)" ci-dessous.** Cette section décrit l'état du code au moment de la
+bascule ; elle sera mise à jour une fois `TFM`/`VAR_REL3` effectivement retirés.
+
+### Évolution validée (07/08) — du raisonnement pondéré au raisonnement par hypothèses
+
+> Décision du praticien, validée le 07/08/2026, à l'issue d'un échange sur les limites du modèle
+> pondéré : une somme de contributions pondérées ("la force explique 40 % de la puissance") n'est
+> pas scientifiquement justifiable comme mécanisme de raisonnement clinique. Kinexus doit raisonner
+> comme un clinicien — par hypothèses et niveaux de preuve — et non comme un modèle de score.
+
+**Portée de cette évolution — ce qu'elle change, ce qu'elle ne change pas.** Le principe "pas de
+pondération" ne s'applique **qu'au mécanisme de raisonnement clinique du Niveau 1 (qualités
+physiques)** — c'est-à-dire au remplacement de `TFM`/`VAR_REL3` par la chaîne décrite ci-dessous.
+Il ne s'applique pas aux pondérations utilisées ailleurs dans Kinexus à des fins d'**agrégation ou
+de synthèse** (moyennes, indices composites) plutôt que d'inférence clinique — notamment :
+`computeBiomecaPhase()` (Niveau 2 — Phases), `computeIndiceConfiance()`/`CONFIANCE_SIGNAUX_PHASE`
+(Confiance globale), et tout calcul transversal équivalent. Ces moteurs répondent à d'autres
+questions cliniques (où ? avec quel niveau de confiance ?), déjà validées séparément, et restent
+hors du périmètre de cette évolution — ils pourront être rediscutés plus tard, indépendamment.
+
+**La nouvelle chaîne de raisonnement du Niveau 1** :
+
+```
+Variables (preuves objectives)
+        ↓
+Qualités physiques
+        ↓
+Variables diagnostiques
+        ↓
+Génération d'hypothèses cliniques (HYP###)
+        ↓
+Recherche de preuves — diagnostiques / confirmatives / explicatives / indirectes
+        ↓
+Évaluation du niveau de support de chaque hypothèse (Fort / Modéré / Faible — jamais un score numérique)
+        ↓
+Hypothèses retenues
+        ↓
+Cibles physiologiques (CIB###)
+        ↓
+Principes d'entraînement (PR###)
+        ↓
+Orientations cliniques (CLI###)
+```
+
+Les hypothèses cliniques (`HYP###`) forment une couche indépendante entre le Niveau 1 (qualités) et
+les couches `CIB###`/`PR###`/`CLI###` déjà prévues.
+
+**Règle de fond, valable pour toute hypothèse présente ou future : une variable isolée ne valide
+jamais, seule, une hypothèse.** Une variable peut seulement :
+
+- **générer** une hypothèse ;
+- **renforcer** une hypothèse ;
+- **affaiblir** une hypothèse ;
+- **réfuter** une hypothèse.
+
+Le moteur raisonne par **cohérence des preuves**, jamais par accumulation de scores.
+
+**Les preuves d'une hypothèse sont hiérarchisées par nature, pas par poids numérique** : preuves
+diagnostiques, confirmatives, explicatives, indirectes — plus, pour chaque hypothèse, ses
+hypothèses concurrentes et leurs critères de discrimination. Voir Vierge_7 pour le détail
+qualité par qualité (référentiel externe, en cours d'audit — Phase A/B du chantier HYP###).
+
+**Simplification corollaire de la batterie diagnostique** : le principe "un mécanisme = un meilleur
+test diagnostique" remplace la logique actuelle où plusieurs tests contribuaient tous, à des degrés
+divers, au score d'une même qualité. Exemple : la force bilatérale se diagnostique par IMTP *ou*
+Iso Belt Squat (pas les deux en même temps comme preuves diagnostiques) ; les autres tests
+deviennent des preuves confirmatives ou explicatives, jamais diagnostiques concurrentes.
+
+**Les couches `CLI###`/`CIB###`/`PR###` restent des orientations, jamais des décisions** — ce
+principe préexistant (voir "Orientation clinique : la couche transversale" plus haut) s'applique
+sans changement à ces couches une fois reconstruites sur la nouvelle base par hypothèses : cibles
+physiologiques, principes d'entraînement, pistes thérapeutiques — jamais une prescription
+d'exercice ni une décision clinique. Le praticien garde toujours la décision finale.
+
+**Statut d'implémentation** : cette évolution n'est pas encore codée. `TFM` et `VAR_REL3` restent
+en usage dans `index.html` au moment de la rédaction de cette section — voir "État d'implémentation
+actuel" en fin de document pour le suivi précis de la bascule.
 
 ### Niveau 2 — Les phases biomécaniques
 
@@ -512,8 +593,12 @@ d'étanchéité, appliquée un cran plus loin dans le pipeline.
 À la date de ce document, seul le CMJ dispose des trois niveaux :
 
 - Niveau 1 (qualités) : opérationnel, transversal (déjà alimenté par plusieurs tests au-delà du
-  CMJ).
-- Niveau 2 (phases CMJ) et Niveau 3 (profils CMJ) : opérationnels pour le CMJ uniquement.
+  CMJ), mais **en cours de bascule** — `TFM`/`VAR_REL3` (pondération) restent le mécanisme actif
+  dans le code ; leur remplacement par le raisonnement par hypothèses (`HYP###`) décrit dans
+  "Évolution validée (07/08)" ci-dessus n'est pas encore codé. Phase A (audit `VAR_REL3`/`TFM` vs
+  référentiel externe) en cours au moment de la rédaction de cette mise à jour.
+- Niveau 2 (phases CMJ) et Niveau 3 (profils CMJ) : opérationnels pour le CMJ uniquement, non
+  concernés par cette bascule (voir portée de l'évolution ci-dessus).
 - Le branchement niveau 1 ↔ niveaux 2/3 (`functionScores` dans `computeMouvementAnalysis`) est
   fait (05/08), en lecture seule — voir "Principe d'étanchéité" ci-dessus.
 - La distinction visuelle des trois registres de narration dans Le Fil de Raisonnement est faite
@@ -523,7 +608,10 @@ d'étanchéité, appliquée un cran plus loin dans le pipeline.
   (`hypothese`/`orientation` dans `computeMoteur()`, la relance de confiance dans
   `composeNarrativeParagraph()`) — voir "Orientation clinique" ci-dessus. Ce document ne prescrit
   pas de les corriger ; il fixe la référence à laquelle une future discipline de l'orientation
-  clinique devra se conformer.
+  clinique devra se conformer. **Ne pas confondre** ce champ `hypothese` existant (texte libre non
+  gouverné, propre à `computeMoteur()`) avec la future couche `HYP###` de "Évolution validée
+  (07/08)" ci-dessus — deux objets distincts qui partagent un nom par coïncidence de vocabulaire.
+  Le second remplacera à terme le premier, sans lien de code entre eux aujourd'hui.
 - Les modes de lecture n'existent pas non plus comme couche à part. Le `rtpStatus` calculé dans
   `computeMoteur()` (statut vert/jaune/rouge, seuils LSI≥95 % et ACL-RSI≥77 codés en dur) produit
   aujourd'hui un verdict — exactement ce que le principe "Les modes de lecture" ci-dessus interdit
