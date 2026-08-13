@@ -886,7 +886,7 @@ Si Explosivité était reconstruite selon Vierge_7 :
 - `rs_hip_push`/`rs_knee_push`/`rs_ankle_push`, `seated_calf_raise`/`standing_calf_raise`,
   `sh_iso_*` : 🔶 même point à arbitrer que pour Force/Puissance (hors référentiel Vierge_7).
 
-### 5.13 — Comparaison transversale (Mobilité, Force, Puissance, Réactivité, Explosivité)
+### 5.13 — Comparaison transversale (Mobilité, Force, Puissance, Réactivité, Explosivité, Absorption)
 
 | Qualité | Contributeurs TFM (X) | Diagnostiques attendus (Y) | Ratio X/Y | Violations d'exclusion actives | Promoteurs illégitimes au palier max | Profil dominant |
 |---|---|---|---|---|---|---|
@@ -894,7 +894,8 @@ Si Explosivité était reconstruite selon Vierge_7 :
 | Force | 40 | 4 | 10,0 | 7 | 13 (7 segmentaires + `profil_fv` + 5 hors-référentiel) | Violation d'exclusion + dilution |
 | Puissance | 25 | 2 | 12,5 | 0 | 3 (`imtp`, `slimtp`, `profil_fv`) | Dilution diagnostique pure |
 | Réactivité | 19 | 2 | 9,5 | 2 | 1 (`cmjr`) | Hybride (dilution + exclusion) |
-| **Explosivité** | **23** | **2** | **11,5** | **1** | **0** | **Donnée manquante (nouveau)** |
+| Explosivité | 23 | 2 | 11,5 | 1 | 0 | Donnée manquante |
+| **Absorption** | **35** | **4** | **8,75** | **4** | **0** | **Limite structurelle TFM (nouveau)** |
 
 **Explosivité ne rejoint aucun des trois profils déjà observés — elle constitue une nouvelle
 famille d'écarts.** Elle a le ratio de dilution le plus élevé après Puissance/Force, mais quasiment
@@ -909,7 +910,215 @@ qualités restantes plutôt que figée ici).
 
 ---
 
+## 6. Absorption
+
+### 6.1 — Question clinique cible (Vierge_7)
+
+*"Cet athlète sait-il freiner et dissiper correctement la charge sans perte excessive de contrôle,
+de temps ou de symétrie ?"* — évaluée par 4 familles diagnostiques : Landing bipodal, Landing
+unipodal, SLLT (Single Leg Land and Hold), et la phase excentrique du CMJ ("diagnostique principal
+**indirect**" — seule famille des 4 qualifiée différemment des 3 autres, qualificatif informel déjà
+signalé comme non défini formellement par Vierge_7, audit VAR_REL3 §1.8 pt.3, motif identique ici).
+
+### 6.2 — Question réellement évaluée par TFM
+
+Meilleur alignement de tout l'audit TFM à ce stade sur le palier de poids maximal : `TFM` place les
+3 tests "diagnostique principal" (`landing_bi`, `landing_uni`, `sllt`) exactement là où ils doivent
+être, à poids 3. La question réellement évaluée s'écarte de Vierge_7 sur deux points précis
+seulement : (1) la 4ᵉ famille diagnostique (CMJ excentrique) est reléguée au palier 2, sous-pesée
+par rapport à son statut "diagnostique... indirect", et (2) plusieurs tests confirmatifs/explicatifs
+légitimes (`dj`, `sldj`, `cmj`) risquent d'être contaminés en interne par des KPI hors sujet (voir
+6.4) — un problème invisible dans la table `TFM` elle-même.
+
+### 6.3 — Tests actuellement utilisés dans TFM (poids et rôle réel)
+
+Recherche exhaustive de `absorption:` dans la table `TFM` — 35 tests, le 2ᵉ plus grand nombre de
+contributeurs de l'audit après Force (40) :
+
+**Poids 3 (maximal — 3 tests)**
+
+| Test | Rôle réel aujourd'hui |
+|---|---|
+| `landing_bi`, `landing_uni`, `sllt` | **Les 3 tests légitiment conformes** — première qualité TFM où le palier maximal est intégralement correct |
+
+**Poids 2 (12 tests)**
+
+`knee_ext`, `knee_flex`, `hip_ext`, `sl_iso_push`, `iso_belt_squat`, `cmj`, `slcmj`, `dj`, `sldj`,
+`sh_iso_9020`, `sh_iso_9090`, `sh_iso_6060`
+
+**Poids 1 (20 tests)**
+
+`wblt`, `hip_abd`, `hip_add`, `df_iso`, `inv_iso`, `ev_iso`, `hip_rot_int`, `hip_rot_ext`,
+`soleus_iso`, `gastro_iso`, `single_hop`, `triple_hop`, `crossover_hop`, `heel_raise`,
+`sh_iso_3030`, `iso_squat_hold`, `imtp`, `slimtp`, `seated_calf_raise`, `standing_calf_raise`
+
+### 6.4 — Promoteurs diagnostiques illégitimes (section dédiée)
+
+**Au palier de poids maximal (3) : aucun** — 2ᵉ qualité consécutive (après Explosivité) où ce
+constat est possible, et ici de façon plus solide : les 3 tests de poids 3 correspondent
+**exactement** aux 3 familles "diagnostique principal" de Vierge_7, sans reste ni omission à ce
+palier.
+
+**Mais, comme pour Explosivité, un promoteur illégitime opère probablement à l'intérieur de
+certains tests du palier 2, invisible dans la table `TFM`** — avec une nuance importante par
+rapport à Explosivité : ici, le risque touche des tests **eux-mêmes légitimement pondérés**
+(`dj`/`sldj` sont confirmatives réelles pour Absorption), pas des tests hors sujet.
+`THRESHOLDS` (ligne 1214) contient un seuil statique pour `dj_rsi`
+(`vert:1.5, jaune:1.0, orange:0.7`) — or `dj_rsi` est **explicitement exclu** du diagnostic
+d'Absorption par Vierge_7 ("variables de réactivité pure"). `computeTestStatus('dj')` (ligne 4171)
+agrège tous les KPIs de DJ dotés d'un seuil, `dj_rsi` inclus s'il est bien le premier/principal KPI
+du test — le statut "dj" qui alimente Absorption à poids 2 risque donc d'être significativement
+influencé par une variable explicitement exclue, exactement le même mécanisme que pour `cmj_height`
+sur Explosivité (§5.4), mais sur une **deuxième qualité indépendante** — ce n'est plus un cas
+isolé, c'est un motif structurel de `TFM` qui se reproduit.
+
+**Nuance positive propre à Absorption** : `landing_bi`/`landing_uni` sont structurellement à l'abri
+de ce risque — leur catalogue de KPIs est si limité (`tts` seul, ou `tts`+`peak_landing_force` pour
+`landing_bi`, voir audit VAR_REL3 §3.8) qu'il n'y a quasiment rien d'autre à agréger que la bonne
+variable. **La pauvreté de couverture de ces deux tests les protège, par accident, de la
+contamination interne** — un lien inattendu entre le problème de couverture (déjà identifié côté
+VAR_REL3) et la robustesse du calcul `TFM`. `cmj` (poids 2) n'a pas cette chance : ses seuils
+statiques disponibles (`cmj_height`, `cmj_rsi_mod`) ne sont ni franchement faux ni franchement
+justes pour Absorption — `cmj_rsi_mod` est une preuve confirmative légitime de la fiche Absorption,
+`cmj_height` n'est ni cité ni exclu. Résultat mitigé plutôt que clairement problématique, contraste
+net avec le cas `cmj_height`/Explosivité (§5.4) où la contamination était nette.
+
+### 6.5 — Comparaison avec Vierge_7 (par test)
+
+| Test | Poids TFM | Rôle Vierge_7 | Verdict |
+|---|---|---|---|
+| `landing_bi`, `landing_uni`, `sllt` | 3 | Diagnostique principal (les 3 familles nommément) | ✅ Conforme |
+| `cmj`, `slcmj` | 2 | Diagnostique principal **indirect** (CMJ phase excentrique) | ⚠️ Rôle correct, poids sous-calibré par rapport à son statut diagnostique (même palier que des tests purement explicatifs) — voir aussi 6.4 sur la contamination interne possible |
+| `dj`, `sldj` | 2 | Confirmative (contact time, landing impulse/force) | ⚠️ Rôle correct, poids raisonnable — mais risque de contamination interne par `dj_rsi`/`sldj_rsi` (exclus), voir 6.4 |
+| `knee_ext`, `hip_ext`, `sl_iso_push`, `iso_belt_squat` | 2 | Explicative physiologique uniquement ("production de force excentrique") | ❌ Classification |
+| `knee_flex` | 2 | **Non listé** dans la famille "production de force excentrique" de Vierge_7 (qui cite `knee_ext`, pas `knee_flex`, pour Absorption) | ⚠️ Hors référentiel, contamination probable depuis Puissance/Force |
+| `sh_iso_9020`, `sh_iso_9090`, `sh_iso_6060` | 2 | Non mentionnés dans la fiche Absorption | ⚠️ Hors référentiel |
+| `wblt` | 1 | Explicative physiologique uniquement ("mobilité disponible" — nommément listé) | ⚠️ Classification, mais poids déjà bas — le mieux calibré des `wblt` observés dans tout l'audit à ce stade |
+| `hip_abd`, `hip_add`, `soleus_iso`, `gastro_iso`, `imtp`, `slimtp` | 1 | Explicative physiologique uniquement (nommément listés) | ⚠️ Classification, poids bas — écart peu sévère |
+| `df_iso`, `inv_iso`, `ev_iso`, `hip_rot_int`, `hip_rot_ext`, `sh_iso_3030`, `iso_squat_hold`, `seated_calf_raise`, `standing_calf_raise` | 1 | Non mentionnés dans la fiche Absorption | ⚠️ Hors référentiel, poids bas |
+| `single_hop`, `triple_hop`, `crossover_hop` | 1 | **Exclusion explicite et nommée** — "variables de réactivité pure" | 🚫 **Violation d'exclusion** (3 tests) |
+| `heel_raise` | 1 | **Exclusion explicite et nommée** — "variables d'endurance/répétition" | 🚫 **Violation d'exclusion** |
+
+### 6.6 — Violations identifiées
+
+- **4 violations d'exclusion directes (🚫)** : `single_hop`, `triple_hop`, `crossover_hop`
+  (réactivité pure), `heel_raise` (endurance) — plus nombreuses que Réactivité (2) et Explosivité
+  (1), mais toutes à poids 1 (le plus faible palier), contrairement à Force où les violations
+  atteignaient un poids substantiel. **Nombreuses mais individuellement peu sévères** — profil
+  distinct des qualités précédentes.
+- **Contamination croisée interne, structurelle** (nouveau motif confirmé sur 2 qualités) :
+  `dj`/`sldj` — risque de contamination par `dj_rsi`/`sldj_rsi` via `computeTestStatus` (6.4).
+- **Dilution modérée au palier 2** : la 4ᵉ famille diagnostique (`cmj`/`slcmj`, indirecte) partage
+  son palier avec des tests purement explicatifs (`knee_ext`, `hip_ext`, `sl_iso_push`,
+  `iso_belt_squat`) — dilution réelle mais moins sévère que sur Force/Puissance/Explosivité, où le
+  palier maximal lui-même était touché.
+- **Aucune dilution au palier maximal** — seule qualité, avec Explosivité, dans ce cas.
+
+### 6.7 — Nature dominante de l'écart
+
+| Cause | Rôle |
+|---|---|
+| **Limite structurelle TFM** (contamination interne `dj`/`sldj` par KPI exclus) | **Dominante** — 2ᵉ occurrence indépendante de ce motif, désormais structurel plutôt qu'isolé |
+| Violation d'exclusion | Significative en nombre (4) mais faible en poids individuel (1 chacune) |
+| Dilution diagnostique | Secondaire, limitée au palier 2 (`cmj`/`slcmj` sous-pondérés) |
+| Contamination croisée | Mineure — `knee_flex`, quelques tests hors référentiel |
+| Donnée manquante / couverture | Présente mais **indirecte** ici : la pauvreté du catalogue KPI de `landing_bi`/`landing_uni` (déjà documentée côté VAR_REL3) ne nuit pas au score `TFM` — elle le **protège** de la contamination interne (voir 6.4). Le problème de couverture existe toujours pour la richesse du futur raisonnement HYP###, mais n'aggrave pas le score actuel comme c'était le cas pour Explosivité |
+| Mauvaise question clinique | Faible — le palier maximal étant intégralement correct, la question posée par `TFM` reste proche de celle de Vierge_7 |
+
+### 6.8 — Dépendances critiques
+
+- **`THRESHOLDS`/`NORMS`** : la validité réelle de `dj`/`sldj`/`cmj` pour Absorption dépend
+  entièrement de quelles variables y sont seuillées — un sujet non audité exhaustivement ici (hors
+  périmètre de cette mission, seule la couverture statique de `THRESHOLDS` a été vérifiée). Une
+  vérification complète de `NORMS` par population serait nécessaire avant de conclure avec
+  certitude sur l'ampleur réelle de la contamination `dj_rsi`/`sldj_rsi`.
+- **Audit Réactivité (déjà fait)** : la légitimité de l'exclusion de `dj_rsi`/`sldj_rsi`
+  d'Absorption dépend de leur statut déjà confirmé comme diagnostiques de Réactivité (§4) — les
+  deux audits se corroborent mutuellement.
+- **Audit VAR_REL3 Absorption (déjà fait)** : la limite de couverture des KPIs `landing_bi`/
+  `landing_uni` (§3.8 de l'audit VAR_REL3) est la même donnée sous-jacente qui, ici, protège
+  paradoxalement le score `TFM` — les deux audits partagent une dépendance commune au même
+  catalogue de KPIs Kinexus, pas deux constats indépendants.
+
+### 6.9 — Gravité globale de l'écart
+
+**🟠 Important** — première fois dans l'audit TFM que la gravité descend sous 🔴. Le palier
+maximal est intégralement correct (fait unique avec Explosivité, mais sans le plafond de données
+qui touchait celle-ci), les violations d'exclusion sont nombreuses mais de faible poids, et le seul
+point structurellement préoccupant (`dj`/`sldj`, §6.4) reste une **hypothèse fondée mais non
+confirmée** faute d'audit complet de `NORMS`.
+
+### 6.10 — Ratio de dilution
+
+- **Contributeurs TFM : 35**
+- **Contributeurs diagnostiques attendus (Vierge_7) : 4** (`landing_bi`, `landing_uni`, `sllt`,
+  `cmj`/`slcmj` réunis comme 4ᵉ famille indirecte)
+- **Ratio de dilution : 35/4 = 8,75×** — proche de celui de Réactivité (9,5) mais avec une
+  composition très différente : ici, le ratio élevé vient du nombre de tests à faible poids (20 à
+  poids 1) plutôt que d'une contamination du palier maximal.
+
+### 6.11 — Impact produit
+
+Si Absorption était reconstruite selon Vierge_7 :
+
+- Le gain le plus net concerne `dj`/`sldj` : si la contamination interne par `dj_rsi`/`sldj_rsi`
+  est confirmée (§6.4/6.8), un athlète très réactif mais avec une absorption réellement déficiente
+  pourrait aujourd'hui apparaître plus performant en Absorption qu'il ne l'est — correction
+  proportionnée mais pas radicale, la contribution étant déjà à poids 2, pas 3.
+- Retirer `single_hop`/`triple_hop`/`crossover_hop`/`heel_raise` supprime une dilution par des
+  tests de réactivité/endurance — gain marginal individuellement (poids 1 chacun) mais cumulatif.
+- Remonter `cmj`/`slcmj` à un poids reflétant leur statut diagnostique (même indirect) donnerait
+  plus de poids réel à la phase excentrique du CMJ, aujourd'hui noyée parmi des tests explicatifs.
+- **Contrairement à Explosivité, aucun plafond de données ne limite le gain atteignable** — c'est
+  une correction de configuration + une clarification `NORMS`/`THRESHOLDS`, pas un chantier de
+  collecte de nouvelles données.
+
+### 6.12 — Structure cible HYP### (variables mesurées uniquement)
+
+- **`HYP-ABS-01`** — "Déficit d'absorption/freinage", générée par les preuves diagnostiques
+  mesurées des 3 familles principales : `landing_bi_tts`, `landing_uni_tts`,
+  `sllt_peak_landing_force`/`ttplf`/`loading_rate`/`tts`/`cop_path` (déjà pleinement mesurées) — et,
+  en preuve diagnostique indirecte de rang secondaire, `cmj_ecc_mean_power`/`cmj_ecc_peak_vel`
+  (existent) ; `cmj_braking_rfd`/`cmj_braking_impulse` en correspondance probable de
+  `cmj_ecc_dec_rfd`/`cmj_ecc_dec_impulse` (nommage à confirmer, déjà noté audit VAR_REL3 annexe
+  vocabulaire).
+- Preuves confirmatives (mesurées) : `dj_contact_time`, `dj_landing_impulse`, `dj_peak_landing_force`,
+  `sldj_contact_time`, `sldj_landing_impulse`, `sldj_peak_landing_force`, `cmj_rsi_mod`,
+  `cmj_depth`, `cmj_braking_duration`.
+- Preuves explicatives physiologiques (mesurées) : familles RFD excentrique (`imtp_rfd100/200`,
+  `slimtp_rfd*`, `iso_belt_squat_rfd*`, `sl_iso_push_rfd*`, `knee_ext_rfd100/150/200`,
+  `soleus_iso_rfd100/200`, `gastro_iso_rfd100/200`, `hip_abd_rfd100`, `hip_add_rfd100`,
+  `hip_ext_rfd100`), `wblt_distance` ("mobilité disponible").
+- **Exclu explicitement de la structure HYP### (règle "variables mesurées uniquement")** :
+  `postural_control`/`sensorimotor_control`/`single_leg_balance`/`reaction_to_perturbation` —
+  concepts cliniques non mesurés dans Kinexus (déjà signalés côté VAR_REL3 §3.8), retirés sans
+  ambiguïté par la nouvelle règle stricte plutôt que laissés en "point à arbitrer".
+- `dj_rsi`/`sldj_rsi` : à exclure explicitement du calcul du statut "dj"/"sldj" quand celui-ci
+  alimente Absorption — nécessite, en Phase C, un modèle KPI-level capable de cette distinction (ce
+  que `TFM` ne peut structurellement pas faire, §6.4).
+- Tests hors référentiel (`sh_iso_*`, `iso_squat_hold`, `seated_calf_raise`, `standing_calf_raise`,
+  `df_iso`/`inv_iso`/`ev_iso`, `hip_rot_int`/`hip_rot_ext`, `knee_flex`) : 🔶 même point à arbitrer
+  récurrent, à trancher une fois pour toutes les qualités concernées plutôt que qualité par
+  qualité.
+
+### 6.13 — Retour explicite sur la tendance VAR_REL3 (demande du praticien)
+
+**Oui, la tendance se confirme, avec une nuance importante.** L'audit VAR_REL3 d'Absorption avait
+déjà montré moins d'erreurs de classification pures que Force/Puissance, mais davantage de
+problèmes de couverture (landing_uni/landing_bi presque sans KPI). Côté `TFM`, le même schéma
+apparaît : **la classification au niveau test est la meilleure de tout l'audit** (palier maximal
+100 % conforme, plusieurs tests à poids réduit correctement calibrés — `wblt`, `imtp`/`slimtp`,
+`hip_abd`/`hip_add`). Mais la couverture ne se manifeste pas de la même façon dans `TFM` que dans
+`VAR_REL3` : au niveau test, elle **protège** paradoxalement `landing_bi`/`landing_uni` de la
+contamination interne (§6.4), alors qu'elle limitait directement la richesse diagnostique côté
+`VAR_REL3`. La couverture reste donc bien le facteur dominant pour cette qualité, mais son *effet*
+sur la gravité observée dépend du mécanisme audité — un signal utile pour la synthèse transversale
+finale : gravité TFM et gravité VAR_REL3 ne sont pas simplement corrélées, elles dépendent de la
+manière dont chaque moteur expose (ou masque) le même problème de données sous-jacent.
+
+---
+
 ## Qualités restantes à auditer (TFM)
 
-Absorption · Stabilisation · Contrôle Sensori-moteur · Endurance — Force, Puissance, Réactivité et
-Explosivité terminées, en attente de validation avant de poursuivre.
+Stabilisation · Contrôle Sensori-moteur · Endurance — Force, Puissance, Réactivité, Explosivité et
+Absorption terminées, en attente de validation avant de poursuivre.
