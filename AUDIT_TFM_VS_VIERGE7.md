@@ -1118,7 +1118,224 @@ manière dont chaque moteur expose (ou masque) le même problème de données so
 
 ---
 
+## 7. Stabilisation
+
+### 7.1 — Question clinique cible (Vierge_7)
+
+*"Cet athlète est-il capable de stabiliser efficacement son corps après une contrainte, un appui ou
+une perturbation ?"* — 4 familles diagnostiques : Single Leg Stance (SLS), Eyes Open/Eyes Closed
+(EO/EF), Stroboscopic balance, et Landing stability (uni + bi, qualifiée "contextuelle").
+
+### 7.2 — Contamination SLLT ↔ Stabilisation (section dédiée, demande explicite)
+
+**Confirmée, active, et au palier de poids maximal — c'est la violation la plus directe retrouvée
+dans `TFM` à ce stade, à égalité de sévérité avec les violations d'exclusion de Force.**
+
+`sllt` est pondéré `stabilisation: 3` dans `TFM` (ligne 750) — poids maximal, exactement le même
+palier que `landing_uni`, le seul test réellement diagnostique. Or Vierge_7 est doublement
+catégorique sur ce point dans la fiche Stabilisation elle-même :
+- SLLT n'apparaît **dans aucune** des 4 familles diagnostiques, confirmatives ou explicatives de
+  Stabilisation.
+- La section "VARIABLES EXCLUES DU DIAGNOSTIC DE STABILISATION > Variables d'absorption pure"
+  nomme explicitement `sllt_peak_landing_force`/`sllt_loading_rate` : *"Elles relèvent
+  principalement de la capacité à encaisser la charge, pas du maintien du contrôle postural
+  secondaire."*
+- SLLT est par ailleurs le test diagnostique **le plus propre de tout l'audit** pour Absorption —
+  100 % conforme, voir §6.5. Sa présence ici n'est donc pas une ambiguïté de couverture, c'est un
+  test parfaitement identifié ailleurs et faussement réutilisé ici.
+
+C'est la **confirmation indépendante, par un second mécanisme (`TFM`), d'un écart déjà identifié
+dans l'audit `VAR_REL3`** (§4.3/4.7/4.9 de l'audit VAR_REL3, où toute la famille SLLT — 4 KPIs —
+était taguée Determinante pour Stabilisation). Les deux moteurs, construits indépendamment, avec
+des mécanismes de pondération différents, contiennent la même erreur de fond — signal fort que ce
+n'est pas un artefact d'implémentation isolé, mais une confusion clinique structurelle entre
+"encaisser une charge" (Absorption) et "maintenir le contrôle postural après une charge"
+(Stabilisation) dans la conception du référentiel actuel de Kinexus.
+
+### 7.3 — Diagnostic réel de Stabilisation : TFM répond-il à la question clinique ?
+
+**Non — et le mécanisme est inhabituel : ce n'est pas une dilution par des tests hors sujet, mais
+une inversion de hiérarchie entre un test illégitime et les tests légitimes eux-mêmes.**
+
+| Test | Poids TFM | Rôle Vierge_7 | Concordance |
+|---|---|---|---|
+| `landing_uni` | 3 | Diagnostique principal contextuel | ✅ Conforme |
+| `sllt` | **3** | **Exclu explicitement** | 🚫 **Contamination majeure — voir 7.2** |
+| `sls` | 2 | **Diagnostique principal** (famille complète) | ❌ Sous-pondéré — 1 palier sous le test illégitime `sllt` |
+| `ef` | 2 | **Diagnostique principal sensoriel** | ❌ Sous-pondéré |
+| `strobo` | 2 | **Diagnostique principal sous contrainte** | ❌ Sous-pondéré |
+| `landing_bi` | 2 | Diagnostique principal contextuel (même famille que `landing_uni`) | ❌ Sous-pondéré par rapport à son pendant unilatéral |
+| `eo` | **1** | **Diagnostique principal sensoriel** (même famille qu'`ef`) | ❌ Sous-pondéré, et **incohérent avec `ef`** — même famille diagnostique, traitement différent (voir 7.3bis) |
+
+**7.3bis — Incohérence interne à `TFM` lui-même (pas à Vierge_7)** : `eo` et `ef` forment une seule
+et même famille diagnostique chez Vierge_7 ("Eyes open / eyes closed... diagnostique principal
+sensoriel", les deux cités ensemble, sans distinction de poids). `TFM` les traite pourtant
+différemment (`eo:1`, `ef:2`) sans justification apparente dans la logique du référentiel. C'est
+une incohérence de configuration de `TFM`, distincte des écarts vis-à-vis de Vierge_7.
+
+**Réponse à la question posée par le praticien** : `TFM` répond partiellement à *"le contrôle
+postural est-il maintenu ?"* — les 4 familles diagnostiques sont bien présentes, contrairement à
+d'autres qualités où des familles entières étaient absentes — mais leur poids relatif est **inversé
+par rapport à un test qui n'a rien à voir avec la question posée**. Un `sllt` dégradé (déficit
+d'absorption réel) peut aujourd'hui peser aussi lourd, ou plus lourd relativement, que les 4 vrais
+tests de stabilisation réunis.
+
+### 7.4 — Construction KPI → Test : EO / EF / Strobo / SLS (section dédiée, demande explicite)
+
+Vérification explicite de quels KPIs alimentent `computeTestStatus()` pour chacun des 4 tests
+diagnostiques, et si une contamination KPI→Test existe (motif découvert sur Explosivité §5.4 et
+Absorption §6.4) :
+
+| Test | KPIs du catalogue Kinexus (`index.html` l.130-133) | Cohérence avec Vierge_7 | Contamination KPI→Test |
+|---|---|---|---|
+| `eo` | `surface` (1 seul KPI) | ✅ Exactement le KPI diagnostique attendu (`eo_surface`) | **Aucune — structurellement impossible**, un seul KPI, et c'est le bon |
+| `ef` | `surface` (1 seul KPI) | ✅ Exactement le KPI diagnostique attendu (`ef_surface`) | **Aucune** — idem |
+| `strobo` | `surface` (1 seul KPI) | ✅ Exactement le KPI diagnostique attendu (`strobo_surface`) — les KPIs additionnels que Vierge_7 mentionne (`strobo_cop_path`/`cop_vel`) n'existent de toute façon pas dans Kinexus (déjà noté audit VAR_REL3 §4.8) | **Aucune** — le seul KPI disponible est le bon |
+| `sls` | `ttf`, `cop_path`, `cop_vel`, `ellipse_area`, `cop_range_ml`, `cop_range_ap`, `mean_velocity` (7 KPIs) | ✅ **Les 7 KPIs correspondent exactement aux 7 variables listées comme diagnostiques par Vierge_7** pour Single Leg Stance — aucun KPI "étranger" dans le catalogue | **Aucune** — même si tous les KPIs sont agrégés sans distinction de rôle par `computeTestStatus`, ils sont tous légitimement diagnostiques |
+
+**Résultat net, à documenter même s'il est négatif comme demandé** : sur ces 4 tests précis, **le
+mécanisme de contamination KPI→Test découvert sur Explosivité (`cmj_height`) et Absorption (`dj_rsi`)
+ne se reproduit pas**. La raison structurelle est la même dans les 4 cas : soit un seul KPI existe
+dans le catalogue (`eo`/`ef`/`strobo`), soit tous les KPIs existants sont légitimement diagnostiques
+(`sls`) — il n'y a simplement aucune variable "étrangère" disponible pour contaminer le calcul. Ce
+n'est pas une propriété de conception de `TFM` (qui reste aveugle au rôle des KPIs dans tous les
+cas), c'est une coïncidence de couverture de catalogue, comme déjà noté pour `landing_bi`/
+`landing_uni` en Absorption (§6.4). **La contamination réelle de cette qualité est donc entièrement
+au niveau Test↔Qualité (`sllt`, `sldj` — voir 7.5), pas au niveau KPI↔Test.**
+
+### 7.5 — Tests actuellement utilisés dans TFM (poids et rôle réel)
+
+Recherche exhaustive de `stabilisation:` dans la table `TFM` — 32 tests :
+
+**Poids 3 (2 tests)** : `landing_uni` ✅, `sllt` 🚫 (voir 7.2)
+
+**Poids 2 (15 tests)** : `hip_abd`, `hip_add`, `df_iso`, `inv_iso`, `ev_iso`, `hip_rot_int`,
+`hip_rot_ext`, `sldj`, `landing_bi`, `ybt`, `side_hop`, `ef`, `strobo`, `sh_iso_9090`, `sls`
+
+**Poids 1 (15 tests)** : `wblt`, `knee_ext`, `knee_flex`, `hip_flex`, `hip_ext`, `soleus_iso`,
+`gastro_iso`, `eo`, `sh_iso_9020`, `sh_iso_3030`, `sh_iso_6060`, `rs_hip_push`, `rs_knee_push`,
+`seated_calf_raise`, `standing_calf_raise`
+
+### 7.6 — Comparaison avec Vierge_7 (tests restants, hors 7.2/7.3)
+
+| Test | Poids TFM | Rôle Vierge_7 | Verdict |
+|---|---|---|---|
+| `hip_abd`, `hip_add`, `df_iso`, `inv_iso`, `ev_iso` | 2 | Explicative physiologique uniquement ("force des groupes stabilisateurs", nommément listés) | ❌ Classification — poids important pour un rôle explicatif |
+| `hip_ext` | 1 | Idem, nommément listé | ⚠️ Classification mais poids bas — **incohérence interne supplémentaire** : même famille explicative que `hip_abd`/`hip_add` (poids 2) mais traité à poids 1 sans raison apparente |
+| `sldj` | 2 | **Non mentionné** dans la fiche Stabilisation — et `sldj_rsi` spécifiquement exclu ailleurs (variables de réactivité) | ❌ Contamination croisée + risque de contamination KPI→Test si `sldj_rsi` est thresholdé (même mécanisme que `dj`/Absorption, §6.4, non confirmé faute d'audit `NORMS`) |
+| `ybt` | 2 | Non mentionné (statut toujours en suspens, dépend de l'audit Contrôle Frontal à venir) | 🔶 Point à arbitrer, inchangé depuis l'audit VAR_REL3 |
+| `side_hop`, `hip_rot_int`, `hip_rot_ext`, `sh_iso_9090` | 2 | Non mentionnés | ⚠️ Hors référentiel |
+| `wblt` | 1 | Explicative physiologique uniquement (nommément listé, "mobilité disponible") | ⚠️ Classification, poids bas — bien calibré (même constat que sur Absorption) |
+| `knee_ext`, `soleus_iso`, `gastro_iso` | 1 | **Exclusion explicite et nommée** — "force maximale sans contrainte posturale" | 🚫 **Violation d'exclusion** (3 tests, poids mineur chacun — mêmes 3 tests déjà trouvés en excès dans l'audit VAR_REL3, confirmation indépendante) |
+| `knee_flex`, `hip_flex`, `rs_hip_push`, `rs_knee_push`, `sh_iso_9020`, `sh_iso_3030`, `sh_iso_6060`, `seated_calf_raise`, `standing_calf_raise` | 1 | Non mentionnés | ⚠️ Hors référentiel — **15 tests sur 32 (47 %) ne sont mentionnés nulle part dans la fiche Stabilisation de Vierge_7**, la proportion la plus élevée de l'audit à ce stade, bien qu'à poids faible pour la plupart |
+
+### 7.7 — Violations identifiées (synthèse)
+
+- **1 contamination Test↔Qualité majeure, au palier maximal** : `sllt` (7.2) — confirmation
+  indépendante d'un écart déjà vu côté VAR_REL3.
+- **4 violations d'exclusion additionnelles** : `knee_ext`, `soleus_iso`, `gastro_iso` (force
+  maximale sans contrainte posturale, poids 1 chacune) — même triplette que VAR_REL3.
+- **Aucune contamination KPI→Test sur les 4 tests diagnostiques eux-mêmes** (7.4) — point
+  rassurant, contrastant avec Explosivité/Absorption.
+- **Risque de contamination KPI→Test non confirmé sur `sldj`** (via `sldj_rsi`), motif similaire à
+  `dj`/Absorption mais sur un test qui, ici, n'est même pas sanctionné par Vierge_7 pour
+  Stabilisation — double problème superposé plutôt que contamination pure.
+- **Incohérences de configuration internes à `TFM`** (nouveau type d'observation, distinct d'un
+  écart vis-à-vis de Vierge_7) : `eo`(1) vs `ef`(2) — même famille diagnostique Vierge_7, poids
+  différent ; `hip_ext`(1) vs `hip_abd`/`hip_add`(2) — même famille explicative, poids différent.
+- **Proportion la plus élevée de tests hors référentiel de tout l'audit** : 15/32 (47 %).
+
+### 7.8 — Gravité globale de l'écart
+
+**🔴 Critique.** La contamination `sllt` à poids maximal (7.2), doublement confirmée
+(`VAR_REL3` + `TFM`), suffit à elle seule à justifier cette note — c'est un déficit d'absorption
+pure qui peut aujourd'hui fausser directement le score de Stabilisation affiché au praticien, sur
+le mécanisme qui compte réellement. S'y ajoutent 4 vrais tests diagnostiques tous sous-pondérés et
+3 violations d'exclusion supplémentaires.
+
+### 7.9 — Ratio de dilution
+
+- **Contributeurs TFM : 32**
+- **Contributeurs diagnostiques attendus (Vierge_7) : 6** (`sls`, `eo`, `ef`, `strobo`,
+  `landing_uni`, `landing_bi`)
+- **Ratio de dilution : 32/6 ≈ 5,33×** — le **plus bas (meilleur) ratio brut de tout l'audit TFM**,
+  ce qui illustre bien pourquoi ce chiffre seul ne suffit pas à qualifier la gravité : le problème
+  dominant de Stabilisation n'est pas le volume de dilution, c'est la **nature** d'un seul
+  contributeur au palier maximal.
+
+### 7.10 — Impact produit
+
+Si Stabilisation était reconstruite selon Vierge_7 (diagnostic porté par `sls`/`eo`/`ef`/`strobo`/
+`landing_uni`/`landing_bi`, `sllt` totalement retiré) :
+
+- Un athlète avec un déficit isolé d'absorption (SLLT dégradé) mais un contrôle postural
+  réellement normal (SLS/EO/EF/Strobo normaux) **ne serait plus vu comme ayant une "Stabilisation
+  diminuée"** — correction directe et significative, le déficit d'absorption restant visible là où
+  il doit l'être (Absorption, déjà 100 % conforme).
+- Les 4 vraies familles diagnostiques (SLS, EO, EF, Strobo), aujourd'hui reléguées sous le poids de
+  `sllt`, retrouveraient un poids cohérent avec leur statut réel.
+- Un déficit isolé de force segmentaire (quadriceps, soléaire, gastrocnémien) ne pourrait plus,
+  même marginalement, faire baisser le score de Stabilisation (3 violations d'exclusion corrigées).
+- **Correction de configuration pure** — aucune donnée manquante identifiée pour cette qualité,
+  contrairement à Explosivité.
+
+### 7.11 — Structure cible HYP### (variables mesurées uniquement)
+
+- **`HYP-STA-01`** — "Déficit de contrôle postural", générée par les preuves diagnostiques
+  mesurées des 4 familles : `sls_ttf`/`cop_path`/`cop_vel`/`ellipse_area`/`cop_range_ml`/
+  `cop_range_ap`/`mean_velocity`, `eo_surface`, `ef_surface`, `strobo_surface`,
+  `landing_uni_tts`, `landing_bi_tts` — toutes déjà mesurées, aucun développement requis.
+- Preuves confirmatives (mesurées) : mêmes variables SLS (Vierge_7 les réutilise telles quelles en
+  confirmative), `strobo_surface` (double rôle diagnostique/confirmatif déjà noté comme motif
+  récurrent chez Vierge_7).
+- Preuves explicatives physiologiques (mesurées) : `hip_abd_rfd100/200`, `hip_add_rfd100`,
+  `hip_ext_rfd100/200`, `inv_iso_rfd100`, `ev_iso_rfd100`, `df_iso_rfd100`, `wblt_distance`.
+- **`sllt` retiré intégralement de Stabilisation** — reste une preuve exclusivement d'Absorption,
+  où il est déjà pleinement et correctement modélisé.
+- `sldj` : retiré, avec le même garde-fou que `dj`/Absorption pour la Phase C (exclusion explicite
+  de `sldj_rsi` du calcul si un modèle KPI-level est utilisé).
+- Tests hors référentiel (`ybt`, `side_hop`, `hip_rot_int`/`hip_rot_ext`, `sh_iso_*`, `knee_flex`,
+  `hip_flex`, `rs_hip_push`/`rs_knee_push`, `seated_calf_raise`/`standing_calf_raise`) : 🔶 point à
+  arbitrer récurrent, `ybt` dépendant spécifiquement de l'audit Contrôle Frontal à venir.
+
+### 7.12 — Positionnement dans les familles d'écarts (sans forcer la classification)
+
+Stabilisation ne correspond intégralement à aucun des 6 profils déjà observés, mais emprunte des
+traits précis à trois d'entre eux :
+
+- **Comme Mobilité/Force** : un test structurellement illégitime occupe le palier de poids
+  maximal (`sllt`), phénomène absent de Puissance/Explosivité/Absorption.
+- **Comme Absorption** : le mécanisme dominant vis-à-vis de Vierge_7 est une **contamination entre
+  qualités voisines mais cliniquement distinctes** (Absorption↔Stabilisation ici,
+  Réactivité↔Absorption là-bas via `dj_rsi`), plutôt qu'une dilution par des tests franchement hors
+  sujet.
+- **Différence majeure avec toutes les qualités précédentes** : le ratio de dilution brut (5,33)
+  est le plus bas de tout l'audit, alors que la gravité qualitative reste 🔴 — la première fois que
+  ces deux mesures divergent aussi nettement. Cela confirme, comme annoncé dans la synthèse
+  d'Explosivité, que le ratio X/Y seul ne suffit pas à classer une qualité : il faut le croiser
+  avec la *nature* du ou des tests illégitimes au palier maximal.
+
+**Si une famille doit être esquissée pour la synthèse finale**, Stabilisation illustre moins une
+nouvelle famille qu'un **sous-type du profil "violation d'exclusion"** (Mobilité/Force) où
+l'exclusion se joue à l'échelle d'une **qualité entière mal réattribuée** (SLLT→Absorption tout
+entier) plutôt qu'à l'échelle de tests isolés — une nuance à garder pour la synthèse transversale,
+pas une quatrième famille indépendante à ce stade.
+
+### 7.13 — Tableau transversal (mis à jour)
+
+| Qualité | Ratio dilution (X/Y) | Exclusions actives | Promoteurs illégitimes au palier max | Contamination KPI→Test | Profil dominant |
+|---|---|---|---|---|---|
+| Mobilité | 5/1 = 5,0 | 4 | 3 | Non vérifié | Violation d'exclusion |
+| Force | 40/4 = 10,0 | 7 | 13 | Non vérifié | Exclusion + dilution |
+| Puissance | 25/2 = 12,5 | 0 | 3 | Non vérifié | Dilution diagnostique pure |
+| Réactivité | 19/2 = 9,5 | 2 | 1 | Non vérifié | Hybride (dilution + exclusion) |
+| Explosivité | 23/2 = 11,5 | 1 | 0 | **Oui** (`cmj_height`, via `cmj`) | Donnée manquante |
+| Absorption | 35/4 = 8,75 | 4 | 0 | **Oui** (`dj_rsi`/`sldj_rsi`, hypothèse) | Limite structurelle TFM |
+| **Stabilisation** | **32/6 = 5,33** | **4** | **1 (`sllt`)** | **Non sur les 4 tests diagnostiques ; hypothèse ouverte sur `sldj`** | **Violation d'exclusion inter-qualités (sous-type)** |
+
+---
+
 ## Qualités restantes à auditer (TFM)
 
-Stabilisation · Contrôle Sensori-moteur · Endurance — Force, Puissance, Réactivité, Explosivité et
-Absorption terminées, en attente de validation avant de poursuivre.
+Contrôle Sensori-moteur · Endurance — Force, Puissance, Réactivité, Explosivité, Absorption et
+Stabilisation terminées, en attente de validation avant de poursuivre.
