@@ -404,7 +404,144 @@ Si Force était reconstruite selon Vierge_7 (4 tests globaux seulement, poids ma
 
 ---
 
+## 3. Puissance
+
+### 3.1 — Question clinique cible (Vierge_7)
+
+*"Cet athlète est-il capable de produire un niveau élevé de puissance mécanique lors d'une action
+explosive (saut vertical) ?"* — mesurée par la puissance instantanée maximale développée pendant
+la phase concentrique d'un saut, bilatéral (CMJ) et unilatéral (SLCMJ). Vierge_7 est explicite :
+cette qualité ne cherche ni à décrire la force maximale statique, ni la vitesse de développement de
+la force (réactivité), ni la stratégie biomécanique utilisée pour l'exprimer — uniquement le niveau
+de puissance produit.
+
+### 3.2 — Question réellement évaluée par TFM
+
+25 tests pondèrent aujourd'hui `puissance` dans `TFM` — 5× plus que les 2 tests diagnostiques de
+Vierge_7. Au palier de poids maximal (3), seuls 2 des 5 tests présents (`cmj`, `slcmj`) sont
+légitimes ; les 3 autres (`imtp`, `slimtp`, `profil_fv`) sont des tests de force/profil
+force-vitesse que Vierge_7 réserve explicitement à l'explicatif. La question réellement posée par
+`TFM` se rapproche de : *"cet athlète a-t-il, à la fois, une bonne capacité de saut et une bonne
+force maximale et un bon profil force-vitesse ?"* — trois questions cliniquement différentes
+(déjà séparées comme telles dans les fiches Force et Puissance de Vierge_7) fusionnées en une
+seule mesure.
+
+### 3.3 — Tests actuellement utilisés dans TFM (poids et rôle réel)
+
+Recherche exhaustive de `puissance:` dans la table `TFM` — 25 tests :
+
+**Poids 3 (maximal — 5 tests)**
+
+| Test | Rôle réel dans le score aujourd'hui |
+|---|---|
+| `cmj`, `slcmj` | Contributeurs à poids maximal — **seuls légitimes de ce groupe** |
+| `imtp`, `slimtp`, `profil_fv` | Contributeurs à poids **maximal**, à égalité stricte avec `cmj`/`slcmj` |
+
+**Poids 2 (14 tests)**
+
+`knee_ext`, `knee_flex`, `hip_flex`, `hip_ext`, `soleus_iso`, `gastro_iso`, `sl_iso_push`,
+`iso_belt_squat`, `single_hop`, `triple_hop`, `crossover_hop`, `cmjr`, `seated_calf_raise`,
+`standing_calf_raise`
+
+**Poids 1 (6 tests)**
+
+`hip_abd`, `hip_add`, `dj`, `sh_iso_9020`, `sh_iso_6060`, `iso_squat_hold`
+
+### 3.4 — Comparaison avec Vierge_7 (par test)
+
+| Test | Poids TFM | Rôle Vierge_7 | Verdict |
+|---|---|---|---|
+| `cmj` | 3 | **Diagnostique principal** (`cmj_peak_power`) | ✅ Conforme |
+| `slcmj` | 3 | **Diagnostique principal unilatéral** (`slcmj_peak_power`) | ✅ Conforme |
+| `imtp`, `slimtp` | 3 | Explicative physiologique uniquement ("production de force globale" — déjà établi, audit VAR_REL3 §1.2) | ❌ Classification — poids maximal pour un rôle explicatif, à égalité avec les 2 tests diagnostiques réels |
+| `profil_fv` | 3 | Explicative physiologique uniquement ("chaîne force-vitesse" — déjà établi, audit VAR_REL3 §1.2) | ❌ Classification — même écart |
+| `dj` | 1 | **Diagnostique principal contextuel** (`dj_peak_prop_power` — utilisé quand CMJ/SLCMJ indisponibles, voir audit VAR_REL3 §1.2bis) | ⚠️ Rôle directionnellement correct mais **sous-pondéré** (poids 1, le plus bas, pour un rôle diagnostique même contextuel) |
+| `cmjr` | 2 | **Diagnostique contextuel** (`cmjr_peak_power`, idem §1.2bis) | ⚠️ Poids proportionné (inférieur à `cmj`/`slcmj`, cohérent avec son statut secondaire) — pas une violation franche |
+| `single_hop`, `triple_hop` | 2 | Confirmative (tests horizontaux/fonctionnels) | ⚠️ Poids raisonnable pour une confirmative, mais toujours au même niveau qu'un test explicatif (`knee_ext` etc.) — hiérarchie interne floue |
+| `crossover_hop` | 2 | **Non listé en confirmative pour Puissance** — Vierge_7 ne cite que `single_hop_distance`/`triple_hop_distance` pour cette qualité (`crossover_hop_distance` est confirmative de **Réactivité**, pas de Puissance) | ❌ Contamination croisée depuis Réactivité |
+| `knee_ext`, `knee_flex`, `hip_flex`, `hip_ext`, `soleus_iso`, `gastro_iso`, `sl_iso_push`, `iso_belt_squat` | 2 | Explicative physiologique uniquement ("force segmentaire/globale" — audit VAR_REL3 §1.4) | ❌ Classification — 8 tests, poids important pour un rôle explicatif |
+| `hip_abd`, `hip_add`, `iso_squat_hold` | 1 | Explicative physiologique uniquement (idem §1.4) | ❌ Classification, mais poids mineur — l'écart le moins sévère de l'audit à ce stade |
+| `seated_calf_raise`, `standing_calf_raise`, `sh_iso_9020`, `sh_iso_6060` | 2 / 2 / 1 / 1 | **Non mentionnés dans la fiche Puissance de Vierge_7** (déjà noté comme anomalie hors-référentiel dans l'audit VAR_REL3 §1.7) | ⚠️ Hors référentiel — statut à clarifier avant Phase C |
+
+### 3.5 — Violations identifiées
+
+- **Aucune violation d'exclusion directe (🚫)** — contrairement à Force. `wblt` (mobilité),
+  `landing_bi`/`landing_uni`/`sllt` (absorption), `heel_raise`/`repeated_hop` (endurance) sont
+  tous absents de la liste `puissance` dans `TFM`. C'est la première qualité TFM auditée sans
+  aucune violation d'exclusion — le problème ici est entièrement un problème de **classification**
+  et de **contamination croisée**, pas d'exclusions bafouées.
+- **Contamination croisée entre qualités** : `imtp`/`slimtp` (Force), `profil_fv` (leur propre
+  rôle explicatif de Puissance, mais traité comme diagnostique), `crossover_hop` (Réactivité).
+- **Dilution du diagnostic au palier le plus influent** : au poids maximal (3), seuls 2 tests sur
+  5 sont légitimes — `cmj`/`slcmj` partagent la borne haute du score avec 3 tests qui, selon
+  Vierge_7, ne devraient jamais y figurer. Même mécanisme que Force, à une échelle un peu moindre
+  (2/5 légitimes au palier max ici, contre 4/17 pour Force).
+- **Pas de redondance flagrante** : les tests contextuels (`dj`, `cmjr`) et confirmatifs
+  (`single_hop`, `triple_hop`) ont des rôles Vierge_7 réels, simplement mal calibrés en poids —
+  différent des tests purement hors-sujet (`imtp`, `profil_fv`, `crossover_hop`).
+
+### 3.6 — Écart de question clinique
+
+**Oui, mais moins radicalement que pour Force.** Le moteur `TFM` répond partiellement à la bonne
+question — `cmj`/`slcmj` sont bien présents et à poids maximal — mais cette réponse est diluée par
+3 tests (`imtp`, `slimtp`, `profil_fv`) qui pèsent **autant** que les tests diagnostiques réels.
+Sur 25 tests pondérés, environ 19 (76 %) nécessitent une correction (retrait ou repondération) —
+un ratio élevé mais inférieur à celui de Force (90 %), et sans aucune violation d'exclusion directe
+contrairement à Force. Le score de Puissance actuel se rapproche donc d'un "indice de capacité
+globale du membre inférieur" plutôt que d'une mesure ciblée de la puissance de saut.
+
+### 3.7 — Gravité globale de l'écart
+
+**🔴 Critique**, mais d'une nature différente de Force : ici, la gravité vient exclusivement de la
+**dilution par des tests explicatifs mal pondérés** (poids 3 pour un rôle qui ne devrait jamais
+compter dans le diagnostic) et d'une **contamination croisée limitée** (`crossover_hop`), pas de
+violations d'exclusion. Les 2 tests diagnostiques réels sont au moins présents et correctement
+pondérés au maximum — ce n'est pas encore le cas pour toutes les qualités restantes à auditer.
+
+### 3.8 — Impact produit
+
+Si Puissance était reconstruite selon Vierge_7 (diagnostic porté uniquement par `cmj`/`slcmj`,
+`dj`/`cmjr` en diagnostic contextuel secondaire) :
+
+- Un athlète avec une bonne force maximale (IMTP) ou un bon profil force-vitesse mais une puissance
+  de saut réellement diminuée (`cmj_peak_power` bas) **ne serait plus vu comme ayant une "Puissance
+  normale"** grâce à la contribution d'`imtp`/`profil_fv` — inversement, une bonne puissance de saut
+  ne serait plus masquée par un déficit de force isométrique statique.
+- Le score de Puissance redeviendrait indépendant du score de Force (`imtp`/`slimtp` retirés des
+  deux côtés de la contamination croisée identifiée en Force §2.4) — condition nécessaire pour que
+  Force et Puissance restent deux questions cliniques distinctes.
+- **Correction de configuration pure**, comme pour Mobilité et Force : aucune donnée manquante,
+  uniquement une modification de la table `TFM`.
+
+### 3.9 — Structure cible HYP### (variables mesurées uniquement)
+
+- **`HYP-PUI-01`** — "Déficit de puissance de saut", générée uniquement par les preuves
+  diagnostiques mesurées : `cmj_peak_power` (diagnostic principal), `slcmj_peak_power` (diagnostic
+  principal unilatéral) — déjà mesurées et stockées, aucun développement requis.
+- Preuves diagnostiques secondaires/contextuelles (mesurées, déjà présentes) : `dj_peak_prop_power`,
+  `sldj_peak_prop_power`, `cmjr_peak_power` — utilisées quand CMJ/SLCMJ indisponibles, jamais comme
+  substituts à poids égal (point déjà tranché en Phase A, audit VAR_REL3 §1.2bis, proposition
+  reprise ici).
+- Preuves confirmatives (mesurées) : `cmj_height`, `single_hop_distance`, `triple_hop_distance`.
+- Preuves explicatives physiologiques (mesurées) : `imtp_*`, `slimtp_*`, `profil_fv_nkg`/`v0`,
+  famille "force segmentaire" complète (`knee_ext_*`, `knee_flex_*`, `soleus_iso_*`, `gastro_iso_*`,
+  `hip_flex_*`, `hip_ext_*`, `hip_abd_*`, `hip_add_*`, `sl_iso_push_*`, `iso_belt_squat_*`,
+  `iso_squat_hold_*`) — toutes déjà mesurées, servent à expliquer un déficit de puissance déjà
+  confirmé, jamais à le construire.
+- Preuves explicatives biomécaniques (mesurées) : les 30 KPIs CMJ/SLCMJ déjà cartographiés en
+  excès diagnostique dans l'audit VAR_REL3 §1.2/1.5 (`cmj_peak_vel`, `cmj_depth`,
+  `cmj_conc_mean_force`, `slcmj_rsi_mod`, etc.) — décrivent la stratégie d'expression, jamais le
+  niveau de puissance lui-même.
+- `crossover_hop_distance` : à retirer du référentiel Puissance (contamination confirmée depuis
+  Réactivité) — reste une preuve confirmative légitime de Réactivité, où elle est déjà correctement
+  positionnée.
+- `seated_calf_raise`, `standing_calf_raise`, `sh_iso_9020`, `sh_iso_6060` : 🔶 **Point à
+  arbitrer**, même statut que pour Force (§2.9) — hors référentiel Vierge_7, à trancher une seule
+  fois pour les deux qualités plutôt que séparément.
+
+---
+
 ## Qualités restantes à auditer (TFM)
 
-Puissance · Réactivité · Explosivité · Absorption · Stabilisation · Contrôle Sensori-moteur ·
-Endurance — Force terminée, en attente de validation avant de poursuivre.
+Réactivité · Explosivité · Absorption · Stabilisation · Contrôle Sensori-moteur · Endurance —
+Force et Puissance terminées, en attente de validation avant de poursuivre.
