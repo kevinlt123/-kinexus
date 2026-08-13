@@ -31,6 +31,40 @@ la conception cible).
 Mission actuelle : valider la méthodologie sur **une seule qualité (Mobilité)** avant de lancer
 l'audit complet des 10 fonctions `TFM`.
 
+## Méthodologie validée après Mobilité (07/08)
+
+**Règle stricte "variables mesurées uniquement"** : l'audit — et la future architecture HYP### —
+ne travaillent qu'avec des variables réellement mesurées, stockées et exploitables dans Kinexus
+(catalogue de KPIs `index.html`). Douleur, gonflement, irritabilité, stratégie de protection,
+raideur perçue et tout autre facteur clinique non objectivé par un test restent du ressort du
+raisonnement du praticien — jamais intégrés à l'architecture du moteur. Quand Vierge_7 cite une
+preuve explicative non mesurable dans Kinexus (rare, vu pour Mobilité), c'est noté comme hors
+périmètre HYP###, pas comme un manque à combler.
+
+**Structure fixe par qualité, à partir de Force** (remplace la structure en 8 points utilisée pour
+Mobilité) :
+1. Question clinique cible (Vierge_7)
+2. Question réellement évaluée par TFM (compte tenu des tests actuellement utilisés)
+3. Tests actuellement utilisés dans TFM (poids + rôle réel dans le score)
+4. Comparaison avec Vierge_7 (diagnostique / confirmatif / explicatif / explicitement exclu, par
+   test)
+5. Violations identifiées (tests exclus utilisés / contaminations croisées / dilution du
+   diagnostic / redondances)
+6. Écart de question clinique (le moteur répond-il réellement à la question visée ? pourquoi,
+   dans quelle mesure)
+7. Gravité globale (🟢🟡🟠🔴)
+8. Impact produit (ce qui changerait concrètement pour l'utilisateur si reconstruit selon
+   Vierge_7)
+9. Structure cible HYP### — uniquement variables mesurées/stockées/exploitables
+
+**Ordre d'audit validé par le praticien** : Force → Puissance → Réactivité → Explosivité →
+Absorption → Stabilisation → Contrôle Sensori-moteur → Endurance (Mobilité déjà terminée).
+
+**Objectif final** (à l'issue des 9 qualités) : synthèse transversale — motifs récurrents,
+contaminations croisées entre qualités, violations d'exclusions, écarts de question clinique,
+qualités nécessitant une simple reconfiguration vs une reconstruction HYP### vs de nouvelles
+données.
+
 ---
 
 ## 1. Mobilité
@@ -189,8 +223,188 @@ nuance, la règle de fond de Vierge_7 étant ici particulièrement explicite et 
 
 ---
 
+## 2. Force
+
+### 2.0 — Préalable : résolution de la duplication Vierge_7 (validée avec le praticien le 07/08)
+
+La fiche "Force" apparaît deux fois, consécutivement, dans Vierge_7 (partie 1, lignes 4294-5019
+puis fin partie 1/début partie 2). Les deux versions sont substantiellement différentes, pas de
+simples variantes rédactionnelles :
+
+| Point | Section 1 (codes `IMTP001_PEAK_FORCE`...) | Section 2 (`imtp_n`... — retenue) |
+|---|---|---|
+| Tests segmentaires (quadriceps/soléaire/gastro) | Diagnostique segmentaire principal | Explicative physiologique uniquement |
+| Versions normalisées poids de corps (`_nkg`) | Diagnostique principal relatif | Confirmative uniquement |
+| Variables CMJ/SLCMJ/DJ/SLDJ | Confirmatives + explicatives biomécaniques | **Exclues en bloc** |
+
+**Décision validée** : audit mené contre la **Section 2**, seule cohérente en nommage avec les 5
+qualités déjà auditées (`imtp_n`, `knee_ext_n`... — format Kinexus natif) et dotée d'une règle de
+fond explicite et non ambiguë : *"La qualité Force est évaluée exclusivement à partir des tests
+globaux de production de force maximale. Les tests segmentaires servent uniquement à expliquer
+l'origine d'un déficit observé. Les variables de puissance, de mobilité, de stabilisation, de
+réactivité et d'absorption ne doivent jamais participer au calcul du score de force."* La
+Section 1 est écartée de l'audit, conservée ici pour mémoire — pas corrigée ni fusionnée
+silencieusement dans Vierge_7 lui-même.
+
+### 2.1 — Question clinique cible (Vierge_7)
+
+*"Cet athlète est-il capable de produire un niveau de force maximale suffisant pour répondre aux
+exigences de son activité physique ou sportive ?"* — une question strictement bornée à la capacité
+maximale de production de force, explicitement détachée de la vitesse d'exécution, de la
+puissance, de la réactivité, de l'absorption, de la stabilisation et de la mobilité (Vierge_7 le
+précise lui-même dans sa définition).
+
+### 2.2 — Question réellement évaluée par TFM
+
+Avec 40 tests pondérés sur `force` — soit le plus grand nombre de contributeurs de toutes les
+qualités auditées à ce stade (8× plus que Mobilité) —, la question réellement posée par `TFM`
+aujourd'hui se rapproche de : *"Cet athlète performe-t-il bien, tous tests confondus (force,
+puissance, réactivité, absorption, équilibre fonctionnel, sauts), sur à peu près l'ensemble du
+référentiel Kinexus ?"* — une question globale de performance générale, pas une question ciblée
+sur la capacité maximale de force. C'est l'antithèse de la question clinique visée par Vierge_7.
+
+### 2.3 — Tests actuellement utilisés dans TFM (poids et rôle réel)
+
+Recherche exhaustive de `force:` dans la table `TFM` (ligne 750) — 40 tests, groupés par palier de
+poids :
+
+**Poids 3 (maximal — 17 tests, "tests directs")**
+
+| Test | Rôle réel dans le score aujourd'hui |
+|---|---|
+| `imtp`, `slimtp`, `iso_belt_squat`, `sl_iso_push` | Contributeurs à poids maximal — **seuls légitimes de ce groupe** |
+| `knee_ext`, `knee_flex`, `hip_flex`, `hip_ext`, `df_iso`, `soleus_iso`, `gastro_iso` | Contributeurs à poids **maximal**, à égalité stricte avec les 4 tests globaux ci-dessus |
+| `profil_fv` | Contributeur à poids maximal |
+| `sh_iso_9020`, `sh_iso_9090`, `sh_iso_6060`, `iso_squat_hold` | Contributeurs à poids maximal |
+| `seated_calf_raise`, `standing_calf_raise` | Contributeurs à poids maximal |
+
+**Poids 2 (10 tests)**
+
+`hip_abd`, `hip_add`, `inv_iso`, `ev_iso`, `hip_rot_int`, `hip_rot_ext`, `sh_iso_3030`,
+`rs_hip_push`, `rs_knee_push`, `rs_ankle_push`
+
+**Poids 1 (12 tests)**
+
+`cmj`, `slcmj`, `dj`, `sldj`, `landing_bi`, `landing_uni`, `sllt`, `ybt`, `side_hop`,
+`single_hop`, `triple_hop`, `crossover_hop`
+
+### 2.4 — Comparaison avec Vierge_7 (par test)
+
+| Test | Poids TFM | Rôle Vierge_7 | Verdict |
+|---|---|---|---|
+| `imtp`, `slimtp`, `iso_belt_squat`, `sl_iso_push` | 3 | **Diagnostique (principal / principal unilatéral)** | ✅ Conforme — les 4 seuls tests légitimes |
+| `knee_ext`, `knee_flex`, `hip_flex`, `hip_ext`, `df_iso` | 3 | Explicative physiologique uniquement ("Force segmentaire" — nommément listés) | ❌ Classification — poids maximal pour un rôle qui ne devrait jamais peser dans le diagnostic |
+| `soleus_iso`, `gastro_iso` | 3 | Idem — explicative physiologique uniquement | ❌ Classification |
+| `profil_fv` | 3 | **Absent de la fiche Force** — appartient au référentiel Puissance (déjà identifié en 1.4 de l'audit VAR_REL3 : "chaîne force-vitesse", explicatif physiologique de Puissance) | ❌ Contamination croisée — poids maximal pour un test d'une autre qualité |
+| `sh_iso_9020`, `sh_iso_9090`, `sh_iso_6060`, `iso_squat_hold`, `seated_calf_raise`, `standing_calf_raise` | 3 | **Non mentionnés dans la fiche Force** (ni diagnostique, ni confirmatif, ni explicatif, ni exclu — même motif déjà observé sur Puissance, audit VAR_REL3 §1.7) | ⚠️ Hors référentiel Vierge_7 — à clarifier avant Phase C, mais poids maximal aujourd'hui pour des tests que Vierge_7 ne discute jamais pour Force |
+| `hip_abd`, `hip_add`, `inv_iso`, `ev_iso` | 2 | Explicative physiologique uniquement ("Force segmentaire" — nommément listés) | ❌ Classification — poids important pour un rôle explicatif |
+| `hip_rot_int`, `hip_rot_ext`, `sh_iso_3030` | 2 | Non mentionnés dans la fiche Force | ⚠️ Hors référentiel |
+| `rs_hip_push`, `rs_knee_push`, `rs_ankle_push` | 2 | Explicative **biomécanique** uniquement ("Expression fonctionnelle de la force" — nommément listés) | ❌ Classification — rôle explicatif traité avec un poids de second rang |
+| `cmj`, `slcmj`, `dj`, `sldj` | 1 | **Exclusion explicite et nommée** — "Variables de puissance... toutes les variables de CMJ/SLCMJ/DJ/SLDJ/CMJR... ne doivent jamais participer au calcul du score de force" | 🚫 **Violation d'exclusion directe** |
+| `landing_bi`, `landing_uni`, `sllt` | 1 | **Exclusion explicite et nommée** — "Variables d'absorption... toutes les variables de Landing/SLLT" | 🚫 **Violation d'exclusion directe** |
+| `ybt` | 1 | Non nommé individuellement, mais couvert par la règle de fond ("les variables de mobilité... ne doivent jamais participer") | ❌ Violation du principe général |
+| `side_hop`, `single_hop`, `triple_hop`, `crossover_hop` | 1 | Non nommés individuellement, mais tests de puissance/réactivité horizontale (déjà établis comme tels dans les audits Puissance/Réactivité) — couverts par la règle de fond ("variables de puissance... de réactivité... ne doivent jamais participer") | ❌ Violation du principe général |
+
+### 2.5 — Violations identifiées
+
+- **Tests exclus directement utilisés (🚫, le plus sévère)** : `cmj`, `slcmj`, `dj`, `sldj`,
+  `landing_bi`, `landing_uni`, `sllt` — 7 tests nommément exclus par Vierge_7 ("ne doivent jamais
+  participer au calcul du score de force"), tous actuellement pondérés dans `TFM`.
+- **Contamination croisée entre qualités** : `profil_fv` (poids 3, appartient au référentiel
+  Puissance) est le cas le plus net. `side_hop`/`single_hop`/`triple_hop`/`crossover_hop`/`ybt`
+  relèvent du même phénomène — des tests dont le rôle clinique est établi ailleurs (Puissance,
+  Réactivité, Mobilité) contribuent aussi à Force sans justification Vierge_7.
+- **Dilution du diagnostic, la plus sévère observée dans tout l'audit à ce stade** : 7 tests
+  segmentaires (`knee_ext`, `knee_flex`, `hip_flex`, `hip_ext`, `df_iso`, `soleus_iso`,
+  `gastro_iso`) pèsent **à égalité stricte (poids 3)** avec les 4 vrais tests diagnostiques. Le
+  score de Force actuel ne peut donc pas distinguer un déficit de force globale réelle d'un déficit
+  localisé à un seul groupe musculaire — exactement la situation que la règle de fond de Vierge_7
+  cherche à empêcher ("Les tests segmentaires servent uniquement à expliquer l'origine d'un déficit
+  observé", jamais à le construire).
+- **Redondance / absence de hiérarchie** : sur les 40 tests pondérés, **4 seulement (10 %)** sont
+  légitimes selon Vierge_7. Aucun autre test audité en Phase A (VAR_REL3 ou TFM) n'atteint un tel
+  écart en proportion.
+
+### 2.6 — Écart de question clinique
+
+**Non, le moteur ne répond pas à la question clinique visée — et l'écart est le plus important
+identifié depuis le début de la Phase A.**
+
+- *Pourquoi* : la question de Vierge_7 ("cet athlète peut-il produire un niveau de force maximale
+  suffisant ?") suppose un score construit sur 4 tests globaux de force isométrique maximale,
+  clairement délimités. Le score `TFM` actuel agrège 40 tests couvrant en réalité 5 des 10
+  qualités du référentiel (force, puissance/explosivité via `profil_fv`, réactivité via
+  `dj`/`sldj`/hop tests, absorption via `landing_bi`/`landing_uni`/`sllt`, mobilité/équilibre via
+  `ybt`) — ce n'est plus une mesure de "Force" au sens de Vierge_7, c'est un indice de performance
+  générale déguisé en score de qualité unique.
+- *Dans quelle mesure* : seuls 4 tests sur 40 (10 %) répondent réellement à la question posée. Les
+  36 autres soit répondent à une question différente (puissance, réactivité, absorption, mobilité),
+  soit répondent à une sous-question légitime mais au mauvais niveau de preuve (segmentaire traité
+  comme global).
+
+### 2.7 — Gravité globale de l'écart
+
+**🔴 Critique — le plus sévère de tout l'audit Phase A à ce stade** (VAR_REL3 et TFM confondus).
+Combine les trois facteurs de gravité déjà identifiés séparément sur d'autres qualités mais jamais
+réunis avec une telle ampleur : violation d'exclusion directe (7 tests), contamination croisée
+inter-qualités (`profil_fv` et les tests de saut/équilibre), et dilution du diagnostic par des
+tests segmentaires à poids maximal (7 tests à poids 3, égal aux tests légitimes). Proportion de
+tests à corriger : 36/40 (90 %).
+
+### 2.8 — Impact produit
+
+Si Force était reconstruite selon Vierge_7 (4 tests globaux seulement, poids maximal réservé à
+`imtp`/`slimtp`/`iso_belt_squat`/`sl_iso_push`), ce que verrait concrètement le praticien :
+
+- Un athlète avec un déficit de force isolé à un seul groupe musculaire (ex. quadriceps) mais des
+  tests globaux (IMTP, Iso Belt Squat) normaux **ne serait plus vu comme ayant une "Force
+  diminuée"** — le déficit resterait visible, mais comme explication segmentaire d'un test global
+  par ailleurs normal, pas comme un déficit de la qualité elle-même. C'est très probablement la
+  source du plus grand nombre de faux positifs actuels sur cette qualité précise.
+- Un bon profil de saut (CMJ/SLCMJ/DJ/SLDJ élevés) ou une bonne mobilité (YBT) ne pourrait plus
+  "compenser" artificiellement un déficit réel de force maximale dans le score affiché — et
+  inversement, un déficit de saut ne ferait plus baisser le score de Force.
+- Le score de Force redeviendrait indépendant de la Puissance (`profil_fv` retiré) — condition
+  nécessaire pour que les deux qualités restent des questions cliniques distinctes dans le futur
+  modèle HYP###, au lieu de deux mesures partiellement redondantes du même signal.
+- **Correction de configuration pure** : comme pour Mobilité, l'essentiel du gain clinique ici ne
+  nécessite aucun développement — seulement une modification de la table `TFM` (retirer 36 entrées
+  `force:` sur 40, ou les repondérer à 0). Aucune donnée manquante, aucun nouveau test à développer.
+
+### 2.9 — Structure cible HYP### (variables mesurées uniquement)
+
+- **`HYP-FOR-01`** — "Déficit de force maximale globale du membre inférieur", générée uniquement
+  par les preuves diagnostiques mesurées : `imtp_n` (diagnostic principal), `slimtp_n` (diagnostic
+  principal unilatéral), `iso_belt_squat_n` (diagnostic principal), `sl_iso_push_n` (diagnostic
+  principal unilatéral) — 4 KPIs existants, tous déjà mesurés et stockés dans Kinexus, aucun
+  développement requis.
+- Preuves confirmatives (mesurées, déjà présentes) : `imtp_nkg`, `slimtp_nkg`,
+  `iso_belt_squat_nkg`, `sl_iso_push_nkg` (versions normalisées au poids de corps) — renforcent
+  sans jamais suffire seules, conforme à la règle transversale.
+- Preuves explicatives physiologiques (mesurées, déjà présentes) : la famille "force segmentaire"
+  complète — `knee_ext_n/nkg`, `knee_flex_n/nkg`, `soleus_iso_n/nkg`, `gastro_iso_n/nkg`,
+  `hip_flex_n/nkg`, `hip_ext_n/nkg`, `hip_abd_n/nkg`, `hip_add_n/nkg`, `df_iso_n/nkg`,
+  `inv_iso_n/nkg`, `ev_iso_n/nkg` — sert à localiser l'origine d'un déficit de force globale déjà
+  confirmé, jamais à le générer.
+- Preuves explicatives (cinétique de production de force, mesurées) : familles RFD/ttpf des mêmes
+  tests globaux et segmentaires (`imtp_rfd100/200/ttpf`, etc.) — décrivent le profil neuromusculaire
+  sans redéfinir le niveau de force maximale.
+- Preuves explicatives biomécaniques (mesurées) : `rs_hip_push_*`, `rs_knee_push_*`,
+  `rs_ankle_push_*` — décrivent comment la force maximale se transfère dans une tâche fonctionnelle
+  spécifique.
+- **Aucune variable non mesurable n'intervient dans cette qualité** (contrairement à Mobilité) —
+  la fiche Force de Vierge_7 (Section 2) est entièrement construite sur des KPIs force-plate/
+  dynamomètre déjà présents dans Kinexus. C'est la qualité la plus simple à reconstruire
+  intégralement en HYP### sans aucun développement de collecte de données.
+- Tests non couverts par Vierge_7 (`sh_iso_9020/9090/3030/6060`, `iso_squat_hold`,
+  `seated_calf_raise`, `standing_calf_raise`, `hip_rot_int`, `hip_rot_ext`) : 🔶 **Point à
+  arbitrer** — à clarifier avec le praticien avant Phase C (même statut que pour Puissance, voir
+  audit VAR_REL3 §1.7) : rattacher à la famille "force segmentaire" explicative, ou considérer
+  hors-scope de Force ?
+
+---
+
 ## Qualités restantes à auditer (TFM)
 
-Force · Explosivité · Puissance · Réactivité · Absorption · Stabilisation · Contrôle Frontal ·
-Contrôle Sensoriel · Endurance — en attente de validation de la méthodologie sur Mobilité par le
-praticien avant de poursuivre.
+Puissance · Réactivité · Explosivité · Absorption · Stabilisation · Contrôle Sensori-moteur ·
+Endurance — Force terminée, en attente de validation avant de poursuivre.
