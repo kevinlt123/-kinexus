@@ -696,7 +696,220 @@ Force, `cmjr` pour Réactivité) apparaît désormais sur les 3 qualités sans e
 
 ---
 
+## 5. Explosivité
+
+### 5.0 — Anomalie de nommage interne à la fiche Vierge_7 (documentée, non résolue)
+
+Contrairement à Force (deux fiches complètes dupliquées), l'anomalie ici touche **une seule fiche**
+mais avec une rupture de convention en son sein : les sections "PREUVES DIAGNOSTIQUES", "PREUVES
+CONFIRMATIVES" et "VARIABLES EXCLUES" utilisent des codes majuscules (`CMJ_RFD_100`, `CMJ_PP_BM`,
+`DJ_PEAK_PROP_POWER`...), tandis que la section "PREUVES EXPLICATIVES PHYSIOLOGIQUES", **dans la
+même fiche**, utilise le nommage `snake_case` natif Kinexus (`imtp_rfd100`, `knee_ext_rfd50`...).
+Je documente ce constat sans le corriger : la correspondance code→variable utilisée ci-dessous
+(`CMJ_PP_BM` → `cmj_peak_power`, `CMJ_JH` → `cmj_height`, etc.) est une interprétation raisonnable
+mais non validée par le praticien, à vérifier avant Phase C si un doute clinique apparaît sur un
+mapping précis.
+
+### 5.1 — Question clinique cible (Vierge_7)
+
+*"Cet athlète est-il capable de développer rapidement une force importante dans les tâches où la
+montée en force est un enjeu central ?"* — Vierge_7 la distingue explicitement de la force maximale,
+de la puissance pure, de la réactivité, de l'absorption, de la stabilisation et de la mobilité.
+Opérationnellement, Vierge_7 cible la **vitesse de développement de la force en phase concentrique
+précoce du CMJ** (RFD à 100/150/200 ms + impulsion à 100 ms) — un sous-ensemble temporel très
+spécifique de la courbe force-temps.
+
+### 5.2 — Question réellement évaluée par TFM
+
+**TFM et Vierge_7 ne mesurent pas la même chose, et la divergence est double** (nouveauté par
+rapport aux 4 qualités précédentes) :
+1. **Divergence de configuration** (déjà vue sur Force/Puissance/Réactivité) : 23 tests pondèrent
+   `explosivite`, la plupart hors du périmètre Vierge_7.
+2. **Divergence de couverture de données, propre à cette qualité** : même en imaginant `TFM`
+   parfaitement reconfiguré pour ne garder que `cmj`/`slcmj`, la preuve diagnostique que Vierge_7
+   demande (RFD fenêtré à 100/150/200 ms) **n'existe pas dans le catalogue de KPIs CMJ de
+   Kinexus** — celui-ci n'a qu'un `conc_rfd` unique non fenêtré et un `conc_impulse_100` (un seul
+   des deux "compléments" demandés). Voir 5.5.
+
+La question réellement évaluée aujourd'hui se rapproche donc de : *"cet athlète a-t-il, au sens
+large, une bonne force/puissance/explosivité du membre inférieur ?"* — et même après correction de
+`TFM`, la question resterait *"cet athlète saute-t-il haut/vite ?"* plutôt que la question ciblée
+de Vierge_7 sur la fenêtre temporelle précoce de la montée en force.
+
+### 5.3 — Tests actuellement utilisés dans TFM (poids et rôle réel)
+
+Recherche exhaustive de `explosivite:` dans la table `TFM` — 23 tests :
+
+**Poids 3 (maximal — 2 tests)**
+
+| Test | Rôle réel dans le score aujourd'hui |
+|---|---|
+| `cmj`, `slcmj` | Seuls tests où vit, en théorie, la preuve diagnostique Vierge_7 — mais voir 5.4/5.5 pour la réserve structurelle majeure |
+
+**Poids 2 (16 tests)**
+
+`knee_ext`, `knee_flex`, `hip_flex`, `hip_ext`, `soleus_iso`, `gastro_iso`, `sl_iso_push`,
+`iso_belt_squat`, `profil_fv`, `imtp`, `slimtp`, `rs_hip_push`, `rs_knee_push`, `rs_ankle_push`,
+`seated_calf_raise`, `standing_calf_raise`
+
+**Poids 1 (5 tests)**
+
+`sh_iso_9020`, `sh_iso_3030`, `sh_iso_6060`, `iso_squat_hold`, `cmjr`
+
+### 5.4 — Promoteurs diagnostiques illégitimes (section dédiée)
+
+**Au palier de poids maximal (3) : aucun.** C'est une première dans cet audit — `cmj` et `slcmj`
+sont, tous deux, des tests où la preuve diagnostique Vierge_7 vit réellement (même si elle n'y est
+pas complètement calculable, voir 5.5). Contrairement à Force (7 tests segmentaires promus à
+poids 3), Puissance (`imtp`/`slimtp`/`profil_fv` promus à poids 3) et Réactivité (`cmjr` promu à
+poids 3), **aucun test structurellement illégitime n'occupe le palier maximal pour Explosivité.**
+
+**Mais un promoteur illégitime opère probablement à l'intérieur même de `cmj`/`slcmj`, invisible au
+niveau de la table `TFM`.** `computeTestStatus()` (ligne 4171) calcule un statut unique par test en
+moyennant tous les KPIs de ce test qui possèdent un seuil exploitable (`NORMS` ou, à défaut,
+`THRESHOLDS`). Or `THRESHOLDS` (ligne 1214) ne couvre, pour `cmj`, que `cmj_height` et
+`cmj_rsi_mod` — **aucun seuil statique pour `cmj_conc_rfd`, `cmj_conc_impulse_100`, ni aucune autre
+variable réellement diagnostique d'Explosivité.** `cmj_height` (= `CMJ_JH`) est en outre
+**explicitement exclue** du diagnostic d'Explosivité par Vierge_7. Sous réserve de la couverture
+effective de `NORMS` par population (non auditée ici, hors périmètre de cette mission), le statut
+"cmj" qui alimente `explosivite` à poids maximal risque donc d'être **dominé, dans la pratique, par
+une variable explicitement exclue** — un promoteur illégitime caché par la granularité de `TFM`,
+pas visible dans sa table de configuration. C'est un cas de **limite structurelle de TFM** distinct
+de tout ce qui a été observé sur les 4 qualités précédentes.
+
+### 5.5 — Comparaison avec Vierge_7 (par test)
+
+| Test | Poids TFM | Rôle Vierge_7 | Verdict |
+|---|---|---|---|
+| `cmj`, `slcmj` | 3 | Diagnostique (RFD fenêtré 100/150/200ms + impulsion 100ms) — **mais la majorité de ces KPIs n'existe pas dans le catalogue Kinexus** (`cmj_conc_rfd` existe, non fenêtré ; `cmj_conc_impulse_100` existe ; pas d'équivalent RFD-150/200) | 🔶 Test correct en principe, **écart de couverture** sur la preuve elle-même + réserve structurelle (5.4) |
+| `imtp`, `slimtp`, `iso_belt_squat`, `sl_iso_push` | 2 | Explicative physiologique uniquement ("production de force rapide globale") | ❌ Classification |
+| `knee_ext`, `knee_flex`, `hip_flex`, `hip_ext`, `soleus_iso`, `gastro_iso` | 2 | Explicative physiologique uniquement ("production de force segmentaire") | ❌ Classification (6 tests) |
+| `profil_fv` | 2 | Explicative physiologique uniquement ("chaîne force-vitesse") | ❌ Classification |
+| `iso_squat_hold` | 1 | Explicative physiologique uniquement (nommément listé) | ❌ Classification, mais poids mineur — peu sévère |
+| `rs_hip_push`, `rs_knee_push`, `rs_ankle_push` | 2 | **Non mentionnés dans la fiche Explosivité** (rôle établi ailleurs — explicative biomécanique de Force) | ⚠️ Hors référentiel / contamination croisée |
+| `seated_calf_raise`, `standing_calf_raise`, `sh_iso_9020`, `sh_iso_3030`, `sh_iso_6060` | 2/2/1/1/1 | Non mentionnés dans la fiche Explosivité | ⚠️ Hors référentiel |
+| `cmjr` | 1 | **Exclusion explicite et nommée** ("CMJR_PEAK_POWER, CMJR_MEAN_RSI, CMJR_MEAN_REBOUND_HEIGHT... ne doivent pas construire le diagnostic") | 🚫 **Violation d'exclusion directe** |
+| `dj`, `sldj` | — | Exclusion explicite et nommée (variables de puissance/réactivité) | 🟢 **Correctement absents** de `TFM.explosivite` |
+
+### 5.6 — Violations identifiées
+
+- **1 violation d'exclusion directe (🚫)** : `cmjr` — la moins nombreuse des 4 qualités TFM
+  auditées avec au moins une violation (Force : 7, Réactivité : 2, Explosivité : 1), et la seule où
+  les autres familles explicitement exclues (`dj`/`sldj`, mobilité, stabilisation, absorption) sont
+  **toutes** correctement absentes.
+- **Aucune contamination croisée au palier maximal** — nouveauté de cette qualité (voir 5.4).
+- **Contamination croisée aux paliers inférieurs** : `rs_hip_push`/`rs_knee_push`/`rs_ankle_push`
+  (rôle réel = Force), `seated_calf_raise`/`standing_calf_raise`/`sh_iso_*` (hors référentiel
+  Vierge_7 dans toutes les qualités auditées jusqu'ici).
+- **Dilution du diagnostic classique** : 11 tests explicatifs physiologiques (RFD segmentaire +
+  globale + profil F-V) pèsent à poids 2, un cran sous `cmj`/`slcmj` — hiérarchie respectée en
+  apparence, mais toujours un rôle qui ne devrait jamais peser dans le diagnostic.
+- **Donnée manquante — nouveau, dominant sur cette qualité** : la preuve diagnostique elle-même
+  (RFD fenêtré CMJ à 100/150/200 ms) n'existe qu'à moitié dans Kinexus. Aucune des 4 qualités
+  précédentes n'avait ce problème — leurs preuves diagnostiques (peak_power, RSI, peak_force au
+  test global) sont toutes déjà pleinement capturées.
+
+### 5.7 — Écart de question clinique
+
+**Oui, et c'est la première qualité où l'écart persiste même après correction complète de `TFM`.**
+Pour Force/Puissance/Réactivité, une reconfiguration pure de `TFM` (retirer les tests illégitimes)
+suffirait à aligner le score sur la question clinique de Vierge_7. Pour Explosivité, **même
+`cmj`/`slcmj` seuls, correctement isolés, ne répondraient pas à la question posée** — Kinexus ne
+capture pas la fenêtre temporelle précoce (100/150/200 ms) sur laquelle Vierge_7 fonde tout son
+diagnostic. Le score corrigé se rapprocherait au mieux d'un indicateur RFD généraliste
+(`cmj_conc_rfd`, non fenêtré) — une approximation de la question clinique, pas une réponse exacte.
+
+### 5.8 — Nature dominante de l'écart
+
+| Cause | Rôle |
+|---|---|
+| **Donnée manquante** | **Dominante** — première qualité TFM où ce facteur prime sur la classification. La preuve diagnostique visée par Vierge_7 (RFD CMJ fenêtré) n'est que partiellement calculable dans Kinexus |
+| Limite structurelle TFM | Secondaire mais significative — `computeTestStatus` agrège tous les KPIs seuillés d'un test sans distinguer leur rôle clinique ; combinée à la couverture étroite de `THRESHOLDS`, elle risque de faire porter le statut "cmj" par `cmj_height`, une variable explicitement exclue |
+| Dilution diagnostique | Secondaire — 11 tests explicatifs à poids 2 |
+| Contamination croisée | Secondaire — `rs_*`, tests hors référentiel |
+| Violation d'exclusion | Mineure — 1 seul test (`cmjr`), poids faible |
+| Mauvaise question clinique | Présente mais dérivée des causes ci-dessus, pas une cause première indépendante ici |
+
+### 5.9 — Gravité globale de l'écart
+
+**🔴 Critique**, mais d'une nature qualitativement différente des 4 qualités précédentes : la
+gravité ne vient pas principalement de tests illégitimes à corriger (il y en a peu au palier
+maximal — une première), mais du fait que **la correction de configuration seule ne suffira pas** à
+aligner le moteur sur Vierge_7. C'est la première qualité de l'audit où un plafond de données
+limite le gain atteignable par une simple reconfiguration de `TFM`.
+
+### 5.10 — Ratio de dilution
+
+- **Contributeurs TFM : 23**
+- **Contributeurs diagnostiques attendus (Vierge_7) : 2** (`cmj`, `slcmj` — au niveau test ; 0 au
+  niveau KPI si l'on exige la fenêtre RFD 100/150/200ms exacte, faute de couverture, voir 5.5)
+- **Ratio de dilution : 23/2 ≈ 11,5×** — le plus élevé des 5 qualités TFM auditées à ce stade
+  (comparaison ci-dessous), alors même que la gravité qualitative (peu de tests au palier max)
+  serait, prise isolément, la moins alarmante.
+
+### 5.11 — Impact produit
+
+Si Explosivité était reconstruite selon Vierge_7 :
+
+- Un athlète avec une bonne force maximale (IMTP), une bonne puissance de saut (CMJ peak power) ou
+  un bon profil force-vitesse mais une montée en force réellement lente en phase précoce du CMJ
+  **ne serait plus vu comme "Explosivité normale"** par simple compensation d'autres qualités —
+  sous réserve du plafond de couverture de données (5.7).
+- Retirer `cmjr` élimine une contamination directe avec la réactivité répétée.
+- **Contrairement aux 4 qualités précédentes, le gain clinique ici est plafonné par les données
+  disponibles** : une reconfiguration de `TFM` seule rapprochera le score de la question clinique
+  sans jamais l'atteindre complètement, sauf développement d'un RFD fenêtré CMJ (100/150/200 ms)
+  dans le pipeline d'extraction — décision produit, pas seulement une correction de configuration.
+
+### 5.12 — Structure cible HYP### (variables mesurées uniquement)
+
+- **`HYP-EXP-01`** — "Déficit de montée rapide en force", générée par les preuves diagnostiques
+  **effectivement mesurées** : `cmj_conc_rfd` (RFD concentrique non fenêtré — la meilleure
+  approximation disponible), `cmj_conc_impulse_100` (impulsion à 100ms — correspond bien à
+  `CMJ_IMPULSE_100MS`), et leurs équivalents `slcmj_edrfd_bm`/`slcmj_braking_rfd` pour la version
+  unilatérale (à confirmer avec le praticien — ces KPIs SLCMJ ne sont pas des correspondances
+  exactes du concept concentrique visé, voir 5.0).
+- **Aucune preuve diagnostique fenêtrée (150/200ms) disponible** — 🔶 **Point à arbitrer** : le
+  praticien souhaite-t-il ouvrir un chantier d'enrichissement du pipeline CMJ (ajout de RFD fenêtré,
+  comme cela existe déjà pour IMTP/SLIMTP/tests segmentaires) pour aligner Kinexus sur la
+  spécification Vierge_7, ou accepter `cmj_conc_rfd` non fenêtré comme approximation durable ?
+  Décision produit, pas un manque à corriger silencieusement.
+- Preuves confirmatives (mesurées) : `cmj_peak_power`, `cmj_conc_peak_force`, `cmj_conc_mean_force`,
+  `cmj_conc_impulse`.
+- Preuves explicatives physiologiques (mesurées) : familles RFD `imtp_rfd*`, `slimtp_rfd*`,
+  `iso_belt_squat_rfd*`, `sl_iso_push_rfd*`, `iso_squat_hold_rfd*`, RFD segmentaire complète,
+  `profil_fv_nkg`/`v0`.
+- Preuves explicatives biomécaniques (mesurées) : `cmj_depth`, `cmj_conc_duration`, `cmj_rsi_mod`,
+  `cmj_ecc_mean_power`, `cmj_ecc_peak_vel`, `cmj_braking_rfd` (probable équivalent de
+  `CMJ_ECC_DECEL_RFD`, même correspondance de nommage déjà notée pour Absorption).
+- `cmjr` : retiré intégralement — aucun rôle dans le référentiel Explosivité de Vierge_7.
+- `rs_hip_push`/`rs_knee_push`/`rs_ankle_push`, `seated_calf_raise`/`standing_calf_raise`,
+  `sh_iso_*` : 🔶 même point à arbitrer que pour Force/Puissance (hors référentiel Vierge_7).
+
+### 5.13 — Comparaison transversale (Mobilité, Force, Puissance, Réactivité, Explosivité)
+
+| Qualité | Contributeurs TFM (X) | Diagnostiques attendus (Y) | Ratio X/Y | Violations d'exclusion actives | Promoteurs illégitimes au palier max | Profil dominant |
+|---|---|---|---|---|---|---|
+| Mobilité | 5 | 1 | 5,0 | 4 | 3 (`df_iso`, `inv_iso`, `ev_iso`, + `ybt` hors-nommé) | Violation d'exclusion |
+| Force | 40 | 4 | 10,0 | 7 | 13 (7 segmentaires + `profil_fv` + 5 hors-référentiel) | Violation d'exclusion + dilution |
+| Puissance | 25 | 2 | 12,5 | 0 | 3 (`imtp`, `slimtp`, `profil_fv`) | Dilution diagnostique pure |
+| Réactivité | 19 | 2 | 9,5 | 2 | 1 (`cmjr`) | Hybride (dilution + exclusion) |
+| **Explosivité** | **23** | **2** | **11,5** | **1** | **0** | **Donnée manquante (nouveau)** |
+
+**Explosivité ne rejoint aucun des trois profils déjà observés — elle constitue une nouvelle
+famille d'écarts.** Elle a le ratio de dilution le plus élevé après Puissance/Force, mais quasiment
+aucun promoteur illégitime au palier maximal (le point fort de Mobilité/Force/Réactivité) — sa
+gravité vient d'ailleurs : de l'indisponibilité partielle de la preuve diagnostique elle-même, un
+facteur qu'aucune reconfiguration de `TFM` ne peut résoudre seule. C'est la première qualité de
+l'audit qui articule concrètement la distinction demandée par le praticien entre "reconfiguration
+suffisante" et "reconstruction/enrichissement de données nécessaire" — un signal fort et direct
+pour la synthèse transversale finale, et une première piste concrète pour l'hypothèse des 3
+familles évoquée par le praticien (une possible "Famille C — donnée manquante", à confirmer sur les
+qualités restantes plutôt que figée ici).
+
+---
+
 ## Qualités restantes à auditer (TFM)
 
-Explosivité · Absorption · Stabilisation · Contrôle Sensori-moteur · Endurance — Force, Puissance
-et Réactivité terminées, en attente de validation avant de poursuivre.
+Absorption · Stabilisation · Contrôle Sensori-moteur · Endurance — Force, Puissance, Réactivité et
+Explosivité terminées, en attente de validation avant de poursuivre.
