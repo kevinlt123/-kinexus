@@ -541,7 +541,162 @@ Si Puissance était reconstruite selon Vierge_7 (diagnostic porté uniquement pa
 
 ---
 
+## 4. Réactivité
+
+### 4.1 — Question clinique cible (Vierge_7)
+
+*"Cet athlète est-il capable de restituer rapidement la force après un contact au sol ou une
+contrainte de freinage ?"* — mesurée par le RSI (Reactive Strength Index) du Drop Jump bilatéral
+(DJ) et unilatéral (SLDJ). Vierge_7 est explicite : cette qualité "ne se confond ni avec la
+puissance pure, ni avec l'absorption seule, ni avec la force maximale."
+
+### 4.2 — Question réellement évaluée par TFM
+
+19 tests pondèrent aujourd'hui `reactivite` dans `TFM`. Au palier de poids maximal (3), 3 tests
+sont présents (`dj`, `sldj`, `cmjr`) — mais un seul des trois (`cmjr`) n'a en réalité aucun rôle
+diagnostique selon Vierge_7 : le CMJR n'y figure qu'en confirmative et en explicative
+biomécanique. La question réellement posée se rapproche de : *"cet athlète restitue-t-il bien la
+force au premier contact ET sur des contacts répétés ?"* — une fusion de deux questions cliniques
+que Vierge_7 sépare précisément (réactivité "au premier contact" vs. réactivité "répétée dans le
+temps", cette dernière frôlant l'endurance/fatigue — voir l'incohérence Vierge_7 déjà documentée en
+§2.8 de l'audit VAR_REL3).
+
+### 4.3 — Tests actuellement utilisés dans TFM (poids et rôle réel)
+
+Recherche exhaustive de `reactivite:` dans la table `TFM` — 19 tests :
+
+**Poids 3 (maximal — 3 tests)**
+
+| Test | Rôle réel dans le score aujourd'hui |
+|---|---|
+| `dj`, `sldj` | Contributeurs à poids maximal — **seuls légitimes de ce groupe** |
+| `cmjr` | Contributeur à poids **maximal**, à égalité stricte avec `dj`/`sldj` |
+
+**Poids 2 (7 tests)**
+
+`soleus_iso`, `gastro_iso`, `repeated_hop`, `triple_hop`, `crossover_hop`, `seated_calf_raise`,
+`standing_calf_raise`
+
+**Poids 1 (9 tests)**
+
+`wblt`, `hip_rot_ext`, `sl_iso_push`, `cmj`, `slcmj`, `side_hop`, `single_hop`, `heel_raise`,
+`rs_ankle_push`
+
+### 4.4 — Comparaison avec Vierge_7 (par test)
+
+| Test | Poids TFM | Rôle Vierge_7 | Verdict |
+|---|---|---|---|
+| `dj` | 3 | **Diagnostique principal** (`dj_rsi`) | ✅ Conforme |
+| `sldj` | 3 | **Diagnostique principal unilatéral** (`sldj_rsi`) | ✅ Conforme |
+| `cmjr` | 3 | Confirmative + explicative biomécanique uniquement — **jamais diagnostique** dans la fiche Réactivité | ❌ Classification — poids maximal pour un rôle qui ne devrait jamais fixer le diagnostic, à égalité stricte avec `dj`/`sldj`. Fait écho à un écart déjà repéré côté VAR_REL3 (§2.6/2.8), où le même excès était présent mais rendu inerte par l'anomalie d'orthographe (§0) — ici, dans `TFM`, il est **actif et réel** |
+| `triple_hop`, `crossover_hop` | 2 | Confirmative (tests horizontaux/fonctionnels — les deux explicitement listés pour Réactivité, contrairement à Puissance où `crossover_hop` était une contamination) | ⚠️ Rôle correct, poids raisonnable — pas une violation franche |
+| `soleus_iso`, `gastro_iso` | 2 | Explicative physiologique uniquement ("production de force rapide" — famille RFD) | ❌ Classification — poids important pour un rôle explicatif |
+| `repeated_hop` | 2 | **Rôle ambigu dans Vierge_7 lui-même** — cité comme confirmative au niveau test, mais la quasi-totalité de ses KPIs sont explicitement listés comme exclusion "endurance/fatigue" (incohérence déjà signalée, audit VAR_REL3 §2.8 pt.1) | 🔶 Non tranchable sans clarification de Vierge_7 — ni classé conforme ni classé violation ici |
+| `seated_calf_raise`, `standing_calf_raise` | 2 | Non mentionnés dans la fiche Réactivité de Vierge_7 | ⚠️ Hors référentiel |
+| `wblt` | 1 | **Exclusion explicite et nommée** — "variables de mobilité... ne doivent pas construire le diagnostic de réactivité" | 🚫 **Violation d'exclusion directe** |
+| `heel_raise` | 1 | **Exclusion explicite et nommée** — "variables d'endurance/fatigue" | 🚫 **Violation d'exclusion directe** |
+| `cmj`, `slcmj` | 1 | **N'apparaissent dans aucune section de la fiche Réactivité** — le CMJ "simple" est absent de cette qualité chez Vierge_7 (seuls DJ/SLDJ/CMJR y figurent) | ❌ Contamination croisée depuis Puissance |
+| `single_hop` | 1 | Confirmative (tests horizontaux/fonctionnels) | ⚠️ Rôle correct, poids un peu bas mais pas une violation |
+| `sl_iso_push` | 1 | Explicative physiologique uniquement ("production de force rapide globale") | ❌ Classification, poids mineur — écart peu sévère |
+| `hip_rot_ext`, `rs_ankle_push`, `side_hop` | 1 | Non mentionnés dans la fiche Réactivité de Vierge_7 | ⚠️ Hors référentiel / contamination mineure (`side_hop` a son rôle principal en Contrôle Frontal selon `TFM` lui-même) |
+
+### 4.5 — Violations identifiées
+
+- **2 violations d'exclusion directes (🚫)** : `wblt` (mobilité) et `heel_raise` (endurance/fatigue)
+  — moins nombreuses que Force (7) mais bien réelles, contrairement à Puissance (0). Réactivité se
+  positionne donc **entre les deux profils déjà observés**.
+- **Contamination croisée** : `cmj`/`slcmj` (Puissance, absents de la fiche Réactivité), `side_hop`
+  (rôle principal Contrôle Frontal selon `TFM` lui-même).
+- **Dilution du diagnostic au palier le plus influent** : comme pour Force et Puissance, le palier
+  de poids maximal (3) mélange les vrais tests diagnostiques (`dj`, `sldj`) avec un test qui n'a
+  aucun rôle diagnostique chez Vierge_7 (`cmjr`) — 2 tests légitimes sur 3 au palier max (67 %),
+  un ratio intermédiaire entre Puissance (2/5 = 40 %) et Force (4/17 = 24 %).
+- **Redondance conceptuelle confirmée** : l'excès de `cmjr` ici, actif dans `TFM`, est le même excès
+  que celui déjà repéré dans `VAR_REL3` (§2.6) mais qui y était rendu inerte par l'anomalie
+  d'orthographe (section 0 de l'audit VAR_REL3). Ce recoupement indépendant, sur deux mécanismes
+  différents, renforce la confiance dans ce diagnostic : ce n'est pas un artefact d'un seul moteur,
+  c'est une confusion clinique réelle et répétée entre "réactivité au premier contact" et
+  "réactivité répétée" dans la conception même du référentiel actuel.
+
+### 4.6 — Écart de question clinique
+
+**Oui, modérément — Réactivité se situe entre Puissance et Force sur ce critère.** Le diagnostic
+`dj`/`sldj` est présent et correctement pondéré au maximum (comme pour Puissance), mais il est dilué
+par `cmjr` au même palier (mécanisme de dilution proche de Force, bien que moins étendu). Sur 19
+tests pondérés, 2 violations d'exclusion actives (comme Force, en plus petit nombre) plutôt
+qu'aucune (comme Puissance). Environ 13-14 tests sur 19 (68-74 %) nécessitent une correction —
+ratio proche de celui de Puissance (76 %), mais la présence de violations d'exclusion rapproche le
+profil qualitatif de Réactivité de celui de Force.
+
+**Réactivité suit un modèle hybride, ni franchement "Mobilité/Force" ni franchement "Puissance"** :
+- Comme Force/Mobilité : violations d'exclusion actives et nommées (`wblt`, `heel_raise`).
+- Comme Puissance : le gros du volume d'écart vient de la dilution/classification (13 tests sur
+  19), pas des exclusions (2 tests sur 19) — et le ratio global de correction est du même ordre de
+  grandeur.
+- Signal propre à Réactivité, absent des deux autres : une **incohérence de spécification
+  Vierge_7 elle-même** (`repeated_hop`) qui empêche de trancher une partie de l'audit sans
+  clarification du praticien.
+
+### 4.7 — Gravité globale de l'écart
+
+**🔴 Critique** — 2 violations d'exclusion actives + dilution au palier maximal + contamination
+croisée. Moins sévère que Force (violations d'exclusion moins nombreuses, dilution moins étendue
+en proportion) mais plus sévère que Puissance sur le critère spécifique des exclusions (0 → 2).
+
+### 4.8 — Impact produit
+
+Si Réactivité était reconstruite selon Vierge_7 (diagnostic porté uniquement par `dj`/`sldj`) :
+
+- Un athlète en fatigue de contacts répétés (`cmjr`/`repeated_hop` dégradés) mais avec un premier
+  contact réactif normal (`dj`/`sldj` bons) **ne serait plus vu comme ayant une "Réactivité
+  diminuée"** — ce signal redeviendrait ce qu'il est cliniquement : un indice d'endurance/fatigue,
+  pas un déficit de réactivité de base. C'est la correction la plus significative de cette qualité.
+- Un déficit isolé de mobilité de cheville (WBLT) ou d'endurance (heel raise) ne pourrait plus, même
+  marginalement, faire baisser le score de Réactivité affiché.
+- Le score de Réactivité redeviendrait indépendant de celui de Puissance (`cmj`/`slcmj` retirés).
+- **Correction de configuration pure** pour l'essentiel — seul le statut de `repeated_hop` nécessite
+  une clarification de Vierge_7 avant toute correction de `TFM` sur ce point précis.
+
+### 4.9 — Structure cible HYP### (variables mesurées uniquement)
+
+- **`HYP-REA-01`** — "Déficit de réactivité au premier contact", générée uniquement par
+  `dj_rsi` (diagnostic principal) et `sldj_rsi` (diagnostic principal unilatéral) — déjà mesurées,
+  aucun développement requis.
+- Preuves confirmatives (mesurées) : `dj_height`, `dj_contact_time`, `dj_peak_prop_force`,
+  `dj_peak_prop_power`, `dj_leg_stiffness`, `sldj_*` équivalents, `single_hop_distance`,
+  `triple_hop_distance`, `crossover_hop_distance`.
+- Preuves explicatives physiologiques (mesurées) : familles RFD (`imtp_rfd*`, `slimtp_rfd*`,
+  `soleus_iso_rfd*`, `gastro_iso_rfd*`, `sl_iso_push_rfd*`, etc.), `profil_fv_nkg`/`v0`.
+- Preuves explicatives biomécaniques (mesurées) : KPIs DJ/SLDJ de stratégie (contact time, leg
+  stiffness, landing impulse/force), `cmjr_mean_ct`/`mean_stiffness`/`mean_rebound_height`/
+  `rsi_decay`/`stiffness_decay` — **le CMJR entier passe en preuve explicative biomécanique, jamais
+  diagnostique**, corrigeant à la fois l'écart `TFM` (§4.4) et l'écart `VAR_REL3` (§2.2/2.6) par la
+  même décision de conception.
+- **Preuve indirecte candidate, distincte du diagnostic principal** : une dégradation de
+  `repeated_hop_mean_rsi` dans le temps, en présence d'un `dj_rsi` normal, deviendrait une preuve
+  d'une hypothèse *différente* ("déficit d'endurance de réactivité"), pas un renforcement de
+  `HYP-REA-01`. 🔶 **Point à arbitrer avec le praticien** avant Phase C : cette hypothèse distincte
+  fait-elle partie du périmètre "Réactivité", ou bascule-t-elle entièrement dans "Endurance" (qualité
+  encore non auditée) ? Vierge_7 ne tranche pas explicitement ce point (voir 4.4).
+- `wblt`, `heel_raise`, `cmj`/`slcmj`, `side_hop` : retirés — aucun rôle, quel qu'il soit, dans le
+  référentiel Réactivité de Vierge_7.
+
+### 4.10 — Observation pour la synthèse transversale (famille A/B/C)
+
+Réactivité **ne confirme ni n'infirme proprement** l'hypothèse à trois familles évoquée par le
+praticien — elle illustre plutôt qu'une qualité peut cumuler des traits de plusieurs familles à la
+fois : des violations d'exclusion réelles mais limitées (trait "Famille A"), une hiérarchisation
+interne largement absente au palier maximal (trait "Famille B"), et un point de couverture non
+résolu — le statut de `repeated_hop` — qui touche autant à une ambiguïté de spécification qu'à une
+question de couverture de données. Trois qualités seulement auditées à ce stade côté `TFM` :
+prématuré pour figer la typologie, mais le motif "dilution au palier maximal par un test au rôle
+confirmatif/explicatif mal calibré" (`imtp`/`profil_fv` pour Puissance, tests segmentaires pour
+Force, `cmjr` pour Réactivité) apparaît désormais sur les 3 qualités sans exception — c'est,
+à ce stade, le motif récurrent le plus solide de toute la Phase A.
+
+---
+
 ## Qualités restantes à auditer (TFM)
 
-Réactivité · Explosivité · Absorption · Stabilisation · Contrôle Sensori-moteur · Endurance —
-Force et Puissance terminées, en attente de validation avant de poursuivre.
+Explosivité · Absorption · Stabilisation · Contrôle Sensori-moteur · Endurance — Force, Puissance
+et Réactivité terminées, en attente de validation avant de poursuivre.
