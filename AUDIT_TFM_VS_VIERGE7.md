@@ -1583,29 +1583,259 @@ une éventuelle relecture d'ensemble en synthèse finale plutôt qu'affirmée ic
 
 ---
 
-## Annexe B — Registre cumulatif des motifs architecturaux (7 qualités TFM auditées)
+## Annexe B — Registre cumulatif des motifs architecturaux (9 qualités TFM auditées — Phase A close)
 
-Accumulation structurée, sans synthèse finale à ce stade (demande explicite du praticien).
+Accumulation structurée, sans synthèse finale à ce stade (demande explicite du praticien) — la
+synthèse est produite séparément dans `PHASE_A_PRE_SYNTHESIS.md`.
 
 | Motif | Qualités concernées | Nb. qualités | Gravité observée | Exemples représentatifs |
 |---|---|---|---|---|
-| **Violation d'exclusion** | Mobilité, Force, Réactivité, Explosivité, Absorption, Stabilisation | 6/8 | Très variable — de 🟡 (poids 1, ex. `heel_raise`/Absorption) à 🔴 (poids 3, ex. tests segmentaires/Force, `sllt`/Stabilisation) | `df_iso`/`inv_iso`/`ev_iso` (Mobilité, poids 2-3) ; tests segmentaires (Force, poids 3) ; `sllt` (Stabilisation, poids 3) |
-| **Dilution diagnostique** | Toutes sauf Contrôle Sensori-moteur | 7/8 | Variable, corrélée au ratio X/Y — la plus sévère quand elle touche le palier maximal (Force, Puissance, Stabilisation via `sllt`) | `imtp`/`slimtp`/`profil_fv` à poids 3 pour Puissance ; 7 tests segmentaires à poids 3 pour Force |
-| **Contamination croisée** (test d'une autre qualité, hors exclusion nommée) | Force, Puissance, Réactivité, Explosivité, Absorption, Stabilisation | 6/8 | Généralement 🟡-🟠, poids rarement maximal sauf `profil_fv`/Force (🔴) | `crossover_hop` (Puissance) ; `cmj`/`slcmj` (Réactivité) ; `rs_*` (Explosivité) ; `sldj` (Stabilisation) |
-| **Donnée manquante** (KPI Vierge_7 non calculable dans Kinexus) | Explosivité (dominant) | 1/8, avec mention secondaire sur Absorption/Mobilité (couverture KPI limitée mais sans impact `TFM`) | 🔴 sur Explosivité (plafonne le gain atteignable même après correction complète) | RFD CMJ fenêtré 100/150/200ms absent du catalogue |
-| **Construction KPI→Test** (contamination interne à `computeTestStatus`, invisible dans la table `TFM`) | Explosivité (confirmée), Absorption (confirmée), Stabilisation (hypothèse ouverte sur `sldj`, clean sur 4/5 tests vérifiés) | 2 confirmées / 3 vérifiées / 8 auditées | 🔴 sur Explosivité (variable exclue dominante probable), 🟠 sur Absorption (variable exclue probable mais poids modéré) | `cmj_height` (exclu, probable dominant du statut `cmj`/Explosivité) ; `dj_rsi` (exclu, probable contributeur du statut `dj`/Absorption) |
-| **Confusion entre qualités voisines — spécification Vierge_7** (evidence quasi identique entre deux fiches, indépendant de `TFM`) | Contrôle Sensori-moteur ↔ Stabilisation | 2/8 (1 paire) | Non technique — question de fond pour le praticien, pas une gravité `TFM` | Sections diagnostique/confirmative/explicative physiologique quasi mot pour mot identiques entre les deux fiches |
-| **Limite structurelle TFM** (grain test, pas KPI — propriété de conception, indépendante d'une contamination confirmée) | Mobilité (WBLT à 4 rôles KPI non distinguables), Explosivité, Absorption, Stabilisation | Présente en principe sur 8/8 (propriété de conception), **confirmée avec impact concret sur 3/8** | Variable | Impossibilité de séparer `wblt_distance`/`wblt_lsi`/`wblt_asymmetry`/`wblt_relative_distance` (Mobilité) ; agrégation aveugle au rôle clinique du KPI (Explosivité/Absorption) |
-| **Incohérence de configuration interne à `TFM`** (indépendante de Vierge_7 — deux tests de même famille Vierge_7 traités différemment par `TFM`) | Stabilisation (`eo` vs `ef`, `hip_ext` vs `hip_abd`/`hip_add`) | 1/8 à ce stade | 🟡-🟠 | `eo:1` / `ef:2` pour une même famille diagnostique Vierge_7 |
+| **Violation d'exclusion** | Mobilité, Force, Réactivité, Explosivité, Absorption, Stabilisation, Endurance | 7/9 | Très variable — de 🟡 (poids 1-2, ex. `heel_raise`/Absorption, `cmjr`/Endurance) à 🔴 (poids 3, ex. tests segmentaires/Force, `sllt`/Stabilisation) | `df_iso`/`inv_iso`/`ev_iso` (Mobilité, poids 2-3) ; tests segmentaires (Force, poids 3) ; `sllt` (Stabilisation, poids 3) ; `cmjr` (Endurance, poids 2) |
+| **Dilution diagnostique** | Toutes sauf Contrôle Sensori-moteur et Endurance | 7/9 | Variable, corrélée au ratio X/Y — la plus sévère quand elle touche le palier maximal (Force, Puissance, Stabilisation via `sllt`) | `imtp`/`slimtp`/`profil_fv` à poids 3 pour Puissance ; 7 tests segmentaires à poids 3 pour Force |
+| **Contamination croisée** (test d'une autre qualité, hors exclusion nommée) | Force, Puissance, Réactivité, Explosivité, Absorption, Stabilisation, Endurance | 7/9 | Généralement 🟡-🟠, poids rarement maximal sauf `profil_fv`/Force (🔴) | `crossover_hop` (Puissance) ; `cmj`/`slcmj` (Réactivité) ; `rs_*` (Explosivité) ; `sldj` (Stabilisation) ; `side_hop`/`triple_hop` (Endurance) |
+| **Donnée manquante** (KPI Vierge_7 non calculable dans Kinexus) | Explosivité (dominant) | 1/9, avec mention secondaire sur Absorption/Mobilité (couverture KPI limitée mais sans impact `TFM`) | 🔴 sur Explosivité (plafonne le gain atteignable même après correction complète) | RFD CMJ fenêtré 100/150/200ms absent du catalogue |
+| **Construction KPI→Test** (contamination interne à `computeTestStatus`, invisible dans la table `TFM`) | Explosivité (confirmée), Absorption (confirmée), Stabilisation (clean sur 4/5 vérifiés, hypothèse ouverte sur `sldj`), Contrôle Sensori-moteur (clean sur 5/5), Endurance (clean sur 2/2, protection maximale) | 2 confirmées / 5 vérifiées / 9 auditées | 🔴 sur Explosivité (variable exclue dominante probable), 🟠 sur Absorption (variable exclue probable mais poids modéré) | `cmj_height` (exclu, probable dominant du statut `cmj`/Explosivité) ; `dj_rsi` (exclu, probable contributeur du statut `dj`/Absorption) ; `repeated_hop`/`heel_raise` (protection maximale, 14/15 et 1/1 KPIs légitimes) |
+| **Confusion entre qualités voisines — spécification Vierge_7** (evidence quasi identique entre deux fiches, indépendant de `TFM`) | Contrôle Sensori-moteur ↔ Stabilisation ; résidu mineur Réactivité ↔ Endurance (déjà largement clarifié, §9.0) | 2/9 (1 paire majeure + 1 résidu mineur) | Non technique — question de fond pour le praticien, pas une gravité `TFM` | Sections diagnostique/confirmative/explicative physiologique quasi mot pour mot identiques entre Stabilisation et CSM |
+| **Limite structurelle TFM** (grain test, pas KPI — propriété de conception, indépendante d'une contamination confirmée) | Mobilité (WBLT à 4 rôles KPI non distinguables), Explosivité, Absorption, Stabilisation ; **absente** (sans filet, hors sujet) sur Contrôle Sensori-moteur/Endurance | Présente en principe sur 9/9 (propriété de conception), **confirmée avec impact concret sur 3/9**, **infirmée explicitement sur 2/9** (CSM, Endurance) | Variable | Impossibilité de séparer `wblt_distance`/`wblt_lsi`/`wblt_asymmetry`/`wblt_relative_distance` (Mobilité) ; agrégation aveugle au rôle clinique du KPI (Explosivité/Absorption) |
+| **Incohérence de configuration interne à `TFM`** (indépendante de Vierge_7 — deux tests de même famille Vierge_7 traités différemment par `TFM`) | Stabilisation (`eo` vs `ef`, `hip_ext` vs `hip_abd`/`hip_add`) | 1/9 à ce stade | 🟡-🟠 | `eo:1` / `ef:2` pour une même famille diagnostique Vierge_7 |
+| **Dépendance `NORMS` non filtrée** (statut d'un test entièrement dépendant de la couverture par population, sans seuil statique de secours) | Endurance (`repeated_hop`, nouveau) | 1/9, non recherché systématiquement ailleurs | Non évalué — dépend de la couverture `NORMS` réelle, non auditée dans cette mission | `computeTestStatus('repeated_hop')` retourne `'jaune'` par défaut si aucun KPI n'est seuillé |
 
-**Non encore vérifié systématiquement sur toutes les qualités** : la construction KPI→Test n'a été
-auditée en détail que sur Explosivité, Absorption et Stabilisation/Contrôle Sensori-moteur (tests
-sensoriels). Mobilité, Force, Puissance et Réactivité n'ont pas fait l'objet de la même vérification
+**Non encore vérifié systématiquement sur toutes les qualités** : la construction KPI→Test a été
+auditée en détail sur Explosivité, Absorption, Stabilisation, Contrôle Sensori-moteur et Endurance
+(5/9). Mobilité, Force, Puissance et Réactivité n'ont pas fait l'objet de la même vérification
 explicite — signalé comme limite méthodologique de ce registre, pas comme absence du motif.
+
+---
+
+## 9. Endurance
+
+### 9.0 — Clarification rétroactive utile à Réactivité (§2.8 pt.1), pas une correction
+
+La lecture complète de la fiche Endurance résout une bonne partie de l'ambiguïté déjà signalée pour
+Réactivité (audit VAR_REL3 §2.8 pt.1 : contradiction apparente sur le rôle de `repeated_hop`).
+Vierge_7 assigne sans ambiguïté les KPIs de dégradation/fatigue de `repeated_hop`
+(`n_hops`, `rsi_fatigue`, `height_fatigue`, `ct_drift`, `stiffness_fatigue`) au diagnostic
+d'**Endurance**, et les exclut explicitement de Réactivité. La contradiction résiduelle est donc
+plus étroite qu'initialement décrite : elle ne porte plus sur "le rôle de `repeated_hop`" en
+général, mais uniquement sur l'identité exacte du KPI visé par la phrase confirmative de la fiche
+Réactivité ("le test `repeated_hop` confirme..."), qui reste non précisée. Documenté ici comme
+clarification croisée entre deux fiches déjà lues, pas comme un arbitrage — la question résiduelle
+reste ouverte pour le praticien.
+
+### 9.1 — Question clinique réelle : TFM vs Vierge_7
+
+**Vierge_7** : *"Cet athlète est-il capable de répéter l'effort sans chute précoce et excessive de
+performance ?"* — explicitement bornée à la **résistance à la fatigue spécifique** (pas
+l'endurance cardio-respiratoire générale), mesurée par la dégradation intra-série de deux tests :
+Repeated Hop (volume, RSI, hauteur, temps de contact, raideur) et Heel Raise (répétitions
+maximales).
+
+**TFM (`endurance`)** : 9 tests pondérés, dont les 2 seuls au palier maximal (`repeated_hop`,
+`heel_raise`) sont **exactement** les 2 familles diagnostiques de Vierge_7 — aucun troisième test
+ne partage ce palier. La question réellement évaluée par `TFM` est très proche de celle de
+Vierge_7 : *"la performance de cet athlète se dégrade-t-elle sur des efforts répétés (sauts ou
+extension de cheville) ?"*
+
+**Vérification des 5 distinctions demandées** :
+- *Capacité à maintenir la performance* vs *résistance à la fatigue* : Vierge_7 ne les distingue
+  pas formellement — les deux sont la même chose dans sa définition ("maintenir une production
+  mécanique efficace... en limitant la dégradation liée à la fatigue"). `TFM` ne les distingue pas
+  non plus, cohérence correcte.
+- *Endurance musculaire locale* (Heel Raise) vs *endurance neuromusculaire* (Repeated Hop) : les
+  deux sont bien présentes et correctement séparées en deux tests distincts, tous deux au palier
+  maximal — **c'est la seule qualité de l'audit à distinguer proprement deux sous-construits au
+  sein d'un même palier diagnostique**, plutôt que de les fusionner ou d'en privilégier un seul.
+- *Répétition d'efforts réactifs* : c'est la définition même de Repeated Hop chez Vierge_7 — bien
+  couverte.
+- **Aucune confusion trouvée avec Force maximale, Puissance, Réactivité, Absorption, Stabilisation
+  ou Mobilité** au palier diagnostique — contrairement à Stabilisation (contamination SLLT) ou
+  Puissance (dilution par IMTP), le palier maximal d'Endurance est structurellement isolé des
+  qualités voisines.
+
+### 9.2 — Rôle des Repeated Hops (section dédiée, demande explicite)
+
+| KPI `repeated_hop` | Rôle dans `VAR_REL3` (déjà audité) | Rôle dans Vierge_7 — fiche Endurance | Rôle dans Vierge_7 — fiche Réactivité |
+|---|---|---|---|
+| `n_hops` | Non tagué dans `VAR_REL3` | **Diagnostique principal de volume** | Non mentionné |
+| `rsi_fatigue` | Non tagué | **Diagnostique principal** | **Exclu explicitement** ("endurance/fatigue") |
+| `height_fatigue` | Non tagué | **Diagnostique principal** | **Exclu explicitement** |
+| `ct_drift` | Non tagué | **Diagnostique principal** | **Exclu explicitement** |
+| `stiffness_fatigue` | Non tagué | **Diagnostique principal** | Non mentionné explicitement (famille fatigue) |
+| `mean_rsi`, `best_rsi` | Tagués `Réactivité`/**Determinante** dans `VAR_REL3` (actifs, voir audit VAR_REL3 §2.2/2.7 — violation la plus sévère alors identifiée) | Confirmative ("niveau moyen"/"meilleure répétition") | Cité en confirmative bare ("repeated_hop"), rôle KPI exact non précisé (§9.0) |
+| `mean_height`, `mean_peak_force`, `mean_ct` | Non tagués | Confirmative | Non mentionnés |
+| `height_cv`, `ct_cv`, `rsi_cv` | Non tagués | Confirmative + explicative biomécanique | Non mentionnés |
+
+**Contradiction Vierge_7 documentée, non arbitrée** : la fiche Réactivité (déjà lue) cite le test
+`repeated_hop` comme confirmative sans préciser quel KPI, alors que la quasi-totalité des KPIs
+`repeated_hop` sont, dans la fiche Endurance, assignés à un rôle diagnostique **d'une qualité
+différente**. Le résidu d'ambiguïté est documenté en 9.0, pas tranché ici.
+
+**Rôle réel dans `TFM`** : `repeated_hop` (test entier, poids 3 pour `endurance`, poids 2 pour
+`reactivite` — cf. table `TFM` ligne 750) — c'est-à-dire que `TFM`, contrairement à `VAR_REL3`, **a
+déjà correctement hiérarchisé** `repeated_hop` comme prioritairement diagnostique pour Endurance
+(poids 3) et seulement secondairement pertinent pour Réactivité (poids 2, déjà documenté comme
+excès en §4.4/4.5 de cet audit). C'est cohérent avec Vierge_7 côté Endurance, et l'excès déjà
+signalé côté Réactivité (§4) reste le seul point non conforme.
+
+### 9.3 — Tests actuellement utilisés dans TFM (poids et rôle réel)
+
+Recherche exhaustive de `endurance:` dans la table `TFM` — **9 tests, 3ᵉ plus petit nombre de
+contributeurs de tout l'audit** (après Contrôle Sensori-moteur 5 et Mobilité 5) :
+
+| Test | Poids | Rôle Vierge_7 |
+|---|---|---|
+| `repeated_hop` | 3 | Diagnostique principal (5 KPIs de dégradation) |
+| `heel_raise` | 3 | Diagnostique principal local |
+| `cmjr` | 2 | **Exclusion explicite** — "variables de puissance" |
+| `soleus_iso`, `gastro_iso` | 1 | Explicative physiologique ("production de force segmentaire") |
+| `side_hop`, `triple_hop` | 1 | Non mentionnés dans la fiche Endurance |
+| `seated_calf_raise`, `standing_calf_raise` | 1 | Non mentionnés — mais candidats naturels non exploités, voir 9.6 |
+
+### 9.4 — Promoteurs diagnostiques illégitimes (section dédiée, demande explicite)
+
+**Aucun au palier maximal.** `repeated_hop` et `heel_raise` sont les deux seuls tests à poids 3,
+et les deux sont exactement les familles diagnostiques attendues — **4ᵉ qualité de l'audit dans ce
+cas** (après Explosivité, Absorption, Contrôle Sensori-moteur), la plus nette des quatre puisque,
+contrairement à Absorption/Stabilisation, aucun test à ce palier n'appartient même partiellement à
+une autre qualité.
+
+### 9.5 — Violations d'exclusion — surveillance ciblée CMJ/DJ/SLDJ/Repeated Hop/Heel Raise/SLLT/YBT/WBLT (demande explicite)
+
+| Test | Présent dans `endurance` ? | Conforme à Vierge_7 ? |
+|---|---|---|
+| `cmj`, `slcmj`, `dj`, `sldj` | **Non — absents** | ✅ Conforme (exclusion respectée) |
+| `cmjr` | **Oui, poids 2** | 🚫 **Violation d'exclusion directe** — seule violation trouvée pour cette qualité |
+| `repeated_hop` | Oui, poids 3 | ✅ Diagnostique principal, conforme |
+| `heel_raise` | Oui, poids 3 | ✅ Diagnostique principal local, conforme |
+| `sllt` | **Non — absent** | ✅ Conforme |
+| `ybt` | **Non — absent** | ✅ Conforme (Vierge_7 ne le mentionne pas non plus pour Endurance) |
+| `wblt` | **Non — absent** | ✅ Conforme |
+
+**Une seule violation d'exclusion (`cmjr`)** — le meilleur bilan d'exclusion de tout l'audit TFM
+avec Contrôle Sensori-moteur (0) et Puissance (0), et bien meilleur que Force (7), Mobilité (4),
+Absorption (4) ou Stabilisation (4).
+
+### 9.6 — Construction KPI → Test : repeated_hop / heel_raise (section dédiée, demande explicite)
+
+| Test | KPIs du catalogue Kinexus | Seuils statiques (`THRESHOLDS`) | Cohérence Vierge_7 | Contamination KPI→Test |
+|---|---|---|---|---|
+| `heel_raise` | `reps` (1 seul KPI) | `heel_raise_reps` seuillé | ✅ Exactement le KPI diagnostique attendu | **Aucune — impossible structurellement**, un seul KPI et c'est le bon |
+| `repeated_hop` | 15 KPIs (`mean_height`, `best_height`, `mean_rsi`, `best_rsi`, `mean_peak_force`, `n_hops`, `mean_ct`, `ct_drift`, `mean_stiffness`, `rsi_fatigue`, `height_fatigue`, `stiffness_fatigue`, `height_cv`, `ct_cv`, `rsi_cv`) | **Aucun seuil statique** — `computeTestStatus('repeated_hop')` dépend entièrement de `NORMS` par population (non auditée ici) ; en l'absence totale de couverture `NORMS`, `computeTestStatus` retourne `'jaune'` par défaut (ligne 4176) | **14 des 15 KPIs sont explicitement cités dans la fiche Endurance** (diagnostique, confirmative ou explicative biomécanique) — seul `mean_stiffness` n'est mentionné nulle part | **Aucune contamination possible même en théorie** — quel que soit le sous-ensemble de KPIs réellement thresholdé par `NORMS`, la quasi-totalité du catalogue est légitimement endurance-diagnostique. Cas le plus "protégé" de tout l'audit, davantage encore que `sls` (Stabilisation/CSM) |
+
+**Résultat, documenté comme demandé** : `repeated_hop` et `heel_raise` sont **tous deux
+structurellement protégés** de la contamination KPI→Test observée sur Explosivité (`cmj`) et
+Absorption (`dj`/`sldj`) — cette qualité rejoint Stabilisation/Contrôle Sensori-moteur dans la
+catégorie "vérifié, aucune contamination trouvée", avec la protection la plus large de tout
+l'audit (14/15 KPIs légitimes, contre 7/7 pour `sls` mais 1/1 seulement pour `eo`/`ef`/`strobo`).
+**Point de vigilance distinct, non lié au rôle des KPIs** : l'absence totale de seuils statiques
+pour `repeated_hop` rend son statut entièrement dépendant de la couverture `NORMS` par population —
+un athlète d'une population non couverte obtiendrait un statut `repeated_hop` neutre ('jaune') par
+défaut, indépendamment de sa performance réelle. Signalé comme dépendance critique, voir 9.8.
+
+### 9.7 — Nature dominante de l'écart
+
+| Cause | Rôle |
+|---|---|
+| **Violation d'exclusion** (`cmjr`) | Dominante, mais **isolée** — un seul test, poids modéré (2), le tableau le plus propre de tout l'audit sur ce critère avec CSM et Puissance |
+| Contamination croisée (`side_hop`, `triple_hop`) | Secondaire, poids mineur (1 chacun) |
+| Dilution diagnostique | **Quasi absente** — aucune au palier maximal |
+| Construction KPI→Test | **Absente**, vérifiée explicitement (9.6) — la plus solidement écartée de tout l'audit |
+| Donnée manquante | **Absente** au sens strict (tous les KPIs existent), mais **dépendance `NORMS`** critique et non vérifiée pour `repeated_hop` (9.6/9.8) |
+| Limite structurelle TFM | Non observée avec impact concret sur cette qualité |
+| Mauvaise question clinique | Non — meilleure concordance de question clinique de l'audit avec Contrôle Sensori-moteur |
+| Confusion entre qualités voisines | Résiduelle uniquement côté Vierge_7/Réactivité (9.0/9.2), déjà largement clarifiée, pas active côté `TFM` |
+
+### 9.8 — Dépendances critiques
+
+- **Dépend uniquement de `TFM`** pour `heel_raise` — configuration déjà quasi optimale.
+- **Dépend fortement de `NORMS`** pour `repeated_hop` — contrairement à `heel_raise`, aucun seuil
+  statique de secours n'existe ; la validité du statut `repeated_hop` (et donc d'une bonne partie
+  du score `endurance`, puisque ce test pèse au maximum) dépend entièrement d'une couverture
+  `NORMS` non auditée dans cette mission. C'est une dépendance différente de celles déjà
+  documentées (pas une contamination, une **absence totale de filet de sécurité** en cas de
+  population non couverte).
+- **Ne dépend d'aucun autre moteur intermédiaire** (pas de lien avec le cluster Mouvement, ni avec
+  `VAR_REL3`/Capacités).
+- **Dépendance croisée avec l'audit Réactivité** (§4/9.0) pour la clarification complète de la
+  place exacte de `repeated_hop` dans le raisonnement — dépendance documentaire, pas technique.
+
+### 9.9 — Gravité globale de l'écart
+
+**🟡 Mineur** — 2ᵉ qualité de l'audit dans cette catégorie, avec Contrôle Sensori-moteur. Palier
+maximal intégralement conforme, une seule violation d'exclusion à poids modéré, aucune
+contamination KPI→Test possible même en théorie. Le seul point de vigilance réel (dépendance
+`NORMS` non filtrée pour `repeated_hop`) est un risque opérationnel, pas un écart de conception
+vis-à-vis de Vierge_7.
+
+### 9.10 — Ratio de dilution
+
+- **Contributeurs TFM : 9**
+- **Contributeurs diagnostiques attendus (Vierge_7) : 2** (`repeated_hop`, `heel_raise`)
+- **Ratio de dilution : 9/2 = 4,5×** — le plus bas de tout l'audit après Contrôle Sensori-moteur
+  (0,83) et Stabilisation (5,33), et, contrairement à Stabilisation, sans aucune contamination au
+  palier maximal — c'est donc, de tout l'audit, le ratio le plus bas **conjugué** à une conformité
+  totale du palier diagnostique.
+
+### 9.11 — Impact produit
+
+- Retirer `cmjr` du calcul d'`endurance` élimine la seule contamination active — gain marginal
+  (poids 2 sur 9 contributeurs), Endurance étant déjà proche de la question clinique de Vierge_7.
+- **Le point le plus actionnable n'est pas une correction de `TFM`, mais une vérification de
+  `NORMS`** : confirmer que `repeated_hop` dispose bien de seuils exploitables pour les populations
+  couvertes par Kinexus, faute de quoi le score d'Endurance peut afficher un statut neutre non
+  informatif silencieusement.
+- `seated_calf_raise`/`standing_calf_raise` (répétitions de mollets) sont, par leur nature même de
+  test répété, des candidats naturels pour l'endurance musculaire locale — plus that heel_raise
+  ne couvre qu'un seul mouvement. Décision produit à soumettre au praticien, pas une correction.
+
+### 9.12 — Structure cible HYP### (variables mesurées uniquement)
+
+- **`HYP-END-01`** — "Déficit de résistance à la fatigue neuromusculaire (sauts répétés)", générée
+  par `repeated_hop_n_hops`, `repeated_hop_rsi_fatigue`, `repeated_hop_height_fatigue`,
+  `repeated_hop_ct_drift`, `repeated_hop_stiffness_fatigue` — 5 KPIs, tous déjà mesurés.
+- **`HYP-END-02`** — "Déficit d'endurance musculaire locale (mollet)", générée par
+  `heel_raise_reps` — déjà mesuré.
+- Preuves confirmatives (mesurées) : `repeated_hop_mean_height/rsi/peak_force/ct`,
+  `repeated_hop_best_height/rsi`, `repeated_hop_height_cv/ct_cv/rsi_cv`.
+- Preuves explicatives physiologiques (mesurées) : `imtp_n/nkg`, `slimtp_n/nkg`,
+  `iso_belt_squat_n/nkg`, `sl_iso_push_n/nkg`, famille segmentaire complète (`knee_ext`,
+  `knee_flex`, `soleus_iso`, `gastro_iso`, `hip_flex`, `hip_ext`, `hip_abd`, `hip_add`, `df_iso`,
+  `inv_iso`, `ev_iso`, en `n`/`nkg`), familles RFD correspondantes.
+- `cmjr` : retiré intégralement — aucun rôle dans le référentiel Endurance de Vierge_7 (déjà
+  légitimement diagnostique/confirmatif pour Réactivité, où il devrait rester, sous réserve du
+  reclassement déjà proposé §4.9).
+- `seated_calf_raise`/`standing_calf_raise` : 🔶 point à arbitrer, candidat le plus naturel de tout
+  l'audit pour ce point récurrent — Endurance est la qualité où leur intégration ferait le plus
+  sens clinique si le praticien valide leur ajout à Vierge_7.
+
+### 9.13 — Positionnement dans les familles d'écarts
+
+Endurance rejoint clairement le profil de **Contrôle Sensori-moteur** : palier maximal
+intégralement conforme, ratio de dilution bas, absence de contamination KPI→Test. Différence
+notable : Endurance conserve **une** violation d'exclusion active (`cmjr`, absente chez CSM) et
+**aucune** confusion de spécification avec une qualité voisine (contrairement à CSM/Stabilisation) —
+son seul point de friction documentaire (§9.0/9.2) est déjà largement résolu par simple lecture
+croisée, pas une ambiguïté de fond comparable. Endurance et Contrôle Sensori-moteur forment,
+ensemble, un sous-groupe distinct des 6 autres qualités auditées — les deux qualités où `TFM`
+approche le plus fidèlement l'intention de Vierge_7.
+
+### 9.14 — Tableau transversal (final, 9 qualités TFM)
+
+| Qualité | Ratio dilution (X/Y) | Exclusions actives | Promoteurs illégitimes au palier max | KPI→Test | Profil dominant | Gravité |
+|---|---|---|---|---|---|---|
+| Mobilité | 5/1 = 5,0 | 4 | 3 | Non vérifié | Violation d'exclusion | 🔴 |
+| Force | 40/4 = 10,0 | 7 | 13 | Non vérifié | Exclusion + dilution | 🔴 |
+| Puissance | 25/2 = 12,5 | 0 | 3 | Non vérifié | Dilution diagnostique pure | 🔴 |
+| Réactivité | 19/2 = 9,5 | 2 | 1 | Non vérifié | Hybride (dilution + exclusion) | 🔴 |
+| Explosivité | 23/2 = 11,5 | 1 | 0 | **Oui** (`cmj_height`) | Donnée manquante | 🔴 |
+| Absorption | 35/4 = 8,75 | 4 | 0 | **Oui** (`dj_rsi`, hypothèse) | Limite structurelle TFM | 🟠 |
+| Stabilisation | 32/6 = 5,33 | 4 | 1 (`sllt`) | Non sur 4 diag. ; hypothèse sur `sldj` | Exclusion inter-qualités (sous-type) | 🔴 |
+| Contrôle Sensori-moteur | 5/6 = 0,83 | 0 | 0 | Non — vérifié | Confusion de spécification | 🟡 |
+| **Endurance** | **9/2 = 4,5** | **1** | **0** | **Non — vérifié, protection maximale** | **Violation d'exclusion isolée** | **🟡** |
 
 ---
 
 ## Qualités restantes à auditer (TFM)
 
-Endurance — Force, Puissance, Réactivité, Explosivité, Absorption, Stabilisation et Contrôle
-Sensori-moteur terminées, en attente de validation avant de poursuivre.
+Aucune — les 9 qualités `TFM` sont auditées. Voir `PHASE_A_PRE_SYNTHESIS.md` pour la clôture de la
+Phase A.
