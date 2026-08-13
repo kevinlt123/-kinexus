@@ -1335,7 +1335,277 @@ pas une quatrième famille indépendante à ce stade.
 
 ---
 
+## 8. Contrôle Sensori-moteur
+
+*Note de nommage : Vierge_7 nomme cette qualité "Contrôle Sensori-moteur" (avec trait d'union,
+titre exact de la fiche) ; Kinexus la nomme "Contrôle Sensoriel" dans `FUNCTIONS`
+(`FN_KEY: controle_sensoriel`). Même quantité auditée, deux noms différents — ajouté à l'annexe
+Normalisation du vocabulaire (voir fin de document).*
+
+### 8.1 — Question clinique réelle : TFM vs Vierge_7 (section dédiée, demande explicite)
+
+**Vierge_7** : *"Cet athlète est-il capable d'intégrer correctement les informations sensorielles
+pour stabiliser et ajuster son contrôle moteur ?"* — la fiche prend soin de préciser qu'elle ne se
+confond avec aucune des 7 autres qualités déjà auditées (mobilité, force, puissance, explosivité,
+réactivité, absorption, endurance) — **Stabilisation n'est pas citée dans cette liste de
+distinction**, alors que Vierge_7 l'a soigneusement listée pour toutes les autres qualités
+proches. C'est le premier indice, dans le texte même de Vierge_7, d'un chevauchement volontaire ou
+non avec Stabilisation — développé en 8.2.
+
+**TFM (`controle_sensoriel`)** : avec seulement 5 tests pondérés — le plus petit nombre de
+contributeurs de tout l'audit — et 4 d'entre eux exactement alignés sur les 4 familles
+diagnostiques attendues (`eo`, `ef`, `strobo`, `sls`, tous à poids maximal), `TFM` répond à une
+question très proche de celle de Vierge_7 : *"cet athlète maintient-il son équilibre avec/sans
+vision, sous perturbation sensorielle, en appui unipodal ?"* — **c'est la meilleure concordance de
+question clinique de tout l'audit TFM à ce stade.** La seule divergence : la famille "Landing
+stability" (contextuelle chez Vierge_7) est totalement absente de `TFM.controle_sensoriel` — la
+question posée aujourd'hui ignore donc le "contrôle retrouvé après une contrainte mécanique",
+présent chez Vierge_7.
+
+**Confusions vérifiées explicitement, comme demandé** :
+- *Avec Stabilisation* : confusion réelle, mais côté **spécification Vierge_7**, pas côté
+  implémentation `TFM` — voir 8.2.
+- *Avec Équilibre / Contrôle postural* : ce sont les mêmes construits que "Stabilisation" et
+  "Contrôle Sensori-moteur" chez Vierge_7 — pas une confusion supplémentaire, la même déjà
+  identifiée.
+- *Avec Mobilité* : aucune — `wblt` n'apparaît même pas dans `TFM.controle_sensoriel` (contrairement
+  à son omniprésence ailleurs), et Vierge_7 ne le classe qu'en explicatif mineur pour cette qualité.
+- *Avec Contrôle Frontal* : `ybt` est le seul test présent qui pourrait suggérer un lien — mais à
+  poids 1 (le plus bas), et son rattachement principal selon `TFM` lui-même est `controle_frontal`
+  (poids 3, voir table `TFM` l.750). Pas une confusion active ici, plutôt une trace résiduelle
+  mineure. Statut définitif encore en suspens jusqu'à l'audit de Contrôle Frontal.
+
+### 8.2 — Frontière avec Stabilisation (section dédiée, demande explicite)
+
+**Constat le plus important de cet audit : la frontière est déjà floue dans Vierge_7 lui-même, avant
+même toute question d'implémentation `TFM`.**
+
+Comparaison directe des fiches Vierge_7 Stabilisation (§7 de cet audit) et Contrôle Sensori-moteur :
+
+| Section | Stabilisation | Contrôle Sensori-moteur | Écart |
+|---|---|---|---|
+| Diagnostique SLS | 7 variables (`sls_ttf`...`mean_velocity`) | **Mêmes 7 variables, à l'identique** | Aucun |
+| Diagnostique EO/EF | `eo_surface`, `ef_surface` | **Identique** | Aucun |
+| Diagnostique Strobo | `strobo_surface/cop_path/cop_vel` | **Identique** | Aucun |
+| Diagnostique Landing | 10 variables uni+bi | **Identiques** | Aucun |
+| Confirmative | Mêmes 3 blocs (SLS, Strobo, Landing) | **Identiques**, à une variable près (`strobo_ttf` en plus ici) | Quasi nul |
+| Explicative physiologique | "Contrôle sensorimoteur" (4 concepts non mesurés) + force des stabilisateurs + WBLT | **Identique**, mot pour mot | Aucun |
+| Explicative biomécanique | 3 sous-sections | 2 sous-sections (fusionnées) | Cosmétique |
+| Exclusions | Puissance/réactivité (KPI ciblés) + absorption (2 KPI ciblés) + force max (5 KPI ciblés) | Force max (8 KPI, périmètre plus large) + puissance/explosivité/réactivité (**tests entiers**) + absorption (**tests entiers**) + endurance (catégorie absente chez Stabilisation) | Périmètre d'exclusion plus large et plus radical ici, mais même intention |
+
+**Vierge_7 spécifie donc, mot pour mot, la même base de preuves diagnostiques et confirmatives pour
+deux qualités officiellement distinctes.** Ce n'est pas une contamination d'implémentation à
+corriger dans `TFM` — c'est une caractéristique du document source, à documenter et signaler,
+conformément à la consigne de ne pas trancher les contradictions de Vierge_7.
+
+**Côté `TFM`, la frontière EST numériquement marquée, mais dans un seul sens** :
+
+| | Stabilisation (`TFM`) | Contrôle Sensori-moteur (`TFM`) |
+|---|---|---|
+| Nombre de tests pondérés | 32 | 5 |
+| `sls`, `eo`, `ef`, `strobo` | Présents, poids 1-2 (dilués par 28 autres tests) | Présents, poids 3 (seuls, sans dilution) |
+| `ybt` | Poids 2 | Poids 1 |
+| `sllt`, tests segmentaires, `sldj`, etc. | Présents (contamination, voir §7) | **Absents** |
+| `landing_uni`/`landing_bi` | Présents (poids 2-3) | **Absents** — alors que Vierge_7 les cite comme diagnostiques pour les deux qualités |
+
+**Tests communs** : `sls`, `eo`, `ef`, `strobo`, `ybt` — les 5 seuls tests de
+`controle_sensoriel` sont, sans exception, également présents dans `stabilisation`.
+**Tests spécifiques à Stabilisation uniquement** : les 27 autres (dont `sllt`, `landing_bi`,
+`landing_uni`, `sldj`, toute la famille segmentaire).
+**Tests spécifiques à Contrôle Sensori-moteur uniquement** : aucun.
+
+**Contamination croisée identifiée** : aucune dans le sens Contrôle-Sensori-moteur→Stabilisation
+(les tests supplémentaires de Stabilisation ne sont pas illégitimement empruntés à Contrôle
+Sensori-moteur, ils viennent d'ailleurs — Absorption via `sllt`, Force via les tests segmentaires).
+**Constat inattendu** : paradoxalement, `TFM.controle_sensoriel`, en ne retenant que les 4 tests
+purs, se rapproche **davantage** de ce que devrait être un score de contrôle postural "propre" selon
+Vierge_7 que `TFM.stabilisation` lui-même — alors que c'est nominalement "Stabilisation" qui est
+censée porter ce rôle. Signal à remonter explicitement au praticien pour la synthèse : la qualité la
+mieux implémentée de l'audit répond, en partie, à la question qu'une autre qualité était censée
+porter.
+
+### 8.3 — Tests actuellement utilisés dans TFM (poids et rôle réel)
+
+Recherche exhaustive de `controle_sensoriel:` dans la table `TFM` — **5 tests, le plus petit
+nombre de contributeurs de tout l'audit** :
+
+| Test | Poids | Rôle Vierge_7 |
+|---|---|---|
+| `eo` | 3 | Diagnostique principal sensoriel |
+| `ef` | 3 | Diagnostique principal sensoriel |
+| `strobo` | 3 | Diagnostique principal sous contrainte |
+| `sls` | 3 | Diagnostique principal |
+| `ybt` | 1 | Non mentionné (statut en suspens, voir 8.1) |
+
+### 8.4 — Promoteurs diagnostiques illégitimes (section dédiée, demande explicite)
+
+**Aucun, à aucun palier.** C'est la première qualité de tout l'audit TFM dans ce cas — pas
+seulement au palier maximal (déjà vu pour Explosivité et Absorption), mais **sur l'intégralité de
+la table de poids**. Les 4 tests à poids 3 sont les 4 familles diagnostiques exactes de Vierge_7
+(à l'omission de Landing près, qui est un manque, pas un excès). Le seul test restant (`ybt`, poids
+1) n'est pas "promu" — il occupe le palier le plus bas possible et n'est même pas mentionné par
+Vierge_7, donc structurellement incapable de fausser le diagnostic de façon significative.
+
+### 8.5 — Violations d'exclusion — surveillance ciblée YBT/EO/EF/Strobo/SLS/Landing/WBLT (demande explicite)
+
+| Test | Présent dans `controle_sensoriel` ? | Bonne qualité selon Vierge_7 ? |
+|---|---|---|
+| `ybt` | Oui, poids 1 | Non tranché (hors référentiel des deux fiches Stabilisation/CSM lues à ce jour) |
+| `eo` | Oui, poids 3 | ✅ Oui — diagnostique principal sensoriel |
+| `ef` | Oui, poids 3 | ✅ Oui — diagnostique principal sensoriel |
+| `strobo` | Oui, poids 3 | ✅ Oui — diagnostique principal sous contrainte |
+| `sls` | Oui, poids 3 | ✅ Oui — diagnostique principal |
+| `landing_bi`/`landing_uni` | **Non — absents** | Devraient l'être selon Vierge_7 (diagnostique contextuel), mais `TFM` ne les y attache pas |
+| `wblt` | **Non — absent** | Cohérent : Vierge_7 ne le classe qu'en explicatif mineur, son absence à `controle_sensoriel` n'est donc pas une perte |
+
+**Aucune violation d'exclusion trouvée** — 3ᵉ qualité dans ce cas après Puissance et (partiellement)
+Stabilisation pour les tests hors sllt. Le seul écart de cette liste est une omission (`landing_*`),
+pas une intrusion.
+
+### 8.6 — Construction KPI → Test : EO / EF / Strobo / SLS / YBT (section dédiée, demande explicite)
+
+| Test | KPIs du catalogue Kinexus | Cohérence Vierge_7 | Contamination KPI→Test |
+|---|---|---|---|
+| `eo` | `surface` (1 seul) | ✅ Exact | **Aucune** |
+| `ef` | `surface` (1 seul) | ✅ Exact | **Aucune** |
+| `strobo` | `surface` (1 seul) | ✅ Exact (les KPIs `cop_path`/`cop_vel`/`ttf` que Vierge_7 mentionne n'existent pas dans Kinexus, comme déjà noté pour Stabilisation) | **Aucune** |
+| `sls` | `ttf`, `cop_path`, `cop_vel`, `ellipse_area`, `cop_range_ml`, `cop_range_ap`, `mean_velocity` (7) | ✅ Les 7 correspondent exactement aux 7 variables diagnostiques Vierge_7 | **Aucune** |
+| `ybt` | `ant`, `pm`, `pl`, `composite` (4) | Aucun de ces 4 KPIs n'est mentionné par Vierge_7 pour cette qualité | **Non applicable** — le test entier est hors référentiel, indépendamment du KPI qui porte son statut ; ce n'est pas une contamination d'un test par ailleurs légitime (contrairement à `cmj`/Explosivité ou `dj`/Absorption), c'est un test qui n'a de toute façon aucune place ici |
+
+**Conclusion, documentée comme demandé même si négative : aucune contamination KPI→Test identifiée
+sur les 5 tests de cette qualité.** 3ᵉ vérification consécutive (après Stabilisation) confirmant
+que ce mécanisme, bien réel sur Explosivité et Absorption, ne se généralise pas à toutes les
+qualités — il dépend spécifiquement de la richesse du catalogue de KPIs du test concerné (`cmj`,
+`dj`, `sldj` sont riches et donc exposés ; `eo`/`ef`/`strobo` n'ont qu'un seul KPI chacun ; `sls` a 7
+KPIs mais tous légitimes).
+
+### 8.7 — Ratio de dilution
+
+- **Contributeurs TFM : 5**
+- **Contributeurs diagnostiques attendus (Vierge_7) : 6** (`sls`, `eo`, `ef`, `strobo`,
+  `landing_uni`, `landing_bi` — mêmes 6 tests qu'en Stabilisation, évidence quasi identique §8.2)
+- **Ratio de dilution : 5/6 ≈ 0,83×** — **premier ratio inférieur à 1 de tout l'audit.** Ce n'est
+  plus un ratio de dilution mais un ratio de **sous-couverture de configuration** : `TFM` pondère
+  *moins* de tests que Vierge_7 n'en attend, faute d'avoir rattaché `landing_uni`/`landing_bi` à
+  cette qualité — pas une donnée manquante (les deux tests existent et sont même déjà pondérés
+  ailleurs, y compris pour Stabilisation), un simple oubli de configuration.
+
+### 8.8 — Nature dominante de l'écart
+
+| Cause | Rôle |
+|---|---|
+| **Confusion entre qualités voisines, au niveau spécification** (Stabilisation ↔ Contrôle Sensori-moteur, Vierge_7 lui-même) | **Dominante** — nouveau type de motif, distinct d'une contamination d'implémentation |
+| Sous-couverture de configuration (`landing_*` non rattachés) | Secondaire — un oubli de configuration, pas un manque de donnée |
+| Violation d'exclusion | **Absente** |
+| Dilution diagnostique | **Quasi absente** — la plus faible de tout l'audit |
+| Contamination croisée | **Absente** |
+| Construction KPI→Test | **Absente** (vérifiée explicitement, §8.6) |
+| Limite structurelle TFM | Non observée sur cette qualité (contrairement à Explosivité/Absorption) |
+| Mauvaise question clinique | Non côté `TFM` (question bien ciblée) — **oui côté Vierge_7 lui-même**, qui pose une question quasi identique à celle de Stabilisation sans jamais le reconnaître explicitement dans son propre texte |
+
+### 8.9 — Dépendances critiques (section dédiée, demande explicite)
+
+- **Dépend uniquement de `TFM`** pour l'essentiel — la configuration actuelle (5 tests, 4 corrects)
+  est déjà proche de l'optimal atteignable par une simple reconfiguration (ajouter
+  `landing_uni`/`landing_bi`).
+- **Dépend de `computeTestStatus`** seulement de façon marginale et déjà vérifiée saine (§8.6) — pas
+  un point de vigilance ici, contrairement à Absorption/Explosivité.
+- **Ne dépend d'aucun autre moteur intermédiaire** (pas de lien avec le cluster Mouvement/Phases
+  CMJ, ni avec `VAR_REL3`/Capacités).
+- **Dépend, de façon critique et bloquante pour la Phase C, d'une clarification du praticien sur
+  Vierge_7 lui-même** : tant que la relation Stabilisation/Contrôle Sensori-moteur n'est pas
+  clarifiée (deux qualités réellement distinctes avec des preuves à différencier, ou une qualité
+  unique que Vierge_7 a doublée), aucune reconstruction HYP### propre n'est possible pour l'une
+  sans l'autre. C'est la première dépendance de l'audit qui pointe vers le document source plutôt
+  que vers le code.
+
+### 8.10 — Gravité globale de l'écart
+
+**🟡 Mineur — première qualité de l'audit TFM sous 🔴/🟠.** Le score `controle_sensoriel` actuel
+est, budget de dilution et de contamination mis à part, la meilleure approximation de son intention
+Vierge_7 de tout l'audit. L'écart residuel (Landing absent, ratio 0,83) est mineur en gravité
+clinique, même s'il soulève une question de fond majeure sur la spécification elle-même (§8.2),
+qui elle, mérite l'attention du praticien indépendamment de la gravité technique.
+
+### 8.11 — Impact produit
+
+- Ajouter `landing_uni`/`landing_bi` à `controle_sensoriel` (à un poids cohérent avec leur statut
+  "contextuel") complèterait la couverture des 4 familles Vierge_7 — gain marginal, pure
+  configuration.
+- **Le vrai gain produit n'est pas ici, mais dans la clarification Stabilisation/Contrôle
+  Sensori-moteur** : si le praticien confirme que ce sont deux questions cliniques réellement
+  distinctes, il faudra enrichir Vierge_7 lui-même (préciser en quoi les preuves diffèrent) avant
+  toute reconstruction HYP### fidèle. Si au contraire il confirme qu'il s'agit largement de la même
+  question, `TFM.controle_sensoriel` (déjà propre) pourrait devenir la base de référence commune,
+  et `stabilisation` serait alors la qualité à corriger en priorité (retrait de `sllt` et des tests
+  segmentaires, §7.11) plutôt que reconstruite en parallèle d'un doublon.
+
+### 8.12 — Structure cible HYP### (variables mesurées uniquement)
+
+- **`HYP-CSM-01`** — "Déficit d'intégration sensorielle pour le contrôle postural", générée par
+  `sls_*` (7 KPIs), `eo_surface`, `ef_surface`, `strobo_surface` — déjà mesurées, aucun
+  développement requis.
+- Ajout recommandé, cohérent avec Vierge_7 : `landing_uni_tts`, `landing_bi_tts` en preuve
+  diagnostique contextuelle secondaire.
+- Preuves explicatives physiologiques (mesurées) : `hip_abd_rfd100/200`, `hip_ext_rfd100/200`,
+  `hip_add_rfd100`, `inv_iso_rfd100`, `ev_iso_rfd100`, `df_iso_rfd100`, `wblt_distance`.
+- **🔶 Point à arbitrer, prioritaire avant toute autre décision de conception pour cette qualité**
+  (voir 8.9) : `HYP-CSM-01` et `HYP-STA-01` (proposée §7.11) doivent-elles rester deux hypothèses
+  distinctes alimentées par la quasi-totalité des mêmes preuves diagnostiques, ou le praticien
+  souhaite-t-il fusionner/redéfinir l'une des deux qualités avant la Phase C ? Décision qui dépasse
+  le périmètre de cet audit.
+
+### 8.13 — Positionnement dans les familles d'écarts (sans forcer la classification)
+
+Contrôle Sensori-moteur ne rejoint aucun des 7 profils déjà observés — elle a le profil le plus
+propre de l'audit sur toutes les dimensions d'implémentation (dilution, exclusion, contamination,
+KPI→Test), ce qui l'exclut de fait de Mobilité/Force/Puissance/Réactivité/Explosivité/Absorption/
+Stabilisation. Elle introduit un axe d'écart qu'aucune qualité précédente n'a isolé aussi
+nettement : **un problème situé dans la spécification Vierge_7 elle-même plutôt que dans son
+implémentation**, ce qui la rapproche davantage des incohérences déjà signalées (répétition
+`ecc_dec`/`braking`, contradiction `peak_landing_force` de Stabilisation) que des écarts
+d'implémentation des 7 autres qualités. Si une famille doit être esquissée : **"Famille D —
+confusion de spécification entre qualités voisines"**, provisoire, à confirmer sur Endurance et sur
+une éventuelle relecture d'ensemble en synthèse finale plutôt qu'affirmée ici.
+
+### 8.14 — Tableau transversal (mis à jour, avec gravité)
+
+| Qualité | Ratio dilution (X/Y) | Exclusions actives | Promoteurs illégitimes au palier max | KPI→Test | Profil dominant | Gravité |
+|---|---|---|---|---|---|---|
+| Mobilité | 5/1 = 5,0 | 4 | 3 | Non vérifié | Violation d'exclusion | 🔴 |
+| Force | 40/4 = 10,0 | 7 | 13 | Non vérifié | Exclusion + dilution | 🔴 |
+| Puissance | 25/2 = 12,5 | 0 | 3 | Non vérifié | Dilution diagnostique pure | 🔴 |
+| Réactivité | 19/2 = 9,5 | 2 | 1 | Non vérifié | Hybride (dilution + exclusion) | 🔴 |
+| Explosivité | 23/2 = 11,5 | 1 | 0 | **Oui** (`cmj_height`) | Donnée manquante | 🔴 |
+| Absorption | 35/4 = 8,75 | 4 | 0 | **Oui** (`dj_rsi`, hypothèse) | Limite structurelle TFM | 🟠 |
+| Stabilisation | 32/6 = 5,33 | 4 | 1 (`sllt`) | Non sur les 4 diag. ; hypothèse ouverte sur `sldj` | Exclusion inter-qualités (sous-type) | 🔴 |
+| **Contrôle Sensori-moteur** | **5/6 = 0,83** | **0** | **0** | **Non — vérifié, aucune** | **Confusion de spécification (nouveau)** | **🟡** |
+
+---
+
+## Annexe B — Registre cumulatif des motifs architecturaux (7 qualités TFM auditées)
+
+Accumulation structurée, sans synthèse finale à ce stade (demande explicite du praticien).
+
+| Motif | Qualités concernées | Nb. qualités | Gravité observée | Exemples représentatifs |
+|---|---|---|---|---|
+| **Violation d'exclusion** | Mobilité, Force, Réactivité, Explosivité, Absorption, Stabilisation | 6/8 | Très variable — de 🟡 (poids 1, ex. `heel_raise`/Absorption) à 🔴 (poids 3, ex. tests segmentaires/Force, `sllt`/Stabilisation) | `df_iso`/`inv_iso`/`ev_iso` (Mobilité, poids 2-3) ; tests segmentaires (Force, poids 3) ; `sllt` (Stabilisation, poids 3) |
+| **Dilution diagnostique** | Toutes sauf Contrôle Sensori-moteur | 7/8 | Variable, corrélée au ratio X/Y — la plus sévère quand elle touche le palier maximal (Force, Puissance, Stabilisation via `sllt`) | `imtp`/`slimtp`/`profil_fv` à poids 3 pour Puissance ; 7 tests segmentaires à poids 3 pour Force |
+| **Contamination croisée** (test d'une autre qualité, hors exclusion nommée) | Force, Puissance, Réactivité, Explosivité, Absorption, Stabilisation | 6/8 | Généralement 🟡-🟠, poids rarement maximal sauf `profil_fv`/Force (🔴) | `crossover_hop` (Puissance) ; `cmj`/`slcmj` (Réactivité) ; `rs_*` (Explosivité) ; `sldj` (Stabilisation) |
+| **Donnée manquante** (KPI Vierge_7 non calculable dans Kinexus) | Explosivité (dominant) | 1/8, avec mention secondaire sur Absorption/Mobilité (couverture KPI limitée mais sans impact `TFM`) | 🔴 sur Explosivité (plafonne le gain atteignable même après correction complète) | RFD CMJ fenêtré 100/150/200ms absent du catalogue |
+| **Construction KPI→Test** (contamination interne à `computeTestStatus`, invisible dans la table `TFM`) | Explosivité (confirmée), Absorption (confirmée), Stabilisation (hypothèse ouverte sur `sldj`, clean sur 4/5 tests vérifiés) | 2 confirmées / 3 vérifiées / 8 auditées | 🔴 sur Explosivité (variable exclue dominante probable), 🟠 sur Absorption (variable exclue probable mais poids modéré) | `cmj_height` (exclu, probable dominant du statut `cmj`/Explosivité) ; `dj_rsi` (exclu, probable contributeur du statut `dj`/Absorption) |
+| **Confusion entre qualités voisines — spécification Vierge_7** (evidence quasi identique entre deux fiches, indépendant de `TFM`) | Contrôle Sensori-moteur ↔ Stabilisation | 2/8 (1 paire) | Non technique — question de fond pour le praticien, pas une gravité `TFM` | Sections diagnostique/confirmative/explicative physiologique quasi mot pour mot identiques entre les deux fiches |
+| **Limite structurelle TFM** (grain test, pas KPI — propriété de conception, indépendante d'une contamination confirmée) | Mobilité (WBLT à 4 rôles KPI non distinguables), Explosivité, Absorption, Stabilisation | Présente en principe sur 8/8 (propriété de conception), **confirmée avec impact concret sur 3/8** | Variable | Impossibilité de séparer `wblt_distance`/`wblt_lsi`/`wblt_asymmetry`/`wblt_relative_distance` (Mobilité) ; agrégation aveugle au rôle clinique du KPI (Explosivité/Absorption) |
+| **Incohérence de configuration interne à `TFM`** (indépendante de Vierge_7 — deux tests de même famille Vierge_7 traités différemment par `TFM`) | Stabilisation (`eo` vs `ef`, `hip_ext` vs `hip_abd`/`hip_add`) | 1/8 à ce stade | 🟡-🟠 | `eo:1` / `ef:2` pour une même famille diagnostique Vierge_7 |
+
+**Non encore vérifié systématiquement sur toutes les qualités** : la construction KPI→Test n'a été
+auditée en détail que sur Explosivité, Absorption et Stabilisation/Contrôle Sensori-moteur (tests
+sensoriels). Mobilité, Force, Puissance et Réactivité n'ont pas fait l'objet de la même vérification
+explicite — signalé comme limite méthodologique de ce registre, pas comme absence du motif.
+
+---
+
 ## Qualités restantes à auditer (TFM)
 
-Contrôle Sensori-moteur · Endurance — Force, Puissance, Réactivité, Explosivité, Absorption et
-Stabilisation terminées, en attente de validation avant de poursuivre.
+Endurance — Force, Puissance, Réactivité, Explosivité, Absorption, Stabilisation et Contrôle
+Sensori-moteur terminées, en attente de validation avant de poursuivre.
