@@ -5,7 +5,22 @@
 Construction des HYP### complets, à partir des décisions figées dans `HYP_ARCHITECTURE_FREEZE.md`
 (validées en bloc par le praticien) et de `HYP_ARCHITECTURE_PHASE_B.md`. Aucun code, aucune
 configuration, aucune recommandation d'entraînement — uniquement le moteur de raisonnement
-clinique. Commence par Force, Puissance, Réactivité ; les 6 qualités restantes suivront.
+clinique. Force, Puissance, Réactivité construites en premier ; Explosivité, Absorption,
+Stabilisation, Endurance, Mobilité ci-dessous complètent la couverture (Contrôle Sensori-moteur
+reste suspendue, conformément au gel).
+
+**Méthodologie renforcée à partir de cette livraison** (consignes du praticien) :
+- **Aucune logique clinique nouvelle.** Si une orientation, un lien segmentaire ou une condition
+  d'activation n'est explicitement supporté ni par la fiche de qualité, ni par un `CLI###`, ni par
+  une autre section formelle de Vierge_7, l'absence est documentée telle quelle — jamais complétée
+  par analogie avec une autre qualité.
+- **Séparation systématique** entre 📄 ce qui est explicitement écrit dans Vierge_7 (fiche de
+  qualité ou `CLI###`, cité ou paraphrasé fidèlement) et 🔧 ce qui relève d'une inférence
+  nécessaire à la construction du HYP### (rapprochement de nommage, déduction de structure) —
+  marqué à chaque fois que la distinction n'est pas triviale.
+- **Encadré "Niveau de maturité de la qualité"** en fin de chaque fiche : couverture
+  diagnostique/confirmative/explicative physiologique/explicative biomécanique/`CLI###`, données
+  manquantes, ambiguïtés restantes.
 
 ## ⚠️ Découverte préalable : une couche Vierge_7 non lue jusqu'ici, directement pertinente
 
@@ -286,8 +301,476 @@ toutes les variables `repeated_hop_*` de fatigue/dégradation (voir Endurance)
 
 ---
 
-## Prochaines qualités
+## Note structurelle valable pour les 5 fiches suivantes
 
-Explosivité, Absorption, Stabilisation (Contrôle Sensori-moteur suspendue), Endurance, Mobilité —
-avec vérification systématique de la présence ou non d'une section Niveau 2 dédiée dans Vierge_7
-pour chacune, sur le même principe que celui appliqué ici à Force/Puissance/Réactivité.
+Vérification faite (relecture des parties 2 et 3 de Vierge_7, structure complète de la matrice
+CLI### de la partie 2) : **aucune des 5 qualités ci-dessous ne dispose d'une section "Niveau 2 —
+Orientations spécifiques" dédiée.** Force reste la seule qualité dotée de cette décomposition
+segmentaire (`CLI200`-`213`). 📄 Constat documenté, pas une inférence — la section "NIVEAU 3 -
+FONCTIONS MOTRICES" suit directement le bloc Force dans le document, sans qu'aucune autre section
+"NIVEAU 2" n'apparaisse pour une autre qualité.
+
+Mapping `CLI###` → qualité confirmé pour l'ensemble du document (Niveau 1) : `CLI010`-`012`=Force ·
+`CLI020`-`021`=Mobilité · `CLI030`-`031`=Explosivité · `CLI040`-`041`=Puissance ·
+`CLI050`-`051`=Réactivité · `CLI060`-`061`=Absorption · `CLI070`-`071`=Stabilisation ·
+`CLI080`-`081`=Endurance · `CLI090`-`092`=Contrôle Sensori-moteur.
+
+---
+
+## HYP-EXP-01 — Explosivité
+
+### Question clinique
+📄 *Cet athlète est-il capable de développer rapidement une force importante dans les tâches où la
+montée en force est un enjeu central ?*
+
+### Critères diagnostiques
+📄 `cmj_conc_rfd` · 📄 `cmj_conc_impulse_100`
+*(voir décomposition mesuré/proxy/impossible ci-dessous — ce sont les 2 seules variables
+réellement calculées par Kinexus parmi les 4 que Vierge_7 vise)*
+
+### Critères confirmatifs
+📄 `cmj_peak_power` · `cmj_conc_peak_force` · `cmj_conc_mean_force` · `cmj_conc_impulse`
+*(fiche de qualité ; `CLI030` cite les mêmes trois premières sous les libellés génériques
+`CMJ_PP_BM`/`CMJ_PEAK_FORCE`/`CMJ_CONCENTRIC_IMPULSE` — cohérent, aucun conflit)*
+
+### Variables explicatives physiologiques
+📄 `imtp_rfd100`/`rfd200`/`ttpf` · `slimtp_rfd100`/`rfd200`/`ttpf` ·
+`iso_belt_squat_rfd100`/`rfd200`/`ttpf` · `sl_iso_push_rfd100`/`rfd200`/`ttpf` ·
+`iso_squat_hold_rfd100`/`rfd200`/`ttpf` · cinétique segmentaire complète (11 familles RFD) ·
+`profil_fv_nkg`/`v0` (fiche de qualité).
+⚠️ `CLI030` cite une liste plus étroite ("Toutes les RFD IMTP, Belt Squat, SLIMTP, segmentaires") —
+**omet explicitement `sl_iso_push` et `iso_squat_hold`**, pourtant présents dans la fiche de
+qualité. 📄 Écart documenté entre les deux sections, non arbitré ; la fiche de qualité (plus
+complète) reste la source retenue pour `HYP-EXP-01`, conformément au principe déjà appliqué
+ailleurs (section détaillée > résumé, gel point 6).
+
+### Variables explicatives biomécaniques
+📄 `cmj_depth` · `cmj_conc_duration` · `cmj_rsi_mod` · `cmj_ecc_mean_power` · `cmj_ecc_peak_vel` ·
+🔧 `cmj_braking_rfd` (correspondance inférée de `CMJ_ECC_DECEL_RFD`, non confirmée par le
+praticien — gel point 11, décision déjà actée d'adopter cette correspondance)
+
+### Conditions minimales d'activation
+📄 `CLI030` : **"au moins deux variables RFD déficitaires"** parmi les 4 citées (`CMJ_RFD100`,
+`CMJ_RFD150`, `CMJ_RFD200`, `CMJ_IMPULSE100MS`). 🔧 Inférence nécessaire pour l'implémentation :
+comme seules 2 de ces 4 variables sont réellement mesurées (`cmj_conc_rfd`, `cmj_conc_impulse_100`
+— voir ci-dessous), la condition "deux déficitaires parmi quatre" ne peut aujourd'hui porter que
+sur ces deux-là. Vierge_7 ne prévoit pas explicitement ce cas de figure (une condition portant sur
+un ensemble de variables partiellement indisponibles) — l'application de la condition aux 2
+variables disponibles est une inférence, pas une règle écrite.
+
+### Conditions de rejet
+📄 Aucune formalisée, comme pour les autres qualités déjà construites.
+
+### Conditions de confiance
+📄 `CLI031` ("Optimiser le recrutement explosif") : condition "RFD100 sous le seuil" seule (une
+variable), contre "deux variables RFD déficitaires" pour `CLI030` — donc, structurellement, `CLI031`
+accepte un niveau de preuve plus faible pour une orientation plus spécifique. 📄 Constat rapporté
+tel quel, pas harmonisé avec `CLI030`.
+
+### Orientations cliniques possibles
+- 📄 **`CLI030`** — Améliorer la vitesse de développement de force (déclencheur : score
+  Explosivité diminué ; condition : ≥ 2 variables RFD déficitaires).
+- 📄 **`CLI031`** — Optimiser le recrutement explosif (condition : RFD100 sous le seuil — pas de
+  déclencheur explicite fourni pour cette entrée).
+
+### Liens vers déficits segmentaires
+📄 **Aucun lien segmentaire dédié** (pas de section Niveau 2 pour Explosivité — voir note en tête
+de section).
+
+### Variables contributrices (inventaire consolidé)
+`cmj` (KPIs cités ci-dessus) · `imtp` · `slimtp` · `iso_belt_squat` · `sl_iso_push` ·
+`iso_squat_hold` · `profil_fv` · famille segmentaire RFD complète (11 tests)
+
+### Variables exclues
+📄 Variables de puissance pure du CMJ/SLCMJ (`cmj_height`, `cmj_peak_vel`, `cmj_conc_mean_power`,
+équivalents SLCMJ) · toutes les variables DJ, SLDJ, CMJR · `wblt_distance`/`lsi`/`asymmetry`
+(mobilité) · toutes les variables de SLS, EO, EF, Strobo (stabilisation) · toutes les variables de
+Landing, SLLT (absorption)
+
+### 🔍 Ce qui est réellement mesuré, approché, ou impossible aujourd'hui (demande explicite)
+
+| Variable Vierge_7 | Statut réel dans Kinexus |
+|---|---|
+| `CMJ_IMPULSE100MS` | **Mesuré directement** — correspond exactement à `cmj_conc_impulse_100`, déjà calculé |
+| `CMJ_RFD100`, `CMJ_RFD150`, `CMJ_RFD200` | **Approché par proxy** — Kinexus ne calcule qu'un `cmj_conc_rfd` unique, non fenêtré sur la phase concentrique entière ; ce proxy remplace 3 variables distinctes attendues par Vierge_7, avec une perte de résolution temporelle |
+| RFD fenêtrée à 100/150/200 ms spécifiquement | **Impossible à mesurer aujourd'hui** — nécessiterait un calcul de pente force-temps sur des fenêtres glissantes depuis l'onset du mouvement, non implémenté dans le pipeline CMJ actuel de Kinexus |
+
+### 📋 Niveau de maturité de la qualité
+
+| Critère | Évaluation |
+|---|---|
+| Couverture diagnostique | 🟠 Partielle — 2 des 4 variables visées par Vierge_7 sont mesurées, sous forme de proxy pour les 3 variantes fenêtrées |
+| Couverture confirmative | 🟢 Complète — les 4 variables confirmatives (fiche + `CLI030`) sont toutes mesurées |
+| Couverture explicative physiologique | 🟢 Complète (fiche de qualité) — écart mineur avec `CLI030`, qui en cite un sous-ensemble |
+| Couverture explicative biomécanique | 🟡 Quasi complète — une correspondance de nommage non confirmée (`cmj_braking_rfd`) |
+| Couverture `CLI###` | 🟢 Complète — 2 orientations Niveau 1, aucune section Niveau 2 |
+| Données manquantes | RFD fenêtrée du CMJ (100/150/200 ms) — plafond de confiance structurel déjà acté au gel |
+| Ambiguïtés restantes | Écart de périmètre entre la fiche de qualité et `CLI030` sur les variables explicatives (`sl_iso_push`/`iso_squat_hold` omis dans `CLI030`) ; correspondance `cmj_braking_rfd` non confirmée par le praticien |
+
+---
+
+## HYP-ABS-01 — Absorption
+
+### Question clinique
+📄 *Cet athlète sait-il freiner et dissiper correctement la charge sans perte excessive de
+contrôle, de temps ou de symétrie ?*
+
+### Critères diagnostiques
+📄 `landing_uni_tts` · `landing_bi_tts` · `sllt_peak_landing_force`, `sllt_ttplf`,
+`sllt_loading_rate`, `sllt_tts`, `sllt_cop_path` · `cmj_ecc_mean_power`, `cmj_ecc_peak_vel` ·
+🔧 `cmj_braking_rfd`, `cmj_braking_impulse` (correspondance inférée, gel point 11)
+
+### Critères confirmatifs
+📄 `landing_bi_peak_landing_force` · `cmj_depth`, `cmj_conc_duration`, `cmj_rsi_mod`,
+`cmj_conc_peak_force`, `cmj_conc_mean_force`, `cmj_landing_impulse` · `dj_contact_time`,
+`dj_landing_impulse`, `dj_peak_landing_force` · équivalents `sldj_*`
+
+### Variables explicatives physiologiques
+📄 `imtp_rfd100`/`rfd200` · `slimtp_rfd100`/`rfd200` · `iso_belt_squat_rfd100`/`rfd200` ·
+`sl_iso_push_rfd100`/`rfd200` · `knee_ext_rfd100`/`rfd150`/`rfd200` · `soleus_iso_rfd100`/`rfd200`
+· `gastro_iso_rfd100`/`rfd200` · `hip_abd_rfd100` · `hip_add_rfd100` · `hip_ext_rfd100` ·
+`hip_flex_rfd100` · `wblt_distance`
+
+### Variables explicatives biomécaniques
+📄 `cmj_braking_duration` (double rôle) · `dj_contact_time`/`leg_stiffness`/`peak_landing_force`/
+`landing_impulse`/`peak_prop_force`/`peak_prop_power` (double rôle) · équivalents `sldj_*`
+
+### Conditions minimales d'activation
+📄 `CLI060` : **"deux preuves diagnostiques déficitaires"**.
+
+### Conditions de rejet
+📄 Aucune formalisée.
+
+### Conditions de confiance
+📄 `CLI060`/`CLI061` citent systématiquement "Peak Landing Force" et "Time To Stabilization"
+comme les deux piliers (diagnostique/confirmative croisés selon l'orientation) — convergence entre
+ces deux signaux comme facteur principal de confiance, cohérent avec la fiche de qualité.
+
+### Orientations cliniques possibles
+- 📄 **`CLI060`** — Améliorer la capacité d'absorption (déclencheur : score Absorption diminué ;
+  diagnostiques : "Peak Landing Force", "Time To Stabilization" ; confirmatives : "COP", "Post
+  Stability" ; explicatives : "Force, Mobilité, Stabilisation" — 3 *qualités* citées comme
+  explicatives, pas des variables individuelles, même motif d'abstraction que `CLI040`/Puissance ;
+  condition : deux preuves diagnostiques déficitaires).
+- 📄 **`CLI061`** — Réduire les pics d'impact (diagnostique : "Peak Landing Force" ; confirmative :
+  "Time To Stabilization" ; explicative : "Force excentrique" ; pas de condition numérique fournie).
+
+### Liens vers déficits segmentaires
+📄 **Aucun lien segmentaire dédié.**
+
+### Variables contributrices (inventaire consolidé)
+`landing_uni` · `landing_bi` · `sllt` · `cmj` (KPIs cités) · `dj` · `sldj` · `imtp` · `slimtp` ·
+`iso_belt_squat` · `sl_iso_push` · `knee_ext` · `soleus_iso` · `gastro_iso` · `hip_abd` ·
+`hip_add` · `hip_ext` · `hip_flex` · `wblt`
+
+### Variables exclues
+📄 `dj_rsi`, `sldj_rsi`, `cmjr_mean_rsi`, `cmjr_mean_rebound_height`, `single_hop_distance`,
+`triple_hop_distance`, `crossover_hop_distance`, `repeated_hop_mean_rsi` (réactivité pure) ·
+`heel_raise_reps`, `repeated_hop_ct_drift`, `repeated_hop_rsi_fatigue`,
+`repeated_hop_height_fatigue` (endurance)
+
+### 🔎 Réexamen demandé : `landing_bi_peak_landing_force`, `sllt`, `landing_uni`, `sls` à la lumière de `CLI###`
+
+- **`landing_bi_peak_landing_force`** : 📄 `CLI060` et `CLI061` citent tous deux "Peak Landing
+  Force" comme variable pivot d'Absorption (diagnostique dans les deux). **Corrobore la décision
+  du gel** (variable exclue de Stabilisation, conservée pour Absorption) — aucun changement.
+- **`sllt`** : 📄 aucune mention de SLLT dans `CLI060`/`061`, ni sous ce nom ni sous un libellé
+  générique reconnaissable. Le lien reste établi uniquement via la fiche de qualité (diagnostique
+  principal unilatéral). **Pas de contradiction avec le gel — silence, pas un désaccord.**
+- **`landing_uni`** : 📄 "Time To Stabilization" apparaît dans `CLI060` (confirmative) et `CLI061`
+  (confirmative) sans distinguer `landing_uni`/`landing_bi`/`sllt` — cohérent avec le rôle
+  diagnostique déjà retenu pour `landing_uni_tts`. **Aucun changement.**
+- **`sls`** : 📄 SLS n'apparaît dans aucune section de `CLI060`/`CLI061` — cohérent avec son
+  absence du référentiel Absorption (SLS appartient à Stabilisation/CSM, jamais cité pour
+  Absorption dans la fiche de qualité non plus). **Aucun changement.**
+
+**Conclusion du réexamen pour Absorption** : les arbitrages du gel restent cohérents avec les
+sections `CLI###` nouvellement découvertes — aucune révision nécessaire.
+
+### 📋 Niveau de maturité de la qualité
+
+| Critère | Évaluation |
+|---|---|
+| Couverture diagnostique | 🟢 Forte pour SLLT (5/5 KPIs) et la phase excentrique CMJ (sous réserve de la correspondance de nommage) ; 🟠 limitée pour Landing (1-2 KPIs sur 4-5 attendus par test) |
+| Couverture confirmative | 🟢 Bonne — 13 variables mesurées, aucune manquante identifiée |
+| Couverture explicative physiologique | 🟢 Complète sur les familles citées |
+| Couverture explicative biomécanique | 🟡 Partielle — dépend de la correspondance `cmj_braking_*` non confirmée |
+| Couverture `CLI###` | 🟢 2 orientations Niveau 1, cohérentes avec la fiche de qualité, aucune section Niveau 2 |
+| Données manquantes | KPIs Landing (`loading_rate`/`impulse`/`cop_path` pour `landing_uni` et `landing_bi`) non calculés par Kinexus |
+| Ambiguïtés restantes | Statut des asymétries (gel point 3, non résolu ici) ; correspondance `cmj_braking_*` non confirmée |
+
+---
+
+## HYP-STAB-01 — Stabilisation
+
+### Question clinique
+📄 *Cet athlète est-il capable de stabiliser efficacement son corps après une contrainte, un appui
+ou une perturbation ?*
+
+### Critères diagnostiques
+📄 `sls_ttf`, `sls_cop_path`, `sls_cop_vel`, `sls_ellipse_area`, `sls_cop_range_ml`,
+`sls_cop_range_ap`, `sls_mean_velocity` · `eo_surface`, `ef_surface` · `strobo_surface` ·
+`landing_uni_tts`, `landing_bi_tts` *(fiche de qualité — voir réexamen ci-dessous : `CLI070` ne
+couvre qu'une partie de cette liste)*
+
+### Critères confirmatifs
+📄 Mêmes variables SLS · `strobo_surface` (double rôle) · `landing_uni_tts`, `landing_bi_tts`
+(double rôle) — fiche de qualité.
+
+### Variables explicatives physiologiques
+📄 `hip_abd_rfd100`/`rfd200` · `hip_ext_rfd100`/`rfd200` · `hip_add_rfd100` · `inv_iso_rfd100` ·
+`ev_iso_rfd100` · `df_iso_rfd100` · `wblt_distance`
+
+### Variables explicatives biomécaniques
+📄 `sls_cop_path`, `sls_cop_vel`, `sls_cop_range_ml`, `sls_cop_range_ap`, `sls_ellipse_area`,
+`sls_mean_velocity` (double rôle) · `strobo_surface`, `landing_uni_tts`, `landing_bi_tts` (triple
+rôle)
+
+### Conditions minimales d'activation
+📄 `CLI070` : **"deux preuves diagnostiques déficitaires"**. ⚠️ Mais le diagnostique de `CLI070`
+ne cite que **SLS** — EO/EC apparaissent en confirmative, pas en diagnostique, et Strobo/Landing
+n'apparaissent nulle part dans `CLI070`/`CLI071` (voir réexamen ci-dessous). 🔧 Inférence
+nécessaire : appliquer "deux preuves diagnostiques déficitaires" au sens de la fiche de qualité
+(4 familles) suppose d'étendre le périmètre de `CLI070`, ce que Vierge_7 ne fait pas
+explicitement — écart signalé, pas résolu.
+
+### Conditions de rejet
+📄 Aucune formalisée.
+
+### Conditions de confiance
+📄 `CLI070` : SLS diagnostique + EO/EC confirmatives, cohérence renforcée si les deux convergent.
+
+### Orientations cliniques possibles
+- 📄 **`CLI070`** — Améliorer la stabilité posturale (déclencheur : score Stabilisation diminué ;
+  diagnostique : SLS ; confirmatives : EO, EC *(libellé Vierge_7 — "EC" ici, "EF" dans la fiche de
+  qualité et dans `TFM`/`VAR_REL3`, variante de nommage non harmonisée par Vierge_7 lui-même)* ;
+  explicatives : Hip Abd, Hip Ext, Inv, Ev ; condition : deux preuves diagnostiques déficitaires).
+- 📄 **`CLI071`** — Réduire les oscillations posturales (diagnostique : COP Path ; confirmative :
+  COP Velocity ; explicative : "Force des stabilisateurs" ; pas de condition numérique fournie).
+
+### Liens vers déficits segmentaires
+📄 **Aucun lien segmentaire dédié.**
+
+### Variables contributrices (inventaire consolidé)
+`sls` · `eo` · `ef` · `strobo` · `landing_uni` · `landing_bi` · `hip_abd` · `hip_ext` · `hip_add` ·
+`inv_iso` · `ev_iso` · `df_iso` · `wblt`
+
+### Variables exclues
+📄 🚫 `sllt_peak_landing_force`, `sllt_loading_rate` (voir réexamen ci-dessous) · `cmj_peak_power`,
+`slcmj_peak_power`, `dj_rsi`, `sldj_rsi`, `cmjr_mean_rsi`, `single_hop_distance`,
+`triple_hop_distance`, `crossover_hop_distance`, `repeated_hop_mean_rsi` (puissance/réactivité) ·
+`imtp_n`/`nkg`, `knee_ext_n`, `soleus_iso_n`, `gastro_iso_n` (force maximale) ·
+`landing_bi_peak_landing_force` (gel point 2)
+
+### 🔎 Réexamen demandé : `landing_bi_peak_landing_force`, `sllt`, `landing_uni`, `sls` à la lumière de `CLI###`
+
+- **`landing_bi_peak_landing_force`** : 📄 absent de `CLI070`/`CLI071` — aucune mention, ni sous ce
+  nom ni générique. **Corrobore la décision du gel** (exclusion) — le silence de la matrice
+  d'orientation sur ce point ne contredit pas l'exclusion, il ne la contredit pas non plus
+  activement ; c'est une absence cohérente avec l'exclusion déjà actée.
+- **`sllt`** : 📄 également absent de `CLI070`/`CLI071`, sous quelque nom que ce soit. **Corrobore
+  fortement la décision du gel** — SLLT n'apparaît dans aucune section de Stabilisation, ni la
+  fiche de qualité (hors exclusion explicite), ni la matrice d'orientation. Renforce la conclusion
+  déjà établie en Phase A : SLLT n'a structurellement aucune place légitime dans Stabilisation.
+- **`landing_uni`** (`tts`) : ⚠️ **point nouveau, non résolu.** La fiche de qualité le classe
+  diagnostique principal contextuel, mais `CLI070`/`CLI071` — les deux seules orientations
+  Stabilisation trouvées dans Vierge_7 — **ne le mentionnent nulle part**. Le diagnostic
+  `HYP-STAB-01` continue de l'inclure (fiche de qualité, source retenue par défaut), mais aucune
+  orientation clinique connue ne se déclenche actuellement sur ce signal si Landing est le seul
+  déficit trouvé. **Documenté comme un écart de couverture entre le niveau diagnostique et le
+  niveau orientation, pas arbitré.**
+- **`sls`** : 📄 confirmé comme le seul déclencheur diagnostique explicite de `CLI070`. **Renforce**
+  son statut de variable diagnostique centrale de Stabilisation, déjà établi.
+
+**Conclusion du réexamen pour Stabilisation** : les arbitrages du gel sur `sllt`/
+`landing_bi_peak_landing_force` restent cohérents, corroborés par une nouvelle source
+indépendante. **Un point nouveau apparaît cependant** : Landing (`tts`) est diagnostique dans la
+fiche de qualité mais absent des deux orientations `CLI###` connues de Stabilisation — signalé au
+praticien, pas résolu ici.
+
+### 📋 Niveau de maturité de la qualité
+
+| Critère | Évaluation |
+|---|---|
+| Couverture diagnostique | 🟢 SLS (7/7 KPIs), EO/EF (1/1 chacun) ; 🟠 Strobo (1 KPI sur 3 attendus) ; 🟠 Landing (1-2 KPIs sur 4-5 attendus, et absent de la matrice d'orientation, voir réexamen) |
+| Couverture confirmative | 🟢 Bonne, entièrement réutilisée de la liste diagnostique |
+| Couverture explicative physiologique | 🟢 Complète sur les 6 familles citées |
+| Couverture explicative biomécanique | 🟢 Complète |
+| Couverture `CLI###` | 🟡 Partielle — 2 orientations trouvées, périmètre plus étroit (SLS seul en diagnostique) que la fiche de qualité (4 familles) |
+| Données manquantes | KPIs Strobo (`cop_path`/`cop_vel`) et Landing (`loading_rate`/`impulse`/`cop_path`) non calculés |
+| Ambiguïtés restantes | Landing absent de la matrice d'orientation malgré son statut diagnostique en fiche de qualité (nouveau, non résolu) ; quasi-duplication avec Contrôle Sensori-moteur (gel point 1, `HYP-CSM-01` suspendue) — **note complémentaire** : `CLI090` (CSM) couvre EO/EC/Strobo/SLS ensemble comme déclencheur, contre SLS seul pour `CLI070` (Stabilisation) — une différenciation réelle qui n'existait pas au niveau des fiches de qualité, potentiellement pertinente pour une future réouverture du point 1, non traitée ici car `HYP-CSM-01` reste suspendue par instruction explicite |
+
+---
+
+## HYP-END-01 — Endurance
+
+### Question clinique
+📄 *Cet athlète est-il capable de répéter l'effort sans chute précoce et excessive de
+performance ?* (résistance à la fatigue spécifique)
+
+### Critères diagnostiques
+📄 `heel_raise_reps` · `repeated_hop_n_hops` · `repeated_hop_rsi_fatigue`,
+`repeated_hop_height_fatigue`, `repeated_hop_ct_drift`, `repeated_hop_stiffness_fatigue`
+*(fiche de qualité ; `CLI080` cite exactement les mêmes 5 variables de fatigue/dégradation +
+`heel_raise_reps`, sans `n_hops` — omission mineure notée, sans conséquence car `n_hops` reste
+soutenu par la fiche de qualité)*
+
+### Critères confirmatifs
+📄 `repeated_hop_mean_height`, `mean_rsi`, `mean_peak_force`, `mean_ct` · `best_height`, `best_rsi`
+· `height_cv`, `ct_cv`, `rsi_cv`
+
+### Variables explicatives physiologiques
+📄 `imtp_n`/`nkg` · `slimtp_n`/`nkg` · `iso_belt_squat_n`/`nkg` · `sl_iso_push_n`/`nkg` · force
+segmentaire complète (`n`/`nkg`, 11 familles) · cinétique complète (15 familles RFD)
+
+### Variables explicatives biomécaniques
+📄 `repeated_hop_mean_ct`, `ct_drift`, `height_cv`, `ct_cv`, `rsi_cv` (double rôle) ·
+`repeated_hop_mean_height`, `best_height`, `mean_rsi`, `best_rsi`, `mean_peak_force` (double rôle)
+
+### Conditions minimales d'activation
+📄 `CLI080` : **"deux preuves diagnostiques déficitaires"**.
+
+### Conditions de rejet
+📄 Aucune formalisée.
+
+### Conditions de confiance
+📄 `CLI080` cite "Mean RSI, Mean Height, Coefficient of Variation" comme confirmatives renforçant
+la confiance — cohérent avec la fiche de qualité.
+
+### Orientations cliniques possibles
+- 📄 **`CLI080`** — Améliorer la résistance à la fatigue (déclencheur : score Endurance diminué ;
+  explicatives : "Force, Explosivité" — deux *qualités* citées, même motif d'abstraction que
+  `CLI040`/Puissance et `CLI060`/Absorption ; condition : deux preuves diagnostiques déficitaires).
+- 📄 **`CLI081`** — Réduire la dégradation de performance (diagnostique : RSI Fatigue ;
+  confirmative : Height Fatigue ; explicative : Force ; pas de condition numérique fournie).
+
+### Liens vers déficits segmentaires
+📄 **Aucun lien segmentaire dédié.**
+
+### Variables contributrices (inventaire consolidé)
+`repeated_hop` · `heel_raise` · `imtp` · `slimtp` · `iso_belt_squat` · `sl_iso_push` · famille
+segmentaire complète (11 tests)
+
+### Variables exclues
+📄 Toutes les variables de CMJ, SLCMJ, DJ, SLDJ, CMJR (puissance) · `wblt_distance`/`lsi`/`asymmetry`
+(mobilité) · toutes les variables de SLS, EO, EF, Strobo (stabilisation) · toutes les variables de
+Landing, SLLT (absorption)
+
+### 📋 Niveau de maturité de la qualité
+
+| Critère | Évaluation |
+|---|---|
+| Couverture diagnostique | 🟢 Complète — 6 variables, toutes mesurées, cohérence totale fiche/`CLI080` |
+| Couverture confirmative | 🟢 Complète |
+| Couverture explicative physiologique | 🟢 Complète |
+| Couverture explicative biomécanique | 🟢 Complète |
+| Couverture `CLI###` | 🟢 2 orientations Niveau 1, cohérentes, aucune section Niveau 2 |
+| Données manquantes | Aucune — seule qualité, avec Force, sans aucun KPI manquant identifié |
+| Ambiguïtés restantes | Dépendance `NORMS` non filtrée pour `repeated_hop` (Phase A, opérationnelle, pas une ambiguïté de spécification) ; `repeated_hop_mean_stiffness` reste le seul KPI du test sans rôle assigné par Vierge_7, nulle part |
+
+---
+
+## HYP-MOB-01 — Mobilité
+
+### Question clinique
+📄 *L'athlète dispose-t-il d'une mobilité de cheville suffisante en charge pour permettre des
+appuis, freinages, réceptions et transferts de charge efficaces ?* (dorsiflexion fonctionnelle de
+cheville uniquement)
+
+### Critères diagnostiques
+📄 `wblt_distance` · 🔧 LSI calculé (`autoLSI`/`data.lsiAuto`, mécanisme générique déjà existant,
+correspond à `wblt_lsi`)
+
+### Critères confirmatifs
+📄 `wblt_distance`, LSI calculé — Vierge_7 : *"la mobilité de cheville repose exclusivement sur ce
+test, donc les variables confirmatives sont essentiellement des nuances de la même preuve"*.
+
+### Variables explicatives physiologiques
+📄 **Aucune** — toutes les variables explicatives physiologiques citées par Vierge_7 pour cette
+qualité sont non mesurables (voir liste en fin de fiche).
+
+### Variables explicatives biomécaniques
+📄 **Aucune**, même constat.
+
+### Conditions minimales d'activation
+📄 `CLI020` : **"distance inférieure au seuil"** (une seule variable, `wblt_distance`) — la
+condition la plus simple de toutes les qualités auditées (une seule variable, pas de convergence
+requise entre plusieurs preuves), cohérent avec la règle de fond ("évaluée uniquement par le
+WBLT").
+
+### Conditions de rejet
+📄 Aucune formalisée.
+
+### Conditions de confiance
+⚠️ **Point structurel observé, pas une règle explicite de Vierge_7** : `CLI020` et `CLI021`
+attribuent des rôles différents aux mêmes variables selon l'orientation visée — `wblt_lsi` est
+explicative dans `CLI020` (orientation générale) mais diagnostique dans `CLI021` (orientation
+spécifique à l'asymétrie), et symétriquement pour `wblt_distance`/`wblt_asymmetry`. 🔧 Interprété
+ici comme une propriété du modèle CLI### (le rôle d'une variable dépend de l'orientation clinique
+visée, pas seulement de la qualité), distincte du rôle fixé par la fiche de qualité pour le
+diagnostic `HYP-MOB-01` lui-même (qui reste inchangé). Non traité comme une contradiction à
+arbitrer — un niveau d'analyse différent.
+
+### Orientations cliniques possibles
+- 📄 **`CLI020`** — Améliorer la mobilité de cheville (déclencheur : score Mobilité diminué ;
+  diagnostique : `wblt_distance` ; confirmative : `wblt_relative_distance` ; explicatives :
+  `wblt_lsi`, `wblt_asymmetry` ; condition : distance inférieure au seuil).
+- 📄 **`CLI021`** — Réduire l'asymétrie de mobilité (diagnostique : `wblt_lsi` ; confirmative :
+  `wblt_asymmetry` ; explicative : `wblt_distance` ; condition : LSI inférieur au seuil).
+
+### Liens vers déficits segmentaires
+📄 **Aucun lien segmentaire dédié** — cohérent avec la règle de fond de Mobilité elle-même
+("jamais à partir de tests de force").
+
+### Variables contributrices (inventaire consolidé)
+`wblt` (`distance`, LSI calculé ; `wblt_asymmetry`/`wblt_relative_distance` cités par `CLI020`/
+`021` mais non calculés par Kinexus aujourd'hui — voir note de couverture, `HYP_ARCHITECTURE_PHASE_B.md`
+fiche 9)
+
+### Variables exclues
+📄 `imtp_n`/`nkg`, `knee_ext_n`, `soleus_iso_n`, `gastro_iso_n` (force) · `cmj_peak_power`,
+`slcmj_peak_power`, `dj_rsi`, `sldj_rsi`, `cmjr_mean_rsi` (puissance/réactivité) ·
+`landing_uni_tts`, `landing_uni_peak_landing_force`, `sls_cop_path`, `sls_cop_vel`,
+`strobo_surface` (absorption/stabilisation)
+
+### Éléments Vierge_7 exclus car non mesurables
+📄 `ankle_joint_stiffness`, `soleus_tonus`, `gastro_tonus`, `achilles_complex_stiffness` ·
+`protective_guarding`, `ankle_motor_control`, `calf_bracing_strategy` ·
+`pain_related_restriction`, `post_injury_swelling`, `ankle_capsular_irritability` ·
+`reduced_tibial_progression`, `early_heel_lift`, `reduced_knee_translation`,
+`compensatory_pronation`, `compensatory_hip_flexion`, `reduced_landing_depth`,
+`earlier_braking_strategy`, `increased_trunk_lean`, `reduced_anterior_shin_advance`
+
+### 📋 Niveau de maturité de la qualité
+
+| Critère | Évaluation |
+|---|---|
+| Couverture diagnostique | 🟡 Partielle — `wblt_distance` mesuré directement, LSI calculable génériquement ; `wblt_asymmetry`/`wblt_relative_distance` non calculés |
+| Couverture confirmative | 🟡 Identique au diagnostique (variables auto-référentielles) |
+| Couverture explicative physiologique | 🔴 **Nulle** — intégralement composée de concepts non mesurables |
+| Couverture explicative biomécanique | 🔴 **Nulle**, même constat |
+| Couverture `CLI###` | 🟢 2 orientations Niveau 1, cohérentes avec la fiche de qualité |
+| Données manquantes | `wblt_asymmetry` (écart absolu D/G), `wblt_relative_distance` (référence normative) — aucun mécanisme de calcul existant |
+| Ambiguïtés restantes | Rôle variable de `wblt_lsi`/`wblt_distance` selon l'orientation `CLI020`/`021` (point structurel, pas une contradiction) ; statut de la couche explicative entièrement non mesurable — point à soumettre au praticien (gel implicite, déjà noté en Phase B) |
+
+---
+
+## Tableau de synthèse — 8 qualités construites (Contrôle Sensori-moteur suspendue)
+
+| HYP_ID | Question clinique (résumé) | Maturité globale | Variables diagnostiques | Variables confirmatives | Variables explicatives (physio + biomécanique) | `CLI###` | Points ouverts |
+|---|---|---|---|---|---|---|---|
+| `HYP-FOR-01` | Capacité de production de force maximale | 🟢 Élevée | 4 | 4 | ~90 (11 familles segmentaires + épaule + cinétique) | 3 (Niveau 1) + 12 (Niveau 2 segmentaire) | Aucun majeur |
+| `HYP-PUI-01` | Capacité de puissance de saut | 🟢 Élevée | 2 (+ 3 secondaires) | 3 | ~60 (RFD + biomécanique CMJ/SLCMJ) | 2 | Aucun majeur |
+| `HYP-REA-01` | Capacité de restitution rapide de force | 🟡 Moyenne | 2 | 17 | ~55 | 2 | Contradiction `CLI050`/fiche de qualité sur `cmjr_mean_rsi` (documentée, tranchée en faveur de la fiche) |
+| `HYP-EXP-01` | Vitesse de montée en force | 🟠 Limitée | 2 mesurées sur 4 visées | 4 | ~50 | 2 | Plafond de données (RFD fenêtré), écart de périmètre `CLI030`/fiche |
+| `HYP-ABS-01` | Capacité de freinage/dissipation de charge | 🟢 Élevée | 13 | 13 | ~30 | 2 | Statut des asymétries (gel, non résolu) |
+| `HYP-STAB-01` | Maintien du contrôle postural | 🟡 Moyenne | 11 | 11 (mêmes variables) | ~15 | 2 (périmètre plus étroit que la fiche) | Landing absent de la matrice d'orientation ; quasi-duplication CSM (gel, suspendue) |
+| `HYP-END-01` | Résistance à la fatigue sur efforts répétés | 🟢 Élevée | 6 | 9 | ~90 | 2 | Aucun majeur |
+| `HYP-MOB-01` | Dorsiflexion fonctionnelle de cheville | 🔴 Structurelle | 1 (+ LSI calculé) | 1 (mêmes variables) | 0 | 2 | Couche explicative entièrement non mesurable ; 2 variables Vierge_7 non calculées |
+
+*Maturité globale = synthèse qualitative des 6 lignes de l'encadré "Niveau de maturité" de chaque
+fiche, pas une moyenne calculée. `HYP-CSM-01` (Contrôle Sensori-moteur) absente de ce tableau,
+suspendue conformément à `HYP_ARCHITECTURE_FREEZE.md`.*
+
+Sans recommandation d'implémentation — ce tableau clôture la construction du moteur clinique
+théorique, avant toute Phase D.
