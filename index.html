@@ -4306,6 +4306,153 @@ function computeHypAbsorption01(testData,normPop,normAge){
   };
 }
 
+// ── HYP-REA-01 — Moteur clinique Réactivité ──────────────────────────────────────────────────
+// Remplace (dans computeMoteur() ci-dessous, uniquement pour fSc['Réactivité']) le raisonnement
+// Réactivité produit par la boucle TFM générique. Source de vérité : CARTOGRAPHIE_REACTIVITE_
+// HYP_REA01.md / ARBITRAGE_CLINIQUE_REACTIVITE.md (décisions déjà gelées, non rouvertes ici) et
+// KINEXUS_REASONING_ENGINE_V1.md §2-4 : cycle à 5 états Absente/Suspectée/Retenue-Faible/Modérée/
+// Forte, règle de convergence à l'échelle des mécanismes indépendants (ADR-003) — modèle
+// STANDARD à 2 mécanismes (dj, sldj), pas l'exception Mobilité à 1 mécanisme (ADR-005). Réutilise
+// exclusivement des primitives déjà existantes (applyThr, bestVal, autoLSI, testKpiDir) — aucun
+// nouveau seuil, aucune nouvelle formule.
+//
+// Décisions cliniques gelées, non rouvertes : CMJR = explicatif, jamais diagnostique, même si
+// CLI050 brut et TFM (poids 3, identique à dj/sldj) suggèrent le contraire. Repeated Hop =
+// explicatif seul, jamais diagnostique. Heel Raise et Side Hop = hors Réactivité — jamais lus par
+// ce moteur, aucun rôle, pas même explicatif.
+//
+// Couverture réelle des seuils dans index.html, vérifiée avant l'écriture de ce moteur (aucun
+// seuil inventé pour compenser une absence — cf. INVENTAIRE_COMPLET_VARIABLES_NORMEES.md) :
+//   dj_rsi / sldj_rsi : NORMS + repli THRESHOLDS -> toujours classifiables dès qu'une valeur brute
+//     existe, quelle que soit la population.
+//   dj_contact_time/height/peak_prop_force/peak_prop_power/peak_landing_force/landing_impulse/
+//     leg_stiffness et équivalents sldj_* : AUCUN seuil -> jamais classifiés, exposés en valeur
+//     brute uniquement (rôle confirmatif/explicatif documenté, mais structurellement inerte
+//     aujourd'hui).
+//   CMJR (mean_ct/mean_stiffness/mean_rebound_height/mean_rsi/rsi_decay/stiffness_decay) et
+//     Repeated Hop (mean_rsi) : AUCUN seuil -> jamais classifiés.
+// Conséquence directe : aucune confirmative ni explicative n'étant aujourd'hui classifiable, le
+// support ne peut jamais dépasser Retenue/Faible en pratique — limite de données, pas une
+// exception clinique comme Mobilité/ADR-005. Le mécanisme de progression Faible->Modérée->Forte
+// est conservé tel quel (générique) pour ne pas devoir réécrire ce moteur si un seuil est ajouté
+// plus tard, mais ne produit aujourd'hui jamais autre chose que 'faible'.
+function computeHypReactivityDj(testData,pop,age){
+  var djData=(testData||{}).dj;
+  if(!djData||!djData.active)return{status:'indisponible',raw:null,category:null};
+  var raw=bestVal((djData.trials||{}).rsi,testKpiDir('dj','rsi'));
+  var st=raw!=null?applyThr('dj_rsi',raw,pop,age):null;
+  if(!st)return{status:'indisponible',raw:raw,category:null};
+  return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
+}
+// sldj est un test unilatéral (D/G) à LSI, comme wblt pour HYP-MOB-01 — même lecture "pire côté"
+// (evaluateWbltDistance, hyp_engine_lot1.js), pas une règle nouvelle.
+function computeHypReactivitySldj(testData,pop,age){
+  var sldjData=(testData||{}).sldj;
+  if(!sldjData||!sldjData.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null};
+  var vD=bestVal(((sldjData.D||{}).trials||{}).rsi,testKpiDir('sldj','rsi'));
+  var vG=bestVal(((sldjData.G||{}).trials||{}).rsi,testKpiDir('sldj','rsi'));
+  var sD=vD!=null?applyThr('sldj_rsi',vD,pop,age):null;
+  var sG=vG!=null?applyThr('sldj_rsi',vG,pop,age):null;
+  var lsi=sldjData.lsiAuto!=null?sldjData.lsiAuto:autoLSI(vD,vG);
+  var sides=[sD,sG].filter(Boolean);
+  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null};
+  var rank={rouge:0,orange:1,jaune:2,vert:3};
+  var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
+  var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
+  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst};
+}
+// Variables confirmatives/explicatives documentées (CARTOGRAPHIE_REACTIVITE_HYP_REA01.md) — lues
+// pour traçabilité, jamais classifiées (aucun seuil NORMS ni THRESHOLDS aujourd'hui), jamais
+// génératrices ni décisives sur le Niveau 1.
+function computeHypReactivityConfirmative(testData){
+  var dj=(testData||{}).dj,sldj=(testData||{}).sldj;
+  function djKpi(k,dir){return dj&&dj.active?bestVal((dj.trials||{})[k],dir):null;}
+  function sldjKpi(k,dir){if(!sldj||!sldj.active)return{D:null,G:null};return{D:bestVal(((sldj.D||{}).trials||{})[k],dir),G:bestVal(((sldj.G||{}).trials||{})[k],dir)};}
+  return{
+    dj_contact_time:{raw:djKpi('contact_time','min'),status:null,classifiable:false},
+    dj_height:{raw:djKpi('height','max'),status:null,classifiable:false},
+    dj_peak_prop_force:{raw:djKpi('peak_prop_force','max'),status:null,classifiable:false},
+    dj_peak_prop_power:{raw:djKpi('peak_prop_power','max'),status:null,classifiable:false},
+    dj_peak_landing_force:{raw:djKpi('peak_landing_force','min'),status:null,classifiable:false},
+    dj_landing_impulse:{raw:djKpi('landing_impulse','max'),status:null,classifiable:false},
+    dj_leg_stiffness:{raw:djKpi('leg_stiffness','max'),status:null,classifiable:false},
+    sldj_contact_time:{raw:sldjKpi('contact_time','min'),status:null,classifiable:false},
+    sldj_height:{raw:sldjKpi('height','max'),status:null,classifiable:false}
+  };
+}
+function computeHypReactivityExplanatory(testData){
+  var cmjr=(testData||{}).cmjr,rh=(testData||{}).repeated_hop;
+  function cmjrKpi(k,dir){return cmjr&&cmjr.active?bestVal((cmjr.trials||{})[k],dir):null;}
+  function rhKpi(k,dir){if(!rh||!rh.active)return{D:null,G:null};return{D:bestVal(((rh.D||{}).trials||{})[k],dir),G:bestVal(((rh.G||{}).trials||{})[k],dir)};}
+  return{
+    cmjr:{
+      mean_ct:{raw:cmjrKpi('mean_ct','min'),status:null,classifiable:false},
+      mean_stiffness:{raw:cmjrKpi('mean_stiffness','max'),status:null,classifiable:false},
+      mean_rebound_height:{raw:cmjrKpi('mean_rebound_height','max'),status:null,classifiable:false},
+      mean_rsi:{raw:cmjrKpi('mean_rsi','max'),status:null,classifiable:false},
+      rsi_decay:{raw:cmjrKpi('rsi_decay','min'),status:null,classifiable:false},
+      stiffness_decay:{raw:cmjrKpi('stiffness_decay','min'),status:null,classifiable:false}
+    },
+    repeated_hop:{
+      mean_rsi:{raw:rhKpi('mean_rsi','max'),status:null,classifiable:false}
+    }
+  };
+}
+// Point d'entrée. Fonction pure : ne lit que testData/normPop/normAge, ne modifie rien, n'écrit
+// rien.
+function computeHypReactivity01(testData,normPop,normAge){
+  var djRes=computeHypReactivityDj(testData,normPop,normAge);
+  var sldjRes=computeHypReactivitySldj(testData,normPop,normAge);
+  var djDeficient=djRes.status==='deficitaire';
+  var sldjDeficient=sldjRes.status==='deficitaire';
+  var mechanisms=[];
+  if(djDeficient)mechanisms.push('dj');
+  if(sldjDeficient)mechanisms.push('sldj');
+  var thresholdMet=mechanisms.length>=2; // ADR-003 : convergence à l'échelle des mécanismes indépendants — dj et sldj sont 2 tests distincts.
+
+  var confirmative=computeHypReactivityConfirmative(testData);
+  var explanatory=computeHypReactivityExplanatory(testData);
+  // Aucune confirmative/explicative n'est aujourd'hui classifiable (aucun seuil) -> ne peut jamais
+  // faire progresser le support au-delà de Faible. Mécanisme générique conservé, jamais vrai avec
+  // la couverture actuelle.
+  var confirmativeConvergent=false;
+  var explanatoryConvergent=false;
+
+  var state;
+  if(thresholdMet){state=confirmativeConvergent?(explanatoryConvergent?'retenue_forte':'retenue_moderee'):'retenue_faible';}
+  else if(mechanisms.length>=1){state='suspectee';}
+  else{state='absente';}
+
+  var support=(state==='retenue_faible'||state==='retenue_moderee'||state==='retenue_forte')
+    ?{level:state==='retenue_forte'?'forte':state==='retenue_moderee'?'moderee':'faible'}
+    :null;
+
+  var dataAvailable=djRes.status!=='indisponible'||sldjRes.status!=='indisponible';
+
+  return{
+    hypId:'HYP-REA-01',
+    state:state,
+    support:support,
+    dataAvailable:dataAvailable,
+    diagnosticEvidence:{
+      dj_rsi:{status:djRes.status,raw:djRes.raw,category:djRes.category},
+      sldj_rsi:{status:sldjRes.status,rawD:sldjRes.rawD,rawG:sldjRes.rawG,lsi:sldjRes.lsi,category:sldjRes.category}
+    },
+    convergence:{
+      requiredMechanisms:2,
+      distinctMechanismsObserved:mechanisms.length,
+      thresholdMet:thresholdMet,
+      mechanismsInvolved:mechanisms,
+      ruleVariant:'standard_2_mechanisms'
+    },
+    confirmativeEvidence:confirmative,
+    explanatoryEvidence:explanatory,
+    precision:{
+      sldj_lsi:sldjRes.lsi // modificateur/précision uniquement, jamais générateur — même rôle que wblt_lsi pour HYP-MOB-01.
+    }
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -4356,6 +4503,29 @@ function computeMoteur(testData,questData,normPop,normAge){
     // titre de repli documenté (jamais un statut inventé) ; le détail HYP reste exposé pour
     // traçabilité.
     fSc['Absorption'].hypAbs01=hypAbs01;
+  }
+  // HYP-REA-01 — remplace UNIQUEMENT fSc['Réactivité'] par le raisonnement clinique HYP. Aucune
+  // autre qualité, aucun autre output de computeMoteur n'est touché par ce bloc — cf.
+  // IMPLEMENTATION_HYP_REA01.md.
+  var hypRea01=computeHypReactivity01(testData,normPop,normAge);
+  if(hypRea01.dataAvailable){
+    var reaStatus=hypRea01.state==='absente'?'vert':hypRea01.state==='suspectee'?'jaune':
+      (hypRea01.diagnosticEvidence.dj_rsi.category==='rouge'&&hypRea01.diagnosticEvidence.sldj_rsi.category==='rouge')?'rouge':'orange';
+    var reaDirectStatuses=[hypRea01.diagnosticEvidence.dj_rsi.category,hypRea01.diagnosticEvidence.sldj_rsi.category].filter(Boolean);
+    var reaCov=reaDirectStatuses.length;
+    fSc['Réactivité']={
+      status:reaStatus,
+      confidence:reaCov>=2?'elevee':'faible',
+      coverage:Math.round(reaCov/2*100),
+      directTests:['dj','sldj'],
+      directStatuses:reaDirectStatuses,
+      hypRea01:hypRea01
+    };
+  }else if(fSc['Réactivité']){
+    // Ni dj ni sldj n'ont de données exploitables — le résultat TFM générique déjà calculé
+    // ci-dessus est conservé à titre de repli documenté (jamais un statut inventé) ; le détail HYP
+    // reste exposé pour traçabilité.
+    fSc['Réactivité'].hypRea01=hypRea01;
   }
   var sysSc={};
   SYSTEMS.forEach(function(sys){var tests=SYSTEM_TESTS[sys]||[];var scores=tests.map(function(t){return tSt[t];}).filter(Boolean).map(s2sc).filter(function(s){return s!=null;});sysSc[sys]=scores.length?sc2s(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;});
