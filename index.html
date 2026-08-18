@@ -4453,6 +4453,68 @@ function computeHypReactivity01(testData,normPop,normAge){
   };
 }
 
+// ── HYP-MOB-01 — Moteur clinique Mobilité ────────────────────────────────────────────────────
+// Remplace (dans computeMoteur() ci-dessous, uniquement pour fSc['Mobilité']) le raisonnement
+// Mobilité produit par la boucle TFM générique. Portage direct de hyp_engine_lot1.js (LOT 1,
+// prototype additif jamais chargé par index.html) — même logique clinique, non rouverte, non
+// modifiée : ADR-005 (exception Mobilité, 1 seul mécanisme diagnostique requis, aucun seuil de
+// convergence intermédiaire), ADR-008 (confirmative auto-référentielle jamais élévatrice, support
+// plafonné à 'faible', couche explicative structurellement vide). Réutilise exclusivement
+// applyThr/bestVal/autoLSI/testKpiDir déjà existants — aucun nouveau seuil.
+//
+// Couverture réelle des seuils, vérifiée avant écriture (INVENTAIRE_COMPLET_VARIABLES_NORMEES.md) :
+// wblt_distance a un repli THRESHOLDS (vert>=12/jaune>=10/orange>=8 cm) mais aucune entrée NORMS
+// -> toujours classifiable dès qu'une valeur brute existe, indépendamment de la population de
+// l'athlète (contrairement à Force/Puissance/Absorption, dont plusieurs variables dépendent de
+// NORMS). Aucune variable explicative mesurée par Kinexus n'est documentée pour Mobilité :
+// Vierge_7 ne cite que des concepts jamais implémentés comme KPI (ankle_joint_stiffness,
+// soleus_tonus, ankle_motor_control, etc., cf. HYP_ARCHITECTURE_PHASE_C.md) — couche explicative
+// nulle par construction, pas par manque de seuil. `wblt_asymmetry`/`wblt_relative_distance` sont
+// cités par CLI020/CLI021 (modificateur/précision) mais n'ont aujourd'hui aucun mécanisme de
+// calcul dans index.html — exposés comme non calculés, jamais supprimés du raisonnement.
+function computeHypMobilityWblt(testData,pop,age){
+  var data=(testData||{}).wblt;
+  if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null};
+  var vD=bestVal(((data.D||{}).trials||{}).distance,testKpiDir('wblt','distance'));
+  var vG=bestVal(((data.G||{}).trials||{}).distance,testKpiDir('wblt','distance'));
+  var sD=vD!=null?applyThr('wblt_distance',vD,pop,age):null;
+  var sG=vG!=null?applyThr('wblt_distance',vG,pop,age):null;
+  var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
+  var sides=[sD,sG].filter(Boolean);
+  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null};
+  var rank={rouge:0,orange:1,jaune:2,vert:3};
+  var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
+  var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
+  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst};
+}
+// Point d'entrée. Fonction pure. Modèle d'état = celui déjà validé du projet, exception ADR-005
+// (1 mécanisme suffit) — jamais d'état 'suspectee' pour cette qualité (aucun seuil de convergence
+// intermédiaire n'existe structurellement).
+function computeHypMobility01(testData,normPop,normAge){
+  var res=computeHypMobilityWblt(testData,normPop,normAge);
+  var deficient=res.status==='deficitaire';
+  var state=deficient?'retenue_faible':'absente';
+  var support=deficient?{level:'faible'}:null; // ADR-008 : jamais 'moderee'/'forte' — confirmative auto-référentielle, explicative vide.
+  var dataAvailable=res.status!=='indisponible';
+  return{
+    hypId:'HYP-MOB-01',
+    state:state,
+    support:support,
+    dataAvailable:dataAvailable,
+    diagnosticEvidence:{
+      wblt_distance:{status:res.status,rawD:res.rawD,rawG:res.rawG,category:res.category}
+    },
+    confirmativeEvidence:{
+      wblt_lsi:{value:res.lsi,elevates:false} // auto-référentiel (dérivé de la même mesure) — ADR-008, jamais élévateur.
+    },
+    explanatoryEvidence:{}, // structurellement vide — aucune variable Kinexus documentée (voir note ci-dessus).
+    precision:{
+      wblt_asymmetry:{status:'non_calcule',note:"cité par CLI020/CLI021, aucun mécanisme de calcul dans index.html aujourd'hui"}
+    },
+    convergence:{requiredMechanisms:1,ruleVariant:'mobilite_exception'}
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -4526,6 +4588,26 @@ function computeMoteur(testData,questData,normPop,normAge){
     // ci-dessus est conservé à titre de repli documenté (jamais un statut inventé) ; le détail HYP
     // reste exposé pour traçabilité.
     fSc['Réactivité'].hypRea01=hypRea01;
+  }
+  // HYP-MOB-01 — remplace UNIQUEMENT fSc['Mobilité'] par le raisonnement clinique HYP (portage de
+  // hyp_engine_lot1.js, jamais rouvert). Aucune autre qualité n'est touchée par ce bloc — cf.
+  // IMPLEMENTATION_HYP_MOB01.md.
+  var hypMob01=computeHypMobility01(testData,normPop,normAge);
+  if(hypMob01.dataAvailable){
+    var mobStatus=hypMob01.state==='absente'?'vert':(hypMob01.diagnosticEvidence.wblt_distance.category==='rouge'?'rouge':'orange');
+    fSc['Mobilité']={
+      status:mobStatus,
+      confidence:'elevee', // 1 seul mécanisme requis (ADR-005) — dès qu'il est disponible, il est pleinement évaluant.
+      coverage:100,
+      directTests:['wblt'],
+      directStatuses:[hypMob01.diagnosticEvidence.wblt_distance.category].filter(Boolean),
+      hypMob01:hypMob01
+    };
+  }else if(fSc['Mobilité']){
+    // wblt non déterminable (test inactif/aucune donnée) — le résultat TFM générique déjà calculé
+    // ci-dessus est conservé à titre de repli documenté (jamais un statut inventé) ; le détail HYP
+    // reste exposé pour traçabilité.
+    fSc['Mobilité'].hypMob01=hypMob01;
   }
   var sysSc={};
   SYSTEMS.forEach(function(sys){var tests=SYSTEM_TESTS[sys]||[];var scores=tests.map(function(t){return tSt[t];}).filter(Boolean).map(s2sc).filter(function(s){return s!=null;});sysSc[sys]=scores.length?sc2s(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;});
