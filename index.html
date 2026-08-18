@@ -4181,6 +4181,131 @@ function computeTestStatus(key,data,pop,age){
   return st;
 }
 
+// ── HYP-ABS-01 V2 — Moteur clinique Absorption ───────────────────────────────────────────────
+// Remplace (dans computeMoteur() ci-dessous, uniquement pour fSc['Absorption']) le raisonnement
+// Absorption produit par la boucle TFM générique. Source de vérité : HYP-ABS-01_V2.md /
+// HYP_ABS01_V2_CHANGELOG.md (décisions déjà validées par le praticien, non rouvertes ici).
+// Réutilise exclusivement des primitives déjà existantes (applyThr, resolveCmjValues,
+// testKpiDir, bestVal, computeAsymEngine) — aucun nouveau seuil, aucune nouvelle formule.
+// Ne réutilise JAMAIS BiomechanicalProfileEngine.compute() : le Profil Absorbeur est un module
+// biomécanique distinct, non clinique (cf. AUDIT_PROFIL_ABSORBEUR_VS_HYP.md — "UNE SEULE SOURCE
+// DE CALCUL. UNE SEULE SOURCE DE RAISONNEMENT CLINIQUE.").
+//
+// Couverture réelle des seuils dans index.html, vérifiée avant l'écriture de ce moteur (aucun
+// seuil inventé pour compenser une absence — cf. IMPLEMENTATION_HYP_ABS_V2.md) :
+//   cmj_braking_rfd / cmj_force_zero_vel : NORMS (plusieurs populations sport), pas de repli
+//     THRESHOLDS -> non classifiable pour une population non couverte.
+//   cmj_braking_impulse : AUCUN seuil (ni NORMS ni THRESHOLDS) malgré une donnée brute et une
+//     entrée de catalogue existantes -> jamais classifiée, jamais forcée dans vert/jaune/orange/
+//     rouge.
+//   dj_rsi : NORMS + repli THRESHOLDS -> presque toujours résolvable.
+//   dj_contact_time, cmj_braking_duration : AUCUN seuil -> descriptifs seuls, jamais générateurs.
+//   cmj_ecc_mean_power / cmj_ecc_peak_vel / cmj_depth : NORMS partielle -> peuvent rester non
+//     déterminables selon la population active.
+//   sllt_* (peak_landing_force/ttplf/loading_rate/tts/cop_path) et landing_bi_peak_landing_force :
+//     AUCUN seuil -> sous-domaine E (Réception/Impact) NON IMPLÉMENTÉ ici, volontairement (voir
+//     computeHypAbsorptionReceptionImpact ci-dessous et IMPLEMENTATION_HYP_ABS_V2.md, section
+//     "Dépendance inattendue").
+//
+// Conséquence directe sur les 5 profils Core décrits dans HYP-ABS-01_V2.md §4 : les 5 profils
+// nécessitent tous une lecture qualitative de l'Impulse. Comme cmj_braking_impulse n'est
+// aujourd'hui jamais classifiable, aucun des 5 profils nommés n'est atteignable — ce moteur ne
+// force jamais un profil non couvert dans une catégorie existante (§15 de la mission
+// d'implémentation) : il rapporte les lectures RFD/Force@0V individuellement avec un statut de
+// profil explicite 'non_couvert_impulse_non_classifiable'.
+function computeHypAbsorptionCore(cmjValues,pop,age){
+  var rfdRaw=cmjValues.braking_rfd,fzvRaw=cmjValues.force_zero_vel,impRaw=cmjValues.braking_impulse;
+  var rfdSt=rfdRaw!=null?applyThr('cmj_braking_rfd',rfdRaw,pop,age):null;
+  var fzvSt=fzvRaw!=null?applyThr('cmj_force_zero_vel',fzvRaw,pop,age):null;
+  var impSt=impRaw!=null?applyThr('cmj_braking_impulse',impRaw,pop,age):null; // toujours null aujourd'hui (aucun seuil) — jamais forcé.
+  var evaluable=[rfdSt,fzvSt].filter(Boolean);
+  var deficient=evaluable.filter(function(s){return s==='orange'||s==='rouge';});
+  var niveau;
+  if(!evaluable.length)niveau='non_determinable';
+  else if(deficient.length>=2)niveau='deficitaire';
+  else if(deficient.length===1)niveau='a_surveiller';
+  else niveau='ok';
+  var profil=impSt==null?'non_couvert_impulse_non_classifiable':'non_couvert';
+  return{
+    niveau:niveau,profil:profil,
+    variables:{
+      braking_rfd:{raw:rfdRaw,status:rfdSt},
+      force_zero_vel:{raw:fzvRaw,status:fzvSt},
+      braking_impulse:{raw:impRaw,status:impSt,classifiable:false}
+    }
+  };
+}
+// Sous-domaines B/C/D — jamais générateurs du Niveau 1, caractérisation/explication uniquement
+// (HYP-ABS-01_V2.md §5/§6/§7).
+function computeHypAbsorptionCapaciteEcc(cmjValues,pop,age){
+  var meanPowerRaw=cmjValues.ecc_mean_power,peakVelRaw=cmjValues.ecc_peak_vel;
+  return{
+    ecc_mean_power:{raw:meanPowerRaw,status:meanPowerRaw!=null?applyThr('cmj_ecc_mean_power',meanPowerRaw,pop,age):null},
+    ecc_peak_vel:{raw:peakVelRaw,status:peakVelRaw!=null?applyThr('cmj_ecc_peak_vel',peakVelRaw,pop,age):null}
+  };
+}
+function computeHypAbsorptionStrategie(cmjValues,pop,age){
+  var depthRaw=cmjValues.depth,durRaw=cmjValues.braking_duration;
+  return{
+    depth:{raw:depthRaw,status:depthRaw!=null?applyThr('cmj_depth',depthRaw,pop,age):null},
+    braking_duration:{raw:durRaw,status:null,classifiable:false} // aucun seuil cmj_braking_duration dans index.html.
+  };
+}
+function computeHypAbsorptionReactive(testData,pop,age){
+  var djData=(testData||{}).dj;
+  if(!djData||!djData.active)return{dj_rsi:{raw:null,status:null},dj_contact_time:{raw:null,status:null,classifiable:false}};
+  var trials=djData.trials||{};
+  var rsiRaw=bestVal(trials.rsi,testKpiDir('dj','rsi'));
+  var ctRaw=bestVal(trials.contact_time,testKpiDir('dj','contact_time'));
+  return{
+    dj_rsi:{raw:rsiRaw,status:rsiRaw!=null?applyThr('dj_rsi',rsiRaw,pop,age):null},
+    dj_contact_time:{raw:ctRaw,status:null,classifiable:false} // aucun seuil dj_contact_time dans index.html.
+  };
+}
+// Sous-domaine E (Réception/Impact, SLLT/Landing) — NON implémenté : sllt_peak_landing_force/
+// ttplf/loading_rate/tts/cop_path et landing_bi_peak_landing_force n'ont aujourd'hui aucun seuil
+// (ni NORMS ni THRESHOLDS) dans index.html. Plutôt que d'inventer un seuil (interdit
+// explicitement par la mission d'implémentation), ce sous-domaine retourne un statut
+// 'non_implemente' explicite et ne contribue jamais au Niveau 1.
+function computeHypAbsorptionReceptionImpact(){
+  return{available:false,reason:'aucun_seuil_disponible'};
+}
+// Asymétrie de freinage — modificateur en lecture seule, jamais générateur (HYP-ABS-01_V2.md §9).
+// Relit computeAsymEngine, déjà figé et déjà utilisé ailleurs (computeMouvementAnalysis) — aucun
+// recalcul.
+function computeHypAbsorptionAsymetrie(cmjValues,pop,age){
+  var asym=computeAsymEngine(cmjValues,pop,age);
+  var brakingCarto=(asym.cartographie||[]).filter(function(c){return c.phase==='braking';})[0]||null;
+  return brakingCarto?{phase:'braking',niveau:brakingCarto.niveau,conclusion:brakingCarto.conclusion}:null;
+}
+// Point d'entrée. Fonction pure : ne lit que testData/normPop/normAge, ne modifie rien, n'écrit
+// rien. cmjActive reproduit le gating déjà appliqué par les appelants existants de
+// resolveCmjValues (computeMouvementAnalysis gate sur testData.cmj.active côté appelant plutôt
+// que dans resolveCmjValues lui-même) — jamais de lecture de trials périmés sur un test inactif.
+function computeHypAbsorption01(testData,normPop,normAge){
+  var cmjActive=!!(testData&&testData.cmj&&testData.cmj.active);
+  var cmjValues=cmjActive?resolveCmjValues({testData:testData||{}}):{};
+  var core=computeHypAbsorptionCore(cmjValues,normPop,normAge);
+  var capaciteEcc=computeHypAbsorptionCapaciteEcc(cmjValues,normPop,normAge);
+  var strategie=computeHypAbsorptionStrategie(cmjValues,normPop,normAge);
+  var reactive=computeHypAbsorptionReactive(testData,normPop,normAge);
+  var receptionImpact=computeHypAbsorptionReceptionImpact();
+  var asymetrie=cmjActive?computeHypAbsorptionAsymetrie(cmjValues,normPop,normAge):null;
+  return{
+    version:'HYP-ABS-01 V2',
+    niveau1:core.niveau,
+    profilCore:core.profil,
+    sousDomaines:{
+      A_core:core.variables,
+      B_capaciteExcentrique:capaciteEcc,
+      C_strategie:strategie,
+      D_absorptionReactive:reactive,
+      E_receptionImpact:receptionImpact
+    },
+    asymetrie:asymetrie
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -4206,6 +4331,32 @@ function computeMoteur(testData,questData,normPop,normAge){
     var conf=cov/poss;
     fSc[fn]={status:status,confidence:conf>=0.75?'elevee':conf>=0.5?'moderee':'faible',coverage:Math.round(conf*100),directTests:directTests,directStatuses:directStatuses};
   });
+  // HYP-ABS-01 V2 — remplace UNIQUEMENT fSc['Absorption'] ci-dessus par le raisonnement clinique
+  // HYP. Aucune autre qualité (fSc[autre_fn]) et aucun autre output de computeMoteur (tSt/sysSc/
+  // rtpStatus/qualityScores/capaciteScores, calculés plus bas, indépendamment) n'est touché par ce
+  // bloc — cf. IMPLEMENTATION_HYP_ABS_V2.md, contraintes #1/#18 de la mission d'implémentation.
+  var hypAbs01=computeHypAbsorption01(testData,normPop,normAge);
+  if(hypAbs01.niveau1!=='non_determinable'){
+    var absCoreVars=hypAbs01.sousDomaines.A_core;
+    var absStatus=hypAbs01.niveau1==='ok'?'vert':hypAbs01.niveau1==='a_surveiller'?'jaune':
+      (absCoreVars.braking_rfd.status==='rouge'&&absCoreVars.force_zero_vel.status==='rouge')?'rouge':'orange';
+    var absDirectStatuses=[absCoreVars.braking_rfd.status,absCoreVars.force_zero_vel.status].filter(Boolean);
+    var absCov=absDirectStatuses.length;
+    fSc['Absorption']={
+      status:absStatus,
+      confidence:absCov>=2?'elevee':'faible',
+      coverage:Math.round(absCov/2*100),
+      directTests:['cmj'],
+      directStatuses:absDirectStatuses,
+      hypAbs01:hypAbs01
+    };
+  }else if(fSc['Absorption']){
+    // Core HYP-ABS-01 V2 non déterminable (aucune donnée CMJ Core classifiable pour cet
+    // athlète/cette population) — le résultat TFM générique déjà calculé ci-dessus est conservé à
+    // titre de repli documenté (jamais un statut inventé) ; le détail HYP reste exposé pour
+    // traçabilité.
+    fSc['Absorption'].hypAbs01=hypAbs01;
+  }
   var sysSc={};
   SYSTEMS.forEach(function(sys){var tests=SYSTEM_TESTS[sys]||[];var scores=tests.map(function(t){return tSt[t];}).filter(Boolean).map(s2sc).filter(function(s){return s!=null;});sysSc[sys]=scores.length?sc2s(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;});
   var HYPO={'Réactivité':function(m){return'Le déficit de réactivité observé semble principalement influencé par une altération '+(m?'du système '+m.toLowerCase():'des propriétés élastiques du membre inférieur')+'.';}, 'Absorption':function(m){return'Les résultats d\'absorption pourraient être expliqués par une limitation '+(m?'des capacités du '+m.toLowerCase():'du contrôle excentrique global')+'.';}, 'Force':function(m){return'Le déficit de force semble compatible avec une altération '+(m?'du système '+m.toLowerCase():'des capacités de production de force maximale')+'.';}, 'Explosivité':function(m){return'Le déficit d\'explosivité semble davantage influencé par une limitation '+(m?'du versant '+m.toLowerCase():'des qualités de production rapide de force')+'.';}, 'Puissance':function(m){return'Les données de puissance sont compatibles avec une contribution importante '+(m?'du système '+m.toLowerCase():'des qualités force-vitesse')+'.';}, 'Stabilisation':function(m){return'Le déficit de stabilisation semble influencé par une altération '+(m?'du système '+m.toLowerCase():'du contrôle postural dynamique')+'.';}, 'Contrôle Frontal':function(m){return'Le déficit de contrôle frontal semble principalement influencé par '+(m?'le système '+m.toLowerCase():'les chaînes musculaires latérales')+'.';}, 'Mobilité':function(m){return'La limitation de mobilité est compatible avec une réduction '+(m?'des amplitudes du '+m.toLowerCase():'des amplitudes articulaires fonctionnelles')+'.';}, 'Contrôle Sensoriel':function(){return'Le déficit de contrôle sensoriel semble influencé par une altération des capacités de traitement proprioceptif.';}, 'Endurance':function(){return'Le déficit d\'endurance semble compatible avec une limitation des capacités de maintien de la performance dans le temps.';}};
