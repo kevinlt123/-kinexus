@@ -4515,6 +4515,185 @@ function computeHypMobility01(testData,normPop,normAge){
   };
 }
 
+// ── HYP-PUI-01 — Moteur clinique Puissance ───────────────────────────────────────────────────
+// Remplace (dans computeMoteur() ci-dessous, uniquement pour fSc['Puissance']) le raisonnement
+// Puissance produit par la boucle TFM générique. Règle diagnostique GELÉE, non rouverte :
+// cmj_peak_power ET slcmj_peak_power doivent être conjointement déficitaires pour retenir
+// HYP-PUI-01 (2/2, la condition la plus stricte du référentiel). Réutilise exclusivement
+// applyThr/bestVal/autoLSI/testKpiDir déjà existants — aucun nouveau seuil.
+//
+// Couverture réelle des seuils, vérifiée avant écriture (INVENTAIRE_COMPLET_VARIABLES_NORMEES.md) :
+//   cmj_peak_power : NORMS très large (41 populations + 4 par âge) -> classifiable dès qu'une
+//     population couverte est sélectionnée.
+//   slcmj_peak_power : AUCUN seuil (ni NORMS ni THRESHOLDS) -> jamais classifiable aujourd'hui.
+//   dj_peak_prop_power / sldj_peak_prop_power / cmjr_peak_power (preuves de substitution
+//     documentées, mobilisées uniquement en l'absence de slcmj_peak_power, jamais en renfort à
+//     poids égal) : AUCUN seuil non plus, sur aucune des trois -> la substitution reste
+//     structurellement inerte aujourd'hui, mais le mécanisme est conservé tel quel pour
+//     l'exploiter automatiquement dès qu'une norme existera.
+//   cmj_height : THRESHOLDS + NORMS large -> classifiable, mais reste CONFIRMATIVE GELÉE, jamais
+//     comptée comme deuxième preuve diagnostique, quel que soit son statut.
+//
+// Conséquence directe, volontaire (mission d'implémentation) : tant qu'aucune norme n'existe pour
+// slcmj_peak_power NI pour aucun des 3 substituts, la convergence 2/2 ne peut jamais être évaluée
+// que dans un sens (cmj seul classifiable) — le moteur retourne alors explicitement
+// `state:'non_determinable'`, jamais une absence de seuil transformée en statut 'normal'.
+function computeHypPowerCmj(testData,pop,age){
+  var data=(testData||{}).cmj;
+  if(!data||!data.active)return{status:'indisponible',raw:null,category:null};
+  var raw=bestVal((data.trials||{}).peak_power,testKpiDir('cmj','peak_power'));
+  var st=raw!=null?applyThr('cmj_peak_power',raw,pop,age):null;
+  if(!st)return{status:'indisponible',raw:raw,category:null};
+  return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
+}
+// slcmj est un test unilatéral (D/G) à LSI, comme sldj pour HYP-REA-01 — même lecture "pire côté".
+function computeHypPowerSlcmj(testData,pop,age){
+  var data=(testData||{}).slcmj;
+  if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null};
+  var vD=bestVal(((data.D||{}).trials||{}).peak_power,testKpiDir('slcmj','peak_power'));
+  var vG=bestVal(((data.G||{}).trials||{}).peak_power,testKpiDir('slcmj','peak_power'));
+  var sD=vD!=null?applyThr('slcmj_peak_power',vD,pop,age):null;
+  var sG=vG!=null?applyThr('slcmj_peak_power',vG,pop,age):null;
+  var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
+  var sides=[sD,sG].filter(Boolean);
+  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null};
+  var rank={rouge:0,orange:1,jaune:2,vert:3};
+  var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
+  var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
+  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst};
+}
+// Preuves diagnostiques secondaires (gel point 5, HYP_ARCHITECTURE_PHASE_C.md) — jamais consultées
+// si slcmj_peak_power est lui-même classifiable ; jamais un renfort à poids égal.
+function computeHypPowerSubstitutes(testData,pop,age){
+  var dj=(testData||{}).dj,sldj=(testData||{}).sldj,cmjr=(testData||{}).cmjr;
+  function bilateralPeak(data,key){
+    if(!data||!data.active)return{status:'indisponible',raw:null,category:null};
+    var kpi=key.split('_').slice(1).join('_');
+    var testKey=key.split('_')[0];
+    var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
+    var st=raw!=null?applyThr(key,raw,pop,age):null;
+    if(!st)return{status:'indisponible',raw:raw,category:null};
+    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
+  }
+  function sldjPeak(data){
+    if(!data||!data.active)return{status:'indisponible',rawD:null,rawG:null,category:null};
+    var vD=bestVal(((data.D||{}).trials||{}).peak_prop_power,testKpiDir('sldj','peak_prop_power'));
+    var vG=bestVal(((data.G||{}).trials||{}).peak_prop_power,testKpiDir('sldj','peak_prop_power'));
+    var sD=vD!=null?applyThr('sldj_peak_prop_power',vD,pop,age):null;
+    var sG=vG!=null?applyThr('sldj_peak_prop_power',vG,pop,age):null;
+    var sides=[sD,sG].filter(Boolean);
+    if(!sides.length)return{status:'indisponible',rawD:vD,rawG:vG,category:null};
+    var rank={rouge:0,orange:1,jaune:2,vert:3};
+    var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
+    var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
+    return{status:deficient?'deficitaire':'normal',rawD:vD,rawG:vG,category:worst};
+  }
+  return{
+    dj_peak_prop_power:bilateralPeak(dj,'dj_peak_prop_power'),
+    sldj_peak_prop_power:sldjPeak(sldj),
+    cmjr_peak_power:bilateralPeak(cmjr,'cmjr_peak_power')
+  };
+}
+// Variables Capacité (physiologique : Force/RFD/TTPF/Profil Force-Vitesse) et Stratégie
+// (biomécanique : exécution CMJ/SLCMJ) — extrait représentatif des listes complètes documentées
+// (HYP_PUI01_REGLE_FINALE_GELEE.md, CARTOGRAPHIE_CLINIQUE_HYP_PUISSANCE.md), jamais classifiées en
+// diagnostic, jamais génératrices. Les variables « force » du CMJ/SLCMJ restent en Stratégie —
+// jamais déplacées vers Capacité au seul motif qu'elles contiennent le mot « force » (mission
+// d'implémentation, point 7) : la Capacité physiologique reste fondée sur les tests de force
+// dédiés (IMTP/SLIMTP/Belt Squat/etc.), jamais sur les KPI de force internes au mouvement CMJ.
+function computeHypPowerCapacite(testData,pop,age){
+  var belt=(testData||{}).iso_belt_squat,imtp=(testData||{}).imtp,fv=(testData||{}).profil_fv;
+  function bilateralKpi(data,key,kpi){
+    if(!data||!data.active)return{raw:null,status:null,classifiable:false};
+    var raw=bestVal((data.trials||{})[kpi],testKpiDir(key.split('_')[0],kpi));
+    return{raw:raw,status:raw!=null?applyThr(key,raw,pop,age):null,classifiable:false};
+  }
+  return{
+    force:{iso_belt_squat_n:(function(){var r=bilateralKpi(belt,'iso_belt_squat_n','n');r.classifiable=true;return r;})()},
+    rfd:{imtp_rfd100:bilateralKpi(imtp,'imtp_rfd100','rfd100')},
+    ttpf:{imtp_ttpf:bilateralKpi(imtp,'imtp_ttpf','ttpf')},
+    profilForceVitesse:{profil_fv_v0:bilateralKpi(fv,'profil_fv_v0','v0')}
+  };
+}
+function computeHypPowerStrategie(testData){
+  var cmj=(testData||{}).cmj;
+  function raw(kpi,dir){return cmj&&cmj.active?bestVal((cmj.trials||{})[kpi],dir):null;}
+  return{
+    cmj_depth:{raw:raw('depth','max'),status:null,classifiable:false},
+    cmj_conc_rfd:{raw:raw('conc_rfd','max'),status:null,classifiable:false}
+  };
+}
+// Point d'entrée. Fonction pure. Modèle d'état standard à 2 mécanismes (comme Réactivité), avec
+// une différence assumée et documentée : quand l'une des deux preuves n'est pas classifiable,
+// l'état est explicitement 'non_determinable' — jamais replié sur 'absente' comme pour Réactivité/
+// Mobilité (mission d'implémentation, règle absolue : "mieux vaut NON DÉTERMINABLE qu'un
+// diagnostic faux").
+function computeHypPower01(testData,normPop,normAge){
+  var cmjRes=computeHypPowerCmj(testData,normPop,normAge);
+  var slcmjRes=computeHypPowerSlcmj(testData,normPop,normAge);
+  var substitutes=computeHypPowerSubstitutes(testData,normPop,normAge);
+
+  var secondProof=slcmjRes,secondProofSource='slcmj_peak_power';
+  if(slcmjRes.status==='indisponible'){
+    var subKeys=['dj_peak_prop_power','sldj_peak_prop_power','cmjr_peak_power'];
+    for(var i=0;i<subKeys.length;i++){
+      if(substitutes[subKeys[i]].status!=='indisponible'){secondProof=substitutes[subKeys[i]];secondProofSource=subKeys[i];break;}
+    }
+  }
+
+  var cmjClassified=cmjRes.status!=='indisponible';
+  var secondClassified=secondProof.status!=='indisponible';
+  var bothClassified=cmjClassified&&secondClassified;
+
+  var state,mechanisms=[];
+  if(!bothClassified){
+    state='non_determinable';
+  }else{
+    var cmjDeficient=cmjRes.status==='deficitaire',secondDeficient=secondProof.status==='deficitaire';
+    if(cmjDeficient)mechanisms.push('cmj');
+    if(secondDeficient)mechanisms.push(secondProofSource);
+    if(cmjDeficient&&secondDeficient)state='retenue_faible';
+    else if(cmjDeficient||secondDeficient)state='suspectee';
+    else state='absente';
+  }
+  var support=(state==='retenue_faible')?{level:'faible'}:null; // aucune confirmative/explicative classifiable aujourd'hui -> jamais au-delà de faible.
+
+  var cmjData=(testData||{}).cmj;
+  var cmjHeightRaw=(cmjData&&cmjData.active)?bestVal((cmjData.trials||{}).height,testKpiDir('cmj','height')):null;
+  var cmjHeightSt=cmjHeightRaw!=null?applyThr('cmj_height',cmjHeightRaw,normPop,normAge):null;
+
+  return{
+    hypId:'HYP-PUI-01',
+    state:state,
+    support:support,
+    diagnosticEvidence:{
+      cmj_peak_power:{status:cmjRes.status,raw:cmjRes.raw,category:cmjRes.category},
+      slcmj_peak_power:{status:slcmjRes.status,rawD:slcmjRes.rawD,rawG:slcmjRes.rawG,lsi:slcmjRes.lsi,category:slcmjRes.category}
+    },
+    activeSecondProof:{source:secondProofSource,status:secondProof.status,category:secondProof.category},
+    substitution:{
+      active:secondProofSource!=='slcmj_peak_power',
+      candidates:substitutes,
+      note:"mobilisée uniquement si slcmj_peak_power est indisponible, jamais en renfort à poids égal (gel point 5) ; aucun des 3 substituts n'est aujourd'hui classifiable (aucun seuil) — branche structurellement inerte, conservée pour activation automatique future"
+    },
+    convergence:{
+      requiredMechanisms:2,
+      distinctMechanismsObserved:mechanisms.length,
+      thresholdMet:state==='retenue_faible',
+      mechanismsInvolved:mechanisms,
+      ruleVariant:'standard_2_mechanisms_gelee'
+    },
+    confirmativeEvidence:{
+      cmj_height:{raw:cmjHeightRaw,status:cmjHeightSt,countsAsDiagnostic:false} // gel : jamais une deuxième preuve, quel que soit son statut.
+    },
+    explanatoryEvidence:{
+      capacite:computeHypPowerCapacite(testData,normPop,normAge),
+      strategie:computeHypPowerStrategie(testData)
+    },
+    note:"Le sous-modèle Capacité/Stratégie/Mixte/Non-discriminable (HYP_PUI01_REGLE_FINALE_GELEE.md) n'est pas implémenté comme machine à états ici : il présuppose un déficit de Puissance déjà retenu (2/2), structurellement inatteignable aujourd'hui faute de seuil sur la deuxième preuve. Les variables Capacité/Stratégie sont exposées à titre de traçabilité uniquement, jamais génératrices du Niveau 1."
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -4609,6 +4788,29 @@ function computeMoteur(testData,questData,normPop,normAge){
     // reste exposé pour traçabilité.
     fSc['Mobilité'].hypMob01=hypMob01;
   }
+  // HYP-PUI-01 — remplace INTÉGRALEMENT fSc['Puissance'] par le raisonnement clinique HYP, y
+  // compris quand il ne peut rien déterminer (status:null explicite plutôt qu'un repli TFM ou un
+  // statut inventé — mission d'implémentation, règle absolue : "mieux vaut NON DÉTERMINABLE qu'un
+  // diagnostic faux"). Divergence assumée et documentée par rapport à Absorption/Réactivité/
+  // Mobilité, qui conservent un repli TFM quand HYP ne peut rien déterminer — cf.
+  // IMPLEMENTATION_HYP_PUI01.md. Aucune autre qualité, aucun autre output de computeMoteur n'est
+  // touché par ce bloc.
+  var hypPui01=computeHypPower01(testData,normPop,normAge);
+  var puiEvaluable=hypPui01.state!=='non_determinable';
+  var puiStatus=null;
+  if(puiEvaluable){
+    puiStatus=hypPui01.state==='absente'?'vert':hypPui01.state==='suspectee'?'jaune':
+      (hypPui01.diagnosticEvidence.cmj_peak_power.category==='rouge'&&hypPui01.activeSecondProof.category==='rouge')?'rouge':'orange';
+  }
+  var puiDirectStatuses=[hypPui01.diagnosticEvidence.cmj_peak_power.category,hypPui01.activeSecondProof.category].filter(Boolean);
+  fSc['Puissance']={
+    status:puiStatus, // null explicitement quand non_determinable — jamais une absence de seuil transformée en 'vert'.
+    confidence:puiDirectStatuses.length>=2?'elevee':'faible',
+    coverage:Math.round(puiDirectStatuses.length/2*100),
+    directTests:['cmj',hypPui01.activeSecondProof.source.split('_')[0]],
+    directStatuses:puiDirectStatuses,
+    hypPui01:hypPui01
+  };
   var sysSc={};
   SYSTEMS.forEach(function(sys){var tests=SYSTEM_TESTS[sys]||[];var scores=tests.map(function(t){return tSt[t];}).filter(Boolean).map(s2sc).filter(function(s){return s!=null;});sysSc[sys]=scores.length?sc2s(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;});
   var HYPO={'Réactivité':function(m){return'Le déficit de réactivité observé semble principalement influencé par une altération '+(m?'du système '+m.toLowerCase():'des propriétés élastiques du membre inférieur')+'.';}, 'Absorption':function(m){return'Les résultats d\'absorption pourraient être expliqués par une limitation '+(m?'des capacités du '+m.toLowerCase():'du contrôle excentrique global')+'.';}, 'Force':function(m){return'Le déficit de force semble compatible avec une altération '+(m?'du système '+m.toLowerCase():'des capacités de production de force maximale')+'.';}, 'Explosivité':function(m){return'Le déficit d\'explosivité semble davantage influencé par une limitation '+(m?'du versant '+m.toLowerCase():'des qualités de production rapide de force')+'.';}, 'Puissance':function(m){return'Les données de puissance sont compatibles avec une contribution importante '+(m?'du système '+m.toLowerCase():'des qualités force-vitesse')+'.';}, 'Stabilisation':function(m){return'Le déficit de stabilisation semble influencé par une altération '+(m?'du système '+m.toLowerCase():'du contrôle postural dynamique')+'.';}, 'Contrôle Frontal':function(m){return'Le déficit de contrôle frontal semble principalement influencé par '+(m?'le système '+m.toLowerCase():'les chaînes musculaires latérales')+'.';}, 'Mobilité':function(m){return'La limitation de mobilité est compatible avec une réduction '+(m?'des amplitudes du '+m.toLowerCase():'des amplitudes articulaires fonctionnelles')+'.';}, 'Contrôle Sensoriel':function(){return'Le déficit de contrôle sensoriel semble influencé par une altération des capacités de traitement proprioceptif.';}, 'Endurance':function(){return'Le déficit d\'endurance semble compatible avec une limitation des capacités de maintien de la performance dans le temps.';}};
