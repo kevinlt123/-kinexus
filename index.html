@@ -5537,6 +5537,204 @@ function computeHypEndurance01(testData,normPop,normAge){
   };
 }
 
+// ── HYP-CSM-01 — Synthèse clinique multi-qualités ────────────────────────────────────────────
+// Source de vérité : IMPLEMENTATION_HYP_CSM01.md, HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md,
+// AUDIT_TRANSVERSAL_HYP_V1.md. CSM N'EST PAS un 9e moteur diagnostique — il ne lit, n'écrit et ne
+// recalcule STRICTEMENT RIEN dans les 8 moteurs HYP ni dans computeMoteur() (jamais appelé depuis
+// computeMoteur, jamais injecté dans fSc). Fonction pure, en lecture seule, prenant en entrée
+// EXCLUSIVEMENT le `functionScores` déjà produit par computeMoteur() (contrat HYP V1 commun,
+// hypXxx01.state/status/support/convergence/diagnostic/confirmative/explanatory/precision/
+// limitations) — jamais de seuil, jamais de re-classification, jamais de variable brute relue.
+//
+// Principe absolu (mission HYP-CSM-01) : une qualité n'est « objectivée » par CSM QUE si son
+// moteur HYP l'a lui-même déjà objectivée (state retenue_faible/moderee/forte). CSM ne peut ni
+// inventer, ni reclasser, ni amplifier, ni hiérarchiser automatiquement. Toute relation entre deux
+// qualités n'est présentée comme « hypothèse explicative » que si (1) une relation est déjà
+// documentée dans HYP_QUALITY_RELATIONS (transcription de relations déjà codées dans les moteurs
+// HYP, cf. normalisation V1 — aucune nouvelle relation inventée ici), (2) les DEUX qualités sont
+// réellement objectivées par leur propre moteur HYP. Sinon : association ("déficits concordants")
+// ou non-déterminable — jamais de causalité ("entraîne"/"cause"/"est responsable de").
+
+var HYP_CSM_QUALITIES=['Mobilité','Réactivité','Absorption','Force','Puissance','Explosivité','Stabilisation','Endurance'];
+var HYP_CSM_HYP_KEY={Mobilité:'hypMob01',Réactivité:'hypRea01',Absorption:'hypAbs01',Force:'hypFor01',Puissance:'hypPui01',Explosivité:'hypExp01',Stabilisation:'hypSta01',Endurance:'hypEnd01'};
+
+function csmIsObjectified(h){return!!(h&&(h.state==='retenue_faible'||h.state==='retenue_moderee'||h.state==='retenue_forte'));}
+function csmIsNonDeterminable(h){
+  if(!h)return true;
+  if(h.state==='non_determinable')return true;
+  if('dataAvailable'in h&&h.dataAvailable===false)return true; // Réactivité/Mobilité : state retombe sur 'absente' sans donnée (cf. §6 AUDIT_TRANSVERSAL_HYP_V1.md) — non_determinable au sens de CSM malgré tout.
+  return false;
+}
+function csmIsSuspected(h){return!!(h&&h.state==='suspectee');}
+function csmIsAbsent(h){return!!(h&&h.state==='absente'&&!csmIsNonDeterminable(h));}
+
+// Étape 1 : relecture pure du contrat HYP V1 déjà produit par computeMoteur() — aucun recalcul.
+function computeHypClinicalSynthesisQualities(functionScores){
+  var out={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var fsc=(functionScores||{})[q];
+    var h=fsc?fsc[HYP_CSM_HYP_KEY[q]]:null;
+    out[q]={
+      quality:q,
+      hypId:h?h.hypId:null,
+      state:h?h.state:null,
+      status:fsc?fsc.status:null,
+      support:h?h.support:null,
+      convergence:h?h.convergence:null,
+      objectified:csmIsObjectified(h),
+      nonDeterminable:csmIsNonDeterminable(h),
+      suspected:csmIsSuspected(h),
+      absent:csmIsAbsent(h),
+      hyp:h // référence complète du moteur HYP d'origine — traçabilité totale, jamais copiée ni modifiée.
+    };
+  });
+  return out;
+}
+
+// Note prudente Capacité/Stratégie (Partie 11) — respecte exactement la distinction déjà gelée
+// pour Puissance/Explosivité (computeHypPowerCapacite/Strategie, computeHypExplosivityExplanatory).
+// Ne relit que des champs déjà classifiés par le moteur HYP concerné — aucun nouveau seuil, aucune
+// nouvelle lecture de variable brute. Retourne null si aucune des deux dimensions n'est
+// aujourd'hui classifiable comme déficitaire (honnête, jamais forcé).
+function csmCapaciteStrategieNote(quality,h){
+  if(!csmIsObjectified(h))return null;
+  if(quality==='Puissance'){
+    var cap=h.explanatoryEvidence&&h.explanatoryEvidence.capacite&&h.explanatoryEvidence.capacite.force;
+    var capDef=cap&&Object.keys(cap).some(function(k){return cap[k].status==='orange'||cap[k].status==='rouge';});
+    if(capDef)return'Le déficit de Puissance est associé à des éléments compatibles avec une limitation de capacité (force maximale).';
+    return null; // stratégie (cmj_depth/cmj_conc_rfd) jamais classifiée par conception (computeHypPowerStrategie) — jamais évaluable comme déficitaire aujourd'hui.
+  }
+  if(quality==='Explosivité'){
+    var fc=h.explanatoryEvidence&&h.explanatoryEvidence.forceCapacite&&h.explanatoryEvidence.forceCapacite.iso_belt_squat_n;
+    var capDef2=fc&&(fc.status==='orange'||fc.status==='rouge');
+    var biomeca=h.explanatoryEvidence&&h.explanatoryEvidence.biomecanique;
+    var stratDef=biomeca&&Object.keys(biomeca).some(function(k){return biomeca[k]&&biomeca[k].status==='deficitaire';});
+    if(capDef2&&stratDef)return'Les données sont compatibles avec une contribution conjointe de la capacité de force et de la stratégie d\'exécution (biomécanique du CMJ).';
+    if(capDef2)return'Le déficit d\'Explosivité est associé à des éléments compatibles avec une limitation de capacité de force.';
+    if(stratDef)return'Le déficit d\'Explosivité est associé à une stratégie d\'exécution potentiellement limitante (biomécanique du CMJ).';
+    return null;
+  }
+  return null;
+}
+
+// Étape 2 : relations entre qualités — réutilise exclusivement HYP_QUALITY_RELATIONS (déjà défini
+// pour la normalisation V1, aucune relation nouvelle ajoutée ici). Une relation n'est jamais
+// affirmée comme hypothèse explicative sauf si les deux qualités sont réellement objectivées.
+function csmRelationshipNarrative(rel,a,b,level){
+  if(level==='explanatory_hypothesis'){
+    return'Le déficit de '+rel.explains+' constitue une hypothèse explicative possible du déficit de '+rel.explained+' ('+rel.via+'), sans en établir la cause.';
+  }
+  if(level==='not_applicable_non_determinable'){
+    var ndQ=a.nonDeterminable?rel.explains:rel.explained;
+    return'La contribution de '+ndQ+' ne peut pas être déterminée avec les données actuellement classifiables.';
+  }
+  var notObjQ=!a.objectified?rel.explains:rel.explained;
+  return'Une relation entre '+rel.explains+' et '+rel.explained+' est documentée, mais '+notObjQ+' n\'est pas elle-même objectivée comme déficitaire ('+((notObjQ===rel.explains?a:b).state)+') — non retenue comme hypothèse explicative ici.';
+}
+function computeHypClinicalSynthesisRelationships(qualities){
+  var relationships=[],covered={};
+  HYP_QUALITY_RELATIONS.forEach(function(rel){
+    var a=qualities[rel.explains],b=qualities[rel.explained];
+    if(!a||!b)return;
+    covered[[rel.explains,rel.explained].sort().join('|')]=true;
+    var level;
+    if(a.nonDeterminable||b.nonDeterminable)level='not_applicable_non_determinable';
+    else if(a.objectified&&b.objectified)level='explanatory_hypothesis';
+    else level='not_supported';
+    relationships.push({explains:rel.explains,explained:rel.explained,via:rel.via,level:level,narrative:csmRelationshipNarrative(rel,a,b,level)});
+  });
+  // Paires de qualités toutes deux objectivées mais sans relation HYP_QUALITY_RELATIONS documentée
+  // (mission Partie 8) — jamais d'invention, association neutre uniquement.
+  var objectifiedQ=HYP_CSM_QUALITIES.filter(function(q){return qualities[q].objectified;});
+  for(var i=0;i<objectifiedQ.length;i++){
+    for(var j=i+1;j<objectifiedQ.length;j++){
+      var key=[objectifiedQ[i],objectifiedQ[j]].sort().join('|');
+      if(covered[key])continue;
+      relationships.push({
+        explains:null,explained:null,qualityA:objectifiedQ[i],qualityB:objectifiedQ[j],via:null,
+        level:'concordant_no_relation',
+        narrative:'Les déficits de '+objectifiedQ[i]+' et de '+objectifiedQ[j]+' sont concomitants, mais les données actuellement disponibles ne permettent pas d\'identifier une relation explicative documentée entre eux.'
+      });
+    }
+  }
+  return relationships;
+}
+
+// Étape 3 : synthèse narrative structurée (5 sections, mission Partie 13) — jamais de causalité,
+// jamais de hiérarchie inventée, jamais un non_determinable transformé en « pas de déficit ».
+function computeHypClinicalSynthesisNarrative(objectified,nonDeterminable,relationships,explanatoryHypotheses,explanatoryNotes){
+  var s={};
+  s.deficitsObjectives=!objectified.length
+    ?"Aucun déficit n'est objectivé par les moteurs HYP avec les données actuellement disponibles."
+    :"Un déficit est objectivé pour : "+objectified.map(function(o){return o.quality+' ('+o.state+(o.support?', support '+o.support.level:'')+')';}).join(', ')+".";
+  s.qualitesNonDeterminables=nonDeterminable.length
+    ?"Non déterminable avec les données actuellement disponibles pour : "+nonDeterminable.map(function(n){return n.quality;}).join(', ')+" — non déterminable n'équivaut jamais à normal."
+    :"Toutes les qualités couvertes par un moteur HYP ont pu être évaluées (déficitaires ou non) avec les données disponibles.";
+  var concordantNoRelation=relationships.filter(function(r){return r.level==='concordant_no_relation';});
+  var parts=[];
+  if(explanatoryHypotheses.length)parts.push(explanatoryHypotheses.map(function(r){return r.narrative;}).join(' '));
+  if(concordantNoRelation.length)parts.push(concordantNoRelation.map(function(r){return r.narrative;}).join(' '));
+  if(explanatoryNotes.length)parts.push(explanatoryNotes.map(function(n){return n.note;}).join(' '));
+  s.relationsExplicatives=parts.length?parts.join(' '):"Aucune relation explicative n'est actuellement exploitable (aucun déficit conjoint, ou données insuffisantes).";
+  s.elementsPrecision=objectified.length?"Voir `precision` par qualité pour les asymétries/latéralisations déjà documentées par chaque moteur HYP — jamais génératrices de diagnostic ici non plus.":"Sans objet — aucun déficit objectivé.";
+  s.limites="CSM ne détermine ni cause principale, ni hiérarchie entre déficits, ni relation de cause à conséquence ou de compensation, ni priorité thérapeutique — ces éléments restent NON DÉTERMINABLE avec les règles HYP actuelles, quel que soit le nombre de qualités déficitaires observées.";
+  return s;
+}
+
+// Point d'entrée. Fonction pure : ne lit que `functionScores` (déjà produit par computeMoteur()),
+// ne modifie rien, n'écrit rien, n'appelle aucun des 8 computeHypXxx01 (ils ont déjà été appelés
+// par computeMoteur() en amont — CSM ne les rappelle jamais, ne les recalcule jamais).
+function computeHypClinicalSynthesis01(functionScores){
+  var qualities=computeHypClinicalSynthesisQualities(functionScores);
+  var relationships=computeHypClinicalSynthesisRelationships(qualities);
+  var explanatoryHypotheses=relationships.filter(function(r){return r.level==='explanatory_hypothesis';});
+
+  var objectified=HYP_CSM_QUALITIES.filter(function(q){return qualities[q].objectified;}).map(function(q){
+    return{quality:q,state:qualities[q].state,support:qualities[q].support,status:qualities[q].status};
+  });
+  var nonDeterminable=HYP_CSM_QUALITIES.filter(function(q){return qualities[q].nonDeterminable;}).map(function(q){
+    var h=qualities[q].hyp;
+    return{quality:q,state:h?h.state:null,reason:(h&&'dataAvailable'in h&&h.dataAvailable===false)?'aucune_donnee_hyp_exploitable':'non_determinable'};
+  });
+  var suspected=HYP_CSM_QUALITIES.filter(function(q){return qualities[q].suspected;}).map(function(q){return{quality:q,state:qualities[q].state};});
+
+  var precision={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var h=qualities[q].hyp;
+    if(h&&h.precision&&Object.keys(h.precision).length)precision[q]=h.precision;
+  });
+
+  var explanatoryNotes=[];
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var note=csmCapaciteStrategieNote(q,qualities[q].hyp);
+    if(note)explanatoryNotes.push({quality:q,note:note});
+  });
+
+  var limitations=[
+    "CSM ne détermine jamais une cause principale, une hiérarchie entre déficits, ni une relation de cause à conséquence/compensation — ces distinctions restent NON DÉTERMINABLE avec les données et règles HYP actuelles.",
+    "Une relation explicative n'est retenue que si les DEUX qualités concernées sont réellement objectivées par leur propre moteur HYP — jamais à partir d'un score ou d'un poids TFM seul.",
+    "Les qualités non couvertes par un moteur HYP (Contrôle Frontal, Contrôle Sensoriel) ne sont pas synthétisées ici — hors périmètre du modèle HYP V1 (HYP-CSM-01 lui-même reste une synthèse des 8 qualités HYP, pas une 9e qualité)."
+  ];
+  nonDeterminable.forEach(function(nd){
+    limitations.push(nd.quality+' : non déterminable avec les données actuellement classifiables — jamais interprété comme normal.');
+  });
+
+  return{
+    csmId:'HYP-CSM-01',
+    version:'1.0',
+    qualities:qualities,
+    objectified:objectified,
+    nonDeterminable:nonDeterminable,
+    suspected:suspected,
+    relationships:relationships,
+    explanatoryHypotheses:explanatoryHypotheses,
+    explanatoryNotes:explanatoryNotes,
+    precision:precision,
+    limitations:limitations,
+    narrative:computeHypClinicalSynthesisNarrative(objectified,nonDeterminable,relationships,explanatoryHypotheses,explanatoryNotes)
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
