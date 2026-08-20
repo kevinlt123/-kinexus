@@ -6069,7 +6069,12 @@ function computeMoteur(testData,questData,normPop,normAge){
   });
   var capaciteScores={};
   Object.keys(CAPACITES_DATA).forEach(function(ck){capaciteScores[ck]=computeCapaciteStatus(ck,testData,normPop,normAge,fSc);});
-  return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus,qualityScores:qualityScores,capaciteScores:capaciteScores};
+  // HYP-CSM-01 — branchement (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md) : calculée UNE SEULE fois
+  // par cycle de computeMoteur(), à partir de fSc déjà entièrement construit (8 moteurs HYP déjà
+  // exécutés ci-dessus). Fonction pure, lecture seule : ne recalcule, ne modifie et ne réinvoque
+  // aucun des 8 moteurs HYP. fSc lui-même n'est jamais réassigné après cet appel.
+  var clinicalSynthesis=computeHypClinicalSynthesis01(fSc);
+  return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus,qualityScores:qualityScores,capaciteScores:capaciteScores,clinicalSynthesis:clinicalSynthesis};
 }
 
 
@@ -6709,6 +6714,24 @@ function buildSportifReport(athlete,bilan,res){
       +'</div></div>';
   }
 
+  // Synthèse clinique HYP-CSM-01 (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md) — après le profil
+  // global / les priorités, avant le détail des qualités (page 2). Lit exclusivement
+  // res.clinicalSynthesis, déjà calculé une seule fois par computeMoteur() — aucun recalcul, aucun
+  // champ inventé. Les diagnostics détaillés par qualité restent affichés page 2 (section
+  // "Qualités fonctionnelles") : cette section les synthétise, ne les remplace pas.
+  if(res.clinicalSynthesis){
+    var csmPdf=res.clinicalSynthesis;
+    html+='<div style="margin-bottom:28px">'+sectionTitle(4,'Synthèse clinique')
+      +panel(
+        (csmPdf.objectified.length?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">'+csmPdf.objectified.map(function(o){return badge(o.status,o.quality);}).join('')+'</div>':'')
+        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmPdf.narrative.deficitsObjectives+'</div>'
+        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmPdf.narrative.qualitesNonDeterminables+'</div>'
+        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmPdf.narrative.relationsExplicatives+'</div>'
+        +'<div style="font-size:7.5pt;color:#94A3B8;line-height:1.6;margin-top:14px;padding-top:12px;border-top:1px solid #F3F6F8">'+csmPdf.narrative.limites+'</div>'
+      )
+      +'</div>';
+  }
+
   html+=footerHTML(1,false);
   html+='</div>'; // end main content
   html+='</div>'; // end print-page 1
@@ -6982,6 +7005,19 @@ function buildExpertReport(athlete,bilan,res){
   html+='<table class="print-table"><thead><tr><th>Fonction</th><th>Statut</th><th>Couverture</th><th>Confiance</th></tr></thead><tbody>';
   FUNCTIONS.forEach(function(fn){var sc=fSc[fn];if(!sc)return;html+='<tr><td>'+fn+'</td><td><span class="print-badge '+sc.status+'">'+SL[sc.status]+'</span></td><td>'+sc.coverage+'%</td><td>'+sc.confidence+'</td></tr>';});
   html+='</tbody></table></div>';
+  // Synthèse clinique HYP-CSM-01 (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md) — après les diagnostics
+  // individuels par qualité, avant le détail KPI. Lit exclusivement res.clinicalSynthesis, déjà
+  // calculé une seule fois par computeMoteur() ; ne remplace pas le tableau "Fonctions évaluées"
+  // ci-dessus (diagnostics détaillés HYP), le complète.
+  if(res.clinicalSynthesis){
+    var csmExp=res.clinicalSynthesis;
+    html+='<div class="print-section-title" style="margin-top:12px">Synthèse clinique</div>';
+    if(csmExp.objectified.length){html+='<div style="margin-bottom:10px">'+csmExp.objectified.map(function(o){return '<span class="print-badge '+o.status+'" style="margin-right:6px">'+o.quality+'</span>';}).join('')+'</div>';}
+    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExp.narrative.deficitsObjectives+'</p>';
+    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExp.narrative.qualitesNonDeterminables+'</p>';
+    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExp.narrative.relationsExplicatives+'</p>';
+    html+='<p style="margin:8px 0 0;font-size:8pt;color:#888;font-style:italic">'+csmExp.narrative.limites+'</p>';
+  }
   // KPI page
   html+='<div class="print-page">';
   html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Résultats KPI — '+athlete.prenom+' '+athlete.nom+'</div></div>';
@@ -8381,7 +8417,39 @@ function ExpertView(props){
     test.kpis.forEach(function(kpi){if(VAR_REL3[tk+'_'+kpi.key])varRelKpis.push({testKey:tk,testLabel:test.label,kpi:kpi});});
   });
   return h('div',null,
-    h(TabBar,{tabs:[['fonctions','Fonctions'],['kpi','Résultats'],['variables','Variables'],['capacites','Capacités'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Raisonnement']],active:tab,onChange:setTab}),
+    h(TabBar,{tabs:[['fonctions','Fonctions'],['synthese','Synthèse clinique'],['kpi','Résultats'],['variables','Variables'],['capacites','Capacités'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Raisonnement']],active:tab,onChange:setTab}),
+    // HYP-CSM-01 — synthèse clinique multi-qualités (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md).
+    // Lit exclusivement res.clinicalSynthesis (déjà calculé une seule fois par computeMoteur()) —
+    // ne recalcule rien, ne remplace aucun onglet existant (Fonctions/Capacités/Hypothèses restent
+    // inchangés). Vocabulaire volontairement clinique (aucun hypId/csmId/poids TFM exposé ici).
+    tab==='synthese'&&(function(){
+      var csm=res.clinicalSynthesis;
+      if(!csm)return h('div',{style:{color:C.muted,fontSize:13}},'Synthèse non disponible.');
+      var CSM_STATE_LABEL={non_determinable:'Non déterminable',absente:'Absente',suspectee:'Suspectée',retenue_faible:'Confirmée — support faible',retenue_moderee:'Confirmée — support modéré',retenue_forte:'Confirmée — support fort'};
+      return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités objectivement déficitaires'),
+          csm.objectified.length===0
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — aucun déficit n\'est objectivé par les moteurs HYP avec les données actuellement disponibles.')
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.objectified.map(function(o){return h('div',{key:o.quality,style:{display:'flex',alignItems:'center',gap:8}},h(Badge,{status:o.status,small:true}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},o.quality),h('span',{style:{color:C.muted,fontSize:11}},CSM_STATE_LABEL[o.state]||o.state));}))
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités non déterminables'),
+          h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Non déterminable n\'équivaut jamais à normal.'),
+          csm.nonDeterminable.length===0
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — toutes les qualités couvertes par un moteur HYP ont pu être évaluées.')
+            :h('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},csm.nonDeterminable.map(function(n){return h('span',{key:n.quality,style:{padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:11}},n.quality);}))
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Concordances et relations explicatives'),
+          h('div',{style:{color:C.text,fontSize:12,lineHeight:1.6}},csm.narrative.relationsExplicatives)
+        ),
+        h(Card,{pad:14,style:{background:C.surface}},
+          h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limites de cette synthèse'),
+          h('ul',{style:{margin:0,paddingLeft:16,color:C.muted,fontSize:11,lineHeight:1.6}},csm.limitations.map(function(l,i){return h('li',{key:i},l);}))
+        )
+      );
+    })(),
     tab==='fonctions'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},evFns.map(function(f){var sc=fSc[f];var fk=FN_KEY[f];var relTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]&&td[tk]&&td[tk].active;}).sort(function(a,b){return TFM[b][fk]-TFM[a][fk];});return h(Card,{key:f,pad:14,style:{borderLeft:'3px solid '+SC[sc.status]}},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}},h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},f),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+sc.confidence)),h(Badge,{status:sc.status})),h('div',{style:{display:'flex',gap:5,flexWrap:'wrap'}},relTests.map(function(tk){var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';return h('span',{key:tk,style:{padding:'2px 7px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:10}},(TBK[tk]?TBK[tk].label:tk)+' · ',h('span',{style:{color:C.teal}},wl));})));})),
     tab==='kpi'&&h(ResultsBrowser,{testData:td,testStatuses:tSt,athlete:athlete,athleteAge:athleteAge}),
     tab==='variables'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
