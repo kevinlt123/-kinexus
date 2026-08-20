@@ -5149,6 +5149,153 @@ function computeHypStabilization01(testData,normPop,normAge){
   };
 }
 
+// ── HYP-END-01 — Moteur clinique Endurance ───────────────────────────────────────────────────
+// Source de vérité : AUDIT_IMPLEMENTATION_HYP_END01.md (audit clinique préalable, conclusion GO),
+// HYP_ARCHITECTURE_PHASE_C.md (fiche HYP-END-01), LOGIQUE_CLINIQUE_VARIABLES_HYP.md (section
+// ENDURANCE) et KINEXUS_REASONING_ENGINE_V1.md §7 (règle gelée : ≥2/6 preuves diagnostiques,
+// robustesse élevée, "Prêt", `CLI080`-`081`) — la règle la plus propre et la moins ambiguë de
+// toutes les qualités HYP à ce jour : aucun écart entre la fiche et `CLI080` (contrairement à
+// Stabilisation/`CLI070`), une seule note non bloquante sur le statut "local" de `heel_raise_reps`
+// (mollet) qui ne modifie ni le décompte ni le seuil de convergence.
+//
+// 6 mécanismes diagnostiques indépendants (SOURCE EXPLICITE, CLI080) : heel_raise_reps,
+// repeated_hop_n_hops, repeated_hop_rsi_fatigue, repeated_hop_height_fatigue,
+// repeated_hop_ct_drift, repeated_hop_stiffness_fatigue. ≥2 déficitaires parmi les classifiables
+// -> retenue_faible.
+//
+// Exclusions gelées, non rouvertes ici (fiche HYP-END-01, "Variables exclues") : CMJ/SLCMJ/DJ/
+// SLDJ/CMJR (Puissance/Réactivité), wblt_distance/lsi/asymmetry (Mobilité), SLS/EO/EF/Strobo
+// (Stabilisation), Landing/SLLT (Absorption) -- jamais lus par ce moteur. `repeated_hop_mean_
+// stiffness` -- aucun rôle assigné par aucune source consultée -- jamais lu, jamais attribué
+// arbitrairement.
+//
+// Couverture réelle des seuils dans index.html, vérifiée avant l'écriture de ce moteur (aucun
+// seuil inventé) : heel_raise_reps -> THRESHOLDS -> toujours classifiable. Les 14 autres KPI
+// repeated_hop (diagnostiques + confirmatifs) -> AUCUN seuil (ni NORMS ni THRESHOLDS) -> jamais
+// classifiables aujourd'hui. Conséquence directe, différente de Stabilisation : au plus 1 des 6
+// mécanismes diagnostiques est aujourd'hui classifiable -> 'retenue_faible' structurellement
+// inatteignable avec des données réelles tant qu'aucune norme repeated_hop n'existe -> au mieux
+// 'suspectee' (heel_raise_reps seul déficitaire) ou 'absente'.
+
+function computeHypEnduranceKpi(testData,testKey,kpi,bilateral,pop,age){
+  var data=(testData||{})[testKey];
+  var key=testKey+'_'+kpi;
+  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
+  if(bilateral){
+    var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
+    var st=raw!=null?applyThr(key,raw,pop,age):null;
+    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
+    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
+  }
+  var dir=testKpiDir(testKey,kpi);
+  var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
+  var vG=bestVal(((data.G||{}).trials||{})[kpi],dir);
+  var sD=vD!=null?applyThr(key,vD,pop,age):null;
+  var sG=vG!=null?applyThr(key,vG,pop,age):null;
+  var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
+  var sides=[sD,sG].filter(Boolean);
+  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  var rank={rouge:0,orange:1,jaune:2,vert:3};
+  var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
+  var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
+  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+}
+
+var HYP_END_DIAG_KEYS=['heel_raise_reps','repeated_hop_n_hops','repeated_hop_rsi_fatigue','repeated_hop_height_fatigue','repeated_hop_ct_drift','repeated_hop_stiffness_fatigue'];
+
+function computeHypEnduranceDiagnostic(testData,pop,age){
+  return{
+    heel_raise_reps:computeHypEnduranceKpi(testData,'heel_raise','reps',false,pop,age),
+    repeated_hop_n_hops:computeHypEnduranceKpi(testData,'repeated_hop','n_hops',false,pop,age),
+    repeated_hop_rsi_fatigue:computeHypEnduranceKpi(testData,'repeated_hop','rsi_fatigue',false,pop,age),
+    repeated_hop_height_fatigue:computeHypEnduranceKpi(testData,'repeated_hop','height_fatigue',false,pop,age),
+    repeated_hop_ct_drift:computeHypEnduranceKpi(testData,'repeated_hop','ct_drift',false,pop,age),
+    repeated_hop_stiffness_fatigue:computeHypEnduranceKpi(testData,'repeated_hop','stiffness_fatigue',false,pop,age)
+  };
+}
+
+// Niveau 2 — Confirmation (LOGIQUE_CLINIQUE_VARIABLES_HYP.md, "Faible -> Modéré") : 9 KPI
+// repeated_hop distincts des 5 diagnostiques (aucune auto-référence, contrairement à
+// Stabilisation) — tous sans seuil aujourd'hui, structurellement prêts.
+function computeHypEnduranceConfirmative(testData,pop,age){
+  return{
+    repeated_hop_mean_height:computeHypEnduranceKpi(testData,'repeated_hop','mean_height',false,pop,age),
+    repeated_hop_mean_rsi:computeHypEnduranceKpi(testData,'repeated_hop','mean_rsi',false,pop,age),
+    repeated_hop_mean_peak_force:computeHypEnduranceKpi(testData,'repeated_hop','mean_peak_force',false,pop,age),
+    repeated_hop_mean_ct:computeHypEnduranceKpi(testData,'repeated_hop','mean_ct',false,pop,age),
+    repeated_hop_best_height:computeHypEnduranceKpi(testData,'repeated_hop','best_height',false,pop,age),
+    repeated_hop_best_rsi:computeHypEnduranceKpi(testData,'repeated_hop','best_rsi',false,pop,age),
+    repeated_hop_height_cv:computeHypEnduranceKpi(testData,'repeated_hop','height_cv',false,pop,age),
+    repeated_hop_ct_cv:computeHypEnduranceKpi(testData,'repeated_hop','ct_cv',false,pop,age),
+    repeated_hop_rsi_cv:computeHypEnduranceKpi(testData,'repeated_hop','rsi_cv',false,pop,age)
+  };
+}
+
+// Niveau 3 — Explication (LOGIQUE_CLINIQUE_VARIABLES_HYP.md, SOURCE EXPLICITE) : déficit de force
+// de fond (4 tests globaux + 11 familles segmentaires, `_n`/`_nkg`) et vitesse de développement de
+// force (cinétique RFD, valeur brute uniquement, aucun seuil sur aucune des 15 familles).
+var HYP_END_SEGMENTS=['knee_ext','knee_flex','soleus_iso','gastro_iso','hip_flex','hip_ext','hip_abd','hip_add','df_iso','inv_iso','ev_iso'];
+function computeHypEnduranceExplanatory(testData,pop,age){
+  var forceDeFond={
+    imtp_n:computeHypEnduranceKpi(testData,'imtp','n',true,pop,age),
+    imtp_nkg:computeHypEnduranceKpi(testData,'imtp','nkg',true,pop,age),
+    slimtp_n:computeHypEnduranceKpi(testData,'slimtp','n',false,pop,age),
+    slimtp_nkg:computeHypEnduranceKpi(testData,'slimtp','nkg',false,pop,age),
+    iso_belt_squat_n:computeHypEnduranceKpi(testData,'iso_belt_squat','n',true,pop,age),
+    iso_belt_squat_nkg:computeHypEnduranceKpi(testData,'iso_belt_squat','nkg',true,pop,age),
+    sl_iso_push_n:computeHypEnduranceKpi(testData,'sl_iso_push','n',false,pop,age),
+    sl_iso_push_nkg:computeHypEnduranceKpi(testData,'sl_iso_push','nkg',false,pop,age)
+  };
+  var forceSegmentaire={};
+  HYP_END_SEGMENTS.forEach(function(seg){
+    forceSegmentaire[seg+'_n']=computeHypEnduranceKpi(testData,seg,'n',false,pop,age);
+    forceSegmentaire[seg+'_nkg']=computeHypEnduranceKpi(testData,seg,'nkg',false,pop,age);
+  });
+  var cinetiqueTests=['imtp','slimtp','iso_belt_squat','sl_iso_push'].concat(HYP_END_SEGMENTS);
+  var cinetique={};
+  cinetiqueTests.forEach(function(t){
+    cinetique[t+'_rfd100']=computeHypEnduranceKpi(testData,t,'rfd100',t==='imtp'||t==='iso_belt_squat',pop,age);
+  });
+  return{forceDeFond:forceDeFond,forceSegmentaire:forceSegmentaire,cinetique:cinetique};
+}
+
+function computeHypEndurance01(testData,normPop,normAge){
+  var diag=computeHypEnduranceDiagnostic(testData,normPop,normAge);
+  var classifiable=HYP_END_DIAG_KEYS.filter(function(k){return diag[k].status!=='indisponible';});
+  var deficient=HYP_END_DIAG_KEYS.filter(function(k){return diag[k].status==='deficitaire';});
+  var state;
+  if(!classifiable.length)state='non_determinable';
+  else if(!deficient.length)state='absente';
+  else if(deficient.length===1)state='suspectee';
+  else state='retenue_faible';
+
+  var confirmative=computeHypEnduranceConfirmative(testData,normPop,normAge);
+  var explanatory=computeHypEnduranceExplanatory(testData,normPop,normAge);
+
+  // Confirmative -> Faible/Modéré : 9 variables réellement indépendantes des 6 diagnostiques
+  // (KPI distincts du même test, pas d'auto-référence — contrairement à Stabilisation). Explicative
+  // -> Modéré/Forte, uniquement après confirmative (même chaîne que Force/Puissance/Explosivité).
+  var confirmativeConvergent=state==='retenue_faible'&&Object.keys(confirmative).some(function(k){return confirmative[k].status==='deficitaire';});
+  var explanatoryConvergent=confirmativeConvergent&&['forceDeFond','forceSegmentaire'].some(function(g){
+    return Object.keys(explanatory[g]).some(function(k){return explanatory[g][k].status==='deficitaire';});
+  });
+
+  var support=null;
+  if(state==='retenue_faible'){
+    support={level:explanatoryConvergent?'forte':(confirmativeConvergent?'moderee':'faible')};
+  }
+
+  return{
+    hypId:'HYP-END-01', state:state, support:support,
+    diagnosticEvidence:diag,
+    convergence:{requiredMechanisms:2,distinctMechanismsObserved:deficient.length,thresholdMet:state==='retenue_faible',mechanismsInvolved:deficient,ruleVariant:'convergence_6_mecanismes_gelee_CLI080'},
+    confirmativeEvidence:confirmative,
+    explanatoryEvidence:explanatory,
+    precision:{note:"Aucune asymétrie de fatigue inter-test propre à Endurance au-delà du LSI intrinsèque déjà exposé (rawD/rawG/lsi) pour heel_raise et repeated_hop — précision uniquement, jamais générateur."},
+    note:"repeated_hop_mean_stiffness jamais lu (aucun rôle assigné par aucune source consultée). CMJ/SLCMJ/DJ/SLDJ/CMJR (Puissance/Réactivité), wblt_distance/lsi/asymmetry (Mobilité), SLS/EO/EF/Strobo (Stabilisation), Landing/SLLT (Absorption) jamais lus (exclusions gelées, fiche HYP-END-01)."
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -5341,6 +5488,34 @@ function computeMoteur(testData,questData,normPop,normAge){
     directTests:['sls','eo','ef','strobo','landing_uni','landing_bi'],
     directStatuses:staDirectStatuses,
     hypSta01:hypSta01
+  };
+  // HYP-END-01 — remplace INTÉGRALEMENT fSc['Endurance'] par le raisonnement clinique HYP, y
+  // compris quand il ne peut rien déterminer (status:null explicite, même principe que HYP-PUI-01/
+  // HYP-FOR-01/HYP-EXP-01/HYP-STA-01 — "mieux vaut NON DÉTERMINABLE qu'un diagnostic faux").
+  // Convergence à 6 mécanismes indépendants (heel_raise_reps + 5 KPI repeated_hop), ≥2
+  // déficitaires requis (gel CLI080, KINEXUS_REASONING_ENGINE_V1.md §7) — cf.
+  // AUDIT_IMPLEMENTATION_HYP_END01.md. Aucune autre qualité, aucun autre output de computeMoteur
+  // n'est touché par ce bloc.
+  var hypEnd01=computeHypEndurance01(testData,normPop,normAge);
+  var endEvaluable=hypEnd01.state!=='non_determinable';
+  var endStatus=null;
+  if(endEvaluable){
+    if(hypEnd01.state==='absente')endStatus='vert';
+    else if(hypEnd01.state==='suspectee')endStatus='jaune';
+    else{
+      var endAllRouge=hypEnd01.convergence.mechanismsInvolved.length>0&&hypEnd01.convergence.mechanismsInvolved.every(function(k){return hypEnd01.diagnosticEvidence[k].category==='rouge';});
+      endStatus=endAllRouge?'rouge':'orange';
+    }
+  }
+  var endEvaluableKeys=Object.keys(hypEnd01.diagnosticEvidence).filter(function(k){return hypEnd01.diagnosticEvidence[k].status!=='indisponible';});
+  var endDirectStatuses=endEvaluableKeys.map(function(k){return hypEnd01.diagnosticEvidence[k].category;}).filter(Boolean);
+  fSc['Endurance']={
+    status:endStatus, // null explicitement quand non_determinable — jamais une absence de seuil transformée en 'vert'.
+    confidence:endEvaluableKeys.length>=2?'elevee':(endEvaluableKeys.length===1?'faible':'faible'),
+    coverage:Math.round(endEvaluableKeys.length/6*100),
+    directTests:['heel_raise','repeated_hop'],
+    directStatuses:endDirectStatuses,
+    hypEnd01:hypEnd01
   };
   var sysSc={};
   SYSTEMS.forEach(function(sys){var tests=SYSTEM_TESTS[sys]||[];var scores=tests.map(function(t){return tSt[t];}).filter(Boolean).map(s2sc).filter(function(s){return s!=null;});sysSc[sys]=scores.length?sc2s(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;});
