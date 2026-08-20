@@ -5813,6 +5813,65 @@ function tfmSecondaryContributorNote(fn,sys){
 // pour garantir un vocabulaire strictement identique entre UI et PDF.
 var CSM_STATE_LABEL={non_determinable:'Non déterminable',absente:'Absente',suspectee:'Suspectée',retenue_faible:'Confirmé — support faible',retenue_moderee:'Confirmé — support modéré',retenue_forte:'Confirmé — support fort'};
 
+// ── Correction post-audit (mission IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) ───────────────────
+// Trois fonctions de PRÉSENTATION pures, lecture seule de `clinicalSynthesis` déjà calculé par
+// computeHypClinicalSynthesis01 (jamais modifiée, jamais rappelée, jamais recalculée ici) — aucun
+// nouveau moteur de raisonnement, uniquement un routage de texte vers la source de vérité HYP/CSM
+// déjà existante, à la place du texte narratif legacy `HYPO[fn](main)` (registre causal non hedgé,
+// ex. "semble principalement influencé par...", jamais généré à partir des données HYP réelles).
+
+// Remplace `p.hypothese` (texte auto-généré par HYPO, cf. computeMoteur()) aux points de
+// consommation qui présentent ce texte comme une conclusion clinique (onglet "Hypothèses",
+// carte "Priorité principale"). Ne touche jamais `HYPO`/`hypotheseTxt`/`priorities` eux-mêmes :
+// le champ reste tel quel dans les données (édition praticien via "Modifier le rapport" toujours
+// possible, cf. buildSportifReport qui n'appelle cette fonction que lorsqu'aucune surcharge
+// praticien n'existe — voir Partie 8/IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md).
+function csmSafeQualityNote(quality,csm){
+  if(!csm||!csm.qualities||!csm.qualities[quality]){
+    // Qualité non couverte par un moteur HYP (Contrôle Frontal, Contrôle Sensoriel) : même esprit
+    // que tfmSecondaryContributorNote, jamais le texte causal HYPO.
+    return'Élément relationnel TFM associé, à titre informatif — ne constitue pas un diagnostic HYP pour '+quality.toLowerCase()+'.';
+  }
+  var q=csm.qualities[quality];
+  if(q.nonDeterminable)return CSM_STATE_LABEL.non_determinable+' avec les données actuellement disponibles pour '+quality.toLowerCase()+'.';
+  if(q.suspected)return csmSuspectedNote(quality);
+  if(q.objectified){
+    var rels=csm.relationships||[];
+    var rel=rels.filter(function(r){return r.level==='explanatory_hypothesis'&&(r.explains===quality||r.explained===quality);})[0]
+      ||rels.filter(function(r){return r.level==='concordant_no_relation'&&(r.qualityA===quality||r.qualityB===quality);})[0];
+    if(rel)return rel.narrative;
+    return'Déficit objectivé par le moteur HYP dédié ('+(q.hypId||'')+') — voir la Synthèse clinique pour le détail.';
+  }
+  return'Élément relationnel TFM associé, à titre informatif — ne constitue pas un diagnostic HYP pour '+quality.toLowerCase()+'.';
+}
+// Formulation courte, unique, réutilisée partout où l'état "suspectee" doit être présenté (Problème
+// 1) : « un signal existe, la convergence diagnostique n'est pas suffisante pour retenir le
+// déficit » — jamais transformé en déficit confirmé, jamais en non déterminable.
+function csmSuspectedNote(quality){
+  return'Un premier signal existe pour '+quality.toLowerCase()+', mais la convergence diagnostique n\'est pas suffisante pour retenir le déficit.';
+}
+// Problème 4 : distingue, pour une qualité non déterminable, "aucune mesure exploitable" de "des
+// mesures existent mais aucune norme ne permet de les classifier" — lecture pure de
+// `csm.qualities[quality].hyp.diagnosticEvidence`, déjà exposé par CSM (jamais recalculé). Retourne
+// false si aucune preuve diagnostique n'est évaluable (silence, pas de phrase supplémentaire —
+// "ne pas transformer chaque non_determinable en long avertissement").
+function csmNonDeterminableHasPartialEvidence(quality,csm){
+  var q=csm&&csm.qualities&&csm.qualities[quality];
+  var h=q&&q.hyp;
+  var ev=h&&(h.diagnosticEvidence||h.diagnostic);
+  if(!ev)return false;
+  return Object.keys(ev).some(function(k){var e=ev[k];return e&&typeof e==='object'&&'status'in e&&e.status!=='indisponible';});
+}
+// Problème 3 : le sous-ensemble de `priorities` partageant la sévérité (statut) de l'élément le
+// plus sévère — jamais un classement au-delà de la sévérité déjà triée par statusPriorityRank()
+// (non modifié). Permet de ne jamais désigner UN SEUL élément comme "priorité principale" quand
+// plusieurs qualités sont à égalité de sévérité, sans inventer de départage supplémentaire.
+function topSeverityGroup(pri){
+  if(!pri||!pri.length)return[];
+  var top=pri[0].status;
+  return pri.filter(function(p){return p.status===top;});
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -6397,6 +6456,21 @@ function buildSportifReport(athlete,bilan,res){
   var bgMap={vert:'#d1fae5',jaune:'#FEF9C3',orange:'#ffedd5',rouge:'#fee2e2'};
   var txtMap={vert:'#065f46',jaune:'#A16207',orange:'#9a3412',rouge:'#991b1b'};
   var lblMap={vert:'Optimal',jaune:'À surveiller',orange:'Déficitaire',rouge:'Critique'};
+  // Carte "Priorité principale" (Problèmes 2/3, IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) : quand
+  // le praticien a explicitement surchargé/réordonné les priorités (reportOv.priorities!=null), son
+  // jugement clinique fait foi tel quel (texte legacy conservé, c'est désormais SA formulation, pas
+  // une narration auto-générée). Sinon (cas par défaut, la grande majorité des bilans) : jamais un
+  // seul élément désigné comme "LA" priorité quand plusieurs qualités sont à égalité de sévérité
+  // (topSeverityGroup), et jamais le texte causal legacy `hypothese` (csmSafeQualityNote).
+  var prioCardOverridden=reportOv.priorities!=null;
+  var prioCardGroup=prioCardOverridden?(pri[0]?[pri[0]]:[]):topSeverityGroup(pri);
+  var prioCardTitle=prioCardOverridden?'Priorité principale':'Déficits objectivés';
+  var prioCardValue=prioCardGroup.length===0?'AUCUNE':prioCardOverridden?(prioCardGroup[0].contributeurPrincipal||prioCardGroup[0].fonction).toUpperCase():prioCardGroup.map(function(p){return p.contributeurPrincipal||p.fonction;}).join(' · ').toUpperCase();
+  var prioCardColor=prioCardGroup[0]?colMap[prioCardGroup[0].status]:colMap.vert;
+  var prioCardSubtitle=prioCardGroup.length===0?'Profil équilibré.'
+    :prioCardOverridden?prioCardGroup[0].hypothese
+    :prioCardGroup.length===1?csmSafeQualityNote(prioCardGroup[0].fonction,res.clinicalSynthesis)
+    :'Plusieurs qualités à égalité de sévérité — voir la Synthèse clinique.';
   // ── Design system (uniformisé sur tout le rapport : rayon, marge intérieure, ombre, espacements) ──
   // 3 niveaux de poids visuel : L1 = éléments principaux (Résumé clinique / Body Map / Retour au sport),
   // L2 (panel, défaut) = standard, L3 = informations secondaires très discrètes.
@@ -6624,12 +6698,12 @@ function buildSportifReport(athlete,bilan,res){
   if(reportMode==='preseason'){
     rightColInner='<div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:12px">'
       +listCard('Forces',fnDist.vert.map(function(f){return{text:f,status:'vert'};}),'Aucune qualité optimale identifiée')
-      +kpiCard('🎯','Priorité principale',pri[0]?(pri[0].contributeurPrincipal||pri[0].fonction).toUpperCase():'AUCUNE',pri[0]?colMap[pri[0].status]:colMap.vert,pri[0]?pri[0].hypothese:'Profil équilibré.')
+      +kpiCard('🎯',prioCardTitle,prioCardValue,prioCardColor,prioCardSubtitle)
       +'</div>';
   }else if(reportMode==='performance'){
     rightColInner='<div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:12px">'
       +listCard('Qualités dominantes',fnDist.vert.map(function(f){return{text:f,status:'vert'};}),'Aucune qualité optimale identifiée')
-      +kpiCard('🎯','Priorité principale',pri[0]?(pri[0].contributeurPrincipal||pri[0].fonction).toUpperCase():'AUCUNE',pri[0]?colMap[pri[0].status]:colMap.vert,pri[0]?pri[0].hypothese:'Profil équilibré.')
+      +kpiCard('🎯',prioCardTitle,prioCardValue,prioCardColor,prioCardSubtitle)
       +'</div>';
   }else if(reportMode==='reeducation'){
     rightColInner='<div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:12px">'
@@ -6637,7 +6711,7 @@ function buildSportifReport(athlete,bilan,res){
       +listCard('Prochains objectifs',objectifsRestants.slice(0,3).map(function(it){return{text:it.label,status:it.state==='mid'?'jaune':'rouge'};}),'Tous les critères sont validés')
       +'</div>';
   }else{ // rtp
-    rightColInner='<div style="flex:1;min-width:180px">'+kpiCard('🎯','Priorité principale',pri[0]?(pri[0].contributeurPrincipal||pri[0].fonction).toUpperCase():'AUCUNE',pri[0]?colMap[pri[0].status]:colMap.vert,pri[0]?pri[0].hypothese:'Profil équilibré.')+'</div>';
+    rightColInner='<div style="flex:1;min-width:180px">'+kpiCard('🎯',prioCardTitle,prioCardValue,prioCardColor,prioCardSubtitle)+'</div>';
   }
   html+='<div style="display:flex;gap:16px;margin-bottom:18px;align-items:stretch">'
     +panelL1(headlineInner,'flex:0 0 168px')
@@ -6722,7 +6796,11 @@ function buildSportifReport(athlete,bilan,res){
           +'<div style="font-weight:800;font-size:15px;color:#132B3A">'+p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:'')+'</div>'
           +'</div>'
           +field('🎯','Objectif',objectifTxt)
-          +field('🔍','Pourquoi ?',p.hypothese)
+          // Problème 2 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) : même routage HYP/CSM que la
+          // carte "Priorité principale" (prioCardOverridden défini plus haut) — le texte causal
+          // legacy `hypothese` n'est utilisé que si le praticien l'a explicitement conservé/édité
+          // via "Modifier le rapport" ; sinon, csmSafeQualityNote() route vers HYP/CSM.
+          +field('🔍','Pourquoi ?',prioCardOverridden?p.hypothese:csmSafeQualityNote(p.fonction,res.clinicalSynthesis))
           +field('🛠️','Actions',p.orientation)
           +(testsHtml?'<div style="display:flex;gap:10px;margin-bottom:15px">'+iconBadge('📋')+'<div><div style="font-size:6.8pt;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Tests de suivi</div><div>'+testsHtml+'</div></div></div>':'')
           +field('🏁','Critère de sortie',sortieTxt)
@@ -6747,12 +6825,25 @@ function buildSportifReport(athlete,bilan,res){
     var csmDeficitsTxt=csmPdf.objectified.length
       ?'Un déficit est objectivé pour : '+csmPdf.objectified.map(function(o){return o.quality+' ('+(CSM_STATE_LABEL[o.state]||o.state).toLowerCase()+')';}).join(', ')+'.'
       :csmPdf.narrative.deficitsObjectives;
+    // Problème 1 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) : csm.suspected existe déjà (calculé par
+    // computeHypClinicalSynthesis01, non modifié) mais n'était lu par aucun consommateur UI/PDF —
+    // ajout strictement additif, lecture seule.
+    var csmSuspectedTxt=csmPdf.suspected.length
+      ?csmPdf.suspected.map(function(s){return s.quality+' : '+csmSuspectedNote(s.quality);}).join(' ')
+      :'';
+    // Problème 4 : parmi les qualités non déterminables, celles qui disposent malgré tout d'au
+    // moins une preuve diagnostique évaluable (mesure saisie et classifiable) — distingue "aucune
+    // donnée" de "données normatives manquantes pour trancher". Silencieux si aucune (mission :
+    // "ne pas transformer chaque non_determinable en long avertissement").
+    var csmPartialEvidenceQualities=csmPdf.nonDeterminable.filter(function(n){return csmNonDeterminableHasPartialEvidence(n.quality,csmPdf);}).map(function(n){return n.quality;});
     var csmConcordances=csmPdf.relationships.filter(function(r){return r.level==='concordant_no_relation';});
     html+='<div style="margin-bottom:28px">'+sectionTitle(4,'Synthèse clinique')
       +panel(
         (csmPdf.objectified.length?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">'+csmPdf.objectified.map(function(o){return badge(o.status,o.quality);}).join('')+'</div>':'')
         +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmDeficitsTxt+'</div>'
-        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:14px">'+csmPdf.narrative.qualitesNonDeterminables+'</div>'
+        +(csmSuspectedTxt?subtleHeader('Qualités suspectées (preuve partielle)')+'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:14px">'+csmSuspectedTxt+'</div>':'')
+        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:2px">'+csmPdf.narrative.qualitesNonDeterminables+'</div>'
+        +(csmPartialEvidenceQualities.length?'<div style="font-size:7.5pt;color:#94A3B8;line-height:1.6;margin-bottom:14px;font-style:italic">Diagnostic non déterminable avec les données normatives actuellement disponibles pour : '+csmPartialEvidenceQualities.join(', ')+'.</div>':'<div style="margin-bottom:14px"></div>')
         // Relation explicative (registre documenté, cf. HYP_QUALITY_RELATIONS) et concordance
         // (aucune relation documentée) restent deux registres de preuve distincts — jamais
         // fusionnés dans le même paragraphe (mission AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md §3).
@@ -7052,11 +7143,23 @@ function buildExpertReport(athlete,bilan,res){
     var csmExpDeficitsTxt=csmExp.objectified.length
       ?'Un déficit est objectivé pour : '+csmExp.objectified.map(function(o){return o.quality+' ('+(CSM_STATE_LABEL[o.state]||o.state).toLowerCase()+')';}).join(', ')+'.'
       :csmExp.narrative.deficitsObjectives;
+    // Problèmes 1/4 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) — mêmes ajouts additifs que
+    // buildSportifReport (commentaire détaillé à cet endroit) : csm.suspected et distinction
+    // "aucune donnée" vs "données normatives insuffisantes" au sein de non-déterminable.
+    var csmExpSuspectedTxt=csmExp.suspected.length
+      ?csmExp.suspected.map(function(s){return s.quality+' : '+csmSuspectedNote(s.quality);}).join(' ')
+      :'';
+    var csmExpPartialEvidenceQualities=csmExp.nonDeterminable.filter(function(n){return csmNonDeterminableHasPartialEvidence(n.quality,csmExp);}).map(function(n){return n.quality;});
     var csmExpConcordances=csmExp.relationships.filter(function(r){return r.level==='concordant_no_relation';});
     html+='<div class="print-section-title" style="margin-top:12px">Synthèse clinique</div>';
     if(csmExp.objectified.length){html+='<div style="margin-bottom:10px">'+csmExp.objectified.map(function(o){return '<span class="print-badge '+o.status+'" style="margin-right:6px">'+o.quality+'</span>';}).join('')+'</div>';}
     html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExpDeficitsTxt+'</p>';
-    html+='<p style="margin:0 0 10px;font-size:9.5pt;color:#333">'+csmExp.narrative.qualitesNonDeterminables+'</p>';
+    if(csmExpSuspectedTxt){
+      html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Qualités suspectées (preuve partielle)</div>';
+      html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExpSuspectedTxt+'</p>';
+    }
+    html+='<p style="margin:0 0 2px;font-size:9.5pt;color:#333">'+csmExp.narrative.qualitesNonDeterminables+'</p>';
+    if(csmExpPartialEvidenceQualities.length)html+='<p style="margin:0 0 10px;font-size:8pt;color:#888;font-style:italic">Diagnostic non déterminable avec les données normatives actuellement disponibles pour : '+csmExpPartialEvidenceQualities.join(', ')+'.</p>';
     if(csmExp.explanatoryHypotheses.length){
       html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Relations explicatives possibles</div>';
       csmExp.explanatoryHypotheses.forEach(function(rel){html+='<p style="margin:0 0 6px;font-size:9pt;color:#333;padding-left:8px;border-left:2px solid #2A9D8F">'+rel.narrative+'</p>';});
@@ -7082,7 +7185,10 @@ function buildExpertReport(athlete,bilan,res){
   SYSTEMS.forEach(function(sys){var st=sysSc[sys];if(!st)return;html+='<div class="print-card" style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:10pt">'+sys+'</span><span class="print-badge '+st+'">'+SL[st]+'</span></div>';});
   html+='</div>';
   html+='<div class="print-section-title">Hypothèses cliniques</div>';
-  pri.forEach(function(p){html+='<div class="print-card" style="margin-bottom:8px"><strong>'+p.fonction+'</strong><p style="margin:4px 0 0;font-style:italic;color:#444">'+p.hypothese+'</p>'+(p.contributeurPrincipal?'<p style="margin:4px 0 0;font-size:9pt;color:#666">Contributeur : '+p.contributeurPrincipal+(p.contributeurSecondaire?' · '+p.contributeurSecondaire:'')+'</p>':'')+'</div>';});
+  // Problème 2 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) : pri=res.priorities ici, jamais
+  // surchargé par bilan.reportOverrides (le rapport expert n'a pas de mécanisme d'édition) — donc
+  // toujours le texte auto-généré, remplacé sans condition par csmSafeQualityNote().
+  pri.forEach(function(p){html+='<div class="print-card" style="margin-bottom:8px"><strong>'+p.fonction+'</strong><p style="margin:4px 0 0;font-style:italic;color:#444">'+csmSafeQualityNote(p.fonction,res.clinicalSynthesis)+'</p>'+(p.contributeurPrincipal?'<p style="margin:4px 0 0;font-size:9pt;color:#666">Contributeur : '+p.contributeurPrincipal+(p.contributeurSecondaire?' · '+p.contributeurSecondaire:'')+'</p>':'')+'</div>';});
   html+='<div class="print-section-title" style="margin-top:12px">Orientations</div>';
   pri.forEach(function(p){html+='<div class="print-card"><strong>'+p.rang+'. '+p.fonction+'</strong><p style="margin:4px 0 0;color:#333">'+p.orientation+'</p></div>';});
   if(rtp){var rtpCol=rtp.status==='vert'?'#22c55e':rtp.status==='jaune'?'#FACC15':'#ef4444';html+='<div class="print-section-title" style="margin-top:12px">Statut RTP</div>';html+='<div class="print-rtp-box" style="border-color:'+rtpCol+'"><div style="font-size:13pt;font-weight:800;color:'+rtpCol+'">'+rtp.label+'</div><div style="font-size:9pt;color:#555;margin-top:3px">Tests RTP : '+rtp.passCount+'/'+rtp.totalCount+' ('+rtp.ratio+'%)'+(rtp.aclScore!=null?' · ACL-RSI : '+rtp.aclScore+'/100':'')+'</div></div>';}
@@ -7946,13 +8052,26 @@ function AnalyseView(props){
             h('div',{style:{fontSize:20,fontWeight:900,color:riskCol,marginTop:5}},riskLevel),
             h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6}},riskSub)
           ),
-          h(Card,{pad:14},
-            h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
-              h('span',{style:{fontSize:16}},'🎯'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Priorité principale')
-            ),
-            h('div',{style:{fontSize:18,fontWeight:900,color:pri[0]?SC[pri[0].status]:C.vert,marginTop:5,textTransform:'uppercase'}},pri[0]?(pri[0].contributeurPrincipal||pri[0].fonction):'AUCUNE'),
-            h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6,lineHeight:1.4}},pri[0]?pri[0].hypothese:'Profil équilibré, aucun déficit majeur.')
-          ),
+          (function(){
+            // Problème 3 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) : CSM ne détermine jamais de
+            // hiérarchie entre déficits — remplace la carte "Priorité principale" (un seul élément
+            // désigné) par "Déficits objectivés", qui affiche TOUT le groupe à égalité de sévérité
+            // (topSeverityGroup, tri par sévérité déjà correct via statusPriorityRank, non modifié)
+            // plutôt que d'en choisir arbitrairement un seul. Problème 2 : le sous-titre n'utilise
+            // plus le texte causal legacy `hypothese`, remplacé par csmSafeQualityNote().
+            var topGroup=topSeverityGroup(pri);
+            var label=topGroup.length===0?'AUCUNE':topGroup.map(function(p){return p.contributeurPrincipal||p.fonction;}).join(' · ');
+            var subtitle=topGroup.length===0?'Profil équilibré, aucun déficit majeur.'
+              :topGroup.length===1?csmSafeQualityNote(topGroup[0].fonction,res.clinicalSynthesis)
+              :'Plusieurs qualités présentent le même niveau de sévérité — voir la Synthèse clinique pour le détail de chacune.';
+            return h(Card,{pad:14},
+              h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+                h('span',{style:{fontSize:16}},'🎯'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Déficits objectivés')
+              ),
+              h('div',{style:{fontSize:topGroup.length>1?14:18,fontWeight:900,color:topGroup[0]?SC[topGroup[0].status]:C.vert,marginTop:5,textTransform:'uppercase'}},label),
+              h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6,lineHeight:1.4}},subtitle)
+            );
+          })(),
           h(Card,{pad:14},
             h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
               h('span',{style:{fontSize:16}},evolution&&evolution.delta<0?'📉':'📈'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Évolution vs dernier bilan')
@@ -8488,11 +8607,18 @@ function ExpertView(props){
             :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.objectified.map(function(o){return h('div',{key:o.quality,style:{display:'flex',alignItems:'center',gap:8}},h(Badge,{status:o.status,small:true}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},o.quality),h('span',{style:{color:C.muted,fontSize:11}},CSM_STATE_LABEL[o.state]||o.state));}))
         ),
         h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités suspectées (preuve partielle)'),
+          h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Un signal existe, mais la convergence diagnostique n\'est pas suffisante pour retenir le déficit — ni normal, ni confirmé, ni non déterminable.'),
+          csm.suspected.length===0
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune.')
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.suspected.map(function(s){return h('div',{key:s.quality,style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{width:8,height:8,borderRadius:'50%',background:C.jaune,flexShrink:0}}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},s.quality),h('span',{style:{color:C.muted,fontSize:11}},csmSuspectedNote(s.quality)));}))
+        ),
+        h(Card,{pad:14},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités non déterminables'),
           h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Non déterminable n\'équivaut jamais à normal.'),
           csm.nonDeterminable.length===0
             ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — toutes les qualités couvertes par un moteur HYP ont pu être évaluées.')
-            :h('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},csm.nonDeterminable.map(function(n){return h('span',{key:n.quality,style:{padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:11}},n.quality);}))
+            :h('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},csm.nonDeterminable.map(function(n){return h('span',{key:n.quality,style:{padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:11}},n.quality+(csmNonDeterminableHasPartialEvidence(n.quality,csm)?' · données normatives insuffisantes':''));}))
         ),
         h(Card,{pad:14},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Relations explicatives possibles'),
@@ -8540,7 +8666,13 @@ function ExpertView(props){
       })
     ),
     tab==='systemes'&&h('div',{className:'g2'},SYSTEMS.map(function(sys){var status=sysSc[sys];if(!status)return null;return h(Card,{key:sys,pad:'12px 14px'},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}},h('span',{style:{color:C.text,fontWeight:600,fontSize:12}},sys),h(Badge,{status:status,small:true})),h('div',{style:{color:C.muted,fontSize:10}},(SYSTEM_TESTS[sys]||[]).filter(function(t){return td[t]&&td[t].active;}).map(function(t){return TBK[t]?TBK[t].label:t;}).join(', ')||'—'));})),
-    tab==='hypotheses'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},pri.length===0&&h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.'),pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h(Badge,{status:p.status,small:true}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},'« '+p.hypothese+' »'),p.contributeurPrincipal&&h('div',{style:{color:C.muted,fontSize:11,marginTop:6}},'Contributeur : ',h('span',{style:{color:C.tealLight}},p.contributeurPrincipal),p.contributeurSecondaire&&h('span',{style:{color:C.muted}},' · '+p.contributeurSecondaire)));})),
+    tab==='hypotheses'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+      // Formulations routées vers HYP/CSM (mission IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md,
+      // Problème 2) : cet onglet n'affiche plus le texte legacy auto-généré `HYPO[fn]` (registre
+      // causal non hedgé), remplacé par csmSafeQualityNote() — jamais de conclusion plus forte que
+      // ce que HYP/CSM autorise pour la qualité concernée.
+      pri.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontStyle:'italic',marginBottom:2}},'Formulations alignées sur la Synthèse clinique (HYP/CSM).'),
+      pri.length===0&&h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.'),pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h(Badge,{status:p.status,small:true}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},'« '+csmSafeQualityNote(p.fonction,res.clinicalSynthesis)+' »'),p.contributeurPrincipal&&h('div',{style:{color:C.muted,fontSize:11,marginTop:6}},'Contributeur : ',h('span',{style:{color:C.tealLight}},p.contributeurPrincipal),p.contributeurSecondaire&&h('span',{style:{color:C.muted}},' · '+p.contributeurSecondaire)));})),
     tab==='orientations'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},pri.length===0&&h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.'),pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h('span',{style:{background:SC[p.status],color:'#000',fontWeight:800,fontSize:10,width:18,height:18,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}},p.rang),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},p.orientation));})),
     tab==='couverture'&&h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}},FUNCTIONS.map(function(f){var sc=fSc[f];return h('div',{key:f,style:{background:C.card,border:'1px solid '+C.border,borderRadius:8,padding:'10px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}},h('span',{style:{color:C.text,fontSize:12}},f),sc?h('div',{style:{display:'flex',alignItems:'center',gap:6}},h('div',{style:{height:4,width:40,background:C.surface,borderRadius:2,overflow:'hidden'}},h('div',{style:{height:'100%',width:sc.coverage+'%',background:sc.coverage>=75?C.vert:sc.coverage>=50?C.jaune:C.orange,borderRadius:2}})),h('span',{style:{color:C.muted,fontSize:10}},sc.coverage+'%')):h('span',{style:{color:C.muted,fontSize:10}},'—'));})),
     tab==='raisonnement'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
