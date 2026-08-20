@@ -4870,6 +4870,134 @@ function computeHypForce01(testData,normPop,normAge){
   };
 }
 
+// ── HYP-EXP-01 — Moteur clinique Explosivité ─────────────────────────────────────────────────
+// Remplace (dans computeMoteur() ci-dessous, uniquement pour fSc['Explosivité']) le raisonnement
+// Explosivité produit par la boucle TFM générique. Règle diagnostique GELÉE, non rouverte :
+// cmj_conc_rfd ET cmj_conc_impulse_100 conjointement déficitaires (2/2, mêmes deux variables que
+// Vierge_7 vise réellement mesurées — voir CARTOGRAPHIE_CLINIQUE_HYP_EXPLOSIVITE.md). Même
+// architecture que computeHypPower01 (2/2 strict, non_determinable dès qu'un seul candidat n'est
+// pas classifiable) — situation normative structurellement identique : les deux preuves n'ont
+// aujourd'hui aucun seuil. Réutilise exclusivement applyThr/bestVal/testKpiDir déjà existants —
+// aucun nouveau seuil.
+//
+// Couverture réelle des seuils, vérifiée avant écriture (CARTOGRAPHIE_CLINIQUE_HYP_EXPLOSIVITE.md,
+// INVENTAIRE_COMPLET_VARIABLES_NORMEES.md) :
+//   cmj_conc_rfd, cmj_conc_impulse_100 : AUCUN seuil, ni NORMS ni THRESHOLDS -> jamais
+//     classifiables aujourd'hui.
+//   cmj_peak_power (confirmative documentée) : NORMS très large -> classifiable.
+//   cmj_conc_peak_force/mean_force/impulse (confirmatives documentées) : AUCUN seuil.
+//   cmj_depth, cmj_rsi_mod, cmj_ecc_peak_vel : NORMS/THRESHOLDS -> classifiables (explicatives
+//     biomécaniques documentées, jamais génératrices).
+//   cmj_braking_rfd : classifiable, mais correspondance de nommage inférée (`CMJ_ECC_DECEL_RFD`),
+//     non confirmée par le praticien — exposée telle quelle, jamais utilisée pour trancher seule.
+//   cmj_conc_duration, RFD/TTPF isométriques (IMTP/SLIMTP/Belt Squat/Push/Squat Hold), cinétique
+//     segmentaire (11 familles) : AUCUN seuil.
+// Conséquence directe, volontaire : la convergence 2/2 ne peut aujourd'hui jamais être évaluée
+// -> `state:'non_determinable'` explicite, jamais une absence de seuil transformée en 'normal'.
+function computeHypExplosivityCmjKpi(testData,kpi,key,pop,age){
+  var data=(testData||{}).cmj;
+  if(!data||!data.active)return{status:'indisponible',raw:null,category:null};
+  var raw=bestVal((data.trials||{})[kpi],testKpiDir('cmj',kpi));
+  var st=raw!=null?applyThr(key,raw,pop,age):null;
+  if(!st)return{status:'indisponible',raw:raw,category:null};
+  return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
+}
+// Confirmatives documentées (jamais une deuxième preuve diagnostique, jamais génératrices).
+function computeHypExplosivityConfirmative(testData,pop,age){
+  return{
+    cmj_peak_power:computeHypExplosivityCmjKpi(testData,'peak_power','cmj_peak_power',pop,age),
+    cmj_conc_peak_force:computeHypExplosivityCmjKpi(testData,'conc_peak_force','cmj_conc_peak_force',pop,age),
+    cmj_conc_mean_force:computeHypExplosivityCmjKpi(testData,'conc_mean_force','cmj_conc_mean_force',pop,age),
+    cmj_conc_impulse:computeHypExplosivityCmjKpi(testData,'conc_impulse','cmj_conc_impulse',pop,age)
+  };
+}
+// Explicatives — distinction Capacité de force (tests dédiés) / Vitesse de développement (RFD) /
+// biomécanique CMJ, conservée telle que documentée (mission §4) : les variables de force du CMJ ne
+// sont jamais déplacées vers la Capacité, la Capacité reste fondée sur les tests de force dédiés.
+// Extrait représentatif des listes complètes documentées, jamais classifié en diagnostic.
+function computeHypExplosivityExplanatory(testData,pop,age){
+  var belt=(testData||{}).iso_belt_squat,imtp=(testData||{}).imtp;
+  function bilateralRaw(data,key,kpi){
+    if(!data||!data.active)return{raw:null,status:null,classifiable:false};
+    var raw=bestVal((data.trials||{})[kpi],testKpiDir(key.split('_')[0],kpi));
+    return{raw:raw,status:null,classifiable:false};
+  }
+  return{
+    forceCapacite:{
+      iso_belt_squat_n:(function(){var r=bilateralRaw(belt,'iso_belt_squat_n','n');r.classifiable=true;r.status=r.raw!=null?applyThr('iso_belt_squat_n',r.raw,pop,age):null;return r;})()
+    },
+    rfd:{
+      imtp_rfd100:bilateralRaw(imtp,'imtp_rfd100','rfd100'),
+      imtp_ttpf:bilateralRaw(imtp,'imtp_ttpf','ttpf')
+    },
+    biomecanique:{
+      cmj_depth:computeHypExplosivityCmjKpi(testData,'depth','cmj_depth',pop,age),
+      cmj_conc_duration:computeHypExplosivityCmjKpi(testData,'conc_duration','cmj_conc_duration',pop,age),
+      cmj_rsi_mod:computeHypExplosivityCmjKpi(testData,'rsi_mod','cmj_rsi_mod',pop,age),
+      cmj_ecc_mean_power:computeHypExplosivityCmjKpi(testData,'ecc_mean_power','cmj_ecc_mean_power',pop,age),
+      cmj_ecc_peak_vel:computeHypExplosivityCmjKpi(testData,'ecc_peak_vel','cmj_ecc_peak_vel',pop,age),
+      cmj_braking_rfd:Object.assign({nomenclatureNonConfirmee:true},computeHypExplosivityCmjKpi(testData,'braking_rfd','cmj_braking_rfd',pop,age))
+    }
+  };
+}
+// Point d'entrée. Fonction pure. Modèle d'état standard à 2 mécanismes (comme Puissance) : Absente
+// -> Suspectée -> Retenue/Faible -> Retenue/Modérée -> Retenue/Forte. `non_determinable` dès que
+// l'une des deux preuves n'est pas classifiable — jamais un repli sur 'absente'.
+function computeHypExplosivity01(testData,normPop,normAge){
+  var rfdRes=computeHypExplosivityCmjKpi(testData,'conc_rfd','cmj_conc_rfd',normPop,normAge);
+  var impulseRes=computeHypExplosivityCmjKpi(testData,'conc_impulse_100','cmj_conc_impulse_100',normPop,normAge);
+
+  var rfdClassified=rfdRes.status!=='indisponible';
+  var impulseClassified=impulseRes.status!=='indisponible';
+  var bothClassified=rfdClassified&&impulseClassified;
+
+  var state,mechanisms=[];
+  if(!bothClassified){
+    state='non_determinable';
+  }else{
+    var rfdDeficient=rfdRes.status==='deficitaire',impulseDeficient=impulseRes.status==='deficitaire';
+    if(rfdDeficient)mechanisms.push('cmj_conc_rfd');
+    if(impulseDeficient)mechanisms.push('cmj_conc_impulse_100');
+    if(rfdDeficient&&impulseDeficient)state='retenue_faible';
+    else if(rfdDeficient||impulseDeficient)state='suspectee';
+    else state='absente';
+  }
+
+  var confirmative=computeHypExplosivityConfirmative(testData,normPop,normAge);
+  var explanatory=computeHypExplosivityExplanatory(testData,normPop,normAge);
+  var confirmativeConvergent=state==='retenue_faible'&&confirmative.cmj_peak_power.status==='deficitaire';
+  var biomeca=explanatory.biomecanique;
+  var explanatoryConvergent=state==='retenue_faible'&&confirmativeConvergent&&['cmj_depth','cmj_rsi_mod','cmj_ecc_mean_power','cmj_ecc_peak_vel'].some(function(k){return biomeca[k].status==='deficitaire';});
+
+  var support=null;
+  if(state==='retenue_faible'){
+    support={level:explanatoryConvergent?'forte':(confirmativeConvergent?'moderee':'faible')};
+  }
+
+  return{
+    hypId:'HYP-EXP-01',
+    state:state,
+    support:support,
+    diagnosticEvidence:{
+      cmj_conc_rfd:rfdRes,
+      cmj_conc_impulse_100:impulseRes
+    },
+    convergence:{
+      requiredMechanisms:2,
+      distinctMechanismsObserved:mechanisms.length,
+      thresholdMet:state==='retenue_faible',
+      mechanismsInvolved:mechanisms,
+      ruleVariant:'standard_2_mechanisms_gelee'
+    },
+    confirmativeEvidence:confirmative,
+    explanatoryEvidence:explanatory,
+    precision:{
+      note:"Aucune asymétrie documentée pour Explosivité dans les sources consultées (cmj est un test bilatéral, sans distinction D/G) — aucun mécanisme d'asymétrie propre à cette qualité n'existe dans le code, contrairement à Force (LSI des tests unilatéraux)."
+    },
+    note:"cmj_peak_power, cmj_height, slcmj_height, dj_rsi et sldj_rsi ne sont jamais lus par ce moteur au-delà de cmj_peak_power (confirmative documentée) — aucun rôle documenté pour les autres dans HYP-EXP-01, jamais attribué arbitrairement (mission §6)."
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -5015,6 +5143,26 @@ function computeMoteur(testData,questData,normPop,normAge){
     directTests:['imtp','slimtp','iso_belt_squat','sl_iso_push'],
     directStatuses:forDirectStatuses,
     hypFor01:hypFor01
+  };
+  // HYP-EXP-01 — remplace INTÉGRALEMENT fSc['Explosivité'] par le raisonnement clinique HYP, y
+  // compris quand il ne peut rien déterminer (status:null explicite, même principe que HYP-PUI-01
+  // — "mieux vaut NON DÉTERMINABLE qu'un diagnostic faux"). Aucune autre qualité, aucun autre
+  // output de computeMoteur n'est touché par ce bloc — cf. IMPLEMENTATION_HYP_EXP01.md.
+  var hypExp01=computeHypExplosivity01(testData,normPop,normAge);
+  var expEvaluable=hypExp01.state!=='non_determinable';
+  var expStatus=null;
+  if(expEvaluable){
+    expStatus=hypExp01.state==='absente'?'vert':hypExp01.state==='suspectee'?'jaune':
+      (hypExp01.diagnosticEvidence.cmj_conc_rfd.category==='rouge'&&hypExp01.diagnosticEvidence.cmj_conc_impulse_100.category==='rouge')?'rouge':'orange';
+  }
+  var expDirectStatuses=[hypExp01.diagnosticEvidence.cmj_conc_rfd.category,hypExp01.diagnosticEvidence.cmj_conc_impulse_100.category].filter(Boolean);
+  fSc['Explosivité']={
+    status:expStatus, // null explicitement quand non_determinable — jamais une absence de seuil transformée en 'vert'.
+    confidence:expDirectStatuses.length>=2?'elevee':'faible',
+    coverage:Math.round(expDirectStatuses.length/2*100),
+    directTests:['cmj'],
+    directStatuses:expDirectStatuses,
+    hypExp01:hypExp01
   };
   var sysSc={};
   SYSTEMS.forEach(function(sys){var tests=SYSTEM_TESTS[sys]||[];var scores=tests.map(function(t){return tSt[t];}).filter(Boolean).map(s2sc).filter(function(s){return s!=null;});sysSc[sys]=scores.length?sc2s(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;});
