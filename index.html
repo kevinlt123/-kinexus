@@ -5805,6 +5805,14 @@ function tfmSecondaryContributorNote(fn,sys){
   return'Élément relationnel TFM associé, à titre explicatif — ne constitue pas une preuve diagnostique de '+fn.toLowerCase()+(sys?' ('+sys.toLowerCase()+')':'')+'.';
 }
 
+// ── Présentation HYP-CSM-01 (mission AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md) ─────────────────
+// Table de libellés purement présentationnelle : traduit les valeurs `state` déjà produites par
+// computeHypClinicalSynthesis01 (jamais recalculées, jamais modifiées) en français lisible pour
+// l'UI et le PDF — évite d'exposer un enum interne (ex. "retenue_faible") tel quel au praticien.
+// Partagée par ExpertView (onglet "Synthèse clinique"), buildSportifReport et buildExpertReport
+// pour garantir un vocabulaire strictement identique entre UI et PDF.
+var CSM_STATE_LABEL={non_determinable:'Non déterminable',absente:'Absente',suspectee:'Suspectée',retenue_faible:'Confirmé — support faible',retenue_moderee:'Confirmé — support modéré',retenue_forte:'Confirmé — support fort'};
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -6395,7 +6403,11 @@ function buildSportifReport(athlete,bilan,res){
   var CARD_RADIUS='14px';
   var CARD_BORDER='1px solid #E7ECF1';
   var CARD_SHADOW='0 1px 3px rgba(15,35,55,0.05)';
-  function badge(s,txt){return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-weight:700;font-size:8pt;background:'+bgMap[s]+';color:'+txtMap[s]+'">'+(txt||lblMap[s])+'</span>';}
+  // s peut être null (qualité HYP non_determinable, ex. table "Qualités fonctionnelles") — sans ce
+  // garde-fou, bgMap[null]/txtMap[null]/lblMap[null] valent tous `undefined`, et le badge affichait
+  // littéralement le texte "undefined" au praticien (bug de présentation repéré lors de l'audit
+  // AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md — jamais un statut HYP recalculé ou réinterprété ici).
+  function badge(s,txt){if(!s)return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-weight:700;font-size:8pt;background:#F1F5F9;color:#64748B">'+(txt||'Non déterminable')+'</span>';return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-weight:700;font-size:8pt;background:'+bgMap[s]+';color:'+txtMap[s]+'">'+(txt||lblMap[s])+'</span>';}
   function sectionTitle(n,title,dark){return '<div style="display:flex;align-items:center;gap:11px;margin-bottom:22px"><span style="width:24px;height:24px;border-radius:7px;background:'+(dark?'#2A9D8F':'#1B4F6A')+';color:#fff;font-weight:800;font-size:10.5pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+n+'</span><span style="font-size:13.5px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:'+(dark?'#fff':'#1B4F6A')+'">'+title+'</span></div>';}
   // Entête discret, sans numéro ni carré coloré — pour les blocs de niveau 3 qui ne doivent pas concurrencer les sections principales.
   function subtleHeader(title,dark){return '<div style="font-size:9.5px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+(dark?'rgba(255,255,255,0.4)':'#B7C2CC')+';margin-bottom:16px">'+title+'</div>';}
@@ -6726,12 +6738,26 @@ function buildSportifReport(athlete,bilan,res){
   // "Qualités fonctionnelles") : cette section les synthétise, ne les remplace pas.
   if(res.clinicalSynthesis){
     var csmPdf=res.clinicalSynthesis;
+    // Ligne "déficits objectivés" reconstruite localement (présentation uniquement) à partir de
+    // `objectified`/CSM_STATE_LABEL plutôt que la phrase narrative brute — celle-ci concatène le
+    // `state` interne tel quel (ex. "retenue_faible"), lisible pour un développeur mais pas pour
+    // le praticien. Aucune donnée CSM modifiée : mêmes qualités, même état, seule la mise en mots
+    // change. qualitesNonDeterminables/limites restent utilisées mot pour mot (déjà rédigées en
+    // français clinique par CSM, cf. computeHypClinicalSynthesisNarrative — non touché).
+    var csmDeficitsTxt=csmPdf.objectified.length
+      ?'Un déficit est objectivé pour : '+csmPdf.objectified.map(function(o){return o.quality+' ('+(CSM_STATE_LABEL[o.state]||o.state).toLowerCase()+')';}).join(', ')+'.'
+      :csmPdf.narrative.deficitsObjectives;
+    var csmConcordances=csmPdf.relationships.filter(function(r){return r.level==='concordant_no_relation';});
     html+='<div style="margin-bottom:28px">'+sectionTitle(4,'Synthèse clinique')
       +panel(
         (csmPdf.objectified.length?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">'+csmPdf.objectified.map(function(o){return badge(o.status,o.quality);}).join('')+'</div>':'')
-        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmPdf.narrative.deficitsObjectives+'</div>'
-        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmPdf.narrative.qualitesNonDeterminables+'</div>'
-        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmPdf.narrative.relationsExplicatives+'</div>'
+        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmDeficitsTxt+'</div>'
+        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:14px">'+csmPdf.narrative.qualitesNonDeterminables+'</div>'
+        // Relation explicative (registre documenté, cf. HYP_QUALITY_RELATIONS) et concordance
+        // (aucune relation documentée) restent deux registres de preuve distincts — jamais
+        // fusionnés dans le même paragraphe (mission AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md §3).
+        +(csmPdf.explanatoryHypotheses.length?subtleHeader('Relations explicatives possibles')+csmPdf.explanatoryHypotheses.map(function(rel){return '<div style="font-size:8.5pt;color:#132B3A;line-height:1.6;margin-bottom:6px;padding-left:10px;border-left:2px solid #2A9D8F">'+rel.narrative+'</div>';}).join(''):'')
+        +(csmConcordances.length?subtleHeader('Concordances (sans relation documentée)')+csmConcordances.map(function(r){return '<div style="font-size:8.5pt;color:#5B7A8C;line-height:1.6;margin-bottom:6px">'+r.narrative+'</div>';}).join(''):'')
         +'<div style="font-size:7.5pt;color:#94A3B8;line-height:1.6;margin-top:14px;padding-top:12px;border-top:1px solid #F3F6F8">'+csmPdf.narrative.limites+'</div>'
       )
       +'</div>';
@@ -7008,7 +7034,11 @@ function buildExpertReport(athlete,bilan,res){
   // Fonctions table
   html+='<div class="print-section-title">Fonctions évaluées</div>';
   html+='<table class="print-table"><thead><tr><th>Fonction</th><th>Statut</th><th>Couverture</th><th>Confiance</th></tr></thead><tbody>';
-  FUNCTIONS.forEach(function(fn){var sc=fSc[fn];if(!sc)return;html+='<tr><td>'+fn+'</td><td><span class="print-badge '+sc.status+'">'+SL[sc.status]+'</span></td><td>'+sc.coverage+'%</td><td>'+sc.confidence+'</td></tr>';});
+  // sc.status peut être null (qualité HYP non_determinable) — sans ce garde-fou, la classe CSS
+  // "print-badge null" ne correspond à aucun style défini et SL[null] vaut `undefined`, affichant
+  // littéralement le texte "undefined" au médecin (bug de présentation repéré lors de l'audit
+  // AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md — aucun statut HYP recalculé ni réinterprété ici).
+  FUNCTIONS.forEach(function(fn){var sc=fSc[fn];if(!sc)return;var statusHtml=sc.status?'<span class="print-badge '+sc.status+'">'+SL[sc.status]+'</span>':'<span class="print-badge" style="background:#F1F5F9;color:#64748B">Non déterminable</span>';html+='<tr><td>'+fn+'</td><td>'+statusHtml+'</td><td>'+sc.coverage+'%</td><td>'+sc.confidence+'</td></tr>';});
   html+='</tbody></table></div>';
   // Synthèse clinique HYP-CSM-01 (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md) — après les diagnostics
   // individuels par qualité, avant le détail KPI. Lit exclusivement res.clinicalSynthesis, déjà
@@ -7016,11 +7046,25 @@ function buildExpertReport(athlete,bilan,res){
   // ci-dessus (diagnostics détaillés HYP), le complète.
   if(res.clinicalSynthesis){
     var csmExp=res.clinicalSynthesis;
+    // Même reconstruction locale que buildSportifReport (présentation uniquement, cf. commentaire
+    // détaillé à cet endroit) : évite d'exposer le `state` interne brut, distingue relation
+    // explicative et concordance plutôt que de les fusionner dans un seul paragraphe.
+    var csmExpDeficitsTxt=csmExp.objectified.length
+      ?'Un déficit est objectivé pour : '+csmExp.objectified.map(function(o){return o.quality+' ('+(CSM_STATE_LABEL[o.state]||o.state).toLowerCase()+')';}).join(', ')+'.'
+      :csmExp.narrative.deficitsObjectives;
+    var csmExpConcordances=csmExp.relationships.filter(function(r){return r.level==='concordant_no_relation';});
     html+='<div class="print-section-title" style="margin-top:12px">Synthèse clinique</div>';
     if(csmExp.objectified.length){html+='<div style="margin-bottom:10px">'+csmExp.objectified.map(function(o){return '<span class="print-badge '+o.status+'" style="margin-right:6px">'+o.quality+'</span>';}).join('')+'</div>';}
-    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExp.narrative.deficitsObjectives+'</p>';
-    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExp.narrative.qualitesNonDeterminables+'</p>';
-    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExp.narrative.relationsExplicatives+'</p>';
+    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExpDeficitsTxt+'</p>';
+    html+='<p style="margin:0 0 10px;font-size:9.5pt;color:#333">'+csmExp.narrative.qualitesNonDeterminables+'</p>';
+    if(csmExp.explanatoryHypotheses.length){
+      html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Relations explicatives possibles</div>';
+      csmExp.explanatoryHypotheses.forEach(function(rel){html+='<p style="margin:0 0 6px;font-size:9pt;color:#333;padding-left:8px;border-left:2px solid #2A9D8F">'+rel.narrative+'</p>';});
+    }
+    if(csmExpConcordances.length){
+      html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">Concordances (sans relation documentée)</div>';
+      csmExpConcordances.forEach(function(r){html+='<p style="margin:0 0 6px;font-size:9pt;color:#666">'+r.narrative+'</p>';});
+    }
     html+='<p style="margin:8px 0 0;font-size:8pt;color:#888;font-style:italic">'+csmExp.narrative.limites+'</p>';
   }
   // KPI page
@@ -8430,7 +8474,12 @@ function ExpertView(props){
     tab==='synthese'&&(function(){
       var csm=res.clinicalSynthesis;
       if(!csm)return h('div',{style:{color:C.muted,fontSize:13}},'Synthèse non disponible.');
-      var CSM_STATE_LABEL={non_determinable:'Non déterminable',absente:'Absente',suspectee:'Suspectée',retenue_faible:'Confirmée — support faible',retenue_moderee:'Confirmée — support modéré',retenue_forte:'Confirmée — support fort'};
+      // Concordance (aucune relation documentée) et hypothèse explicative (relation documentée,
+      // deux qualités objectivées) restent deux registres de preuve distincts (mission
+      // AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md, Partie 3) — ne jamais les fusionner visuellement.
+      // Lecture pure de champs déjà produits par CSM (explanatoryHypotheses/relationships), aucun
+      // recalcul.
+      var concordances=csm.relationships.filter(function(r){return r.level==='concordant_no_relation';});
       return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
         h(Card,{pad:14},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités objectivement déficitaires'),
@@ -8446,8 +8495,16 @@ function ExpertView(props){
             :h('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},csm.nonDeterminable.map(function(n){return h('span',{key:n.quality,style:{padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:11}},n.quality);}))
         ),
         h(Card,{pad:14},
-          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Concordances et relations explicatives'),
-          h('div',{style:{color:C.text,fontSize:12,lineHeight:1.6}},csm.narrative.relationsExplicatives)
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Relations explicatives possibles'),
+          csm.explanatoryHypotheses.length===0
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — pas de relation documentée activable entre les qualités actuellement objectivées.')
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},csm.explanatoryHypotheses.map(function(rel,i){return h('div',{key:i,style:{fontSize:12,color:C.text,lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid '+C.teal}},rel.narrative);}))
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Concordances (sans relation documentée)'),
+          concordances.length===0
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune.')
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},concordances.map(function(r,i){return h('div',{key:i,style:{fontSize:12,color:C.muted,lineHeight:1.6}},r.narrative);}))
         ),
         h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limites de cette synthèse'),
