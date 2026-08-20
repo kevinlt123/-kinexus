@@ -4694,6 +4694,182 @@ function computeHypPower01(testData,normPop,normAge){
   };
 }
 
+// ── HYP-FOR-01 — Moteur clinique Force ───────────────────────────────────────────────────────
+// Remplace (dans computeMoteur() ci-dessous, uniquement pour fSc['Force']) le raisonnement Force
+// produit par la boucle TFM générique. Règle diagnostique GELÉE, non rouverte : `CLI010`, au moins
+// 2 des 4 preuves globales (imtp_n/slimtp_n/iso_belt_squat_n/sl_iso_push_n) déficitaires. Comme
+// HYP-PUI-01, ce moteur produit explicitement `non_determinable` plutôt que de transformer une
+// absence de seuil en statut 'normal' — mais contrairement à Puissance (2/2 stricte, un seul
+// candidat manquant bloque tout), Force tolère une couverture partielle : la règle "≥2 parmi 4"
+// reste évaluable dès que 2 des 4 sont classifiables, quels que soient les 2 autres. Réutilise
+// exclusivement applyThr/bestVal/autoLSI/testKpiDir déjà existants — aucun nouveau seuil.
+//
+// Couverture réelle des seuils, vérifiée avant écriture (AUDIT_SEUILS_HYP_FOR01.md,
+// INVENTAIRE_COMPLET_VARIABLES_NORMEES.md) :
+//   iso_belt_squat_n/nkg : NORMS large (13 pop. sport + 2 générales pour _n).
+//   sl_iso_push_n : NORMS étroite (3 pop. football) ; sl_iso_push_nkg : THRESHOLDS (repli universel).
+//   imtp_n/nkg, slimtp_n/nkg : AUCUN seuil, ni NORMS ni THRESHOLDS -> jamais classifiables
+//     aujourd'hui, malgré un poids TFM=3 (le plus élevé) — poids jamais interprété comme un seuil.
+//   Niveau 2 segmentaire (15 tests, `CLI200`-`211`) : couverture variable par groupe, voir
+//     computeHypForceSegments ci-dessous et IMPLEMENTATION_HYP_FOR01.md pour le détail complet.
+//   RFD/TTPF (tous tests, diagnostiques et segmentaires) : AUCUN seuil, sur aucune variable.
+var HYP_FOR_GLOBAL_TESTS=[
+  {name:'imtp_n',testKey:'imtp',bilateral:true},
+  {name:'slimtp_n',testKey:'slimtp',bilateral:false},
+  {name:'iso_belt_squat_n',testKey:'iso_belt_squat',bilateral:true},
+  {name:'sl_iso_push_n',testKey:'sl_iso_push',bilateral:false}
+];
+// Lecture générique d'un KPI de test de force (n ou nkg), bilatéral ou unilatéral (D/G, lecture
+// "pire côté" — même pattern que sldj_rsi/slcmj_peak_power/wblt_distance). Réutilisée pour les 4
+// tests diagnostiques globaux (_n et _nkg) ET pour les 15 tests segmentaires du Niveau 2 (tous
+// unilatéraux) — aucune duplication de logique entre Niveau 1 et Niveau 2.
+function computeHypForceKpi(testData,testKey,kpi,bilateral,pop,age){
+  var data=(testData||{})[testKey];
+  var key=testKey+'_'+kpi;
+  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
+  if(bilateral){
+    var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
+    var st=raw!=null?applyThr(key,raw,pop,age):null;
+    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
+    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
+  }
+  var dir=testKpiDir(testKey,kpi);
+  var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
+  var vG=bestVal(((data.G||{}).trials||{})[kpi],dir);
+  var sD=vD!=null?applyThr(key,vD,pop,age):null;
+  var sG=vG!=null?applyThr(key,vG,pop,age):null;
+  var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
+  var sides=[sD,sG].filter(Boolean);
+  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  var rank={rouge:0,orange:1,jaune:2,vert:3};
+  var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
+  var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
+  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+}
+// Niveau 2 — 15 tests segmentaires documentés (`CLI200`-`211`, HYP_ARCHITECTURE_PHASE_C.md /
+// CARTOGRAPHIE_ROLE_CLINIQUE_HYP_FORCE.md). Groupes sans aucune norme (df_iso/inv_iso/ev_iso/
+// sh_iso_3030/sh_iso_6060) conservés tels quels — jamais supprimés, jamais considérés normaux.
+var HYP_FOR_SEGMENTS=[
+  {group:'Quadriceps',cli:'CLI200',testKey:'knee_ext'},
+  {group:'Soléaire',cli:'CLI201',testKey:'soleus_iso'},
+  {group:'Gastrocnémien',cli:'CLI202',testKey:'gastro_iso'},
+  {group:'Ischio-jambiers',cli:'CLI203',testKey:'knee_flex'},
+  {group:'Extenseurs de hanche',cli:'CLI204',testKey:'hip_ext'},
+  {group:'Abducteurs de hanche',cli:'CLI205',testKey:'hip_abd'},
+  {group:'Adducteurs',cli:'CLI206',testKey:'hip_add'},
+  {group:'Fléchisseurs de hanche',cli:'CLI207',testKey:'hip_flex'},
+  {group:'Dorsiflexeurs',cli:'CLI208',testKey:'df_iso'},
+  {group:'Inverseurs',cli:'CLI209',testKey:'inv_iso'},
+  {group:'Éverseurs',cli:'CLI210',testKey:'ev_iso'},
+  {group:'Épaule 90/20',cli:'CLI211',testKey:'sh_iso_9020'},
+  {group:'Épaule 90/90',cli:'CLI211',testKey:'sh_iso_9090'},
+  {group:'Épaule 30/30',cli:'CLI211',testKey:'sh_iso_3030'},
+  {group:'Épaule 60/60',cli:'CLI211',testKey:'sh_iso_6060'}
+];
+// Condition documentée (CLI200-211) : "au moins une variable diagnostique globale déficitaire ET
+// déficit local confirmé" — un déficit segmentaire isolé, sans déficit global retenu, ne déclenche
+// JAMAIS d'orientation segmentaire (mission §5/CAS 9).
+function computeHypForceSegments(testData,globalRetenue,pop,age){
+  return HYP_FOR_SEGMENTS.map(function(def){
+    var n=computeHypForceKpi(testData,def.testKey,'n',false,pop,age);
+    var nkg=computeHypForceKpi(testData,def.testKey,'nkg',false,pop,age);
+    var classifiable=n.status!=='indisponible'||nkg.status!=='indisponible';
+    var deficient=n.status==='deficitaire'||nkg.status==='deficitaire';
+    var localStatus=!classifiable?'non_classifiable':(deficient?'deficitaire':'normal');
+    return{
+      group:def.group,cli:def.cli,testKey:def.testKey,
+      n:n,nkg:nkg,
+      localStatus:localStatus,
+      orientationTriggered:globalRetenue&&localStatus==='deficitaire'
+    };
+  });
+}
+// Explicatives RFD/TTPF des 4 tests diagnostiques globaux — extrait représentatif (mission §8/§10 :
+// conserver les variables explicatives même sans seuil, ne jamais les classifier automatiquement).
+// Aucune des variantes RFD/TTPF (globales ou segmentaires) n'a de seuil dans index.html aujourd'hui
+// (AUDIT_SEUILS_HYP_FOR01.md §7) — exposées en valeur brute uniquement, jamais génératrices.
+function computeHypForceExplanatory(testData){
+  function raw(testKey,kpi){var d=(testData||{})[testKey];return d&&d.active?bestVal((d.trials||{})[kpi],'max'):null;}
+  function rawUni(testKey,kpi){var d=(testData||{})[testKey];if(!d||!d.active)return{D:null,G:null};return{D:bestVal(((d.D||{}).trials||{})[kpi],'max'),G:bestVal(((d.G||{}).trials||{})[kpi],'max')};}
+  return{
+    imtp_rfd100:{raw:raw('imtp','rfd100'),status:null,classifiable:false},
+    imtp_ttpf:{raw:raw('imtp','ttpf'),status:null,classifiable:false},
+    slimtp_rfd100:{raw:rawUni('slimtp','rfd100'),status:null,classifiable:false},
+    iso_belt_squat_rfd100:{raw:raw('iso_belt_squat','rfd100'),status:null,classifiable:false},
+    sl_iso_push_rfd100:{raw:rawUni('sl_iso_push','rfd100'),status:null,classifiable:false}
+  };
+}
+// Point d'entrée. Fonction pure. Modèle d'état standard (comme Réactivité/Puissance) : Absente ->
+// Suspectée -> Retenue/Faible -> Retenue/Modérée -> Retenue/Forte. `non_determinable` uniquement
+// si AUCUNE des 4 preuves globales n'est classifiable (contrairement à Puissance, où une seule
+// preuve non classifiable suffit à bloquer — Force tolère une couverture partielle car sa règle
+// est "≥2 parmi 4", pas "2/2 strict").
+function computeHypForce01(testData,normPop,normAge){
+  var globals={};
+  HYP_FOR_GLOBAL_TESTS.forEach(function(def){
+    globals[def.name]=computeHypForceKpi(testData,def.testKey,'n',def.bilateral,normPop,normAge);
+  });
+  var evaluable=HYP_FOR_GLOBAL_TESTS.map(function(d){return d.name;}).filter(function(k){return globals[k].status!=='indisponible';});
+  var deficientTests=evaluable.filter(function(k){return globals[k].status==='deficitaire';});
+
+  var state;
+  if(!evaluable.length)state='non_determinable';
+  else if(deficientTests.length>=2)state='retenue_faible';
+  else if(deficientTests.length>=1)state='suspectee';
+  else state='absente';
+
+  // Confirmatives _nkg des 4 mêmes tests — jamais une cinquième/deuxième preuve indépendante,
+  // seulement une graduation du support (mécanique HYP existante, ADR déjà validés ailleurs).
+  var confirmatives={};
+  HYP_FOR_GLOBAL_TESTS.forEach(function(def){
+    confirmatives[def.name.replace('_n','_nkg')]=computeHypForceKpi(testData,def.testKey,'nkg',def.bilateral,normPop,normAge);
+  });
+  var confirmativeConvergent=deficientTests.some(function(k){
+    var nkgKey=k.replace('_n','_nkg');
+    return confirmatives[nkgKey]&&confirmatives[nkgKey].status==='deficitaire';
+  });
+  var explanatory=computeHypForceExplanatory(testData);
+  var explanatoryConvergent=false; // aucune RFD/TTPF classifiable aujourd'hui -> jamais vrai (voir note ci-dessus).
+
+  var support=null;
+  if(state==='retenue_faible'){
+    support={level:explanatoryConvergent?'forte':(confirmativeConvergent?'moderee':'faible')};
+  }
+
+  // CLI011 — orientation "force relative" : _n normal mais _nkg déficitaire pour un même test.
+  // Signal informatif distinct, jamais compté dans la convergence 2/4 du Niveau 1.
+  var relativeTests=HYP_FOR_GLOBAL_TESTS.map(function(d){return d.name;}).filter(function(k){
+    var nkgKey=k.replace('_n','_nkg');
+    return globals[k].status==='normal'&&confirmatives[nkgKey]&&confirmatives[nkgKey].status==='deficitaire';
+  });
+
+  var globalRetenue=(state==='retenue_faible'||state==='retenue_moderee'||state==='retenue_forte');
+  var segments=computeHypForceSegments(testData,globalRetenue,normPop,normAge);
+
+  return{
+    hypId:'HYP-FOR-01',
+    state:state,
+    support:support,
+    diagnosticEvidence:globals,
+    convergence:{
+      requiredMinimum:2,totalCandidates:4,
+      evaluableCount:evaluable.length,deficientCount:deficientTests.length,
+      deficientTests:deficientTests,thresholdMet:deficientTests.length>=2
+    },
+    confirmativeEvidence:confirmatives,
+    relativeOrientation:{detected:relativeTests.length>0,tests:relativeTests}, // CLI011
+    explanatoryEvidence:explanatory,
+    precision:{
+      asymmetries:{
+        slimtp_n:globals.slimtp_n.lsi,
+        sl_iso_push_n:globals.sl_iso_push_n.lsi
+      }
+    },
+    segments:segments,
+    note:"Niveau 2 déclenché uniquement si le Niveau 1 est retenu (state commence par 'retenue_') ET que le segment est localement déficitaire et classifiable — un déficit segmentaire isolé sans déficit global ne crée jamais HYP-FOR-01."
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -4810,6 +4986,35 @@ function computeMoteur(testData,questData,normPop,normAge){
     directTests:['cmj',hypPui01.activeSecondProof.source.split('_')[0]],
     directStatuses:puiDirectStatuses,
     hypPui01:hypPui01
+  };
+  // HYP-FOR-01 — remplace INTÉGRALEMENT fSc['Force'] par le raisonnement clinique HYP, y compris
+  // quand il ne peut rien déterminer (status:null explicite, même principe que HYP-PUI-01— "mieux
+  // vaut NON DÉTERMINABLE qu'un diagnostic faux"). Divergence assumée par rapport à Absorption/
+  // Réactivité/Mobilité (repli TFM), cohérente avec Puissance — cf. IMPLEMENTATION_HYP_FOR01.md.
+  // Aucune autre qualité, aucun autre output de computeMoteur n'est touché par ce bloc.
+  var hypFor01=computeHypForce01(testData,normPop,normAge);
+  var forEvaluable=hypFor01.state!=='non_determinable';
+  var forStatus=null;
+  if(forEvaluable){
+    var testKeyMap={imtp_n:'imtp',slimtp_n:'slimtp',iso_belt_squat_n:'iso_belt_squat',sl_iso_push_n:'sl_iso_push'};
+    var evaluableKeys=Object.keys(hypFor01.diagnosticEvidence).filter(function(k){return hypFor01.diagnosticEvidence[k].status!=='indisponible';});
+    var deficientKeys=hypFor01.convergence.deficientTests;
+    if(hypFor01.state==='absente')forStatus='vert';
+    else if(hypFor01.state==='suspectee')forStatus='jaune';
+    else{
+      var allRouge=deficientKeys.length>0&&deficientKeys.every(function(k){return hypFor01.diagnosticEvidence[k].category==='rouge';});
+      forStatus=allRouge?'rouge':'orange';
+    }
+  }
+  var forEvaluableKeysAll=Object.keys(hypFor01.diagnosticEvidence).filter(function(k){return hypFor01.diagnosticEvidence[k].status!=='indisponible';});
+  var forDirectStatuses=forEvaluableKeysAll.map(function(k){return hypFor01.diagnosticEvidence[k].category;}).filter(Boolean);
+  fSc['Force']={
+    status:forStatus, // null explicitement quand non_determinable — jamais une absence de seuil transformée en 'vert'.
+    confidence:forEvaluableKeysAll.length>=2?'elevee':(forEvaluableKeysAll.length===1?'faible':'faible'),
+    coverage:Math.round(forEvaluableKeysAll.length/4*100),
+    directTests:['imtp','slimtp','iso_belt_squat','sl_iso_push'],
+    directStatuses:forDirectStatuses,
+    hypFor01:hypFor01
   };
   var sysSc={};
   SYSTEMS.forEach(function(sys){var tests=SYSTEM_TESTS[sys]||[];var scores=tests.map(function(t){return tSt[t];}).filter(Boolean).map(s2sc).filter(function(s){return s!=null;});sysSc[sys]=scores.length?sc2s(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;});

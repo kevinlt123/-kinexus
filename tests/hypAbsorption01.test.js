@@ -197,14 +197,17 @@ test('Faire varier une variable non classifiable (braking_impulse, dj_contact_ti
     assert.strictEqual(a && a.status, b && b.status, fn + ' a changé alors que seule une variable non classifiable a changé');
   });
 });
-test('Force reste dérivé de computeTestStatus(\'cmj\',...) — même valeur, que le test soit lu directement ou via computeMoteur (le bloc HYP-ABS-01 n\'intercepte jamais fSc[\'Force\'])', () => {
+// Mise à jour (implémentation HYP-FOR-01, postérieure à ce fichier) : Force n'est plus jamais
+// dérivée de la boucle TFM générique/computeTestStatus('cmj',...) — elle est désormais pilotée
+// intégralement par computeHypForce01(), qui ne lit aucune variable CMJ (les 4 preuves globales
+// sont imtp_n/slimtp_n/iso_belt_squat_n/sl_iso_push_n). Avec seulement 'cmj' actif ici (aucun test
+// de force), HYP-FOR-01 retourne honnêtement non_determinable (status:null) — ce qui prouve, tout
+// autant que l'ancienne assertion, que le bloc HYP-ABS-01 n'intercepte jamais fSc['Force'].
+test('Force n\'est jamais interceptée par le bloc HYP-ABS-01 — avec seul \'cmj\' actif (aucun test de force), HYP-FOR-01 retourne honnêtement non_determinable', () => {
   var td = { cmj: cmj({ braking_rfd: 1, force_zero_vel: 1, braking_impulse: 1, height: 35 }) };
   var r = computeMoteur(td, {}, POP_CMJ, 26);
-  var cmjStatus = computeTestStatus('cmj', td.cmj, POP_CMJ, 26);
-  // Seul test pondéré force:1 actif ici, poids 1 (pas 3, donc jamais "direct") -> status=sc2s(s2sc(cmjStatus))
-  // = cmjStatus par bijection ; aucune des corrections de la boucle générique (hasR&&vert->jaune,
-  // maj>=2->orange, direct-vert-cap) ne peut s'appliquer avec un seul contributeur de poids 1.
-  assert.strictEqual(r.functionScores['Force'].status, cmjStatus);
+  assert.strictEqual(r.functionScores['Force'].status, null);
+  assert.strictEqual(r.functionScores['Force'].hypFor01.state, 'non_determinable');
 });
 
 test('testStatuses/systemScores/rtpStatus/qualityScores/capaciteScores restent produits normalement (structure de computeMoteur non cassée)', () => {
