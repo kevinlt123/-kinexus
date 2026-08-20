@@ -4998,6 +4998,157 @@ function computeHypExplosivity01(testData,normPop,normAge){
   };
 }
 
+// ── HYP-STA-01 — Moteur clinique Stabilisation ───────────────────────────────────────────────
+// Source de vérité : AUDIT_IMPLEMENTATION_HYP_STA01.md (audit clinique préalable obligatoire,
+// conclusion GO), HYP_ARCHITECTURE_PHASE_C.md (fiche HYP-STAB-01), LOGIQUE_CLINIQUE_VARIABLES_HYP.md
+// (section STABILISATION) et KINEXUS_REASONING_ENGINE_V1.md §6-7 (règle de convergence gelée :
+// "au moins 2 preuves diagnostiques déficitaires" parmi 6 mécanismes indépendants — SLS, EO, EF,
+// Strobo, landing_uni_tts, landing_bi_tts — avec l'état "Retenue sans orientation CLI###" toléré
+// explicitement pour le cas Landing isolé, §6, non traité comme une erreur).
+//
+// Décisions cliniques gelées, non rouvertes ici :
+//   landing_uni_tts/landing_bi_tts -> Stabilisation, jamais Absorption (gel déjà respecté par
+//     HYP-ABS-01, qui ne les lit jamais — vérifié). SLLT -> exclu de Stabilisation (gel + réexamen
+//     corroborant, absent de CLI070/CLI071 sous tout nom, jamais lu ici). YBT (ybt_composite) ->
+//     aucun rôle documenté dans la fiche HYP-STAB-01 ni CLI070/CLI071 ; seul le poids TFM
+//     (stabilisation:2) l'associe -> jamais utilisé comme preuve clinique (cas C de l'audit), jamais
+//     lu par ce moteur. DJ RSI/SLDJ RSI/CMJR/Repeated Hop/Single/Triple/Crossover Hop -> exclus
+//     (Puissance/Réactivité), jamais lus ici.
+//
+// Couverture réelle des seuils dans index.html, vérifiée avant l'écriture de ce moteur (aucun
+// seuil inventé pour compenser une absence) : SLS (7 KPI), eo_surface, ef_surface, strobo_surface
+// -> AUCUN seuil (ni NORMS ni THRESHOLDS) -> jamais classifiables aujourd'hui. landing_uni_tts,
+// landing_bi_tts -> THRESHOLDS -> toujours classifiables. wblt_distance (explicative) ->
+// THRESHOLDS -> toujours classifiable. Familles RFD hanche/cheville (hip_abd/hip_ext/hip_add/
+// inv_iso/ev_iso/df_iso) -> AUCUN seuil -> exposées en valeur brute uniquement.
+//
+// Conséquence directe : seule la "famille" Landing (landing_uni_tts + landing_bi_tts, 2 des 6
+// mécanismes) peut aujourd'hui être classifiée -> au mieux 'suspectee' (1 déficitaire) ou
+// 'retenue_faible' si les deux sont déficitaires — cas explicitement anticipé et validé légitime
+// par KINEXUS_REASONING_ENGINE_V1.md §6, malgré l'absence d'orientation CLI070/CLI071
+// correspondante. SLS/EO/EF/Strobo restent structurellement présents et prêts, jamais interprétés
+// comme "normaux" faute de seuil.
+
+// Lecteur générique d'un KPI (bilatéral ou unilatéral D/G, pire côté) — même convention que
+// computeHypForceKpi/computeHypMobilityWblt, réécrite localement pour rester un moteur isolé.
+function computeHypStabilizationKpi(testData,testKey,kpi,bilateral,pop,age){
+  var data=(testData||{})[testKey];
+  var key=testKey+'_'+kpi;
+  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
+  if(bilateral){
+    var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
+    var st=raw!=null?applyThr(key,raw,pop,age):null;
+    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
+    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
+  }
+  var dir=testKpiDir(testKey,kpi);
+  var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
+  var vG=bestVal(((data.G||{}).trials||{})[kpi],dir);
+  var sD=vD!=null?applyThr(key,vD,pop,age):null;
+  var sG=vG!=null?applyThr(key,vG,pop,age):null;
+  var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
+  var sides=[sD,sG].filter(Boolean);
+  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  var rank={rouge:0,orange:1,jaune:2,vert:3};
+  var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
+  var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
+  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+}
+
+var HYP_STA_SLS_KPIS=['ttf','cop_path','cop_vel','ellipse_area','cop_range_ml','cop_range_ap','mean_velocity'];
+
+// Famille SLS : 7 KPI d'un seul test unilatéral -> réduction "pire résultat" (même convention que
+// le pire côté D/G ou le double voie _n/_nkg déjà utilisée pour HYP-FOR-01) : la famille est
+// déficitaire si au moins un des 7 KPI l'est, classifiable si au moins un des 7 l'est. Aucun seuil
+// n'existe aujourd'hui sur aucun des 7 -> réduction structurellement prête, jamais exercée avec des
+// données réelles tant qu'aucune norme SLS n'existe.
+function computeHypStabilizationSls(testData,pop,age){
+  var perKpi={};
+  HYP_STA_SLS_KPIS.forEach(function(k){perKpi[k]=computeHypStabilizationKpi(testData,'sls',k,false,pop,age);});
+  var rank={rouge:0,orange:1,jaune:2,vert:3};
+  var classifiable=HYP_STA_SLS_KPIS.filter(function(k){return perKpi[k].status!=='indisponible';});
+  var status='indisponible',category=null;
+  if(classifiable.length){
+    var deficient=classifiable.filter(function(k){return perKpi[k].status==='deficitaire';});
+    status=deficient.length?'deficitaire':'normal';
+    var pool=(deficient.length?deficient:classifiable).map(function(k){return perKpi[k].category;}).filter(Boolean);
+    category=pool.length?pool.reduce(function(a,b){return rank[b]<rank[a]?b:a;}):null;
+  }
+  return{status:status,category:category,kpis:perKpi};
+}
+
+function computeHypStabilizationDiagnostic(testData,pop,age){
+  return{
+    sls:computeHypStabilizationSls(testData,pop,age),
+    eo_surface:computeHypStabilizationKpi(testData,'eo','surface',true,pop,age),
+    ef_surface:computeHypStabilizationKpi(testData,'ef','surface',true,pop,age),
+    strobo_surface:computeHypStabilizationKpi(testData,'strobo','surface',true,pop,age),
+    landing_uni_tts:computeHypStabilizationKpi(testData,'landing_uni','tts',false,pop,age),
+    landing_bi_tts:computeHypStabilizationKpi(testData,'landing_bi','tts',true,pop,age)
+  };
+}
+
+// Variables explicatives (fiche + LOGIQUE_CLINIQUE_VARIABLES_HYP.md, section STABILISATION,
+// Niveau 3) : famille RFD hanche/cheville (aucun seuil -> valeur brute uniquement, jamais
+// classifiée) et wblt_distance (seule explicative aujourd'hui réellement classifiable, déjà
+// opérationnelle pour Mobilité, réutilisée en lecture seule ici sans recalcul).
+function computeHypStabilizationExplanatory(testData,pop,age){
+  return{
+    forceStabilisateurs:{
+      hip_abd_rfd100:computeHypStabilizationKpi(testData,'hip_abd','rfd100',false,pop,age),
+      hip_abd_rfd200:computeHypStabilizationKpi(testData,'hip_abd','rfd200',false,pop,age),
+      hip_ext_rfd100:computeHypStabilizationKpi(testData,'hip_ext','rfd100',false,pop,age),
+      hip_ext_rfd200:computeHypStabilizationKpi(testData,'hip_ext','rfd200',false,pop,age),
+      hip_add_rfd100:computeHypStabilizationKpi(testData,'hip_add','rfd100',false,pop,age),
+      inv_iso_rfd100:computeHypStabilizationKpi(testData,'inv_iso','rfd100',false,pop,age),
+      ev_iso_rfd100:computeHypStabilizationKpi(testData,'ev_iso','rfd100',false,pop,age),
+      df_iso_rfd100:computeHypStabilizationKpi(testData,'df_iso','rfd100',false,pop,age)
+    },
+    mobiliteCheville:{
+      wblt_distance:computeHypStabilizationKpi(testData,'wblt','distance',false,pop,age)
+    }
+  };
+}
+
+function computeHypStabilization01(testData,normPop,normAge){
+  var diag=computeHypStabilizationDiagnostic(testData,normPop,normAge);
+  var proofKeys=['sls','eo_surface','ef_surface','strobo_surface','landing_uni_tts','landing_bi_tts'];
+  var classifiable=proofKeys.filter(function(k){return diag[k].status!=='indisponible';});
+  var deficient=proofKeys.filter(function(k){return diag[k].status==='deficitaire';});
+  var state;
+  if(!classifiable.length)state='non_determinable';
+  else if(!deficient.length)state='absente';
+  else if(deficient.length===1)state='suspectee';
+  else state='retenue_faible';
+
+  var explanatory=computeHypStabilizationExplanatory(testData,normPop,normAge);
+
+  // Confirmative : les seules variables confirmatives documentées pour Stabilisation (SLS/
+  // Strobo/Landing, "rôle double diagnostique/confirmatif") sont les preuves diagnostiques
+  // elles-mêmes — aucune confirmative réellement indépendante n'est documentée. Convention
+  // appliquée, non un nouveau seuil : une 3e preuve (ou plus) déficitaire au-delà du minimum de 2
+  // requis pour 'retenue_faible' compte comme convergence confirmative (renforcement du même
+  // principe de convergence à l'échelle des mécanismes, ADR-003 — jamais une preuve confirmant
+  // elle-même, ADR-008). Aujourd'hui, seuls 2 des 6 mécanismes (Landing) sont jamais classifiables
+  // -> ce mécanisme reste structurellement inerte tant qu'aucune norme SLS/EO/EF/Strobo n'existe.
+  var confirmativeConvergent=state==='retenue_faible'&&deficient.length>=3;
+  var explanatoryConvergent=confirmativeConvergent&&explanatory.mobiliteCheville.wblt_distance.status==='deficitaire';
+
+  var support=null;
+  if(state==='retenue_faible'){
+    support={level:explanatoryConvergent?'forte':(confirmativeConvergent?'moderee':'faible')};
+  }
+
+  return{
+    hypId:'HYP-STA-01', state:state, support:support,
+    diagnosticEvidence:diag,
+    convergence:{requiredMechanisms:2,distinctMechanismsObserved:deficient.length,thresholdMet:state==='retenue_faible',mechanismsInvolved:deficient,ruleVariant:'convergence_6_mecanismes_gelee_KINEXUS_REASONING_ENGINE_V1_par7'},
+    explanatoryEvidence:explanatory,
+    precision:{note:"Aucun mécanisme d'asymétrie inter-test propre à Stabilisation au-delà du LSI intrinsèque déjà exposé (rawD/rawG/lsi) pour SLS/landing_uni/WBLT — non documenté comme générateur, précision uniquement."},
+    note:"ybt_composite jamais lu par ce moteur (aucun rôle documenté dans la fiche HYP-STAB-01 ni CLI070/CLI071 — seul le poids TFM l'associe, jamais utilisé comme preuve clinique, cf. AUDIT_IMPLEMENTATION_HYP_STA01.md). sllt_* jamais lu (exclu, gel corroboré par réexamen). dj_rsi/sldj_rsi/cmjr_*/*_hop_distance jamais lus (territoire Puissance/Réactivité)."
+  };
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -5163,6 +5314,33 @@ function computeMoteur(testData,questData,normPop,normAge){
     directTests:['cmj'],
     directStatuses:expDirectStatuses,
     hypExp01:hypExp01
+  };
+  // HYP-STA-01 — remplace INTÉGRALEMENT fSc['Stabilisation'] par le raisonnement clinique HYP, y
+  // compris quand il ne peut rien déterminer (status:null explicite, même principe que HYP-PUI-01/
+  // HYP-FOR-01/HYP-EXP-01 — "mieux vaut NON DÉTERMINABLE qu'un diagnostic faux"). Convergence à 6
+  // mécanismes indépendants (SLS/EO/EF/Strobo/landing_uni_tts/landing_bi_tts), ≥2 déficitaires
+  // requis (gel KINEXUS_REASONING_ENGINE_V1.md §6-7) — cf. AUDIT_IMPLEMENTATION_HYP_STA01.md.
+  // Aucune autre qualité, aucun autre output de computeMoteur n'est touché par ce bloc.
+  var hypSta01=computeHypStabilization01(testData,normPop,normAge);
+  var staEvaluable=hypSta01.state!=='non_determinable';
+  var staStatus=null;
+  if(staEvaluable){
+    if(hypSta01.state==='absente')staStatus='vert';
+    else if(hypSta01.state==='suspectee')staStatus='jaune';
+    else{
+      var staAllRouge=hypSta01.convergence.mechanismsInvolved.length>0&&hypSta01.convergence.mechanismsInvolved.every(function(k){return hypSta01.diagnosticEvidence[k].category==='rouge';});
+      staStatus=staAllRouge?'rouge':'orange';
+    }
+  }
+  var staEvaluableKeys=Object.keys(hypSta01.diagnosticEvidence).filter(function(k){return hypSta01.diagnosticEvidence[k].status!=='indisponible';});
+  var staDirectStatuses=staEvaluableKeys.map(function(k){return hypSta01.diagnosticEvidence[k].category;}).filter(Boolean);
+  fSc['Stabilisation']={
+    status:staStatus, // null explicitement quand non_determinable — jamais une absence de seuil transformée en 'vert'.
+    confidence:staEvaluableKeys.length>=2?'elevee':(staEvaluableKeys.length===1?'faible':'faible'),
+    coverage:Math.round(staEvaluableKeys.length/6*100),
+    directTests:['sls','eo','ef','strobo','landing_uni','landing_bi'],
+    directStatuses:staDirectStatuses,
+    hypSta01:hypSta01
   };
   var sysSc={};
   SYSTEMS.forEach(function(sys){var tests=SYSTEM_TESTS[sys]||[];var scores=tests.map(function(t){return tSt[t];}).filter(Boolean).map(s2sc).filter(function(s){return s!=null;});sysSc[sys]=scores.length?sc2s(scores.reduce(function(a,b){return a+b;},0)/scores.length):null;});
