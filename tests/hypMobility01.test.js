@@ -89,14 +89,18 @@ test('Asymétrie (un côté déficitaire, un côté normal, 6cm/14cm) -> défici
   assert.strictEqual(h.confirmativeEvidence.wblt_lsi.elevates, false);
 });
 
-test('Données incomplètes (wblt inactif) -> repli sur le score TFM générique, aucun crash', () => {
+test('Données incomplètes (wblt inactif) -> status:null explicite, aucun crash (normalisation architecturale : HYP est désormais la source de vérité du statut, plus de repli TFM — cf. HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md)', () => {
   var r = computeMoteur({ wblt: { active: false } }, {}, POP, AGE);
-  assert.strictEqual(r.functionScores['Mobilité'], null); // aucun test actif du tout -> comportement TFM déjà existant, inchangé.
+  assert.ok(r.functionScores['Mobilité']); // objet toujours produit, jamais littéralement null.
+  assert.strictEqual(r.functionScores['Mobilité'].status, null);
+  assert.strictEqual(r.functionScores['Mobilité'].hypMob01.dataAvailable, false);
 });
 
-test('testData.wblt totalement absent -> aucune erreur levée', () => {
+test('testData.wblt totalement absent -> aucune erreur levée, status:null explicite', () => {
   var r = computeMoteur({}, {}, POP, AGE);
-  assert.strictEqual(r.functionScores['Mobilité'], null);
+  assert.ok(r.functionScores['Mobilité']);
+  assert.strictEqual(r.functionScores['Mobilité'].status, null);
+  assert.strictEqual(r.functionScores['Mobilité'].tfmFallback, null); // le repli TFM générique reste exposé séparément (jamais supprimé), ici null car aucun test actif.
 });
 
 test('Population sans aucune norme connue -> repli THRESHOLDS fonctionne (wblt_distance n\'a jamais eu de NORMS)', () => {

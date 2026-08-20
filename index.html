@@ -4213,6 +4213,100 @@ function computeTestStatus(key,data,pop,age){
 // force jamais un profil non couvert dans une catégorie existante (§15 de la mission
 // d'implémentation) : il rapporte les lectures RFD/Force@0V individuellement avec un statut de
 // profil explicite 'non_couvert_impulse_non_classifiable'.
+
+// ── CONTRAT HYP V1 COMMUN ────────────────────────────────────────────────────────────────────
+// Source de vérité : HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md (mission de normalisation
+// architecturale). Fonction pure, purement dérivative — AUCUNE nouvelle règle clinique, AUCUN
+// nouveau seuil : elle ne fait qu'appliquer la formule de dérivation du statut visible
+// (vert/jaune/orange/rouge/null) déjà utilisée individuellement, de façon dupliquée et identique,
+// par chaque moteur HYP depuis HYP-PUI-01 (voir chaque IMPLEMENTATION_HYP_*.md) :
+// non_determinable -> null (jamais une absence de preuve transformée en statut) ; absente -> vert ;
+// suspectee -> jaune ; retenue_* -> rouge seulement si TOUTES les catégories des preuves
+// effectivement déficitaires impliquées sont elles-mêmes 'rouge', sinon orange. Centralisée ici
+// pour que les 8 moteurs exposent un `status` cohérent et auto-porté (contrat HYP V1, partie 2),
+// sans recalcul différent d'un moteur à l'autre.
+function hypStatusFromState(state,deficientCategories){
+  if(state==='non_determinable')return null;
+  if(state==='absente')return'vert';
+  if(state==='suspectee')return'jaune';
+  var cats=(deficientCategories||[]).filter(Boolean);
+  var allRouge=cats.length>0&&cats.every(function(c){return c==='rouge';});
+  return allRouge?'rouge':'orange';
+}
+
+// ── RELATIONS QUALITÉ-À-QUALITÉ DÉJÀ DOCUMENTÉES (mission de normalisation, §9/§16) ────────────
+// Chaque paire correspond à une variable RÉELLEMENT lue en EXPLICATIVE par le moteur HYP de la
+// qualité "expliquée" (`explained`) et diagnostique/confirmative de la qualité "explicative"
+// (`explains`) — vérifié directement dans le code des 8 moteurs (cf. AUDIT_TRANSVERSAL_HYP_V1.md
+// §2/§3/§9). Aucune relation nouvelle inventée ici — ce registre ne fait que rendre consultable, à
+// des fins de narration prudente, des relations qui existaient déjà, éparpillées, dans le code de
+// chaque moteur HYP. Ne sert JAMAIS à établir une causalité — uniquement à graduer une phrase
+// d'« hypothèse explicative » (jamais « cause »), et seulement quand les DEUX qualités sont
+// réellement déficitaires selon leur propre moteur HYP (cf. buildMultiQualityNarrative ci-dessous).
+var HYP_QUALITY_RELATIONS=[
+  {explains:'Force',explained:'Puissance',via:'iso_belt_squat_n (explicative « force capacité » de HYP-PUI-01)'},
+  {explains:'Force',explained:'Explosivité',via:'iso_belt_squat_n + imtp_rfd100/ttpf (explicatives de HYP-EXP-01)'},
+  {explains:'Force',explained:'Endurance',via:'11 familles segmentaires _n/_nkg (explicatives « force de fond » de HYP-END-01)'},
+  {explains:'Force',explained:'Stabilisation',via:'RFD hanche/cheville, 6/11 familles (explicatives de HYP-STA-01)'},
+  {explains:'Puissance',explained:'Explosivité',via:'cmj_peak_power (confirmative documentée de HYP-EXP-01)'},
+  {explains:'Explosivité',explained:'Puissance',via:'cmj_conc_rfd (explicative « stratégie » de HYP-PUI-01)'},
+  {explains:'Mobilité',explained:'Stabilisation',via:'wblt_distance (explicative « mobilité de cheville » de HYP-STA-01)'},
+  {explains:'Réactivité',explained:'Endurance',via:'repeated_hop_mean_rsi (rôle partagé explicative Réactivité / confirmative Endurance)'}
+];
+function findHypQualityRelation(qualityA,qualityB){
+  return HYP_QUALITY_RELATIONS.filter(function(r){
+    return(r.explains===qualityA&&r.explained===qualityB)||(r.explains===qualityB&&r.explained===qualityA);
+  })[0]||null;
+}
+
+// ── NARRATION MULTI-QUALITÉS — jamais causale sans relation HYP documentée (mission de
+// normalisation architecturale, §7-§10, RÈGLE FONDAMENTALE : "aucune couche ne doit produire une
+// conclusion plus forte que son niveau de preuve") ────────────────────────────────────────────
+// Remplace l'ancienne construction de `interpretationTxt`/`conclusion`/`consequences` qui reliait
+// systématiquement les 2 premières priorités TFM par « X entraîne une altération de Y », sans
+// jamais vérifier qu'une relation existe réellement entre elles (cf. AUDIT_TRANSVERSAL_HYP_V1.md
+// §10 — la trouvaille centrale de l'audit transversal). Nouvelle règle, à 3 niveaux, jamais plus
+// forte que ce qui est démontré :
+//   1 seule priorité -> simple constat, pas de narration inter-qualités.
+//   ≥2 priorités + relation HYP_QUALITY_RELATIONS documentée entre les 2 premières -> « hypothèse
+//     explicative » (niveau 2), jamais « cause » (niveau 3).
+//   ≥2 priorités sans relation documentée -> « déficits concordants » (association, niveau 1)
+//     uniquement — jamais de lien explicatif ni causal inventé.
+// `priorities` (rang/contributeurPrincipal/hypothese/orientation par qualité, individuellement)
+// n'est PAS supprimé ni modifié par cette fonction — seule la phrase reliant DEUX qualités entre
+// elles est concernée.
+function buildMultiQualityNarrative(pri){
+  if(!pri||!pri.length)return{conclusion:null,consequences:null,causalSteps:[],interpretationTxt:null};
+  var top=pri[0],second=pri[1];
+  var topLabel=top.contributeurPrincipal?top.contributeurPrincipal.toLowerCase():top.fonction.toLowerCase();
+  var steps=[{icon:(typeof FN_ICON!=='undefined'&&FN_ICON[top.fonction])||'●',label:'Déficit de '+top.fonction.toLowerCase()+(top.contributeurPrincipal?' ('+top.contributeurPrincipal.toLowerCase()+')':'')}];
+  var conclusion,consequences;
+  if(!second){
+    conclusion='Le bilan met en évidence un déficit '+(top.contributeurPrincipal?'du '+topLabel:'de '+top.fonction.toLowerCase())+'.';
+    consequences='Le déficit '+(top.contributeurPrincipal?'de '+topLabel:'de '+top.fonction.toLowerCase())+' limite la capacité de '+top.fonction.toLowerCase()+', avec un risque accru lors des situations de charge élevée.';
+  }else{
+    var relation=findHypQualityRelation(top.fonction,second.fonction);
+    if(relation){
+      var explainer=relation.explains===top.fonction?top:second;
+      var explained=relation.explains===top.fonction?second:top;
+      var explainerLabel=explainer.contributeurPrincipal?explainer.contributeurPrincipal.toLowerCase():explainer.fonction.toLowerCase();
+      conclusion='Le bilan met en évidence des déficits concordants '+(top.contributeurPrincipal?'du '+topLabel:'de '+top.fonction.toLowerCase())+' et de '+second.fonction.toLowerCase()+'.';
+      consequences='Le déficit de '+explainerLabel+' peut constituer une hypothèse explicative compatible avec le déficit de '+explained.fonction.toLowerCase()+' observé ('+relation.via+'), sans en établir la cause. Ces déficits concordants augmentent le risque lors des situations de charge élevée et limitent la performance globale.';
+    }else{
+      conclusion='Le bilan met en évidence des déficits concordants '+(top.contributeurPrincipal?'du '+topLabel:'de '+top.fonction.toLowerCase())+' et de '+second.fonction.toLowerCase()+'.';
+      consequences='Les déficits de '+top.fonction.toLowerCase()+' et de '+second.fonction.toLowerCase()+' présentent des profils concordants, sans relation explicative documentée entre eux à ce jour ; ils augmentent conjointement le risque lors des situations de charge élevée et limitent la performance globale.';
+    }
+    steps.push({icon:(typeof FN_ICON!=='undefined'&&FN_ICON[second.fonction])||'●',label:'Déficit concordant de '+second.fonction.toLowerCase()+(second.contributeurPrincipal?' ('+second.contributeurPrincipal.toLowerCase()+')':'')});
+  }
+  // 3e priorité éventuelle (et au-delà) : jamais chaînée causalement aux deux premières — un
+  // déficit concordant de plus, jamais une "répercussion" supplémentaire non démontrée.
+  pri.slice(2).forEach(function(p){
+    steps.push({icon:(typeof FN_ICON!=='undefined'&&FN_ICON[p.fonction])||'●',label:'Déficit concordant de '+p.fonction.toLowerCase()+(p.contributeurPrincipal?' ('+p.contributeurPrincipal.toLowerCase()+')':'')});
+  });
+  steps.push({icon:'📊',label:'Impact sur la performance et le risque de blessure'});
+  return{conclusion:conclusion,consequences:consequences,causalSteps:steps,interpretationTxt:consequences};
+}
+
 function computeHypAbsorptionCore(cmjValues,pop,age){
   var rfdRaw=cmjValues.braking_rfd,fzvRaw=cmjValues.force_zero_vel,impRaw=cmjValues.braking_impulse;
   var rfdSt=rfdRaw!=null?applyThr('cmj_braking_rfd',rfdRaw,pop,age):null;
@@ -4291,10 +4385,51 @@ function computeHypAbsorption01(testData,normPop,normAge){
   var reactive=computeHypAbsorptionReactive(testData,normPop,normAge);
   var receptionImpact=computeHypAbsorptionReceptionImpact();
   var asymetrie=cmjActive?computeHypAbsorptionAsymetrie(cmjValues,normPop,normAge):null;
+
+  // Normalisation NON CLINIQUE vers le contrat HYP V1 commun (HYP_V1_CONTRACT_AND_SOURCE_OF_
+  // TRUTH.md, mission de normalisation architecturale) : 'state' est un simple relabelage
+  // bijectif de niveau1 vers le vocabulaire standard des 7 autres moteurs — AUCUN recalcul, AUCUNE
+  // nouvelle condition, AUCUN seuil touché. niveau1 reste la valeur de référence du raisonnement
+  // clinique HYP-ABS-01 V2, strictement inchangée, jamais retirée.
+  var ABS_STATE_MAP={ok:'absente',a_surveiller:'suspectee',deficitaire:'retenue_faible',non_determinable:'non_determinable'};
+  var state=ABS_STATE_MAP[core.niveau]||core.niveau;
+  var deficientKeys=['braking_rfd','force_zero_vel'].filter(function(k){var s=core.variables[k].status;return s==='orange'||s==='rouge';});
+  var deficientCats=deficientKeys.map(function(k){return core.variables[k].status;});
+  var status=hypStatusFromState(state,deficientCats);
+
   return{
+    hypId:'HYP-ABS-01',
     version:'HYP-ABS-01 V2',
-    niveau1:core.niveau,
+    quality:'Absorption',
+    state:state, // relabelage de niveau1 pour le contrat commun — niveau1 ci-dessous reste la référence.
+    status:status,
+    niveau1:core.niveau, // conservé tel quel — raisonnement clinique HYP-ABS-01 V2 inchangé.
     profilCore:core.profil,
+    // HYP-ABS-01 V2 n'a jamais documenté de mécanisme de support gradué (Faible/Modérée/Forte),
+    // contrairement aux 7 autres qualités (cf. HYP-ABS-01_V2.md, sousDomaines B/C/D "jamais
+    // générateurs"). Non inventé ici — champ présent pour le contrat commun, toujours null.
+    support:null,
+    convergence:{
+      requiredMechanisms:2,totalCandidates:2, // braking_impulse jamais classifiable -> 2 candidats réels (voir niveau1 ci-dessus).
+      distinctMechanismsObserved:deficientKeys.length,
+      thresholdMet:state==='retenue_faible',
+      mechanismsInvolved:deficientKeys,
+      ruleVariant:'absorption_v2_niveau1_2_candidates'
+    },
+    // Alias de contrat (diagnostic/confirmative/explanatory) pointant vers les mêmes objets que
+    // sousDomaines, conservé ci-dessous à l'identique — aucune donnée dupliquée ni recalculée.
+    diagnostic:core.variables,
+    diagnosticEvidence:core.variables,
+    confirmative:{}, // aucune variable confirmative indépendante documentée pour Absorption V2 — honnête, non inventée.
+    confirmativeEvidence:{},
+    explanatory:{capaciteExcentrique:capaciteEcc,strategie:strategie,absorptionReactive:reactive},
+    explanatoryEvidence:{capaciteExcentrique:capaciteEcc,strategie:strategie,absorptionReactive:reactive},
+    precision:asymetrie,
+    limitations:[
+      "cmj_braking_impulse : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiable, jamais compté dans les candidats évaluables du Niveau 1.",
+      "Sous-domaine E (Réception/Impact, SLLT/Landing) : non implémenté, aucun seuil disponible (E_receptionImpact.reason).",
+      "Aucun mécanisme de support gradué documenté pour cette qualité, contrairement aux 7 autres moteurs HYP."
+    ],
     sousDomaines:{
       A_core:core.variables,
       B_capaciteExcentrique:capaciteEcc,
@@ -4429,15 +4564,28 @@ function computeHypReactivity01(testData,normPop,normAge){
 
   var dataAvailable=djRes.status!=='indisponible'||sldjRes.status!=='indisponible';
 
+  // Contrat HYP V1 commun (normalisation architecturale, aucun recalcul clinique) : contrairement
+  // aux 5 moteurs "remplacement intégral", Réactivité (comme Mobilité) n'a jamais de valeur d'état
+  // 'non_determinable' — `state` retombe sur 'absente' même sans aucune donnée (ci-dessus,
+  // mechanisms.length===0). Le signal fiable "HYP a-t-il réellement quelque chose à dire ?" est
+  // `dataAvailable`, pas `state`. `status` en tient compte explicitement : null si aucune donnée,
+  // jamais un statut affiché sans preuve réelle (cf. AUDIT_TRANSVERSAL_HYP_V1.md §6).
+  var diagnosticEvidence={
+    dj_rsi:{status:djRes.status,raw:djRes.raw,category:djRes.category},
+    sldj_rsi:{status:sldjRes.status,rawD:sldjRes.rawD,rawG:sldjRes.rawG,lsi:sldjRes.lsi,category:sldjRes.category}
+  };
+  var deficientCats=mechanisms.map(function(m){return m==='dj'?djRes.category:sldjRes.category;});
+  var status=dataAvailable?hypStatusFromState(state,deficientCats):null;
+
   return{
     hypId:'HYP-REA-01',
+    quality:'Réactivité',
     state:state,
+    status:status,
     support:support,
     dataAvailable:dataAvailable,
-    diagnosticEvidence:{
-      dj_rsi:{status:djRes.status,raw:djRes.raw,category:djRes.category},
-      sldj_rsi:{status:sldjRes.status,rawD:sldjRes.rawD,rawG:sldjRes.rawG,lsi:sldjRes.lsi,category:sldjRes.category}
-    },
+    diagnostic:diagnosticEvidence,
+    diagnosticEvidence:diagnosticEvidence,
     convergence:{
       requiredMechanisms:2,
       distinctMechanismsObserved:mechanisms.length,
@@ -4445,11 +4593,18 @@ function computeHypReactivity01(testData,normPop,normAge){
       mechanismsInvolved:mechanisms,
       ruleVariant:'standard_2_mechanisms'
     },
+    confirmative:confirmative,
     confirmativeEvidence:confirmative,
+    explanatory:explanatory,
     explanatoryEvidence:explanatory,
     precision:{
       sldj_lsi:sldjRes.lsi // modificateur/précision uniquement, jamais générateur — même rôle que wblt_lsi pour HYP-MOB-01.
-    }
+    },
+    limitations:[
+      "Aucune confirmative/explicative n'est aujourd'hui classifiable (aucun seuil) -> le support ne peut jamais dépasser Faible en pratique.",
+      "heel_raise/side_hop exclus par gel — jamais lus par ce moteur.",
+      "CMJR reste explicatif seul, jamais diagnostique (gel), même si CLI050/TFM suggèrent le contraire."
+    ]
   };
 }
 
@@ -4496,22 +4651,39 @@ function computeHypMobility01(testData,normPop,normAge){
   var state=deficient?'retenue_faible':'absente';
   var support=deficient?{level:'faible'}:null; // ADR-008 : jamais 'moderee'/'forte' — confirmative auto-référentielle, explicative vide.
   var dataAvailable=res.status!=='indisponible';
+  // Contrat HYP V1 commun (normalisation architecturale, aucun recalcul clinique) : comme
+  // Réactivité, Mobilité n'a jamais d'état 'non_determinable' littéral — `state` retombe sur
+  // 'absente' même sans donnée. Le signal fiable reste `dataAvailable`. `status` en tient compte :
+  // null si aucune donnée, jamais un statut affiché sans preuve réelle.
+  var diagnosticEvidence={
+    wblt_distance:{status:res.status,rawD:res.rawD,rawG:res.rawG,category:res.category}
+  };
+  var confirmativeEvidence={
+    wblt_lsi:{value:res.lsi,elevates:false} // auto-référentiel (dérivé de la même mesure) — ADR-008, jamais élévateur.
+  };
+  var status=dataAvailable?hypStatusFromState(state,deficient?[res.category]:[]):null;
   return{
     hypId:'HYP-MOB-01',
+    quality:'Mobilité',
     state:state,
+    status:status,
     support:support,
     dataAvailable:dataAvailable,
-    diagnosticEvidence:{
-      wblt_distance:{status:res.status,rawD:res.rawD,rawG:res.rawG,category:res.category}
-    },
-    confirmativeEvidence:{
-      wblt_lsi:{value:res.lsi,elevates:false} // auto-référentiel (dérivé de la même mesure) — ADR-008, jamais élévateur.
-    },
-    explanatoryEvidence:{}, // structurellement vide — aucune variable Kinexus documentée (voir note ci-dessus).
+    diagnostic:diagnosticEvidence,
+    diagnosticEvidence:diagnosticEvidence,
+    confirmative:confirmativeEvidence,
+    confirmativeEvidence:confirmativeEvidence,
+    explanatory:{}, // structurellement vide — aucune variable Kinexus documentée (voir note ci-dessus).
+    explanatoryEvidence:{},
     precision:{
       wblt_asymmetry:{status:'non_calcule',note:"cité par CLI020/CLI021, aucun mécanisme de calcul dans index.html aujourd'hui"}
     },
-    convergence:{requiredMechanisms:1,ruleVariant:'mobilite_exception'}
+    convergence:{requiredMechanisms:1,ruleVariant:'mobilite_exception'},
+    limitations:[
+      "Exception ADR-005 : 1 seul mécanisme diagnostique requis, jamais d'état 'suspectee' pour cette qualité.",
+      "Couche explicative structurellement nulle — aucune variable Kinexus documentée au-delà de wblt_distance.",
+      "wblt_asymmetry/wblt_relative_distance cités par CLI020/CLI021 mais sans mécanisme de calcul implémenté."
+    ]
   };
 }
 
@@ -4662,14 +4834,28 @@ function computeHypPower01(testData,normPop,normAge){
   var cmjHeightRaw=(cmjData&&cmjData.active)?bestVal((cmjData.trials||{}).height,testKpiDir('cmj','height')):null;
   var cmjHeightSt=cmjHeightRaw!=null?applyThr('cmj_height',cmjHeightRaw,normPop,normAge):null;
 
+  var diagnosticEvidence={
+    cmj_peak_power:{status:cmjRes.status,raw:cmjRes.raw,category:cmjRes.category},
+    slcmj_peak_power:{status:slcmjRes.status,rawD:slcmjRes.rawD,rawG:slcmjRes.rawG,lsi:slcmjRes.lsi,category:slcmjRes.category}
+  };
+  var confirmativeEvidence={
+    cmj_height:{raw:cmjHeightRaw,status:cmjHeightSt,countsAsDiagnostic:false} // gel : jamais une deuxième preuve, quel que soit son statut.
+  };
+  var explanatoryEvidence={
+    capacite:computeHypPowerCapacite(testData,normPop,normAge),
+    strategie:computeHypPowerStrategie(testData)
+  };
+  var deficientCats=state==='retenue_faible'?[cmjRes.category,secondProof.category]:[];
+  var status=hypStatusFromState(state,deficientCats);
+
   return{
     hypId:'HYP-PUI-01',
+    quality:'Puissance',
     state:state,
+    status:status, // contrat HYP V1 commun — même formule que computeMoteur, centralisée via hypStatusFromState.
     support:support,
-    diagnosticEvidence:{
-      cmj_peak_power:{status:cmjRes.status,raw:cmjRes.raw,category:cmjRes.category},
-      slcmj_peak_power:{status:slcmjRes.status,rawD:slcmjRes.rawD,rawG:slcmjRes.rawG,lsi:slcmjRes.lsi,category:slcmjRes.category}
-    },
+    diagnostic:diagnosticEvidence,
+    diagnosticEvidence:diagnosticEvidence,
     activeSecondProof:{source:secondProofSource,status:secondProof.status,category:secondProof.category},
     substitution:{
       active:secondProofSource!=='slcmj_peak_power',
@@ -4683,13 +4869,16 @@ function computeHypPower01(testData,normPop,normAge){
       mechanismsInvolved:mechanisms,
       ruleVariant:'standard_2_mechanisms_gelee'
     },
-    confirmativeEvidence:{
-      cmj_height:{raw:cmjHeightRaw,status:cmjHeightSt,countsAsDiagnostic:false} // gel : jamais une deuxième preuve, quel que soit son statut.
-    },
-    explanatoryEvidence:{
-      capacite:computeHypPowerCapacite(testData,normPop,normAge),
-      strategie:computeHypPowerStrategie(testData)
-    },
+    confirmative:confirmativeEvidence,
+    confirmativeEvidence:confirmativeEvidence,
+    explanatory:explanatoryEvidence,
+    explanatoryEvidence:explanatoryEvidence,
+    precision:{},
+    limitations:[
+      "slcmj_peak_power et les 3 preuves de substitution (dj_peak_prop_power/sldj_peak_prop_power/cmjr_peak_power) : aucun seuil -> jamais classifiables aujourd'hui.",
+      "2/2 strict : une seule des deux preuves non classifiable suffit à bloquer l'évaluation (non_determinable), contrairement à Force (2/4 tolérant).",
+      "cmj_height reste confirmative gelée, jamais comptée comme deuxième preuve diagnostique quel que soit son statut."
+    ],
     note:"Le sous-modèle Capacité/Stratégie/Mixte/Non-discriminable (HYP_PUI01_REGLE_FINALE_GELEE.md) n'est pas implémenté comme machine à états ici : il présuppose un déficit de Puissance déjà retenu (2/2), structurellement inatteignable aujourd'hui faute de seuil sur la deuxième preuve. Les variables Capacité/Stratégie sont exposées à titre de traçabilité uniquement, jamais génératrices du Niveau 1."
   };
 }
@@ -4846,18 +5035,26 @@ function computeHypForce01(testData,normPop,normAge){
   var globalRetenue=(state==='retenue_faible'||state==='retenue_moderee'||state==='retenue_forte');
   var segments=computeHypForceSegments(testData,globalRetenue,normPop,normAge);
 
+  var deficientCats=deficientTests.map(function(k){return globals[k].category;});
+  var status=hypStatusFromState(state,deficientCats);
+
   return{
     hypId:'HYP-FOR-01',
+    quality:'Force',
     state:state,
+    status:status, // contrat HYP V1 commun — même formule que computeMoteur, centralisée via hypStatusFromState.
     support:support,
+    diagnostic:globals,
     diagnosticEvidence:globals,
     convergence:{
       requiredMinimum:2,totalCandidates:4,
       evaluableCount:evaluable.length,deficientCount:deficientTests.length,
       deficientTests:deficientTests,thresholdMet:deficientTests.length>=2
     },
+    confirmative:confirmatives,
     confirmativeEvidence:confirmatives,
     relativeOrientation:{detected:relativeTests.length>0,tests:relativeTests}, // CLI011
+    explanatory:explanatory,
     explanatoryEvidence:explanatory,
     precision:{
       asymmetries:{
@@ -4866,6 +5063,12 @@ function computeHypForce01(testData,normPop,normAge){
       }
     },
     segments:segments,
+    limitations:[
+      "imtp_n/slimtp_n : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiables aujourd'hui, malgré un poids TFM=3.",
+      "RFD/TTPF (tous tests, diagnostiques et segmentaires) : aucun seuil -> valeur brute uniquement, jamais génératrices.",
+      "Aucune population NORMS réelle ne couvre à la fois iso_belt_squat_n et sl_iso_push_n simultanément.",
+      "Groupes segmentaires sans aucune norme (df_iso/inv_iso/ev_iso/sh_iso_3030/sh_iso_6060) : 'non_classifiable', jamais 'normal'."
+    ],
     note:"Niveau 2 déclenché uniquement si le Niveau 1 est retenu (state commence par 'retenue_') ET que le segment est localement déficitaire et classifiable — un déficit segmentaire isolé sans déficit global ne crée jamais HYP-FOR-01."
   };
 }
@@ -4974,14 +5177,21 @@ function computeHypExplosivity01(testData,normPop,normAge){
     support={level:explanatoryConvergent?'forte':(confirmativeConvergent?'moderee':'faible')};
   }
 
+  var diagnosticEvidence={
+    cmj_conc_rfd:rfdRes,
+    cmj_conc_impulse_100:impulseRes
+  };
+  var deficientCats=state==='retenue_faible'?[rfdRes.category,impulseRes.category]:[];
+  var status=hypStatusFromState(state,deficientCats);
+
   return{
     hypId:'HYP-EXP-01',
+    quality:'Explosivité',
     state:state,
+    status:status, // contrat HYP V1 commun — même formule que computeMoteur, centralisée via hypStatusFromState.
     support:support,
-    diagnosticEvidence:{
-      cmj_conc_rfd:rfdRes,
-      cmj_conc_impulse_100:impulseRes
-    },
+    diagnostic:diagnosticEvidence,
+    diagnosticEvidence:diagnosticEvidence,
     convergence:{
       requiredMechanisms:2,
       distinctMechanismsObserved:mechanisms.length,
@@ -4989,11 +5199,17 @@ function computeHypExplosivity01(testData,normPop,normAge){
       mechanismsInvolved:mechanisms,
       ruleVariant:'standard_2_mechanisms_gelee'
     },
+    confirmative:confirmative,
     confirmativeEvidence:confirmative,
+    explanatory:explanatory,
     explanatoryEvidence:explanatory,
     precision:{
       note:"Aucune asymétrie documentée pour Explosivité dans les sources consultées (cmj est un test bilatéral, sans distinction D/G) — aucun mécanisme d'asymétrie propre à cette qualité n'existe dans le code, contrairement à Force (LSI des tests unilatéraux)."
     },
+    limitations:[
+      "cmj_conc_rfd, cmj_conc_impulse_100 : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiables aujourd'hui -> non_determinable en pratique.",
+      "cmj_braking_rfd (explicative biomécanique) : correspondance de nommage inférée (CMJ_ECC_DECEL_RFD), non confirmée par le praticien — exposée telle quelle, jamais utilisée pour trancher seule."
+    ],
     note:"cmj_peak_power, cmj_height, slcmj_height, dj_rsi et sldj_rsi ne sont jamais lus par ce moteur au-delà de cmj_peak_power (confirmative documentée) — aucun rôle documenté pour les autres dans HYP-EXP-01, jamais attribué arbitrairement (mission §6)."
   };
 }
@@ -5139,12 +5355,26 @@ function computeHypStabilization01(testData,normPop,normAge){
     support={level:explanatoryConvergent?'forte':(confirmativeConvergent?'moderee':'faible')};
   }
 
+  var deficientCats=deficient.map(function(k){return diag[k].category;});
+  var status=hypStatusFromState(state,deficientCats);
+
   return{
-    hypId:'HYP-STA-01', state:state, support:support,
+    hypId:'HYP-STA-01', quality:'Stabilisation', state:state, status:status, support:support,
+    diagnostic:diag,
     diagnosticEvidence:diag,
     convergence:{requiredMechanisms:2,distinctMechanismsObserved:deficient.length,thresholdMet:state==='retenue_faible',mechanismsInvolved:deficient,ruleVariant:'convergence_6_mecanismes_gelee_KINEXUS_REASONING_ENGINE_V1_par7'},
+    // Aucune confirmative réellement indépendante documentée (voir commentaire ci-dessus) — honnête,
+    // non inventée. Le mécanisme "3e preuve du pool" sert de confirmative, cf. confirmativeConvergent.
+    confirmative:{},
+    confirmativeEvidence:{},
+    explanatory:explanatory,
     explanatoryEvidence:explanatory,
     precision:{note:"Aucun mécanisme d'asymétrie inter-test propre à Stabilisation au-delà du LSI intrinsèque déjà exposé (rawD/rawG/lsi) pour SLS/landing_uni/WBLT — non documenté comme générateur, précision uniquement."},
+    limitations:[
+      "SLS (7 KPI), eo_surface, ef_surface, strobo_surface : aucun seuil -> jamais classifiables aujourd'hui -> seule la famille Landing (2/6 mécanismes) est opérationnelle.",
+      "ybt_composite jamais lu par ce moteur (aucun rôle documenté, seul le poids TFM l'associe — cf. AUDIT_IMPLEMENTATION_HYP_STA01.md).",
+      "Famille RFD hanche/cheville (explicative) : aucun seuil -> valeur brute uniquement."
+    ],
     note:"ybt_composite jamais lu par ce moteur (aucun rôle documenté dans la fiche HYP-STAB-01 ni CLI070/CLI071 — seul le poids TFM l'associe, jamais utilisé comme preuve clinique, cf. AUDIT_IMPLEMENTATION_HYP_STA01.md). sllt_* jamais lu (exclu, gel corroboré par réexamen). dj_rsi/sldj_rsi/cmjr_*/*_hop_distance jamais lus (territoire Puissance/Réactivité)."
   };
 }
@@ -5285,13 +5515,24 @@ function computeHypEndurance01(testData,normPop,normAge){
     support={level:explanatoryConvergent?'forte':(confirmativeConvergent?'moderee':'faible')};
   }
 
+  var deficientCats=deficient.map(function(k){return diag[k].category;});
+  var status=hypStatusFromState(state,deficientCats);
+
   return{
-    hypId:'HYP-END-01', state:state, support:support,
+    hypId:'HYP-END-01', quality:'Endurance', state:state, status:status, support:support,
+    diagnostic:diag,
     diagnosticEvidence:diag,
     convergence:{requiredMechanisms:2,distinctMechanismsObserved:deficient.length,thresholdMet:state==='retenue_faible',mechanismsInvolved:deficient,ruleVariant:'convergence_6_mecanismes_gelee_CLI080'},
+    confirmative:confirmative,
     confirmativeEvidence:confirmative,
+    explanatory:explanatory,
     explanatoryEvidence:explanatory,
     precision:{note:"Aucune asymétrie de fatigue inter-test propre à Endurance au-delà du LSI intrinsèque déjà exposé (rawD/rawG/lsi) pour heel_raise et repeated_hop — précision uniquement, jamais générateur."},
+    limitations:[
+      "Seul heel_raise_reps (1 des 6 mécanismes) est classifiable aujourd'hui -> retenue_faible structurellement inatteignable avec des données réelles.",
+      "Les 14 KPI repeated_hop restants (5 diagnostiques + 9 confirmatifs) : aucun seuil -> jamais classifiables.",
+      "repeated_hop_mean_stiffness : aucun rôle assigné par aucune source consultée -> jamais lu."
+    ],
     note:"repeated_hop_mean_stiffness jamais lu (aucun rôle assigné par aucune source consultée). CMJ/SLCMJ/DJ/SLDJ/CMJR (Puissance/Réactivité), wblt_distance/lsi/asymmetry (Mobilité), SLS/EO/EF/Strobo (Stabilisation), Landing/SLLT (Absorption) jamais lus (exclusions gelées, fiche HYP-END-01)."
   };
 }
@@ -5321,75 +5562,64 @@ function computeMoteur(testData,questData,normPop,normAge){
     var conf=cov/poss;
     fSc[fn]={status:status,confidence:conf>=0.75?'elevee':conf>=0.5?'moderee':'faible',coverage:Math.round(conf*100),directTests:directTests,directStatuses:directStatuses};
   });
-  // HYP-ABS-01 V2 — remplace UNIQUEMENT fSc['Absorption'] ci-dessus par le raisonnement clinique
-  // HYP. Aucune autre qualité (fSc[autre_fn]) et aucun autre output de computeMoteur (tSt/sysSc/
-  // rtpStatus/qualityScores/capaciteScores, calculés plus bas, indépendamment) n'est touché par ce
-  // bloc — cf. IMPLEMENTATION_HYP_ABS_V2.md, contraintes #1/#18 de la mission d'implémentation.
+  // HYP-ABS-01 V2 — remplace INTÉGRALEMENT fSc['Absorption'] par le raisonnement clinique HYP,
+  // status:null explicite si non_determinable — même principe que les 5 autres moteurs
+  // "remplacement intégral" (Puissance/Force/Explosivité/Stabilisation/Endurance). Normalisation
+  // architecturale (mission HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md, §4/§5/§14 : "HYP = source de
+  // vérité du diagnostic, TFM ne doit plus pouvoir la contredire") — AUCUN changement du
+  // raisonnement clinique HYP-ABS-01 V2 lui-même (niveau1/sousDomaines/asymetrie inchangés, cf.
+  // computeHypAbsorption01). Le résultat TFM générique déjà calculé plus haut n'est plus jamais
+  // affiché comme `.status` (il pouvait contredire un HYP honnête) mais reste conservé,
+  // intégralement, sous `tfmFallback` — jamais supprimé, disponible pour tout consommateur
+  // legacy/relationnel. Aucune autre qualité, aucun autre output de computeMoteur n'est touché.
+  var absTfmGeneric=fSc['Absorption']||null;
   var hypAbs01=computeHypAbsorption01(testData,normPop,normAge);
-  if(hypAbs01.niveau1!=='non_determinable'){
-    var absCoreVars=hypAbs01.sousDomaines.A_core;
-    var absStatus=hypAbs01.niveau1==='ok'?'vert':hypAbs01.niveau1==='a_surveiller'?'jaune':
-      (absCoreVars.braking_rfd.status==='rouge'&&absCoreVars.force_zero_vel.status==='rouge')?'rouge':'orange';
-    var absDirectStatuses=[absCoreVars.braking_rfd.status,absCoreVars.force_zero_vel.status].filter(Boolean);
-    var absCov=absDirectStatuses.length;
-    fSc['Absorption']={
-      status:absStatus,
-      confidence:absCov>=2?'elevee':'faible',
-      coverage:Math.round(absCov/2*100),
-      directTests:['cmj'],
-      directStatuses:absDirectStatuses,
-      hypAbs01:hypAbs01
-    };
-  }else if(fSc['Absorption']){
-    // Core HYP-ABS-01 V2 non déterminable (aucune donnée CMJ Core classifiable pour cet
-    // athlète/cette population) — le résultat TFM générique déjà calculé ci-dessus est conservé à
-    // titre de repli documenté (jamais un statut inventé) ; le détail HYP reste exposé pour
-    // traçabilité.
-    fSc['Absorption'].hypAbs01=hypAbs01;
-  }
-  // HYP-REA-01 — remplace UNIQUEMENT fSc['Réactivité'] par le raisonnement clinique HYP. Aucune
-  // autre qualité, aucun autre output de computeMoteur n'est touché par ce bloc — cf.
-  // IMPLEMENTATION_HYP_REA01.md.
+  fSc['Absorption']={
+    status:hypAbs01.status, // null explicitement si non_determinable — jamais un repli TFM qui pourrait le contredire.
+    confidence:hypAbs01.convergence.distinctMechanismsObserved>=2?'elevee':(hypAbs01.convergence.distinctMechanismsObserved===1?'faible':'faible'),
+    coverage:Math.round(hypAbs01.diagnostic.braking_rfd.status!=null&&hypAbs01.diagnostic.force_zero_vel.status!=null?100:(hypAbs01.diagnostic.braking_rfd.status!=null||hypAbs01.diagnostic.force_zero_vel.status!=null?50:0)),
+    directTests:['cmj'],
+    directStatuses:[hypAbs01.diagnostic.braking_rfd.status,hypAbs01.diagnostic.force_zero_vel.status].filter(Boolean),
+    hypAbs01:hypAbs01,
+    tfmFallback:absTfmGeneric // conservé pour compatibilité/usage relationnel — jamais utilisé comme statut clinique affiché.
+  };
+  // HYP-REA-01 — remplace INTÉGRALEMENT fSc['Réactivité'] par le raisonnement clinique HYP.
+  // Normalisation architecturale (HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md §4/§5/§14) : HYP devient
+  // la source de vérité du statut affiché — le TFM ne peut plus le contredire. AUCUN changement du
+  // raisonnement clinique HYP-REA-01 (computeHypReactivity01 inchangé). Le résultat TFM générique
+  // déjà calculé plus haut n'est plus jamais affiché comme `.status` mais reste conservé sous
+  // `tfmFallback`. Aucune autre qualité, aucun autre output de computeMoteur n'est touché.
+  var reaTfmGeneric=fSc['Réactivité']||null;
   var hypRea01=computeHypReactivity01(testData,normPop,normAge);
-  if(hypRea01.dataAvailable){
-    var reaStatus=hypRea01.state==='absente'?'vert':hypRea01.state==='suspectee'?'jaune':
-      (hypRea01.diagnosticEvidence.dj_rsi.category==='rouge'&&hypRea01.diagnosticEvidence.sldj_rsi.category==='rouge')?'rouge':'orange';
-    var reaDirectStatuses=[hypRea01.diagnosticEvidence.dj_rsi.category,hypRea01.diagnosticEvidence.sldj_rsi.category].filter(Boolean);
-    var reaCov=reaDirectStatuses.length;
-    fSc['Réactivité']={
-      status:reaStatus,
-      confidence:reaCov>=2?'elevee':'faible',
-      coverage:Math.round(reaCov/2*100),
-      directTests:['dj','sldj'],
-      directStatuses:reaDirectStatuses,
-      hypRea01:hypRea01
-    };
-  }else if(fSc['Réactivité']){
-    // Ni dj ni sldj n'ont de données exploitables — le résultat TFM générique déjà calculé
-    // ci-dessus est conservé à titre de repli documenté (jamais un statut inventé) ; le détail HYP
-    // reste exposé pour traçabilité.
-    fSc['Réactivité'].hypRea01=hypRea01;
-  }
-  // HYP-MOB-01 — remplace UNIQUEMENT fSc['Mobilité'] par le raisonnement clinique HYP (portage de
-  // hyp_engine_lot1.js, jamais rouvert). Aucune autre qualité n'est touchée par ce bloc — cf.
-  // IMPLEMENTATION_HYP_MOB01.md.
+  var reaDirectStatuses=[hypRea01.diagnosticEvidence.dj_rsi.category,hypRea01.diagnosticEvidence.sldj_rsi.category].filter(Boolean);
+  var reaCov=reaDirectStatuses.length;
+  fSc['Réactivité']={
+    status:hypRea01.status, // null explicitement si aucune donnée dj/sldj — jamais un repli TFM qui pourrait le contredire.
+    confidence:reaCov>=2?'elevee':'faible',
+    coverage:Math.round(reaCov/2*100),
+    directTests:['dj','sldj'],
+    directStatuses:reaDirectStatuses,
+    hypRea01:hypRea01,
+    tfmFallback:reaTfmGeneric // conservé pour compatibilité/usage relationnel — jamais utilisé comme statut clinique affiché.
+  };
+  // HYP-MOB-01 — remplace INTÉGRALEMENT fSc['Mobilité'] par le raisonnement clinique HYP (portage
+  // de hyp_engine_lot1.js, jamais rouvert). Normalisation architecturale
+  // (HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md §4/§5/§14) : HYP devient la source de vérité du statut
+  // affiché — le TFM ne peut plus le contredire. AUCUN changement du raisonnement clinique
+  // HYP-MOB-01 (computeHypMobility01 inchangé). Le résultat TFM générique déjà calculé plus haut
+  // n'est plus jamais affiché comme `.status` mais reste conservé sous `tfmFallback`. Aucune autre
+  // qualité n'est touchée par ce bloc.
+  var mobTfmGeneric=fSc['Mobilité']||null;
   var hypMob01=computeHypMobility01(testData,normPop,normAge);
-  if(hypMob01.dataAvailable){
-    var mobStatus=hypMob01.state==='absente'?'vert':(hypMob01.diagnosticEvidence.wblt_distance.category==='rouge'?'rouge':'orange');
-    fSc['Mobilité']={
-      status:mobStatus,
-      confidence:'elevee', // 1 seul mécanisme requis (ADR-005) — dès qu'il est disponible, il est pleinement évaluant.
-      coverage:100,
-      directTests:['wblt'],
-      directStatuses:[hypMob01.diagnosticEvidence.wblt_distance.category].filter(Boolean),
-      hypMob01:hypMob01
-    };
-  }else if(fSc['Mobilité']){
-    // wblt non déterminable (test inactif/aucune donnée) — le résultat TFM générique déjà calculé
-    // ci-dessus est conservé à titre de repli documenté (jamais un statut inventé) ; le détail HYP
-    // reste exposé pour traçabilité.
-    fSc['Mobilité'].hypMob01=hypMob01;
-  }
+  fSc['Mobilité']={
+    status:hypMob01.status, // null explicitement si aucune donnée wblt — jamais un repli TFM qui pourrait le contredire.
+    confidence:hypMob01.dataAvailable?'elevee':'faible', // 1 seul mécanisme requis (ADR-005) — dès qu'il est disponible, il est pleinement évaluant.
+    coverage:hypMob01.dataAvailable?100:0,
+    directTests:['wblt'],
+    directStatuses:[hypMob01.diagnosticEvidence.wblt_distance.category].filter(Boolean),
+    hypMob01:hypMob01,
+    tfmFallback:mobTfmGeneric // conservé pour compatibilité/usage relationnel — jamais utilisé comme statut clinique affiché.
+  };
   // HYP-PUI-01 — remplace INTÉGRALEMENT fSc['Puissance'] par le raisonnement clinique HYP, y
   // compris quand il ne peut rien déterminer (status:null explicite plutôt qu'un repli TFM ou un
   // statut inventé — mission d'implémentation, règle absolue : "mieux vaut NON DÉTERMINABLE qu'un
@@ -5820,15 +6050,12 @@ function CSVImportModal(props){
 // bilan.reportOverrides — voir REPORT_OVERRIDE_FIELDS.
 function defaultReportTexts(athlete,bilan,res){
   var pri=res.priorities||[],rtp=res.rtpStatus;
-  var conclusion;
-  if(pri.length===0)conclusion='Profil équilibré, aucun déficit fonctionnel majeur identifié.';
-  else{
-    var top=pri[0],second=pri[1];
-    conclusion='Le bilan met en évidence un déficit prédominant '+(top.contributeurPrincipal?'du '+top.contributeurPrincipal.toLowerCase():'de '+top.fonction.toLowerCase())+' limitant les capacités de '+top.fonction.toLowerCase()+(second?' et de '+second.fonction.toLowerCase():'')+'.';
-  }
-  var consequences;
-  if(pri.length===0)consequences='Aucune conséquence fonctionnelle significative identifiée à ce jour.';
-  else consequences='Le déficit '+(pri[0].contributeurPrincipal?'de '+pri[0].contributeurPrincipal.toLowerCase():'de '+pri[0].fonction.toLowerCase())+' entraîne une altération de la capacité de '+pri[0].fonction.toLowerCase()+(pri[1]?' et de '+pri[1].fonction.toLowerCase():'')+', augmentant le risque de blessure lors des situations de charge élevée et limitant la performance globale.';
+  // Narration multi-qualités désormais gatée par une relation HYP réellement documentée — jamais
+  // "X entraîne Y" à partir du seul classement TFM (mission de normalisation architecturale,
+  // HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md §9/§10 ; cf. buildMultiQualityNarrative).
+  var narrative=buildMultiQualityNarrative(pri);
+  var conclusion=pri.length===0?'Profil équilibré, aucun déficit fonctionnel majeur identifié.':narrative.conclusion;
+  var consequences=pri.length===0?'Aucune conséquence fonctionnelle significative identifiée à ce jour.':narrative.consequences;
   var decision=rtp&&rtp.status==='vert'?'Retour au sport autorisé, aucune restriction particulière.':'Retour au sport non recommandé à ce jour ; poursuite de la rééducation ciblée nécessaire.';
   var reevaluation=rtp&&rtp.status!=='vert'?'Nouveau bilan conseillé dans 4 à 6 semaines.':'Suivi standard, prochaine évaluation selon planning habituel.';
   var noteMedecin='Ce bilan a été réalisé dans le cadre du suivi fonctionnel post-blessure. N\'hésitez pas à nous contacter pour toute question.';
@@ -5934,10 +6161,12 @@ function buildSportifReport(athlete,bilan,res){
   }
 
   // ── Chaîne causale (icônes + texte d'interprétation) ──
-  var causalSteps=pri.map(function(p,i){return{icon:FN_ICON[p.fonction]||'●',label:(i===0?'Déficit de ':'Répercussion sur ')+p.fonction.toLowerCase()+(p.contributeurPrincipal?' ('+p.contributeurPrincipal.toLowerCase()+')':'')};});
-  if(causalSteps.length)causalSteps.push({icon:'📊',label:'Impact sur la performance et le risque de blessure'});
-  var interpretationTxt=pri.length===0?'Profil équilibré, aucune chaîne causale de déficit identifiée.'
-    :'Le déficit '+(pri[0].contributeurPrincipal?'de '+pri[0].contributeurPrincipal.toLowerCase():'de '+pri[0].fonction.toLowerCase())+' entraîne une altération de la capacité de '+pri[0].fonction.toLowerCase()+(pri[1]?' et de '+pri[1].fonction.toLowerCase():'')+', augmentant le risque de blessure lors des situations de charge élevée et limitant la performance globale.';
+  // Normalisation architecturale (HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md §9/§10) : ne relie plus
+  // deux qualités par « Répercussion sur »/« entraîne » à partir du seul classement TFM — gatée
+  // par une relation HYP_QUALITY_RELATIONS réellement documentée (buildMultiQualityNarrative).
+  var narrativeMulti=buildMultiQualityNarrative(pri);
+  var causalSteps=narrativeMulti.causalSteps;
+  var interpretationTxt=pri.length===0?'Profil équilibré, aucun déficit concordant identifié.':narrativeMulti.interpretationTxt;
 
   // ── Couverture réelle du bilan (nombre de tests / variables actifs) ──
   // Les tests réglés sur "ignorée" pour toutes les qualités concernées (Configuration clinique)
@@ -7283,8 +7512,9 @@ function AnalyseView(props){
   if(limitations.length>0)risques.push({label:'Baisse de performance',status:'orange'});
   if(pri.some(function(p){return p.status==='rouge';}))risques.push({label:'Risque de blessure (membre inférieur)',status:'rouge'});
   if(hasAsym)risques.push({label:'Déséquilibres fonctionnels',status:'orange'});
-  var causalSteps=pri.map(function(p,i){return{icon:FN_ICON[p.fonction]||'●',label:(i===0?'Déficit de ':'Répercussion sur ')+p.fonction.toLowerCase()+(p.contributeurPrincipal?' ('+p.contributeurPrincipal.toLowerCase()+')':'')};});
-  if(causalSteps.length)causalSteps.push({icon:'📊',label:'Impact sur la performance et le risque de blessure'});
+  // Normalisation architecturale (HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md §9/§10) : même règle que
+  // le rapport PDF — jamais « Répercussion sur »/« entraîne » sans relation HYP documentée.
+  var causalSteps=buildMultiQualityNarrative(pri).causalSteps;
 
   function doPrint(type){setShowPrintMenu(false);printReport(type,athlete,bilan,res);}
 

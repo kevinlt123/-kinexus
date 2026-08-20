@@ -115,9 +115,12 @@ test('6. Population sans norme (aucune NORMS) -> repli THRESHOLDS fonctionne ré
   assert.strictEqual(h.state, 'retenue_faible');
 });
 
-test('7. Données incomplètes (dj/sldj tous deux inactifs) -> aucune donnée HYP, repli sur le score TFM générique', () => {
+test('7. Données incomplètes (dj/sldj tous deux inactifs) -> aucune donnée HYP, status:null explicite (normalisation architecturale : HYP est désormais la source de vérité du statut, plus de repli TFM — cf. HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md)', () => {
   var r = computeMoteur({}, {}, POP, AGE);
-  assert.strictEqual(r.functionScores['Réactivité'], null); // aucun test actif du tout -> comportement TFM déjà existant, inchangé.
+  assert.ok(r.functionScores['Réactivité']); // objet toujours produit, jamais littéralement null.
+  assert.strictEqual(r.functionScores['Réactivité'].status, null);
+  assert.strictEqual(r.functionScores['Réactivité'].hypRea01.dataAvailable, false);
+  assert.strictEqual(r.functionScores['Réactivité'].tfmFallback, null); // le repli TFM générique reste exposé séparément (jamais supprimé), ici null car aucun test actif.
 });
 
 console.log('\nExclusions gelées — CMJR / Repeated Hop / Heel Raise / Side Hop ne déclenchent jamais le diagnostic');

@@ -161,9 +161,12 @@ test('11. sllt_tts déficitaire -> sous-domaine E non implémenté (aucun seuil 
 
 console.log('\nDonnées insuffisantes / anciens bilans');
 
-test('12. Aucune donnée CMJ -> Niveau 1 non_determinable, repli sur le score TFM générique déjà calculé (jamais un statut inventé)', () => {
+test('12. Aucune donnée CMJ -> Niveau 1 non_determinable, status:null explicite (normalisation architecturale : HYP est désormais la source de vérité du statut, plus de repli TFM — cf. HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md)', () => {
   var r = computeMoteur({}, {}, null, 25);
-  assert.strictEqual(r.functionScores['Absorption'], null); // aucun test actif du tout -> poss/cov = 0, comportement TFM déjà existant, inchangé.
+  assert.ok(r.functionScores['Absorption']); // objet toujours produit (comme les 5 autres moteurs "remplacement intégral"), jamais littéralement null.
+  assert.strictEqual(r.functionScores['Absorption'].status, null);
+  assert.strictEqual(r.functionScores['Absorption'].hypAbs01.niveau1, 'non_determinable');
+  assert.strictEqual(r.functionScores['Absorption'].tfmFallback, null); // le repli TFM générique reste exposé séparément (jamais supprimé), ici null car aucun test actif.
 });
 
 test('13. Ancien bilan (cmj sans braking_rfd/force_zero_vel, seulement height) -> pas de crash, repli documenté, hypAbs01 exposé pour traçabilité', () => {
