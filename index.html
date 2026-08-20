@@ -4086,11 +4086,17 @@ function computeQualityStatus(qualityName,testData,pop,age){
 
 // Statut d'une capacite fonctionnelle (Saut/Acceleration/Reception/Changement de direction), decomposee par
 // sous-capacite, avec le detail des qualites qui la composent (format checklist du referentiel clinique).
-function computeCapaciteStatus(capKey,testData,pop,age){
+function computeCapaciteStatus(capKey,testData,pop,age,fSc){
   var cap=CAPACITES_DATA[capKey];if(!cap)return null;
   var subs=cap.sousCapacites.map(function(sub){
     var items=sub.qualitesContributrices.map(function(c){
-      return{quality:c.quality,poids:c.poids,status:computeQualityStatus(c.quality,testData,pop,age)};
+      // Migration partielle TFM -> HYP/CSM (AUDIT_MIGRATION_TFM_HYP_CSM.md, décision B) : pour une
+      // qualité dotée d'un moteur HYP actif, le statut exposé ici (`status`) est TOUJOURS
+      // fSc[qualité].status (jamais recalculé) — le résultat TFM/VAR_REL3 brut, inchangé, reste
+      // disponible sous `tfmStatus`, jamais affiché comme diagnostic. `tfmQualityDiagnosticGate`
+      // (définie plus bas, avant computeMoteur) ne modifie ni VAR_REL3, ni TFM, ni computeQualityStatus.
+      var gate=tfmQualityDiagnosticGate(fSc,c.quality,computeQualityStatus(c.quality,testData,pop,age));
+      return{quality:c.quality,poids:c.poids,status:gate.status,tfmStatus:gate.tfmStatus,hypGoverned:gate.hypGoverned};
     });
     var tested=items.filter(function(x){return x.status;});
     var status=null;
@@ -4113,7 +4119,14 @@ function capaciteHTML(capResult){
     sub.qualites.forEach(function(q){
       var mark=q.status?(q.status==='vert'?'✓':'✗'):'○';
       var mcol=q.status?SC[q.status]:'#94A3B8';
-      out+='<div style="font-size:7.8pt;color:#334155;margin-bottom:2px"><span style="color:'+mcol+';font-weight:700">'+mark+'</span> '+q.quality+(q.status?' ('+SL[q.status]+')':' (non testé)')+'</div>';
+      var label=q.status?' ('+SL[q.status]+')':(q.hypGoverned?' (non déterminable — HYP)':' (non testé)');
+      out+='<div style="font-size:7.8pt;color:#334155;margin-bottom:2px"><span style="color:'+mcol+';font-weight:700">'+mark+'</span> '+q.quality+label+'</div>';
+      // Information TFM secondaire : affichée uniquement quand elle diverge de ce qui est montré
+      // ci-dessus (diagnostic HYP) — jamais présentée sous le même badge/couleur qu'un diagnostic
+      // (mission AUDIT_MIGRATION_TFM_HYP_CSM.md, Partie 3/4).
+      if(q.hypGoverned&&q.tfmStatus!=null&&q.tfmStatus!==q.status){
+        out+='<div style="font-size:6.8pt;color:#94A3B8;margin:0 0 4px 16px;font-style:italic">Information relationnelle TFM (secondaire) : '+SL[q.tfmStatus]+' — ne constitue pas un diagnostic HYP.</div>';
+      }
     });
     out+='</div>';
   });
@@ -5735,6 +5748,63 @@ function computeHypClinicalSynthesis01(functionScores){
   };
 }
 
+// ── MIGRATION PARTIELLE TFM → HYP/CSM (mission AUDIT_MIGRATION_TFM_HYP_CSM.md, décision B) ───────
+// Objectif : pour toute qualité dotée d'un moteur HYP actif, le statut affichable comme DIAGNOSTIC
+// reste TOUJOURS fSc[qualité].status (jamais recalculé, jamais un repli TFM qui pourrait le
+// contredire — même principe que la mission de normalisation, étendu ici aux deux DERNIERS
+// consommateurs identifiés par l'audit comme pouvant encore afficher une conclusion clinique
+// concurrente : capaciteScores/qualityScores et contributeurPrincipal/hypothese). AUCUNE relation
+// TFM, AUCUN poids TFM, AUCUN moteur HYP, AUCUNE règle de convergence n'est modifié ici —
+// uniquement la façon dont un résultat déjà calculé est exposé comme diagnostic vs information
+// secondaire. Rien n'est supprimé : computeQualityStatus/computeCapaciteStatus/CAPACITES_DATA/
+// VAR_REL3/TFM/SYSTEMS/HYPO/SYS_COMPENSATIONS restent exactement tels quels, inchangés.
+
+// Qualité dont le nom correspond exactement à l'une des 8 qualités dotées d'un moteur HYP actif
+// (HYP_CSM_HYP_KEY, déjà défini pour HYP-CSM-01, réutilisé ici sans duplication) : son statut
+// affiché comme diagnostic est TOUJOURS fSc[qualité].status ; le résultat TFM/VAR_REL3 brut reste
+// disponible sous `tfmStatus`, jamais affiché comme diagnostic. Qualités sans moteur HYP (Contrôle
+// Frontal/Contrôle Sensoriel), et tout libellé purement TFM sans homonyme HYP ('Force maximale',
+// 'Propulsion', 'Contrôle moteur', 'Résistance neuromusculaire') : comportement inchangé, rien à
+// gater faute de source HYP à consulter pour ce nom exact.
+function tfmQualityDiagnosticGate(fSc,quality,tfmStatus){
+  var hypGoverned=!!(fSc&&HYP_CSM_HYP_KEY.hasOwnProperty(quality)&&fSc[quality]);
+  return{
+    tfmStatus:tfmStatus, // information TFM/VAR_REL3 secondaire — jamais supprimée, jamais affichée seule comme diagnostic pour une qualité HYP-gouvernée.
+    hypGoverned:hypGoverned,
+    status:hypGoverned?fSc[quality].status:tfmStatus // diagnostic affiché : HYP si un moteur existe pour cette qualité, sinon TFM (hors périmètre HYP, inchangé).
+  };
+}
+
+// Rôle réel d'un test dans le raisonnement HYP d'une qualité — lecture STRUCTURELLE des champs déjà
+// exposés par le contrat HYP V1 commun (diagnostic/confirmative/explanatory, garantis présents
+// depuis la mission de normalisation, cf. HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md §2), plus
+// `segments` quand le moteur en expose (Force, Niveau 2 segmentaire). Aucune nouvelle donnée
+// clinique inventée : uniquement une consultation de ce que chaque moteur documente déjà
+// lui-même sur ses propres variables.
+function hypEvidenceRoleForTest(hyp,testKey){
+  if(!hyp)return null;
+  function hasKey(obj){
+    if(!obj)return false;
+    return Object.keys(obj).some(function(k){return k===testKey||k.indexOf(testKey+'_')===0;});
+  }
+  if(hasKey(hyp.diagnostic)||hasKey(hyp.confirmative))return'diagnostic';
+  if(Array.isArray(hyp.segments)&&hyp.segments.some(function(s){return s.testKey===testKey;}))return'segmental';
+  if(hasKey(hyp.explanatory))return'explanatory';
+  return null;
+}
+function hypObjectForQuality(fSc,quality){
+  var key=HYP_CSM_HYP_KEY[quality];
+  return(key&&fSc&&fSc[quality])?fSc[quality][key]:null;
+}
+// Formulation obligatoire (mission §3/§8), jamais diagnostique : utilisée UNIQUEMENT quand le seul
+// contributeur TFM disponible n'a, dans le moteur HYP de la qualité concernée, qu'un rôle
+// explicatif/segmental — jamais diagnostique/confirmatif. Remplace, dans ce cas précis seulement,
+// la phrase `HYPO[fn](main)` existante (laissée mot pour mot inchangée pour tous les autres cas —
+// rôle diagnostique/confirmatif, ou aucun contributeur, où `HYPO` gère déjà nativement `m=null`).
+function tfmSecondaryContributorNote(fn,sys){
+  return'Élément relationnel TFM associé, à titre explicatif — ne constitue pas une preuve diagnostique de '+fn.toLowerCase()+(sys?' ('+sys.toLowerCase()+')':'')+'.';
+}
+
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
   var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
@@ -5953,7 +6023,21 @@ function computeMoteur(testData,questData,normPop,normAge){
   var priorities=deficits.map(function(fn,i){
     var fk=FN_KEY[fn];
     var contrib=SYSTEMS.filter(function(sys){return(SYSTEM_TESTS[sys]||[]).some(function(t){return effectiveTFMWeight(t,fk)>=2&&tSt[t]&&tSt[t]!=='vert';});}).filter(function(s){return sysSc[s]&&sysSc[s]!=='vert';});
-    var main=contrib[0]||null;var sec=contrib[1]||null;
+    // Migration partielle TFM -> HYP/CSM (AUDIT_MIGRATION_TFM_HYP_CSM.md, décision B, Partie 7-9) :
+    // un contributeur n'est présenté comme tel que si son rôle est réellement documenté par le
+    // moteur HYP de la qualité elle-même (diagnostique/confirmatif/segmental/explicatif) — jamais
+    // choisi au seul poids TFM. Qualité sans moteur HYP (Contrôle Frontal/Contrôle Sensoriel) :
+    // comportement inchangé (hypObjFn est null, contribGated=contrib tel quel).
+    var hypObjFn=hypObjectForQuality(fSc,fn);
+    var contribGated=hypObjFn?contrib.filter(function(sys){
+      return(SYSTEM_TESTS[sys]||[]).some(function(t){return hypEvidenceRoleForTest(hypObjFn,t);});
+    }):contrib;
+    var main=contribGated[0]||null;var sec=contribGated[1]||null;
+    var mainRole=hypObjFn&&main?(SYSTEM_TESTS[main]||[]).reduce(function(best,t){
+      var r=hypEvidenceRoleForTest(hypObjFn,t);
+      var rank={diagnostic:3,segmental:2,explanatory:1};
+      return r&&(!best||rank[r]>rank[best])?r:best;
+    },null):null;
     var deficitTests=Object.keys(TFM).filter(function(tk){return effectiveTFMWeight(tk,fk)>=2&&tSt[tk]&&(tSt[tk]==='rouge'||tSt[tk]==='orange');}).map(function(tk){return{key:tk,label:TBK[tk]?TBK[tk].label:tk,status:tSt[tk],weight:TFM[tk][fk]};});
     var okTests=Object.keys(TFM).filter(function(tk){return effectiveTFMWeight(tk,fk)>=2&&tSt[tk]==='vert';}).map(function(tk){return TBK[tk]?TBK[tk].label:tk;});
     var hFn=HYPO[fn];
@@ -5967,7 +6051,12 @@ function computeMoteur(testData,questData,normPop,normAge){
         if(rc.length){rootCauses=rc;rootCauseTest=dtest.label;rootCauseKpi=dtest.kpis[ki].label;}
       }
     }
-    return{rang:i+1,fonction:fn,status:fSc[fn].status,contributeurPrincipal:main,contributeurSecondaire:sec,deficitTests:deficitTests,okTests:okTests,hypothese:hFn?hFn(main):'Deficit de '+fn.toLowerCase()+' identifie.',orientation:ORI[fn]||'Travailler les qualites de '+fn.toLowerCase()+'.',compensations:main?SYS_COMPENSATIONS[main]:null,rootCauses:rootCauses,rootCauseTest:rootCauseTest,rootCauseKpi:rootCauseKpi};
+    // mainRole 'explanatory'/'segmental' : contributeur réel mais non diagnostique/confirmatif dans
+    // le moteur HYP de cette qualité -> formulation explicative dédiée (mission §7-9), jamais la
+    // phrase HYPO existante (réservée aux cas diagnostique/confirmatif, ou aucun contributeur —
+    // HYPO gère déjà nativement m=null, inchangé).
+    var hypotheseTxt=(mainRole==='explanatory'||mainRole==='segmental')?tfmSecondaryContributorNote(fn,main):(hFn?hFn(main):'Deficit de '+fn.toLowerCase()+' identifie.');
+    return{rang:i+1,fonction:fn,status:fSc[fn].status,contributeurPrincipal:main,contributeurSecondaire:sec,deficitTests:deficitTests,okTests:okTests,hypothese:hypotheseTxt,orientation:ORI[fn]||'Travailler les qualites de '+fn.toLowerCase()+'.',compensations:main?SYS_COMPENSATIONS[main]:null,rootCauses:rootCauses,rootCauseTest:rootCauseTest,rootCauseKpi:rootCauseKpi};
   });
   // RTP
   var rtpKeys=['single_hop','triple_hop','crossover_hop','side_hop','slcmj','sldj'];
@@ -5976,10 +6065,10 @@ function computeMoteur(testData,questData,normPop,normAge){
   if(rtpActive.length>0){var pass=0;rtpActive.forEach(function(k){var d=testData[k];var test=TBK[k];if(!test)return;if(!test.bilateral){var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);if(lsi!=null&&lsi>=95)pass++;}else{var st=computeTestStatus(k,d);if(st==='vert'||st==='jaune')pass++;}});var aclScore=null;if(questData.acl_rsi&&questData.acl_rsi.answers)aclScore=QBK.acl_rsi.scoring(questData.acl_rsi.answers);var aclOk=aclScore==null||aclScore>=77;var ratio=rtpActive.length>0?pass/rtpActive.length:0;var rStatus,rLabel;if(ratio>=0.9&&aclOk){rStatus='vert';rLabel='Prêt au retour au sport';}else if(ratio>=0.7){rStatus='jaune';rLabel='À surveiller';}else{rStatus='rouge';rLabel='Non prêt';}rtpStatus={status:rStatus,label:rLabel,ratio:Math.round(ratio*100),passCount:pass,totalCount:rtpActive.length,aclScore:aclScore};}
   var qualityScores={};
   ['Force maximale','Explosivité','Puissance','Réactivité','Propulsion','Absorption','Stabilisation','Contrôle moteur','Résistance neuromusculaire'].forEach(function(q){
-    qualityScores[q]=computeQualityStatus(q,testData,normPop,normAge);
+    qualityScores[q]=tfmQualityDiagnosticGate(fSc,q,computeQualityStatus(q,testData,normPop,normAge));
   });
   var capaciteScores={};
-  Object.keys(CAPACITES_DATA).forEach(function(ck){capaciteScores[ck]=computeCapaciteStatus(ck,testData,normPop,normAge);});
+  Object.keys(CAPACITES_DATA).forEach(function(ck){capaciteScores[ck]=computeCapaciteStatus(ck,testData,normPop,normAge,fSc);});
   return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus,qualityScores:qualityScores,capaciteScores:capaciteScores};
 }
 
