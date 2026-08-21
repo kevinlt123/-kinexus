@@ -7716,6 +7716,11 @@ function ReportPreview(props){
   }
   var [form,setForm]=useState(initialForm);
   var [priorities,setPriorities]=useState(initialPriorities);
+  // FIX_REPORT_PREVIEW_PRIORITY_OVERRIDE : priorité automatique ≠ priorité choisie par le praticien.
+  // `priorities` ne doit être traité comme une décision clinique explicite que si le praticien a
+  // réellement modifié/réordonné une priorité dans cette session (prioritiesTouched), ou en avait déjà
+  // enregistré une lors d'une session précédente (bilan.reportOverrides.priorities déjà non nul).
+  var [prioritiesTouched,setPrioritiesTouched]=useState(false);
   var [rtpOverride,setRtpOverride]=useState(function(){return(bilan.reportOverrides||{}).rtpStatusOverride||null;});
   var [comments,setComments]=useState(function(){return(bilan.reportOverrides||{}).praticienComments||'';});
   var [editing,setEditing]=useState(false);
@@ -7733,16 +7738,24 @@ function ReportPreview(props){
   var savedOv=bilan.reportOverrides||{};
   var dirty=JSON.stringify(overridesForPreview)!==JSON.stringify(Object.assign({},savedOv,{priorities:savedOv.priorities!=null?savedOv.priorities:(res.priorities||[]).map(function(p){return{rang:p.rang,fonction:p.fonction,contributeurPrincipal:p.contributeurPrincipal,contributeurSecondaire:p.contributeurSecondaire,status:p.status,hypothese:p.hypothese,orientation:p.orientation,sortieTxt:p.sortieTxt||'',deficitTests:p.deficitTests||[]};})}));
 
-  var previewBilan=useMemo(function(){return Object.assign({},bilan,{reportOverrides:overridesForPreview});},[bilan,form,priorities,rtpOverride,comments]);
+  // Le simple fait d'ouvrir l'aperçu (état React initialisé depuis res.priorities) ne doit jamais, à lui
+  // seul, activer la carte « Priorité principale » (prioCardOverridden côté buildSportifReport/
+  // buildExpertReport, ~L6811) : tant que rien n'a été explicitement modifié ni précédemment enregistré,
+  // `priorities` est omis des overrides transmis au rapport (rendu, téléchargement, enregistrement).
+  var savedHasExplicitPriorities=savedOv.priorities!=null;
+  var renderOverrides=(prioritiesTouched||savedHasExplicitPriorities)?overridesForPreview:Object.assign({},overridesForPreview,{priorities:undefined});
+
+  var previewBilan=useMemo(function(){return Object.assign({},bilan,{reportOverrides:renderOverrides});},[bilan,form,priorities,rtpOverride,comments,prioritiesTouched]);
   var fullHtml=useMemo(function(){return buildFullReportHtml('sportif',athlete,previewBilan,res);},[previewBilan,res]);
 
   function setField(key,val){setForm(function(f){var n=Object.assign({},f);n[key]=val;return n;});}
   function resetField(key){setField(key,defaults[key]);}
-  function updatePriority(idx,key,val){setPriorities(function(list){return list.map(function(p,i){return i===idx?Object.assign({},p,{status:key==='status'?val:p.status,fonction:key==='fonction'?val:p.fonction,contributeurPrincipal:key==='contributeurPrincipal'?val:p.contributeurPrincipal,hypothese:key==='hypothese'?val:p.hypothese,orientation:key==='orientation'?val:p.orientation,sortieTxt:key==='sortieTxt'?val:p.sortieTxt}):p;});});}
-  function removePriority(idx){setPriorities(function(list){return list.filter(function(_,i){return i!==idx;});});}
-  function addPriority(){setPriorities(function(list){return list.concat([withKey({fonction:'Nouvelle priorité',contributeurPrincipal:'',status:'orange',hypothese:'',orientation:'',sortieTxt:'',deficitTests:[]})]);});}
+  function updatePriority(idx,key,val){setPrioritiesTouched(true);setPriorities(function(list){return list.map(function(p,i){return i===idx?Object.assign({},p,{status:key==='status'?val:p.status,fonction:key==='fonction'?val:p.fonction,contributeurPrincipal:key==='contributeurPrincipal'?val:p.contributeurPrincipal,hypothese:key==='hypothese'?val:p.hypothese,orientation:key==='orientation'?val:p.orientation,sortieTxt:key==='sortieTxt'?val:p.sortieTxt}):p;});});}
+  function removePriority(idx){setPrioritiesTouched(true);setPriorities(function(list){return list.filter(function(_,i){return i!==idx;});});}
+  function addPriority(){setPrioritiesTouched(true);setPriorities(function(list){return list.concat([withKey({fonction:'Nouvelle priorité',contributeurPrincipal:'',status:'orange',hypothese:'',orientation:'',sortieTxt:'',deficitTests:[]})]);});}
   function movePriority(from,to){
     if(from==null||from===to)return;
+    setPrioritiesTouched(true);
     setPriorities(function(list){
       var next=list.slice();
       var moved=next.splice(from,1)[0];
@@ -7751,7 +7764,7 @@ function ReportPreview(props){
     });
     dragIndex.current=null;
   }
-  function handleSave(){props.onSave(currentOverrides());setSavedFlash(true);setTimeout(function(){setSavedFlash(false);},2000);}
+  function handleSave(){props.onSave(renderOverrides);setSavedFlash(true);setTimeout(function(){setSavedFlash(false);},2000);}
   function handleDownload(){downloadReportHtml(fullHtml,'sportif',athlete);}
 
   return h('div',{style:{maxWidth:1500,margin:'0 auto',padding:'18px 20px 60px'}},
