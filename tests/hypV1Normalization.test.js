@@ -263,7 +263,9 @@ test('3e priorité éventuelle : jamais chaînée causalement, "Déficit concord
     { fonction: 'Explosivité', status: 'rouge', contributeurPrincipal: null }
   ]);
   var labels = n.causalSteps.map(function (s) { return s.label; });
-  assert.ok(labels.some(function (l) { return l.indexOf('Déficit concordant de explosivité') !== -1; }));
+  // IMPLEMENTATION_PREVALIDATION_KINEXUS_V1.md, objectif 3 : "de explosivité" (élision manquante
+  // devant voyelle) corrigé en "d'explosivité" — cette assertion suit la formulation corrigée.
+  assert.ok(labels.some(function (l) { return l.indexOf("Déficit concordant d'explosivité") !== -1; }));
   assert.strictEqual(labels.some(function (l) { return l.indexOf('Répercussion') !== -1; }), false);
 });
 

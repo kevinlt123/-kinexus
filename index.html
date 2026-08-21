@@ -26,7 +26,11 @@ input[type=number]::-webkit-inner-spin-button{opacity:.6;}
   #root{background:#fff;}
   .print-page{page-break-after:always;padding:28px 32px;background:#fff;min-height:100vh;}
   .print-page:last-child{page-break-after:auto;}
-  .print-card{background:#f8f9fa!important;border:1px solid #ddd!important;border-radius:8px;padding:12px;margin-bottom:10px;}
+  /* Rapport expert : pages qui s'enchaînent naturellement au lieu de forcer une page
+     pleine par section (voir IMPLEMENTATION_PREVALIDATION_KINEXUS_V1.md, objectif 1) —
+     n'affecte jamais .print-page seul, donc le rapport sportif garde son comportement. */
+  .print-page.print-page-expert{min-height:0;page-break-after:auto;}
+  .print-card{background:#f8f9fa!important;border:1px solid #ddd!important;border-radius:8px;padding:12px;margin-bottom:10px;page-break-inside:avoid;}
   .print-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:700;font-size:9pt;}
   .print-badge.vert{background:#d1fae5;color:#065f46;}
   .print-badge.jaune{background:#FEF9C3;color:#A16207;}
@@ -44,16 +48,18 @@ input[type=number]::-webkit-inner-spin-button{opacity:.6;}
   .print-fn-item.orange{background:#ffedd5;}
   .print-fn-item.rouge{background:#fee2e2;}
   h1,h2,h3{color:#111;}
-  .print-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #2A9D8F;}
+  .print-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #2A9D8F;page-break-after:avoid;}
   .print-logo{font-weight:900;font-size:18pt;color:#1B4F6A;letter-spacing:-0.02em;}
   .print-subtitle{font-size:9pt;color:#666;margin-top:2px;}
-  .print-section-title{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#1B4F6A;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #2A9D8F40;}
+  .print-section-title{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#1B4F6A;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #2A9D8F40;page-break-after:avoid;}
   .print-priority{border-left:4px solid;padding:10px 12px;border-radius:0 6px 6px 0;margin-bottom:8px;background:#f8f9fa;}
   .print-table{width:100%;border-collapse:collapse;font-size:9pt;}
   .print-table th{background:#1B4F6A;color:#fff;padding:6px 8px;text-align:left;font-weight:600;}
   .print-table td{padding:5px 8px;border-bottom:1px solid #eee;}
   .print-table tr:nth-child(even) td{background:#f8f9fa;}
-  .print-rtp-box{padding:14px;border-radius:8px;border:2px solid;margin-bottom:12px;}
+  .print-table thead{display:table-header-group;}
+  .print-table tr{page-break-inside:avoid;}
+  .print-rtp-box{padding:14px;border-radius:8px;border:2px solid;margin-bottom:12px;page-break-inside:avoid;}
 }
 .print-only{display:none;}
 </style>
@@ -4366,33 +4372,33 @@ function buildMultiQualityNarrative(pri){
   if(!pri||!pri.length)return{conclusion:null,consequences:null,causalSteps:[],interpretationTxt:null};
   var top=pri[0],second=pri[1];
   var topLabel=top.contributeurPrincipal?top.contributeurPrincipal.toLowerCase():top.fonction.toLowerCase();
-  var steps=[{icon:(typeof FN_ICON!=='undefined'&&FN_ICON[top.fonction])||'●',label:'Déficit de '+top.fonction.toLowerCase()+(top.contributeurPrincipal?' ('+top.contributeurPrincipal.toLowerCase()+')':'')}];
+  var steps=[{icon:(typeof FN_ICON!=='undefined'&&FN_ICON[top.fonction])||'●',label:'Déficit '+deElided(top.fonction.toLowerCase())+(top.contributeurPrincipal?' ('+top.contributeurPrincipal.toLowerCase()+')':'')}];
   var conclusion,consequences;
   if(!second){
-    conclusion='Le bilan met en évidence un déficit '+(top.contributeurPrincipal?'du '+topLabel:'de '+top.fonction.toLowerCase())+'.';
-    consequences='Le déficit '+(top.contributeurPrincipal?'de '+topLabel:'de '+top.fonction.toLowerCase())+' limite la capacité de '+top.fonction.toLowerCase()+', avec un risque accru lors des situations de charge élevée.';
+    conclusion='Le bilan met en évidence un déficit '+(top.contributeurPrincipal?'du '+topLabel:deElided(top.fonction.toLowerCase()))+'.';
+    consequences='Le déficit '+(top.contributeurPrincipal?'de '+topLabel:deElided(top.fonction.toLowerCase()))+' limite la capacité '+deElided(top.fonction.toLowerCase())+', avec un risque accru lors des situations de charge élevée.';
   }else{
     var relation=findHypQualityRelation(top.fonction,second.fonction);
     if(relation){
       var explainer=relation.explains===top.fonction?top:second;
       var explained=relation.explains===top.fonction?second:top;
       var explainerLabel=explainer.contributeurPrincipal?explainer.contributeurPrincipal.toLowerCase():explainer.fonction.toLowerCase();
-      conclusion='Le bilan met en évidence des déficits concordants '+(top.contributeurPrincipal?'du '+topLabel:'de '+top.fonction.toLowerCase())+' et de '+second.fonction.toLowerCase()+'.';
+      conclusion='Le bilan met en évidence des déficits concordants '+(top.contributeurPrincipal?'du '+topLabel:deElided(top.fonction.toLowerCase()))+' et '+deElided(second.fonction.toLowerCase())+'.';
       // Mission IMPLEMENTATION_PRODUCTISATION_CLINIQUE_LOT1.md : plus d'interpolation brute de
       // relation.via (nom de variable + identifiant HYP-XXX-01) — hypRelationGloss() en extrait le
       // seul fragment clinique déjà rédigé entre guillemets, jamais la variable ni le code moteur.
       var relGloss=hypRelationGloss(relation.via);
-      consequences='Le déficit de '+explainerLabel+' peut constituer une hypothèse explicative compatible avec le déficit '+deElided(explained.fonction.toLowerCase())+' observé'+(relGloss?' ('+relGloss+')':'')+', sans en établir la cause. Ces déficits concordants augmentent le risque lors des situations de charge élevée et limitent la performance globale.';
+      consequences='Le déficit '+deElided(explainerLabel)+' peut constituer une hypothèse explicative compatible avec le déficit '+deElided(explained.fonction.toLowerCase())+' observé'+(relGloss?' ('+relGloss+')':'')+', sans en établir la cause. Ces déficits concordants augmentent le risque lors des situations de charge élevée et limitent la performance globale.';
     }else{
-      conclusion='Le bilan met en évidence des déficits concordants '+(top.contributeurPrincipal?'du '+topLabel:'de '+top.fonction.toLowerCase())+' et de '+second.fonction.toLowerCase()+'.';
-      consequences='Les déficits de '+top.fonction.toLowerCase()+' et de '+second.fonction.toLowerCase()+' présentent des profils concordants, sans relation explicative documentée entre eux à ce jour ; ils augmentent conjointement le risque lors des situations de charge élevée et limitent la performance globale.';
+      conclusion='Le bilan met en évidence des déficits concordants '+(top.contributeurPrincipal?'du '+topLabel:deElided(top.fonction.toLowerCase()))+' et '+deElided(second.fonction.toLowerCase())+'.';
+      consequences='Les déficits '+deElided(top.fonction.toLowerCase())+' et '+deElided(second.fonction.toLowerCase())+' présentent des profils concordants, sans relation explicative documentée entre eux à ce jour ; ils augmentent conjointement le risque lors des situations de charge élevée et limitent la performance globale.';
     }
-    steps.push({icon:(typeof FN_ICON!=='undefined'&&FN_ICON[second.fonction])||'●',label:'Déficit concordant de '+second.fonction.toLowerCase()+(second.contributeurPrincipal?' ('+second.contributeurPrincipal.toLowerCase()+')':'')});
+    steps.push({icon:(typeof FN_ICON!=='undefined'&&FN_ICON[second.fonction])||'●',label:'Déficit concordant '+deElided(second.fonction.toLowerCase())+(second.contributeurPrincipal?' ('+second.contributeurPrincipal.toLowerCase()+')':'')});
   }
   // 3e priorité éventuelle (et au-delà) : jamais chaînée causalement aux deux premières — un
   // déficit concordant de plus, jamais une "répercussion" supplémentaire non démontrée.
   pri.slice(2).forEach(function(p){
-    steps.push({icon:(typeof FN_ICON!=='undefined'&&FN_ICON[p.fonction])||'●',label:'Déficit concordant de '+p.fonction.toLowerCase()+(p.contributeurPrincipal?' ('+p.contributeurPrincipal.toLowerCase()+')':'')});
+    steps.push({icon:(typeof FN_ICON!=='undefined'&&FN_ICON[p.fonction])||'●',label:'Déficit concordant '+deElided(p.fonction.toLowerCase())+(p.contributeurPrincipal?' ('+p.contributeurPrincipal.toLowerCase()+')':'')});
   });
   steps.push({icon:'📊',label:'Impact sur la performance et le risque de blessure'});
   return{conclusion:conclusion,consequences:consequences,causalSteps:steps,interpretationTxt:consequences};
@@ -5744,7 +5750,7 @@ function computeHypClinicalSynthesisRelationships(qualities){
       relationships.push({
         explains:null,explained:null,qualityA:objectifiedQ[i],qualityB:objectifiedQ[j],via:null,
         level:'concordant_no_relation',
-        narrative:'Les déficits de '+objectifiedQ[i]+' et de '+objectifiedQ[j]+' sont concomitants, mais les données actuellement disponibles ne permettent pas d\'identifier une relation explicative documentée entre eux.'
+        narrative:'Les déficits '+deElided(objectifiedQ[i])+' et '+deElided(objectifiedQ[j])+' sont concomitants, mais les données actuellement disponibles ne permettent pas d\'identifier une relation explicative documentée entre eux.'
       });
     }
   }
@@ -5894,7 +5900,7 @@ function hypObjectForQuality(fSc,quality){
 // la phrase `HYPO[fn](main)` existante (laissée mot pour mot inchangée pour tous les autres cas —
 // rôle diagnostique/confirmatif, ou aucun contributeur, où `HYPO` gère déjà nativement `m=null`).
 function tfmSecondaryContributorNote(fn,sys){
-  return'Élément relationnel complémentaire, à titre explicatif — ne constitue pas une preuve diagnostique de '+fn.toLowerCase()+(sys?' ('+sys.toLowerCase()+')':'')+'.';
+  return'Élément relationnel complémentaire, à titre explicatif — ne constitue pas une preuve diagnostique '+deElided(fn.toLowerCase())+(sys?' ('+sys.toLowerCase()+')':'')+'.';
 }
 
 // ── Présentation HYP-CSM-01 (mission AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md) ─────────────────
@@ -5904,6 +5910,10 @@ function tfmSecondaryContributorNote(fn,sys){
 // Partagée par ExpertView (onglet "Synthèse clinique"), buildSportifReport et buildExpertReport
 // pour garantir un vocabulaire strictement identique entre UI et PDF.
 var CSM_STATE_LABEL={non_determinable:'Non déterminable',absente:'Absente',suspectee:'Suspectée',retenue_faible:'Confirmé — support faible',retenue_moderee:'Confirmé — support modéré',retenue_forte:'Confirmé — support fort'};
+// Même principe que CSM_STATE_LABEL ci-dessus, pour le champ fSc[fn].confidence ('elevee' /
+// 'moderee' / 'faible', jamais modifié) — évite d'afficher "Confiance elevee" sans accent au
+// praticien (IMPLEMENTATION_PREVALIDATION_KINEXUS_V1.md, objectif 3). Présentation uniquement.
+var CONFIDENCE_LABEL={elevee:'élevée',moderee:'modérée',faible:'faible'};
 
 // ── Correction post-audit (mission IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) ───────────────────
 // Trois fonctions de PRÉSENTATION pures, lecture seule de `clinicalSynthesis` déjà calculé par
@@ -6298,8 +6308,8 @@ function computeMoteur(testData,questData,normPop,normAge){
     // le moteur HYP de cette qualité -> formulation explicative dédiée (mission §7-9), jamais la
     // phrase HYPO existante (réservée aux cas diagnostique/confirmatif, ou aucun contributeur —
     // HYPO gère déjà nativement m=null, inchangé).
-    var hypotheseTxt=(mainRole==='explanatory'||mainRole==='segmental')?tfmSecondaryContributorNote(fn,main):(hFn?hFn(main):'Deficit de '+fn.toLowerCase()+' identifie.');
-    return{rang:i+1,fonction:fn,status:fSc[fn].status,contributeurPrincipal:main,contributeurSecondaire:sec,deficitTests:deficitTests,okTests:okTests,hypothese:hypotheseTxt,orientation:ORI[fn]||'Travailler les qualites de '+fn.toLowerCase()+'.',compensations:main?SYS_COMPENSATIONS[main]:null,rootCauses:rootCauses,rootCauseTest:rootCauseTest,rootCauseKpi:rootCauseKpi};
+    var hypotheseTxt=(mainRole==='explanatory'||mainRole==='segmental')?tfmSecondaryContributorNote(fn,main):(hFn?hFn(main):'Déficit '+deElided(fn.toLowerCase())+' identifié.');
+    return{rang:i+1,fonction:fn,status:fSc[fn].status,contributeurPrincipal:main,contributeurSecondaire:sec,deficitTests:deficitTests,okTests:okTests,hypothese:hypotheseTxt,orientation:ORI[fn]||'Travailler les qualités '+deElided(fn.toLowerCase())+'.',compensations:main?SYS_COMPENSATIONS[main]:null,rootCauses:rootCauses,rootCauseTest:rootCauseTest,rootCauseKpi:rootCauseKpi};
   });
   // RTP
   var rtpKeys=['single_hop','triple_hop','crossover_hop','side_hop','slcmj','sldj'];
@@ -6460,8 +6470,19 @@ function Label(props){return h('div',{style:{color:C.muted,fontSize:10,fontWeigh
 function SecTitle(props){return h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:8,paddingBottom:6,borderBottom:'1px solid '+C.border}},props.children);}
 
 function TabBar(props){
-  return h('div',{style:{display:'flex',gap:2,marginBottom:14,borderBottom:'1px solid '+C.border,overflowX:'auto',WebkitOverflowScrolling:'touch'}},
-    props.tabs.map(function(t){return h('button',{key:t[0],onClick:function(){props.onChange(t[0]);},style:{padding:'7px 12px',border:'none',background:'transparent',color:props.active===t[0]?C.teal:C.muted,fontWeight:600,fontSize:11,cursor:'pointer',whiteSpace:'nowrap',borderBottom:'2px solid '+(props.active===t[0]?C.teal:'transparent'),marginBottom:-1}},t[1]);})
+  // groupBreaks (optionnel) : {tabKey:'Libellé de groupe'} — insère une légende muette + un
+  // séparateur juste avant l'onglet tabKey, sans rien changer au comportement si absent (voir
+  // IMPLEMENTATION_PREVALIDATION_KINEXUS_V1.md, objectif 2 — clarifier, pas refondre, la
+  // navigation Expert à 10 sous-onglets).
+  var groupBreaks=props.groupBreaks||{};
+  return h('div',{style:{display:'flex',alignItems:'flex-end',gap:2,marginBottom:14,borderBottom:'1px solid '+C.border,overflowX:'auto',WebkitOverflowScrolling:'touch'}},
+    props.tabs.map(function(t,i){
+      var groupLabel=groupBreaks[t[0]];
+      return h(React.Fragment,{key:t[0]},
+        groupLabel&&h('span',{style:{fontSize:9,fontWeight:700,color:C.muted,textTransform:'uppercase',letterSpacing:'0.04em',padding:'0 8px 9px '+(i===0?'0':'10px'),whiteSpace:'nowrap',borderLeft:i===0?'none':'1px solid '+C.border,marginLeft:i===0?0:2}},groupLabel),
+        h('button',{onClick:function(){props.onChange(t[0]);},style:{padding:'7px 12px',border:'none',background:'transparent',color:props.active===t[0]?C.teal:C.muted,fontWeight:600,fontSize:11,cursor:'pointer',whiteSpace:'nowrap',borderBottom:'2px solid '+(props.active===t[0]?C.teal:'transparent'),marginBottom:-1}},t[1])
+      );
+    })
   );
 }
 
@@ -7319,7 +7340,7 @@ function buildExpertReport(athlete,bilan,res){
   var td=bilan.testData||{};
   var evFns=FUNCTIONS.filter(function(f){return fSc[f];});
   var dateStr=new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
-  var html='<div class="print-page">';
+  var html='<div class="print-page print-page-expert">';
   html+='<div class="print-header"><div><div class="print-logo">KINEXUS</div><div class="print-subtitle">Rapport Expert</div></div><div style="text-align:right;font-size:9pt;color:#666"><div style="font-weight:700">'+athlete.prenom+' '+athlete.nom+'</div><div>'+bilan.type+' · '+bilan.sousType+'</div><div>'+dateStr+'</div></div></div>';
   // Fonctions table
   html+='<div class="print-section-title">Fonctions évaluées</div>';
@@ -7328,7 +7349,7 @@ function buildExpertReport(athlete,bilan,res){
   // "print-badge null" ne correspond à aucun style défini et SL[null] vaut `undefined`, affichant
   // littéralement le texte "undefined" au médecin (bug de présentation repéré lors de l'audit
   // AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md — aucun statut HYP recalculé ni réinterprété ici).
-  FUNCTIONS.forEach(function(fn){var sc=fSc[fn];if(!sc)return;var statusHtml=sc.status?'<span class="print-badge '+sc.status+'">'+SL[sc.status]+'</span>':'<span class="print-badge" style="background:#F1F5F9;color:#64748B">Non déterminable</span>';html+='<tr><td>'+fn+'</td><td>'+statusHtml+'</td><td>'+sc.coverage+'%</td><td>'+sc.confidence+'</td></tr>';});
+  FUNCTIONS.forEach(function(fn){var sc=fSc[fn];if(!sc)return;var statusHtml=sc.status?'<span class="print-badge '+sc.status+'">'+SL[sc.status]+'</span>':'<span class="print-badge" style="background:#F1F5F9;color:#64748B">Non déterminable</span>';html+='<tr><td>'+fn+'</td><td>'+statusHtml+'</td><td>'+sc.coverage+'%</td><td>'+(CONFIDENCE_LABEL[sc.confidence]||sc.confidence)+'</td></tr>';});
   html+='</tbody></table></div>';
   // Synthèse clinique HYP-CSM-01 (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md) — après les diagnostics
   // individuels par qualité, avant le détail KPI. Lit exclusivement res.clinicalSynthesis, déjà
@@ -7370,14 +7391,14 @@ function buildExpertReport(athlete,bilan,res){
     html+='<p style="margin:8px 0 0;font-size:8pt;color:#888;font-style:italic">'+csmSafeText(csmExp.narrative.limites)+'</p>';
   }
   // KPI page
-  html+='<div class="print-page">';
+  html+='<div class="print-page print-page-expert">';
   html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Résultats KPI — '+athlete.prenom+' '+athlete.nom+'</div></div>';
   html+='<div class="print-section-title">Résultats bruts par test</div>';
   html+='<table class="print-table"><thead><tr><th>Test</th><th>KPI</th><th>Droite / Valeur</th><th>Gauche</th><th>LSI %</th><th>Statut</th></tr></thead><tbody>';
   Object.keys(td).forEach(function(key){var data=td[key];if(!data||!data.active)return;var test=TBK[key];if(!test)return;var status=tSt[key];test.kpis.forEach(function(kpi){if(test.bilateral){var val=bestVal((data.trials||{})[kpi.key],kpi.dir);if(val==null)return;html+='<tr><td>'+test.label+'</td><td>'+kpi.label+'</td><td colspan="2" style="text-align:center">'+roundStep(val,kpi.step)+'</td><td>—</td><td>'+(status?'<span class="print-badge '+status+'">'+SL[status]+'</span>':'')+'</td></tr>';}else{var dV=bestVal(((data.D||{}).trials||{})[kpi.key],kpi.dir);var gV=bestVal(((data.G||{}).trials||{})[kpi.key],kpi.dir);if(dV==null&&gV==null)return;var lsi=data.lsiAuto!=null?data.lsiAuto:'—';html+='<tr><td>'+test.label+'</td><td>'+kpi.label+'</td><td>'+(dV!=null?roundStep(dV,kpi.step):'—')+'</td><td>'+(gV!=null?roundStep(gV,kpi.step):'—')+'</td><td>'+lsi+'</td><td>'+(status?'<span class="print-badge '+status+'">'+SL[status]+'</span>':'')+'</td></tr>';}});});
   html+='</tbody></table></div>';
   // Systèmes + Hypothèses + Orientations + RTP
-  html+='<div class="print-page">';
+  html+='<div class="print-page print-page-expert">';
   html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Analyse experte — '+athlete.prenom+' '+athlete.nom+'</div></div>';
   html+='<div class="print-section-title">Systèmes contributeurs</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">';
@@ -7413,7 +7434,8 @@ function buildFullReportHtml(type,athlete,bilan,res){
   return '<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KINEXUS - Rapport '+type+'</title><style>body{font-family:Inter,-apple-system,sans-serif;margin:0;padding:0;background:#fff;color:#111;}'+
     '.print-page{padding:28px 32px;min-height:100vh;page-break-after:always;box-sizing:border-box;}'+
     '.print-page:last-child{page-break-after:auto;}'+
-    '.print-card{background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:10px;}'+
+    '.print-page.print-page-expert{min-height:0;page-break-after:auto;}'+
+    '.print-card{background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:10px;page-break-inside:avoid;}'+
     '.print-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-weight:700;font-size:9pt;}'+
     '.print-badge.vert{background:#d1fae5;color:#065f46;}.print-badge.jaune{background:#FEF9C3;color:#A16207;}'+
     '.print-badge.orange{background:#ffedd5;color:#9a3412;}.print-badge.rouge{background:#fee2e2;color:#991b1b;}'+
@@ -7421,18 +7443,20 @@ function buildFullReportHtml(type,athlete,bilan,res){
     '.print-fn-item{padding:8px 10px;border-radius:6px;display:flex;align-items:center;justify-content:space-between;}'+
     '.print-fn-item.vert{background:#d1fae5;}.print-fn-item.jaune{background:#FEF9C3;}'+
     '.print-fn-item.orange{background:#ffedd5;}.print-fn-item.rouge{background:#fee2e2;}'+
-    '.print-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #2A9D8F;}'+
+    '.print-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #2A9D8F;page-break-after:avoid;}'+
     '.print-logo{font-weight:900;font-size:18pt;color:#1B4F6A;letter-spacing:-0.02em;}'+
     '.print-subtitle{font-size:9pt;color:#666;margin-top:2px;}'+
-    '.print-section-title{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#1B4F6A;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid rgba(42,157,143,0.25);}'+
+    '.print-section-title{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#1B4F6A;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid rgba(42,157,143,0.25);page-break-after:avoid;}'+
     '.print-priority{border-left:4px solid;padding:10px 12px;border-radius:0 6px 6px 0;margin-bottom:8px;background:#f8f9fa;}'+
     '.print-table{width:100%;border-collapse:collapse;font-size:9pt;}'+
     '.print-table th{background:#1B4F6A;color:#fff;padding:6px 8px;text-align:left;font-weight:600;}'+
     '.print-table td{padding:5px 8px;border-bottom:1px solid #eee;}'+
     '.print-table tr:nth-child(even) td{background:#f8f9fa;}'+
-    '.print-rtp-box{padding:14px;border-radius:8px;border:2px solid;margin-bottom:12px;}'+
+    '.print-table thead{display:table-header-group;}'+
+    '.print-table tr{page-break-inside:avoid;}'+
+    '.print-rtp-box{padding:14px;border-radius:8px;border:2px solid;margin-bottom:12px;page-break-inside:avoid;}'+
     'h1,h2,h3{color:#111;}'+
-    '@media print{.print-page{page-break-after:always;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}'+
+    '@media print{.print-page{page-break-after:always;}.print-page.print-page-expert{page-break-after:auto;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}'+
     '</style></head><body>'+html+'</body></html>';
 }
 
@@ -8897,7 +8921,7 @@ function ExpertView(props){
     test.kpis.forEach(function(kpi){if(VAR_REL3[tk+'_'+kpi.key])varRelKpis.push({testKey:tk,testLabel:test.label,kpi:kpi});});
   });
   return h('div',null,
-    h(TabBar,{tabs:[['fonctions','Fonctions'],['synthese','Synthèse clinique'],['kpi','Résultats'],['variables','Variables'],['capacites','Capacités'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Raisonnement']],active:tab,onChange:setTab}),
+    h(TabBar,{tabs:[['fonctions','Fonctions'],['synthese','Synthèse clinique'],['kpi','Résultats'],['variables','Variables'],['capacites','Capacités'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Relations structure-qualité']],active:tab,onChange:setTab,groupBreaks:{fonctions:"Vue d'ensemble",kpi:'Détail des données',hypotheses:'Interprétation',couverture:'Référence'}}),
     // HYP-CSM-01 — synthèse clinique multi-qualités (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md).
     // Lit exclusivement res.clinicalSynthesis (déjà calculé une seule fois par computeMoteur()) —
     // ne recalcule rien, ne remplace aucun onglet existant (Fonctions/Capacités/Hypothèses restent
@@ -8950,7 +8974,7 @@ function ExpertView(props){
         )
       );
     })(),
-    tab==='fonctions'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},evFns.map(function(f){var sc=fSc[f];var fk=FN_KEY[f];var relTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]&&td[tk]&&td[tk].active;}).sort(function(a,b){return TFM[b][fk]-TFM[a][fk];});return h(Card,{key:f,pad:14,style:{borderLeft:'3px solid '+SC[sc.status]}},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}},h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},f),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+sc.confidence)),h(Badge,{status:sc.status})),h('div',{style:{display:'flex',gap:5,flexWrap:'wrap'}},relTests.map(function(tk){var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';return h('span',{key:tk,style:{padding:'2px 7px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:10}},(TBK[tk]?TBK[tk].label:tk)+' · ',h('span',{style:{color:C.teal}},wl));})));})),
+    tab==='fonctions'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},evFns.map(function(f){var sc=fSc[f];var fk=FN_KEY[f];var relTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]&&td[tk]&&td[tk].active;}).sort(function(a,b){return TFM[b][fk]-TFM[a][fk];});return h(Card,{key:f,pad:14,style:{borderLeft:'3px solid '+SC[sc.status]}},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}},h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},f),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+(CONFIDENCE_LABEL[sc.confidence]||sc.confidence))),h(Badge,{status:sc.status})),h('div',{style:{display:'flex',gap:5,flexWrap:'wrap'}},relTests.map(function(tk){var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';return h('span',{key:tk,style:{padding:'2px 7px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:10}},(TBK[tk]?TBK[tk].label:tk)+' · ',h('span',{style:{color:C.teal}},wl));})));})),
     tab==='kpi'&&h(ResultsBrowser,{testData:td,testStatuses:tSt,athlete:athlete,athleteAge:athleteAge}),
     tab==='variables'&&(function(){
       function varMatchesQuality(v,q){
