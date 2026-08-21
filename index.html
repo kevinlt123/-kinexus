@@ -5891,6 +5891,33 @@ function priHypObjectifiedSplit(pri,csm){
   });
   return{hyp:hyp,tfmOnly:tfmOnly};
 }
+// ── Sous-domaines Absorption (mission IMPLEMENTATION_UX_UI_LOT1.md, Objectif 2) — lecture pure de
+// hypAbs01.sousDomaines (A_core/B_capaciteExcentrique/C_strategie/D_absorptionReactive, jamais
+// recalculés, jamais un nouveau statut inventé). Sous-domaine E (Réception/Impact) volontairement
+// exclu de l'affichage : il n'a jamais aucune variable classifiable (E_receptionImpact.available
+// toujours false, "non implémenté" — cf. AUDIT_VALEUR_CLINIQUE_RAISONNEMENT_KINEXUS_V1.md), donc
+// afficher un chip "non déterminable" pour lui laisserait croire qu'une mesure a été tentée alors
+// qu'aucun mécanisme n'existe aujourd'hui pour ce sous-domaine (Objectif 2B, "ne pas afficher de
+// bloc vide"). Statut d'un sous-domaine = le pire statut réellement classifiable (status non null)
+// parmi ses variables ; si aucune n'est classifiable, `status:null` -> l'appelant doit afficher
+// le vocabulaire "non déterminable" déjà existant, jamais "normal".
+var ABS_SOUS_DOMAINES_LABELS=[
+  {key:'A_core',label:'Freinage / décélération'},
+  {key:'B_capaciteExcentrique',label:'Capacité excentrique'},
+  {key:'C_strategie',label:'Stratégie'},
+  {key:'D_absorptionReactive',label:'Absorption réactive'}
+];
+function absorptionSousDomainesSummary(functionScores){
+  var hyp=functionScores&&functionScores['Absorption']&&functionScores['Absorption'].hypAbs01;
+  if(!hyp||!hyp.sousDomaines)return null;
+  var rank={rouge:0,orange:1,jaune:2,vert:3};
+  return ABS_SOUS_DOMAINES_LABELS.map(function(sd){
+    var vars=hyp.sousDomaines[sd.key]||{};
+    var statuses=Object.keys(vars).map(function(k){return vars[k]&&vars[k].status;}).filter(function(s){return s==='rouge'||s==='orange'||s==='jaune'||s==='vert';});
+    var status=statuses.length?statuses.reduce(function(a,b){return rank[b]<rank[a]?b:a;}):null;
+    return{key:sd.key,label:sd.label,status:status};
+  });
+}
 
 function computeMoteur(testData,questData,normPop,normAge){
   testData=testData||{};questData=questData||{};
@@ -6818,11 +6845,20 @@ function buildSportifReport(athlete,bilan,res){
         var objectifTxt=contribs.length?contribs.join(' · '):p.fonction;
         var sortieTxt=p.sortieTxt||(objLsi?'LSI '+p.contributeurPrincipal+' ≥ 95%':'Retour à un profil équilibré');
         function field(ic,lbl,val){return '<div style="display:flex;gap:10px;margin-bottom:15px">'+iconBadge(ic)+'<div><div style="font-size:6.8pt;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">'+lbl+'</div><div style="font-size:8.5pt;color:#132B3A;line-height:1.55">'+val+'</div></div></div>';}
+        // Sous-domaines Absorption (mission IMPLEMENTATION_UX_UI_LOT1.md, Objectif 2) — lecture
+        // pure de sousDomaines, jamais recalculée ; affiché uniquement pour Absorption.
+        var absSdPdf=p.fonction==='Absorption'?absorptionSousDomainesSummary(res.functionScores):null;
+        var absSdHtml=absSdPdf?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+absSdPdf.map(function(sd){
+          return '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;background:#F3F6F8;border:1px solid #E7ECF1;font-size:7pt;color:'+(sd.status?'#132B3A':'#94A3B8')+'">'
+            +(sd.status?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+colMap[sd.status]+'"></span>':'')
+            +sd.label+(sd.status?'':' · '+CSM_STATE_LABEL.non_determinable)+'</span>';
+        }).join('')+'</div>':'';
         return panel(
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #F3F6F8">'
           +'<div style="width:14px;height:14px;border-radius:50%;background:'+colMap[p.status]+';flex-shrink:0"></div>'
           +'<div style="font-weight:800;font-size:15px;color:#132B3A">'+p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:'')+'</div>'
           +'</div>'
+          +absSdHtml
           +field('🎯','Objectif',objectifTxt)
           // Problème 2 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) : même routage HYP/CSM que la
           // carte "Priorité principale" (prioCardOverridden défini plus haut) — le texte causal
@@ -6991,26 +7027,31 @@ function buildSportifReport(athlete,bilan,res){
   );
 
   // 5. Que faut-il traiter ? (plan thérapeutique — fiches prescription synthétiques)
+  // Mission IMPLEMENTATION_UX_UI_LOT1.md, Objectif 1 : audit préalable (§1A) a confirmé que
+  // RENFORCER/DÉVELOPPER/INTÉGRER n'étaient jamais des catégories fonctionnelles indépendantes —
+  // `recVerbs[i]` les assignait par pure POSITION dans `pri.slice(0,3)` (rang 0 -> toujours
+  // "Renforcer", rang 1 -> toujours "Développer", rang 2 -> toujours "Intégrer"), donc une
+  // hiérarchie déguisée (Objectif 1C), au même titre que le badge "Priorité N" qu'elles
+  // accompagnaient. Les deux sont retirés : l'en-tête de chaque carte redevient la pastille de
+  // sévérité + nom de qualité déjà utilisés dans "Déficits à investiguer" (section 3, cohérence
+  // UI/PDF explicitement demandée) — jamais un verbe ni un rang liés à la position dans le tableau.
   html+=sectionTitle(5,'Plan de prise en charge',true);
-  var recVerbs=[{icon:'💪',verb:'Renforcer'},{icon:'✨',verb:'Développer'},{icon:'🏃',verb:'Intégrer'}];
   html+='<div style="display:grid;grid-template-columns:repeat('+Math.min(Math.max(pri.length,1),3)+',1fr);gap:16px;margin-bottom:26px">';
   if(pri.length===0){
     html+=panel('<div style="color:#5B7A8C;font-size:9pt">Profil équilibré : aucune action ciblée nécessaire au-delà du suivi standard.</div>');
   }else{
-    html+=pri.slice(0,3).map(function(p,i){
-      var rv=recVerbs[i]||recVerbs[0];
+    html+=pri.slice(0,3).map(function(p){
       var contribs=[p.contributeurPrincipal,p.contributeurSecondaire].filter(Boolean);
       var objLsi2=p.contributeurPrincipal?muscleLsiFor(p.contributeurPrincipal):null;
       var critereTxt=p.sortieTxt||(objLsi2?'LSI '+p.contributeurPrincipal+' ≥ 95%':'Retour à un profil équilibré');
       return panel(
-        '<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">'+iconBadge(rv.icon)+'<span style="font-weight:800;font-size:10pt;color:#132B3A;text-transform:uppercase;letter-spacing:0.02em">'+rv.verb+'</span></div>'
+        '<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px"><span style="width:10px;height:10px;border-radius:50%;background:'+colMap[p.status]+';flex-shrink:0"></span><span style="font-weight:800;font-size:10pt;color:#132B3A;text-transform:uppercase;letter-spacing:0.02em">'+p.fonction+'</span></div>'
         +'<div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">Objectif</div>'
         +'<div style="font-size:8.5pt;color:#132B3A;font-weight:700;margin-bottom:11px">'+(contribs.length?contribs.join(' · '):p.fonction)+'</div>'
         +'<div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">Actions</div>'
         +'<div style="font-size:8pt;color:#334155;line-height:1.45;font-weight:500;margin-bottom:11px">'+p.orientation+'</div>'
         +'<div style="font-size:7pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">Critères de réussite</div>'
-        +'<div style="font-size:8pt;color:#132B3A;font-weight:600;margin-bottom:12px">'+critereTxt+'</div>'
-        +'<span style="display:inline-block;padding:3px 10px;border-radius:14px;background:'+bgMap[p.status]+';color:'+txtMap[p.status]+';font-size:7.5pt;font-weight:700">Priorité '+p.rang+'</span>'
+        +'<div style="font-size:8pt;color:#132B3A;font-weight:600">'+critereTxt+'</div>'
       );
     }).join('');
   }
@@ -7227,7 +7268,15 @@ function buildExpertReport(athlete,bilan,res){
   // Mission IMPLEMENTATION_FINAL_PRIORITES_CSM.md : plus de rang numéroté ("1. Force", "2.
   // Puissance"...) — impliquait un classement clinique que CSM ne détermine jamais entre plusieurs
   // qualités objectivées.
-  pri.forEach(function(p){html+='<div class="print-card"><strong>'+p.fonction+'</strong><p style="margin:4px 0 0;color:#333">'+p.orientation+'</p></div>';});
+  pri.forEach(function(p){
+    var absSd=p.fonction==='Absorption'?absorptionSousDomainesSummary(res.functionScores):null;
+    var absSdHtml=absSd?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px">'+absSd.map(function(sd){
+      return '<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:14px;background:#F3F6F8;border:1px solid #E1E8EE;font-size:7.5pt;color:'+(sd.status?'#132B3A':'#94A3B8')+'">'
+        +(sd.status?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+SC[sd.status]+'"></span>':'')
+        +sd.label+(sd.status?'':' · '+CSM_STATE_LABEL.non_determinable)+'</span>';
+    }).join('')+'</div>':'';
+    html+='<div class="print-card"><strong>'+p.fonction+'</strong>'+absSdHtml+'<p style="margin:4px 0 0;color:#333">'+p.orientation+'</p></div>';
+  });
   if(rtp){var rtpCol=rtp.status==='vert'?'#22c55e':rtp.status==='jaune'?'#FACC15':'#ef4444';html+='<div class="print-section-title" style="margin-top:12px">Statut RTP</div>';html+='<div class="print-rtp-box" style="border-color:'+rtpCol+'"><div style="font-size:13pt;font-weight:800;color:'+rtpCol+'">'+rtp.label+'</div><div style="font-size:9pt;color:#555;margin-top:3px">Tests RTP : '+rtp.passCount+'/'+rtp.totalCount+' ('+rtp.ratio+'%)'+(rtp.aclScore!=null?' · ACL-RSI : '+rtp.aclScore+'/100':'')+'</div></div>';}
   html+='</div>';
   return html;
@@ -8162,12 +8211,23 @@ function AnalyseView(props){
               // priorité clinique HYP.
               var split=priHypObjectifiedSplit(pri,res.clinicalSynthesis);
               if(!split.hyp.length&&!split.tfmOnly.length)return null;
-              function row(p){return h(Card,{key:p.fonction,pad:'10px 12px'},
-                h('div',{style:{display:'flex',alignItems:'center',gap:10}},
-                  h('span',{style:{width:9,height:9,borderRadius:'50%',background:SC[p.status],flexShrink:0}}),
-                  h('div',{style:{flex:1,minWidth:0,color:C.text,fontWeight:800,fontSize:12,textTransform:'uppercase',letterSpacing:'0.01em'}},p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:''))
-                )
-              );}
+              // Sous-domaines Absorption (Objectif 2) : lecture pure de sousDomaines, jamais
+              // recalculée ; affichée uniquement pour Absorption, uniquement si l'objet existe.
+              function row(p){
+                var absSd=p.fonction==='Absorption'?absorptionSousDomainesSummary(res.functionScores):null;
+                return h(Card,{key:p.fonction,pad:'10px 12px'},
+                  h('div',{style:{display:'flex',alignItems:'center',gap:10}},
+                    h('span',{style:{width:9,height:9,borderRadius:'50%',background:SC[p.status],flexShrink:0}}),
+                    h('div',{style:{flex:1,minWidth:0,color:C.text,fontWeight:800,fontSize:12,textTransform:'uppercase',letterSpacing:'0.01em'}},p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:''))
+                  ),
+                  absSd&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:9,paddingTop:9,borderTop:'1px solid '+C.border}},absSd.map(function(sd){
+                    return h('span',{key:sd.key,style:{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,fontSize:10,color:sd.status?C.text:C.muted}},
+                      sd.status?h('span',{style:{width:6,height:6,borderRadius:'50%',background:SC[sd.status],flexShrink:0}}):null,
+                      sd.label+(sd.status?'':' · '+CSM_STATE_LABEL.non_determinable)
+                    );
+                  }))
+                );
+              }
               return h('div',null,
                 split.hyp.length>0&&h('div',{style:{marginBottom:split.tfmOnly.length?12:0}},
                   h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Déficits à investiguer'),
@@ -8626,6 +8686,9 @@ function ResultsBrowser(props){
 }
 function ExpertView(props){
   var [tab,setTab]=useState('fonctions');
+  // Filtre par qualité de l'onglet Variables (mission IMPLEMENTATION_UX_UI_LOT1.md, Objectif 4) —
+  // regroupement visuel pur, relit VAR_REL3.measures/estimates déjà existant, ne recalcule rien.
+  var [varFilter,setVarFilter]=useState('Toutes');
   var res=props.res,evFns=props.evFns,td=props.testData||{},qd=props.questData||{};
   var fSc=res.functionScores,sysSc=res.systemScores,tSt=res.testStatuses,pri=res.priorities;
   var athlete=props.athlete||{},athleteAge=props.athleteAge;
@@ -8690,10 +8753,18 @@ function ExpertView(props){
     })(),
     tab==='fonctions'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},evFns.map(function(f){var sc=fSc[f];var fk=FN_KEY[f];var relTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]&&td[tk]&&td[tk].active;}).sort(function(a,b){return TFM[b][fk]-TFM[a][fk];});return h(Card,{key:f,pad:14,style:{borderLeft:'3px solid '+SC[sc.status]}},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}},h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},f),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+sc.confidence)),h(Badge,{status:sc.status})),h('div',{style:{display:'flex',gap:5,flexWrap:'wrap'}},relTests.map(function(tk){var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';return h('span',{key:tk,style:{padding:'2px 7px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:10}},(TBK[tk]?TBK[tk].label:tk)+' · ',h('span',{style:{color:C.teal}},wl));})));})),
     tab==='kpi'&&h(ResultsBrowser,{testData:td,testStatuses:tSt,athlete:athlete,athleteAge:athleteAge}),
-    tab==='variables'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+    tab==='variables'&&(function(){
+      function varMatchesQuality(v,q){
+        var vr=VAR_REL3[v.testKey+'_'+v.kpi.key];
+        if(!vr)return false;
+        return(vr.measures||[]).concat(vr.estimates||[]).some(function(m){return m.function===q;});
+      }
+      var filteredVarRelKpis=varFilter==='Toutes'?varRelKpis:varRelKpis.filter(function(v){return varMatchesQuality(v,varFilter);});
+      return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
       h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:2}},'Relations variable-à-variable pour chacune des 283 variables du logiciel : variables amont/aval, variables corrélées, variables du même test, qualités mesurées/estimées et mécanismes biomécaniques impactés. Poids calculés automatiquement (TFM + hiérarchie des tests), sauf Measures/Estimates qui viennent du référentiel clinique fourni quand disponible — à valider par l\'équipe clinique.'),
-      varRelKpis.length===0&&h('div',{style:{color:C.muted,fontSize:12}},'Aucune variable active.'),
-      varRelKpis.map(function(v){
+      h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:4}},['Toutes'].concat(HYP_CSM_QUALITIES).map(function(q){return h('button',{key:q,onClick:function(){setVarFilter(q);},style:{padding:'4px 11px',borderRadius:20,border:'1px solid '+(varFilter===q?C.teal:C.border),background:varFilter===q?C.teal:'transparent',color:varFilter===q?'#fff':C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},q);})),
+      filteredVarRelKpis.length===0&&h('div',{style:{color:C.muted,fontSize:12}},varRelKpis.length===0?'Aucune variable active.':'Aucune variable active liée à '+varFilter+'.'),
+      filteredVarRelKpis.map(function(v){
         var st=kpiStatus(v.testKey,v.kpi.key,td,effectiveNormPop(athlete),athleteAge);
         return h(Card,{key:v.testKey+'_'+v.kpi.key,pad:14,style:{borderLeft:'3px solid '+(st?SC[st]:C.border)}},
           h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},
@@ -8703,7 +8774,8 @@ function ExpertView(props){
           h('div',{dangerouslySetInnerHTML:{__html:varRelHTML(v.testKey,v.kpi.key,td,effectiveNormPop(athlete),athleteAge)}})
         );
       })
-    ),
+      );
+    })(),
     tab==='capacites'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
       h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:2}},'Capacités fonctionnelles (Saut, Accélération, Réception, Changement de direction), décomposées en sous-capacités et qualités contributrices — format issu du référentiel clinique fourni.'),
       Object.keys(CAPACITES_DATA).map(function(ck){
@@ -8729,7 +8801,14 @@ function ExpertView(props){
       // TFM seules jamais mêlées aux qualités objectivées par HYP.
       var split=priHypObjectifiedSplit(pri,res.clinicalSynthesis);
       if(!split.hyp.length&&!split.tfmOnly.length)return h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.');
-      function card(p){return h(Card,{key:p.fonction,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h('span',{style:{width:9,height:9,borderRadius:'50%',background:SC[p.status],flexShrink:0}}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},p.orientation));}
+      function card(p){
+        var absSd=p.fonction==='Absorption'?absorptionSousDomainesSummary(res.functionScores):null;
+        return h(Card,{key:p.fonction,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},
+          h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h('span',{style:{width:9,height:9,borderRadius:'50%',background:SC[p.status],flexShrink:0}}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),
+          absSd&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:8}},absSd.map(function(sd){return h('span',{key:sd.key,style:{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,fontSize:10,color:sd.status?C.text:C.muted}},sd.status&&h('span',{style:{width:6,height:6,borderRadius:'50%',background:SC[sd.status],flexShrink:0}}),sd.label+(sd.status?'':' · '+CSM_STATE_LABEL.non_determinable));})),
+          h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},p.orientation)
+        );
+      }
       return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
         split.hyp.map(card),
         split.tfmOnly.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:split.hyp.length?4:0}},'Information TFM secondaire (hors HYP)'),
