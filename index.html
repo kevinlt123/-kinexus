@@ -5915,6 +5915,160 @@ var CSM_STATE_LABEL={non_determinable:'Non déterminable',absente:'Absente',susp
 // praticien (IMPLEMENTATION_PREVALIDATION_KINEXUS_V1.md, objectif 3). Présentation uniquement.
 var CONFIDENCE_LABEL={elevee:'élevée',moderee:'modérée',faible:'faible'};
 
+// ── Visuel rapport (mission IMPLEMENTATION_VISUEL_RAPPORT_KINEXUS_V1.md) — lecture seule des
+// données déjà produites par computeMoteur()/CSM. Aucun recalcul, aucune valeur inventée : chaque
+// fonction ci-dessous lit un champ déjà existant (fSc[f].coverage/status, clinicalSynthesis.qualities,
+// TESTS/bestVal/autoLSI/lsiSt déjà utilisés par buildSportifReport) et se contente de le formater.
+
+var PROFILE_LABELS={vert:'Profil optimal',jaune:'Profil satisfaisant',orange:'Profil en développement',rouge:'Profil à développer'};
+
+// Reprend exactement la formule "distStatus" déjà utilisée par buildSportifReport (pire statut
+// parmi les qualités réellement évaluées) — extraite ici pour être partagée avec buildExpertReport
+// sans dupliquer/dériver une deuxième formule (objectif 1 : "NE PAS créer une nouvelle formule").
+function computeGlobalProfileLevel(fSc,evFns){
+  var dist={vert:0,jaune:0,orange:0,rouge:0};
+  evFns.forEach(function(f){var st=fSc[f]&&fSc[f].status;if(st&&dist.hasOwnProperty(st))dist[st]++;});
+  return dist.rouge?'rouge':dist.orange?'orange':dist.jaune?'jaune':'vert';
+}
+
+// Jauge visuelle segmentée (vert/jaune/orange/rouge, les 4 statuts réellement utilisés partout dans
+// Kinexus) + curseur, pour le niveau ci-dessus. Le mot "risque" est volontairement évité (objectif 1) :
+// le libellé "Profil global" reprend PROFILE_LABELS, déjà utilisé par buildSportifReport — jamais un
+// nouveau score, jamais un vocabulaire suggérant un pronostic médical.
+function profileGaugeHTML(level,captionLabel,opts){
+  opts=opts||{};
+  var order=['vert','jaune','orange','rouge'];
+  var idx=order.indexOf(level);
+  var pos=((idx+0.5)/order.length*100).toFixed(1);
+  var col=SC[level];
+  // showText=false : pure instrument visuel (piste + curseur), sans reformuler le libellé de statut
+  // — utile quand l'appelant affiche déjà PROFILE_LABELS/PERF_LABELS juste à côté (buildSportifReport)
+  // et ne doit jamais dupliquer/paraphraser ce texte déjà validé.
+  var showText=opts.showText!==false;
+  return '<div>'
+    +'<div style="display:flex;height:7px;border-radius:4px;overflow:hidden;background:#EEF2F5">'
+    +order.map(function(s){return '<div style="flex:1;background:'+SBG[s]+'"></div>';}).join('')
+    +'</div>'
+    +'<div style="position:relative;height:0">'
+    +'<div style="position:absolute;top:-11px;left:'+pos+'%;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;background:'+col+';border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></div>'
+    +'</div>'
+    +(showText?'<div style="margin-top:9px;font-weight:900;font-size:12.5pt;color:'+col+'">'+PROFILE_LABELS[level]+'</div>':'<div style="margin-top:11px"></div>')
+    +'<div style="font-size:6.8pt;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-top:1px;font-weight:700">'+(captionLabel||'Profil global')+'</div>'
+    +'</div>';
+}
+
+// Anneau de progression = COUVERTURE DES DONNÉES (fSc.coverage), jamais une performance ni une
+// sévérité (objectif 3 — distinction volontaire avec FunctionGaugeCard/FN_GAUGE_PCT, qui encode au
+// contraire la bande de statut pour l'écran ; ce composant sert uniquement les rapports). Coverage=0
+// affiche un tiret plutôt que "0%" pour ne jamais laisser croire à une mauvaise performance
+// (objectif 9 — absence de donnée ≠ mauvaise donnée).
+function coverageRingSVG(pct,color,size){
+  size=size||58;
+  var r=size*0.39,c=2*Math.PI*r,cx=size/2,cy=size/2;
+  var offset=(c*(1-pct/100)).toFixed(2);
+  var fs=Math.round(size*0.2);
+  var txt=pct>0?pct+'%':'—';
+  var strokeCol=pct>0?color:'#CBD5E1';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#E1E8EE" stroke-width="'+Math.round(size*0.09)+'"/>'
+    +(pct>0?'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+Math.round(size*0.09)+'" stroke-linecap="round" stroke-dasharray="'+c.toFixed(2)+' '+c.toFixed(2)+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 '+cx+' '+cy+')"/>':'')
+    +'<text x="'+cx+'" y="'+(cy+fs*0.35)+'" text-anchor="middle" font-family="Inter,sans-serif" font-size="'+fs+'" font-weight="700" fill="'+strokeCol+'">'+txt+'</text>'
+    +'</svg>';
+}
+
+// État clinique HYP/CSM (Objectivée/Suspectée/Non déterminable), STRICTEMENT lu depuis
+// clinicalSynthesis.qualities[quality].objectified/suspected/nonDeterminable — jamais déduit du
+// pourcentage de couverture (objectif 3B : couverture et état clinique restent deux informations
+// indépendantes). Retourne null si la qualité n'est pas gouvernée par un moteur HYP (Contrôle Frontal,
+// Contrôle Sensoriel — TFM seul) : l'appelant doit alors afficher la mention TFM déjà établie par le
+// Lot Rationalisation Vues 1 ("· information complémentaire"), jamais un état HYP fabriqué.
+function csmEtatLabel(csmQ){
+  if(!csmQ)return null;
+  if(csmQ.objectified)return'Objectivée';
+  if(csmQ.suspected)return'Suspectée';
+  return'Non déterminable';
+}
+
+// Grille d'anneaux, une carte par qualité évaluée (evFns = FUNCTIONS.filter(f=>fSc[f]), déjà
+// calculé par les deux report builders). Affiche, pour chaque qualité : l'anneau (couverture réelle),
+// le statut déjà existant (badge SL[status]) et l'état HYP/CSM (ou la mention TFM) — jamais fusionnés.
+function qualitiesRingsGridHTML(evFns,fSc,clinicalSynthesis,opts){
+  opts=opts||{};
+  var ringSize=opts.ringSize||58;
+  var qCards=evFns.map(function(f){
+    var sc=fSc[f];
+    var csmQ=clinicalSynthesis&&clinicalSynthesis.qualities?clinicalSynthesis.qualities[f]:null;
+    var color=sc.status?SC[sc.status]:'#B9C4CC';
+    var etat=csmEtatLabel(csmQ);
+    var etatTxt=etat||'Information complémentaire (TFM)';
+    var etatCol=etat?(csmQ.objectified?color:(csmQ.suspected?SC.jaune:'#94A3B8')):'#94A3B8';
+    return '<div style="text-align:center;background:#fff;border:1px solid #E1E8EE;border-radius:10px;padding:12px 8px 10px">'
+      +'<div style="font-size:8.5pt;font-weight:800;color:#132B3A;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f+'</div>'
+      +coverageRingSVG(sc.coverage,color,ringSize)
+      +'<div style="font-size:7.5pt;font-weight:800;color:'+(sc.status?color:'#94A3B8')+';margin-top:5px">'+(sc.status?SL[sc.status]:'Non déterminable')+'</div>'
+      +'<div style="font-size:6.3pt;color:'+etatCol+';margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em">'+etatTxt+'</div>'
+      +'</div>';
+  }).join('');
+  return '<div>'
+    +'<div style="font-size:7pt;color:#94A3B8;margin-bottom:10px;font-style:italic">Le remplissage de l\'anneau représente la couverture des données disponibles pour cette qualité — jamais un score de performance. « — » signifie qu\'aucune donnée n\'est disponible.</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax('+(ringSize+42)+'px,1fr));gap:10px">'
+    +qCards
+    +'</div>'
+    +'</div>';
+}
+
+// Extrait exactement le calcul déjà utilisé par buildSportifReport (section "Asymétries majeures")
+// — aucune formule nouvelle, seulement partagé avec buildExpertReport (objectif 6). Ne construit une
+// entrée que si les deux valeurs D et G existent réellement (jamais de valeur manquante inventée).
+function computeLsiItems(td){
+  var items=[];
+  TESTS.forEach(function(test){
+    if(test.bilateral)return;
+    var data=td[test.key];if(!data||!data.active)return;
+    var kpi=test.kpis[0];
+    var dV=bestVal(((data.D||{}).trials||{})[kpi.key]||[],kpi.dir);
+    var gV=bestVal(((data.G||{}).trials||{})[kpi.key]||[],kpi.dir);
+    var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(dV,gV);
+    if(lsi!=null&&dV!=null&&gV!=null){
+      var unitM=kpi.label.match(/\(([^)]+)\)/);
+      items.push({label:test.label.replace(/^Single Leg /,''),dV:roundStep(dV,kpi.step),gV:roundStep(gV,kpi.step),unit:unitM?unitM[1]:'',lsi:lsi,status:lsiSt(lsi)});
+    }
+  });
+  items.sort(function(a,b){return a.lsi-b.lsi;});
+  return items;
+}
+
+// Rendu barres miroir Gauche/Droite — extrait exactement du HTML déjà utilisé par buildSportifReport,
+// partagé avec buildExpertReport pour éviter toute divergence visuelle (objectif 6/6B : même
+// convention de couleur déjà validée app-wide pour le LSI, cf. lsiSt() déjà utilisé à l'écran dans
+// ResultsBrowser — pas une nouvelle règle de couleur clinique inventée pour ce visuel).
+function lsiMirrorBarsHTML(lsiItems,limit){
+  if(lsiItems.length===0)return '<div style="color:#94A3B8;font-size:8pt">Aucun test unipodal actif.</div>';
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px 28px">'
+    +lsiItems.slice(0,limit||6).map(function(it){
+      var mx=Math.max(it.gV,it.dV)||1;
+      var gPct=Math.max(Math.min(Math.abs(it.gV)/mx*100,100),4);
+      var dPct=Math.max(Math.min(Math.abs(it.dV)/mx*100,100),4);
+      var col=SC[it.status];
+      var gIsWeak=it.gV<it.dV,dIsWeak=it.dV<it.gV;
+      return '<div>'
+        +'<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">'
+        +'<span style="font-size:8.5pt;font-weight:700;color:#132B3A">'+it.label+'</span>'
+        +'<span style="font-size:26pt;font-weight:900;color:'+col+';line-height:1">'+it.lsi+'<span style="font-size:10pt;font-weight:800">%</span> <span style="font-size:6.5pt;font-weight:700;color:#94A3B8;letter-spacing:0.04em;text-transform:uppercase">LSI</span></span>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:6px">'
+        +'<span style="width:16px;height:16px;border-radius:4px;background:#F3F6F8;color:#5B7A8C;font-size:6.3pt;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">G</span>'
+        +'<span style="width:38px;text-align:right;font-size:8.5pt;font-weight:'+(gIsWeak?900:600)+';color:'+(gIsWeak?col:'#132B3A')+';flex-shrink:0">'+it.gV+'</span>'
+        +'<div style="flex:1;display:flex;justify-content:flex-end;height:10px"><div style="height:100%;width:'+gPct+'%;background:'+col+';border-radius:5px 0 0 5px;opacity:'+(gIsWeak?1:0.45)+'"></div></div>'
+        +'<div style="flex:1;display:flex;justify-content:flex-start;height:10px"><div style="height:100%;width:'+dPct+'%;background:'+col+';border-radius:0 5px 5px 0;opacity:'+(dIsWeak?1:0.45)+'"></div></div>'
+        +'<span style="width:38px;text-align:left;font-size:8.5pt;font-weight:'+(dIsWeak?900:600)+';color:'+(dIsWeak?col:'#132B3A')+';flex-shrink:0">'+it.dV+'</span>'
+        +'<span style="width:16px;height:16px;border-radius:4px;background:#F3F6F8;color:#5B7A8C;font-size:6.3pt;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">D</span>'
+        +'</div>'
+        +'</div>';
+    }).join('')
+    +'</div>';
+}
+
 // ── Correction post-audit (mission IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) ───────────────────
 // Trois fonctions de PRÉSENTATION pures, lecture seule de `clinicalSynthesis` déjà calculé par
 // computeHypClinicalSynthesis01 (jamais modifiée, jamais rappelée, jamais recalculée ici) — aucun
@@ -6878,8 +7032,12 @@ function buildSportifReport(athlete,bilan,res){
     var hLabel=reportMode==='preseason'?'Profil global':'Performance globale';
     var hVal=reportMode==='preseason'?PROFILE_LABELS[distStatus]:PERF_LABELS[distStatus];
     headlineInner='<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'+iconBadge(reportMode==='preseason'?'📋':'⚡')+'<span style="color:#5B7A8C;font-size:7.5pt;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">'+hLabel+'</span></div>'
-      +'<div style="font-size:15pt;font-weight:900;color:'+colMap[distStatus]+';line-height:1.3;margin-bottom:14px">'+hVal+'</div>'
-      +'<div style="display:flex;gap:5px;margin-bottom:14px">'+['vert','jaune','orange','rouge'].map(function(s){return fnDist[s].length?'<span style="width:9px;height:9px;border-radius:50%;background:'+colMap[s]+'"></span>':'';}).join('')+'</div>'
+      // Jauge visuelle (mission IMPLEMENTATION_VISUEL_RAPPORT_KINEXUS_V1.md, objectif 1) — remplace
+      // l'ancienne rangée de pastilles par la jauge segmentée partagée ; distStatus n'est ni
+      // recalculé ni renommé, seule sa restitution graphique change. hVal/colMap[distStatus] restent
+      // affichés juste en dessous, mot pour mot inchangés.
+      +profileGaugeHTML(distStatus,hLabel,{showText:false})
+      +'<div style="font-size:15pt;font-weight:900;color:'+colMap[distStatus]+';line-height:1.3;margin:10px 0 14px">'+hVal+'</div>'
       +'<div style="font-size:7.5pt;color:#5B7A8C;line-height:1.5">'+fnDist.vert.length+' qualité'+(fnDist.vert.length>1?'s':'')+' optimale'+(fnDist.vert.length>1?'s':'')+' sur '+evFns.length+' évaluée'+(evFns.length>1?'s':'')+'</div>';
   }else{ // reeducation
     headlineInner='<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'+iconBadge('📈')+'<span style="color:#5B7A8C;font-size:7.5pt;font-weight:800;text-transform:uppercase;letter-spacing:0.04em">Évolution</span></div>'
@@ -7084,19 +7242,10 @@ function buildSportifReport(athlete,bilan,res){
 
   // 1. Quelles fonctions sont touchées ?
   html+=sectionTitle(1,'Qualités fonctionnelles',true);
-  html+=panel(
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px 24px">'
-    +evFns.map(function(f){
-      var st=fSc[f].status;
-      return '<div style="display:flex;align-items:center;gap:10px">'
-        +iconBadge(FN_ICON[f]||'●')
-        +'<span style="flex:1;font-size:9pt;font-weight:700;color:#132B3A">'+f+'</span>'
-        +badge(st)
-        +'</div>';
-    }).join('')
-    +'</div>',
-    'margin-bottom:26px'
-  );
+  // Anneaux de couverture (mission IMPLEMENTATION_VISUEL_RAPPORT_KINEXUS_V1.md, objectif 3) — la
+  // rangée icône+badge est remplacée par la grille d'anneaux partagée avec buildExpertReport ; même
+  // évFns/fSc, même badge de statut (SL[status]), rien d'inventé ni de recalculé.
+  html+=panel(qualitiesRingsGridHTML(evFns,fSc,res.clinicalSynthesis),'margin-bottom:26px');
 
   // 2. Sur quoi repose cette analyse ? (les preuves)
   html+=sectionTitle(2,'Les tests réalisés',true);
@@ -7133,6 +7282,9 @@ function buildSportifReport(athlete,bilan,res){
 
   // 3. Où sont les asymétries ? (le LSI est l'information principale — mis en évidence, G/D clairement différenciés)
   html+=sectionTitle(3,'Asymétries majeures',true);
+  // Précision, pas diagnostic (mission IMPLEMENTATION_VISUEL_RAPPORT_KINEXUS_V1.md, objectif 6A) —
+  // rappel textuel ajouté au-dessus du visuel existant, qui n'est lui-même pas modifié.
+  html+='<div style="font-size:7.5pt;color:rgba(255,255,255,0.45);margin:-14px 0 14px;font-style:italic">Comparaison G/D à titre de précision — une asymétrie n\'équivaut pas, à elle seule, à un déficit.</div>';
   html+=panel(
     (lsiItems.length===0?'<div style="color:#94A3B8;font-size:8pt">Aucun test unipodal actif.</div>'
       :'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px 28px">'
@@ -7342,6 +7494,48 @@ function buildExpertReport(athlete,bilan,res){
   var dateStr=new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
   var html='<div class="print-page print-page-expert">';
   html+='<div class="print-header"><div><div class="print-logo">KINEXUS</div><div class="print-subtitle">Rapport Expert</div></div><div style="text-align:right;font-size:9pt;color:#666"><div style="font-weight:700">'+athlete.prenom+' '+athlete.nom+'</div><div>'+bilan.type+' · '+bilan.sousType+'</div><div>'+dateStr+'</div></div></div>';
+
+  // ── Vue d'ensemble visuelle (mission IMPLEMENTATION_VISUEL_RAPPORT_KINEXUS_V1.md) ─────────────
+  // Introduction visuelle avant le détail existant (objectif 12 : ne remplace aucun tableau, ne
+  // simplifie rien — elle précède le même contenu, à l'identique, plus bas). Lit exclusivement des
+  // champs déjà produits par computeMoteur()/CSM : computeGlobalProfileLevel() reprend la formule
+  // "distStatus" déjà utilisée par buildSportifReport (aucune nouvelle formule), le texte de
+  // synthèse est la même expression que celle utilisée juste plus bas pour la section "Synthèse
+  // clinique" complète (var csmExp/csmExpDeficitsTxt), muscleMapHTML est le Body map déjà existant
+  // (non modifié), les anneaux et les barres G/D sont les fonctions partagées avec le rapport sportif.
+  if(res.clinicalSynthesis&&evFns.length){
+    var csmIntro=res.clinicalSynthesis;
+    var profileLevel=computeGlobalProfileLevel(fSc,evFns);
+    var csmIntroDeficitsTxt=csmIntro.objectified.length
+      ?'Un déficit est objectivé pour : '+csmIntro.objectified.map(function(o){return o.quality+' ('+(CSM_STATE_LABEL[o.state]||o.state).toLowerCase()+')';}).join(', ')+'.'
+      :csmSafeText(csmIntro.narrative.deficitsObjectives);
+    html+='<div class="print-section-title" style="margin-top:14px">Vue d\'ensemble</div>';
+    html+='<div style="display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center;padding:14px 16px;background:#F8FAFC;border:1px solid #E1E8EE;border-radius:8px;margin-bottom:16px">'
+      +profileGaugeHTML(profileLevel)
+      +'<div>'
+      +(csmIntro.objectified.length?'<div style="margin-bottom:8px">'+csmIntro.objectified.map(function(o){return '<span class="print-badge '+o.status+'" style="margin-right:6px">'+o.quality+'</span>';}).join('')+'</div>':'')
+      +'<div style="font-size:9.5pt;color:#333;line-height:1.6">'+csmIntroDeficitsTxt+'</div>'
+      +'</div>'
+      +'</div>';
+    html+='<div style="font-size:7pt;color:#94A3B8;margin:0 0 8px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Couverture par qualité</div>';
+    html+=qualitiesRingsGridHTML(evFns,fSc,res.clinicalSynthesis,{ringSize:52})+'<div style="margin-bottom:16px"></div>';
+    // Repère anatomique : uniquement si au moins un système dispose réellement d'un score (objectif
+    // 8 — la hiérarchie dépend des données disponibles, rien n'est affiché par défaut).
+    var anySystemScored=SYSTEMS.some(function(s){return sysSc[s];});
+    if(anySystemScored){
+      html+='<div style="font-size:7pt;color:#94A3B8;margin:0 0 8px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Repère anatomique — localisation, pas causalité</div>';
+      html+='<div style="display:flex;justify-content:center;margin-bottom:16px">'+muscleMapHTML(sysSc,{width:340})+'</div>';
+    }
+    // Comparaison G/D : uniquement si au moins un test bilatéral dispose des deux côtés (objectif 6
+    // — jamais de valeur manquante inventée ; computeLsiItems() ne retient déjà que ces cas).
+    var introLsiItems=computeLsiItems(td);
+    if(introLsiItems.length){
+      html+='<div style="font-size:7pt;color:#94A3B8;margin:0 0 4px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Comparaison Droite / Gauche</div>';
+      html+='<div style="font-size:7.5pt;color:#94A3B8;margin-bottom:10px;font-style:italic">Information de précision — une asymétrie n\'équivaut pas, à elle seule, à un diagnostic.</div>';
+      html+=lsiMirrorBarsHTML(introLsiItems,4)+'<div style="margin-bottom:6px"></div>';
+    }
+  }
+
   // Fonctions table
   html+='<div class="print-section-title">Fonctions évaluées</div>';
   html+='<table class="print-table"><thead><tr><th>Fonction</th><th>Statut</th><th>Couverture</th><th>Confiance</th></tr></thead><tbody>';
