@@ -6000,7 +6000,7 @@ function qualitiesRingsGridHTML(evFns,fSc,clinicalSynthesis,opts){
     var csmQ=clinicalSynthesis&&clinicalSynthesis.qualities?clinicalSynthesis.qualities[f]:null;
     var color=sc.status?SC[sc.status]:'#B9C4CC';
     var etat=csmEtatLabel(csmQ);
-    var etatTxt=etat||'Information complémentaire (TFM)';
+    var etatTxt=etat||'Information complémentaire (hors diagnostic clinique)';
     var etatCol=etat?(csmQ.objectified?color:(csmQ.suspected?SC.jaune:'#94A3B8')):'#94A3B8';
     return '<div style="text-align:center;background:#fff;border:1px solid #E1E8EE;border-radius:10px;padding:12px 8px 10px">'
       +'<div style="font-size:8.5pt;font-weight:800;color:#132B3A;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f+'</div>'
