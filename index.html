@@ -4220,6 +4220,39 @@ function computeTestStatus(key,data,pop,age){
   return st;
 }
 
+// ── Statut UX de complétion de SAISIE (mission IMPLEMENTATION_UX_SAISIE_LOTA.md) ────────────────
+// Jamais un statut clinique, jamais lu par HYP/CSM/TFM — uniquement une lecture des tableaux
+// d'essais déjà stockés dans testData, pour savoir si une valeur a réellement été tapée (ou
+// importée en CSV, qui remplit exactement la même structure) par le praticien. Fonctionne pour un
+// test simple (data.trials), un test D/G (data.D.trials/data.G.trials) et YBT (même forme D/G).
+function testHasAnyTrialValue(data){
+  if(!data)return false;
+  function arrHasValue(arr){return Array.isArray(arr)&&arr.some(function(v){return v!=null;});}
+  function sideHasValue(sd){return!!(sd&&sd.trials&&Object.keys(sd.trials).some(function(k){return arrHasValue(sd.trials[k]);}));}
+  if(data.trials&&Object.keys(data.trials).some(function(k){return arrHasValue(data.trials[k]);}))return true;
+  return sideHasValue(data.D)||sideHasValue(data.G);
+}
+// Vrai si au moins un test du bilan contient une valeur réellement saisie — sert uniquement à
+// décider si quitter le bilan doit être confirmé (Objectif 1/1A), jamais un calcul clinique.
+function bilanHasRealData(testData){
+  if(!testData)return false;
+  return Object.keys(testData).some(function(k){return testHasAnyTrialValue(testData[k]);});
+}
+// Nombre de KPI d'un test disposant d'au moins une valeur saisie, sur le total de KPI du test —
+// statut de progression de SAISIE (Objectif 2), jamais un statut clinique : un KPI sans seuil/norme
+// compte de la même façon qu'un KPI diagnostique, ce n'est qu'un décompte de champs remplis.
+function testCompletion(test,data){
+  if(!test||!test.kpis)return{filled:0,total:0};
+  var total=test.kpis.length;
+  if(!data||!data.active)return{filled:0,total:total};
+  var filled=test.kpis.filter(function(kpi){
+    var vS=(data.trials||{})[kpi.key],vD=((data.D||{}).trials||{})[kpi.key],vG=((data.G||{}).trials||{})[kpi.key];
+    function has(arr){return Array.isArray(arr)&&arr.some(function(v){return v!=null;});}
+    return has(vS)||has(vD)||has(vG);
+  }).length;
+  return{filled:filled,total:total};
+}
+
 // ── HYP-ABS-01 V2 — Moteur clinique Absorption ───────────────────────────────────────────────
 // Remplace (dans computeMoteur() ci-dessous, uniquement pour fSc['Absorption']) le raisonnement
 // Absorption produit par la boucle TFM générique. Source de vérité : HYP-ABS-01_V2.md /
@@ -7933,11 +7966,21 @@ function TestKpiChart(props){
 
 function TestDetailPage(props){
   var test=props.test,data=props.data||{active:true},pop=props.pop,athleteAge=props.athleteAge,onChange=props.onChange,onYBTChange=props.onYBTChange,onBack=props.onBack;
+  // Navigation directe test précédent/suivant (mission IMPLEMENTATION_UX_SAISIE_LOTA.md, Objectif
+  // 4/4A) : reprend simplement l'ordre déjà actif de la batterie sélectionnée par le praticien
+  // (props.navIndex/props.navTotal, calculés par TestEntry) — aucun nouvel ordre clinique inventé,
+  // le raccourci s'ajoute au parcours existant (liste complète), il ne le remplace pas.
+  var navIndex=props.navIndex,navTotal=props.navTotal,onPrev=props.onPrev,onNext=props.onNext;
   return h('div',null,
-    h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:16}},
+    h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:6}},
       h(Btn,{small:true,onClick:onBack},'← Retour'),
       h('h2',{style:{margin:0,fontSize:17,fontWeight:800,color:C.text,flex:1}},test.label),
       !test.bilateral&&h('span',{style:{fontSize:10,color:C.teal,fontWeight:600,background:C.teal+'15',padding:'2px 8px',borderRadius:10}},'D / G')
+    ),
+    navTotal>1&&h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:16}},
+      h(Btn,{small:true,disabled:!onPrev,onClick:onPrev},'‹ Test précédent'),
+      h('span',{style:{color:C.muted,fontSize:11,fontWeight:600}},(navIndex+1)+' / '+navTotal+' de la batterie'),
+      h(Btn,{small:true,disabled:!onNext,onClick:onNext},'Test suivant ›')
     ),
     test.ybt
       ?h(YBTEntry,{data:data,onChange:onYBTChange})
@@ -7991,8 +8034,24 @@ function TestEntry(props){
   var [tab,setTab]=useState('tests');
   var [showCSV,setShowCSV]=useState(false);
   var [openTest,setOpenTest]=useState(null);
+  var [confirmLeave,setConfirmLeave]=useState(false);
   var cats=[...new Set(TESTS.map(function(t){return t.cat;}))];
   var cnt=Object.values(testData).filter(function(d){return d&&d.active;}).length;
+  // Progression de SAISIE (Objectif 3A/6) : combien de tests cochés ont au moins une valeur
+  // réellement tapée/importée, jamais un score clinique — cf. testHasAnyTrialValue.
+  var filledCnt=Object.keys(testData).filter(function(k){return testData[k]&&testData[k].active&&testHasAnyTrialValue(testData[k]);}).length;
+  // Ordre de navigation directe test précédent/suivant (Objectif 4/4A) : uniquement les tests déjà
+  // cochés par le praticien, dans l'ordre du catalogue TESTS (même ordre que la liste) — aucun
+  // nouvel ordre clinique inventé.
+  var activeTestKeys=TESTS.filter(function(t){return testData[t.key]&&testData[t.key].active;}).map(function(t){return t.key;});
+
+  // Quitter le bilan (bas de liste) : demande confirmation UNIQUEMENT si une valeur a réellement
+  // été saisie quelque part (Objectif 1/1A) — un test simplement coché sans donnée se quitte sans
+  // avertissement inutile (Scénario 1).
+  function requestLeave(){
+    if(bilanHasRealData(testData))setConfirmLeave(true);
+    else props.onCancel();
+  }
 
   function toggle(key){setTestData(function(prev){var n=Object.assign({},prev);if(n[key]&&n[key].active)delete n[key];else n[key]={active:true};return n;});}
 
@@ -8048,6 +8107,7 @@ function TestEntry(props){
 
   if(openTest){
     var otTest=TBK[openTest];
+    var navIdx=activeTestKeys.indexOf(openTest);
     return h(TestDetailPage,{
       test:otTest,
       data:testData[openTest]||{active:true},
@@ -8055,7 +8115,11 @@ function TestEntry(props){
       athleteAge:athleteAge,
       onChange:function(side,kpiKey,trials){updateTrials(openTest,side,kpiKey,trials);},
       onYBTChange:function(newData){setTestData(function(prev){var n=Object.assign({},prev);n[openTest]=newData;return n;});},
-      onBack:function(){setOpenTest(null);}
+      onBack:function(){setOpenTest(null);},
+      navIndex:navIdx>=0?navIdx:0,
+      navTotal:activeTestKeys.length,
+      onPrev:navIdx>0?function(){setOpenTest(activeTestKeys[navIdx-1]);}:null,
+      onNext:(navIdx>=0&&navIdx<activeTestKeys.length-1)?function(){setOpenTest(activeTestKeys[navIdx+1]);}:null
     });
   }
 
@@ -8068,6 +8132,14 @@ function TestEntry(props){
         h(Btn,{primary:true,small:true,disabled:cnt===0,onClick:function(){props.onSave(Object.assign({},bilan,{testData:testData,questData:questData}));}},'Analyser ('+cnt+')')
       )
     ),
+    // Progression de SAISIE (Objectif 3A/6) : réutilise la barre de progression déjà existante
+    // (structure identique à celle des qualités fonctionnelles), avec un accent teal neutre —
+    // jamais une couleur clinique (vert/jaune/orange/rouge) — pour ne jamais laisser croire que ce
+    // pourcentage est un résultat clinique plutôt qu'un simple taux de remplissage.
+    cnt>0&&h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:14}},
+      h('span',{style:{color:C.muted,fontSize:11,fontWeight:600,flexShrink:0}},filledCnt+' / '+cnt+' tests renseignés'),
+      h('div',{style:{flex:1,height:7,background:C.border,borderRadius:20,overflow:'hidden'}},h('div',{style:{height:'100%',width:(cnt?Math.round(filledCnt/cnt*100):0)+'%',background:C.teal,borderRadius:20}}))
+    ),
     h(TabBar,{tabs:[['tests','Tests ('+cnt+')'],['questionnaires','Questionnaires']],active:tab,onChange:setTab}),
     tab==='tests'&&h('div',null,cats.map(function(cat){
       var catTests=TESTS.filter(function(t){return t.cat===cat;});
@@ -8075,11 +8147,19 @@ function TestEntry(props){
         h(SecTitle,null,cat),
         h('div',{style:{display:'flex',flexDirection:'column',gap:6}},catTests.map(function(test){
           var data=testData[test.key];var active=data&&data.active;
-          var status=computeTestStatus(test.key,data,pop,athleteAge);
+          // Complétion de SAISIE (Objectif 2/2A) : un test coché sans aucune valeur n'affiche
+          // jamais le point de couleur clinique (computeTestStatus) — celui-ci n'apparaît qu'une
+          // fois au moins une valeur réellement saisie, comme avant ce lot. Le chip "X/N" est un
+          // statut de complétion UX, jamais un statut clinique (Objectif 6).
+          var comp=testCompletion(test,data);
+          var hasValue=comp.filled>0;
+          var status=hasValue?computeTestStatus(test.key,data,pop,athleteAge):null;
           return h('div',{key:test.key,style:{background:active?C.teal+'06':C.card,border:'1px solid '+(active?C.teal+'40':C.border),borderRadius:10,overflow:'hidden'}},
             h('div',{style:{display:'flex',alignItems:'center',padding:'11px 14px',cursor:'pointer'},onClick:function(){if(!active)toggle(test.key);setOpenTest(test.key);}},
               h('div',{onClick:function(e){e.stopPropagation();toggle(test.key);},style:{width:17,height:17,borderRadius:4,border:'2px solid '+(active?C.teal:C.border),background:active?C.teal:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginRight:10}},active&&h('span',{style:{color:'#fff',fontSize:10,fontWeight:800}},'✓')),
               h('span',{style:{color:active?C.text:C.muted,fontWeight:active?600:400,fontSize:13,flex:1}},test.label),
+              active&&!hasValue&&h('span',{style:{fontSize:9.5,color:C.muted,fontWeight:600,background:C.border+'60',padding:'2px 8px',borderRadius:10,marginRight:8}},'Sélectionné · non renseigné'),
+              active&&hasValue&&h('span',{style:{fontSize:9.5,color:C.muted,fontWeight:600,marginRight:6}},comp.filled+'/'+comp.total),
               active&&status&&h('span',{style:{width:8,height:8,borderRadius:'50%',background:SC[status],flexShrink:0,marginRight:8}}),
               !test.bilateral&&h('span',{style:{fontSize:10,color:C.teal,fontWeight:600,background:C.teal+'15',padding:'2px 8px',borderRadius:10,marginRight:8}},'D / G'),
               h('span',{style:{color:C.muted,fontSize:15}},'›')
@@ -8099,8 +8179,20 @@ function TestEntry(props){
         )
       );
     })),
+    // Confirmation avant de quitter un bilan contenant des mesures non enregistrées (mission
+    // IMPLEMENTATION_UX_SAISIE_LOTA.md, Objectif 1) — même motif visuel que le bandeau
+    // "Validation expert requise" déjà utilisé dans AnalyseView (callout bordé + 2 boutons), pas
+    // une nouvelle identité graphique. Vocabulaire praticien uniquement, aucun terme technique.
+    confirmLeave&&h('div',{className:'no-print',style:{marginTop:14,padding:'14px 18px',background:C.orange+'10',border:'1px solid '+C.orange+'40',borderRadius:12}},
+      h('div',{style:{color:C.orange,fontWeight:700,fontSize:13,marginBottom:4}},'⚠️ Mesures non enregistrées'),
+      h('div',{style:{color:C.muted,fontSize:12,marginBottom:10}},'Vous avez des mesures non enregistrées. Voulez-vous vraiment quitter ce bilan ?'),
+      h('div',{style:{display:'flex',gap:8}},
+        h(Btn,{primary:true,small:true,onClick:function(){setConfirmLeave(false);}},'Continuer le bilan'),
+        h(Btn,{danger:true,small:true,onClick:props.onCancel},'Quitter le bilan')
+      )
+    ),
     h('div',{style:{position:'sticky',bottom:0,display:'flex',justifyContent:'space-between',marginTop:18,background:C.bg,padding:'10px 0 6px',borderTop:'1px solid '+C.border}},
-      h(Btn,{onClick:props.onCancel},'← Retour'),
+      h(Btn,{onClick:requestLeave},'← Retour'),
       h(Btn,{primary:true,disabled:cnt===0,onClick:function(){props.onSave(Object.assign({},bilan,{testData:testData,questData:questData}));}},'Analyser ('+cnt+' tests) →')
     )
   );
@@ -8142,6 +8234,13 @@ function AnalyseView(props){
   // Forces / Limitations / Risques / Chaîne causale / Asymétries : tout calculé ici pour vivre
   // directement dans la page unique plutôt que derrière un onglet Synthèse séparé.
   var td=bilan.testData||{};
+  // Complétion de SAISIE (Objectif 3/3A) : jamais un statut clinique — sert uniquement à empêcher
+  // la validation d'un bilan totalement vide (0 test, 0 valeur) et à afficher la progression déjà
+  // réalisée. Aucune règle "100% des tests obligatoires" : un bilan partiel reste validable dès
+  // qu'au moins une mesure a été réellement saisie, conformément au fonctionnement actuel.
+  var testsCnt=Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).length;
+  var testsFilledCnt=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&testHasAnyTrialValue(td[k]);}).length;
+  var canValidate=bilanHasRealData(td);
   var forces=evFns.filter(function(f){return fSc[f].status==='vert';});
   var limitations=evFns.filter(function(f){return fSc[f].status!=='vert';}).map(function(f){
     var p=pri.filter(function(pp){return pp.fonction===f;})[0];
@@ -8400,7 +8499,16 @@ function AnalyseView(props){
       !validated&&h('div',{className:'no-print',style:{marginTop:20,padding:'14px 18px',background:C.teal+'10',border:'1px solid '+C.teal+'40',borderRadius:12}},
         h('div',{style:{color:C.teal,fontWeight:700,fontSize:13,marginBottom:4}},'🔍 Validation expert requise'),
         h('div',{style:{color:C.muted,fontSize:12,marginBottom:10}},'Vérifiez les priorités et hypothèses avant de valider.'),
-        h(Btn,{primary:true,small:true,onClick:function(){setValidated(true);props.onValidate();}},'Valider le bilan')
+        // Progression de SAISIE (Objectif 3A) : réutilise la même barre neutre que l'onglet Saisie
+        // — jamais interprétée comme un score clinique (Objectif 6). Un bilan partiel reste
+        // validable ; seul un bilan à 0 valeur est bloqué (canValidate).
+        testsCnt>0&&h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+          h('span',{style:{color:C.muted,fontSize:11,fontWeight:600,flexShrink:0}},testsFilledCnt+' / '+testsCnt+' tests renseignés'),
+          h('div',{style:{flex:1,height:6,background:C.border,borderRadius:20,overflow:'hidden'}},h('div',{style:{height:'100%',width:(testsCnt?Math.round(testsFilledCnt/testsCnt*100):0)+'%',background:C.teal,borderRadius:20}}))
+        ),
+        canValidate
+          ?h(Btn,{primary:true,small:true,onClick:function(){setValidated(true);props.onValidate();}},'Valider le bilan')
+          :h('div',{style:{color:C.orange,fontSize:12,fontWeight:600}},'Ajoutez au moins une mesure avant de valider le bilan.')
       ),
       validated&&h('div',{style:{marginTop:14,color:C.vert,fontSize:12,fontWeight:600}},'✓ Bilan validé')
     )
