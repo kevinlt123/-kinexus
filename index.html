@@ -4065,15 +4065,34 @@ function rootCausesHTML(candidates,testLabel,kpiLabel){
   return out;
 }
 
+// Normalisation de LECTURE uniquement (mission IMPLEMENTATION_RATIONALISATION_VUES_LOT1.md,
+// Problème 1/1A) : neutralise les divergences accent/casse déjà présentes dans les données sources
+// (ex. VAR_REL3 mélange 'Mobilité'/'Mobilite', 'Explosivité'/'Explosivite', 'Réactivité'/
+// 'Reactivite', 'Contrôle Frontal'/'Controle Frontal' — vérifié exhaustivement par
+// AUDIT_RATIONALISATION_VUES_KINEXUS_V1.md §9). Ne modifie JAMAIS TFM/VAR_REL3/CAPACITES_DATA eux-
+// mêmes — sert uniquement de clé de comparaison pour le filtrage/la recherche/le regroupement.
+// Volontairement générique (accent+casse+espaces) mais volontairement PAS agressif : deux chaînes
+// qui ne diffèrent que par accent/casse/espaces sont, par construction du logiciel, toujours la
+// même qualité (aucun cas contraire trouvé lors de l'audit exhaustif) — mais deux chaînes qui
+// diffèrent par un mot entier (ex. 'Force' vs 'Force maximale') ne sont PAS unifiées ici : ce cas
+// est un alias explicite et séparé (`CAPACITE_QUALITY_HYP_ALIAS`, voir tfmQualityDiagnosticGate),
+// pas une normalisation générique, pour ne jamais fusionner deux qualités réellement distinctes
+// (ex. Propulsion/Contrôle moteur/Résistance neuromusculaire n'ont aucun équivalent HYP — vérifié,
+// jamais aliasés).
+function normalizeQualityKey(s){
+  if(!s)return'';
+  return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
+}
 // Statut d'une qualite (Force maximale, Explosivite...) : agrege toutes les variables dont MEASURES/ESTIMATES
 // pointent vers cette qualite, ponderees par le poids du lien (Determinante..Mineure).
 function computeQualityStatus(qualityName,testData,pop,age){
   var scores=[];
+  var qKey=normalizeQualityKey(qualityName);
   Object.keys(VAR_REL3).forEach(function(key){
     var rel=VAR_REL3[key];
     var entry=null;
-    (rel.measures||[]).forEach(function(m){if(m.function===qualityName)entry=m;});
-    if(!entry)(rel.estimates||[]).forEach(function(e){if(e.function===qualityName)entry=e;});
+    (rel.measures||[]).forEach(function(m){if(normalizeQualityKey(m.function)===qKey)entry=m;});
+    if(!entry)(rel.estimates||[]).forEach(function(e){if(normalizeQualityKey(e.function)===qKey)entry=e;});
     if(!entry)return;
     var st=kpiStatus(rel.test,rel.kpi,testData,pop,age);
     if(st)scores.push({status:st,w:POIDS_RANK[entry.poids]||1});
@@ -4120,7 +4139,14 @@ function capaciteHTML(capResult){
       var mark=q.status?(q.status==='vert'?'✓':'✗'):'○';
       var mcol=q.status?SC[q.status]:'#94A3B8';
       var label=q.status?' ('+SL[q.status]+')':(q.hypGoverned?' (non déterminable)':' (non testé)');
-      out+='<div style="font-size:7.8pt;color:#334155;margin-bottom:2px"><span style="color:'+mcol+';font-weight:700">'+mark+'</span> '+q.quality+label+'</div>';
+      // Qualité sans moteur HYP (Propulsion, Contrôle moteur, Résistance neuromusculaire...) :
+      // son statut, quand il existe, n'est jamais un diagnostic HYP — même mark ✓/✗ que les
+      // qualités HYP-gouvernées sinon (mission IMPLEMENTATION_RATIONALISATION_VUES_LOT1.md,
+      // Problème 2C ; AUDIT_RATIONALISATION_VUES_KINEXUS_V1.md, constat 10a). Suffixe discret,
+      // jamais un badge ni une couleur différente — ne réintroduit ni « TFM » ni « VAR_REL3 » dans
+      // le texte praticien (vocabulaire du Lot Productisation clinique 1).
+      var tfmOnlyNote=(!q.hypGoverned&&q.status)?' <span style="color:#94A3B8;font-weight:400;font-style:italic">· information complémentaire</span>':'';
+      out+='<div style="font-size:7.8pt;color:#334155;margin-bottom:2px"><span style="color:'+mcol+';font-weight:700">'+mark+'</span> '+q.quality+label+tfmOnlyNote+'</div>';
       // Information TFM secondaire : affichée uniquement quand elle diverge de ce qui est montré
       // ci-dessus (diagnostic HYP) — jamais présentée sous le même badge/couleur qu'un diagnostic
       // (mission AUDIT_MIGRATION_TFM_HYP_CSM.md, Partie 3/4).
@@ -5778,19 +5804,33 @@ function computeHypClinicalSynthesis01(functionScores){
 // secondaire. Rien n'est supprimé : computeQualityStatus/computeCapaciteStatus/CAPACITES_DATA/
 // VAR_REL3/TFM/SYSTEMS/HYPO/SYS_COMPENSATIONS restent exactement tels quels, inchangés.
 
-// Qualité dont le nom correspond exactement à l'une des 8 qualités dotées d'un moteur HYP actif
-// (HYP_CSM_HYP_KEY, déjà défini pour HYP-CSM-01, réutilisé ici sans duplication) : son statut
-// affiché comme diagnostic est TOUJOURS fSc[qualité].status ; le résultat TFM/VAR_REL3 brut reste
-// disponible sous `tfmStatus`, jamais affiché comme diagnostic. Qualités sans moteur HYP (Contrôle
-// Frontal/Contrôle Sensoriel), et tout libellé purement TFM sans homonyme HYP ('Force maximale',
-// 'Propulsion', 'Contrôle moteur', 'Résistance neuromusculaire') : comportement inchangé, rien à
-// gater faute de source HYP à consulter pour ce nom exact.
+// Qualité dont le nom correspond (directement, ou via CAPACITE_QUALITY_HYP_ALIAS ci-dessous) à
+// l'une des 8 qualités dotées d'un moteur HYP actif (HYP_CSM_HYP_KEY, déjà défini pour HYP-CSM-01,
+// réutilisé ici sans duplication) : son statut affiché comme diagnostic est TOUJOURS
+// fSc[qualité-HYP].status ; le résultat TFM/VAR_REL3 brut reste disponible sous `tfmStatus`, jamais
+// affiché comme diagnostic. Qualités sans moteur HYP (Contrôle Frontal/Contrôle Sensoriel), et tout
+// libellé purement TFM sans équivalent HYP réel ('Propulsion', 'Contrôle moteur', 'Résistance
+// neuromusculaire') : comportement inchangé, rien à gater faute de source HYP à consulter pour ce
+// nom.
+// Alias de LECTURE explicite, un seul cas connu et démontré (mission
+// IMPLEMENTATION_RATIONALISATION_VUES_LOT1.md, Problème 2 ; AUDIT_RATIONALISATION_VUES_KINEXUS_V1.md,
+// constat 9.2) : CAPACITES_DATA nomme la qualité « Force maximale », HYP_CSM_HYP_KEY et
+// functionScores utilisent « Force ». Ne modifie ni CAPACITES_DATA ni HYP_CSM_HYP_KEY — sert
+// uniquement à retrouver le BON statut HYP pour un nom de qualité qui en désigne un autre.
+// Volontairement un alias explicite à un seul cas, PAS une normalisation générique
+// (normalizeQualityKey ne les unifierait pas — 'Force maximale' n'est pas une variante
+// d'accent/casse de 'Force', c'est un mot en plus) : un mapping flou risquerait de fusionner à
+// tort d'autres libellés purement TFM (Propulsion, Contrôle moteur, Résistance neuromusculaire)
+// qui n'ont, eux, réellement aucun équivalent HYP — vérifié explicitement, aucun alias créé pour
+// ces trois-là.
+var CAPACITE_QUALITY_HYP_ALIAS={'Force maximale':'Force'};
 function tfmQualityDiagnosticGate(fSc,quality,tfmStatus){
-  var hypGoverned=!!(fSc&&HYP_CSM_HYP_KEY.hasOwnProperty(quality)&&fSc[quality]);
+  var hypQuality=CAPACITE_QUALITY_HYP_ALIAS[quality]||quality;
+  var hypGoverned=!!(fSc&&HYP_CSM_HYP_KEY.hasOwnProperty(hypQuality)&&fSc[hypQuality]);
   return{
     tfmStatus:tfmStatus, // information TFM/VAR_REL3 secondaire — jamais supprimée, jamais affichée seule comme diagnostic pour une qualité HYP-gouvernée.
     hypGoverned:hypGoverned,
-    status:hypGoverned?fSc[quality].status:tfmStatus // diagnostic affiché : HYP si un moteur existe pour cette qualité, sinon TFM (hors périmètre HYP, inchangé).
+    status:hypGoverned?fSc[hypQuality].status:tfmStatus // diagnostic affiché : HYP (via l'alias si besoin) si un moteur existe pour cette qualité, sinon TFM (hors périmètre HYP, inchangé).
   };
 }
 
@@ -8808,7 +8848,11 @@ function ExpertView(props){
       function varMatchesQuality(v,q){
         var vr=VAR_REL3[v.testKey+'_'+v.kpi.key];
         if(!vr)return false;
-        return(vr.measures||[]).concat(vr.estimates||[]).some(function(m){return m.function===q;});
+        // Comparaison normalisée (accent/casse), pas stricte — VAR_REL3 mélange 'Mobilité'/
+        // 'Mobilite', 'Explosivité'/'Explosivite'... en interne (cf. normalizeQualityKey ci-dessus,
+        // AUDIT_RATIONALISATION_VUES_KINEXUS_V1.md §9). VAR_REL3 lui-même n'est jamais modifié.
+        var qKey=normalizeQualityKey(q);
+        return(vr.measures||[]).concat(vr.estimates||[]).some(function(m){return normalizeQualityKey(m.function)===qKey;});
       }
       var filteredVarRelKpis=varFilter==='Toutes'?varRelKpis:varRelKpis.filter(function(v){return varMatchesQuality(v,varFilter);});
       return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
