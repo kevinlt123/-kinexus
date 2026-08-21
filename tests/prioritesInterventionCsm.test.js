@@ -136,9 +136,9 @@ console.log('CAS 5 — une qualité HYP rouge + une qualité TFM orange hors HYP
     assert.deepStrictEqual(names(split.tfmOnly), ['Contrôle Frontal']);
   });
   var pdf = buildFullReportHtml('sportif', athlete, makeBilan(td), res);
-  test('PDF : Contrôle Frontal apparaît sous "Information TFM secondaire (hors HYP)", pas dans les cartes Déficits à investiguer', () => {
+  test('PDF : Contrôle Frontal apparaît sous "Information complémentaire (hors diagnostic clinique)", pas dans les cartes Déficits à investiguer', () => {
     var idxHyp = pdf.indexOf('Déficits à investiguer');
-    var idxTfm = pdf.indexOf('Information TFM secondaire (hors HYP)');
+    var idxTfm = pdf.indexOf('Information complémentaire (hors diagnostic clinique)');
     assert.ok(idxTfm > idxHyp);
     var hypSeg = pdf.slice(idxHyp, idxTfm);
     assert.ok(!hypSeg.includes('Contrôle Frontal'), 'Contrôle Frontal apparaît dans le bloc HYP');
@@ -192,10 +192,10 @@ console.log('CAS 8 — aucune qualité HYP objectivée');
     assert.strictEqual(split.tfmOnly.length, 0);
   });
   var pdf = buildFullReportHtml('sportif', athlete, makeBilan({}), res);
-  test('PDF : ni "Déficits à investiguer" ni "Priorités d\'intervention" ni "Information TFM secondaire" affichés', () => {
+  test('PDF : ni "Déficits à investiguer" ni "Priorités d\'intervention" ni "Information complémentaire" affichés', () => {
     assert.ok(!pdf.includes('Déficits à investiguer'));
     assert.ok(!pdf.includes("Priorités d'intervention"));
-    assert.ok(!pdf.includes('Information TFM secondaire'));
+    assert.ok(!pdf.includes('Information complémentaire'));
   });
 })();
 

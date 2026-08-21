@@ -4119,13 +4119,13 @@ function capaciteHTML(capResult){
     sub.qualites.forEach(function(q){
       var mark=q.status?(q.status==='vert'?'✓':'✗'):'○';
       var mcol=q.status?SC[q.status]:'#94A3B8';
-      var label=q.status?' ('+SL[q.status]+')':(q.hypGoverned?' (non déterminable — HYP)':' (non testé)');
+      var label=q.status?' ('+SL[q.status]+')':(q.hypGoverned?' (non déterminable)':' (non testé)');
       out+='<div style="font-size:7.8pt;color:#334155;margin-bottom:2px"><span style="color:'+mcol+';font-weight:700">'+mark+'</span> '+q.quality+label+'</div>';
       // Information TFM secondaire : affichée uniquement quand elle diverge de ce qui est montré
       // ci-dessus (diagnostic HYP) — jamais présentée sous le même badge/couleur qu'un diagnostic
       // (mission AUDIT_MIGRATION_TFM_HYP_CSM.md, Partie 3/4).
       if(q.hypGoverned&&q.tfmStatus!=null&&q.tfmStatus!==q.status){
-        out+='<div style="font-size:6.8pt;color:#94A3B8;margin:0 0 4px 16px;font-style:italic">Information relationnelle TFM (secondaire) : '+SL[q.tfmStatus]+' — ne constitue pas un diagnostic HYP.</div>';
+        out+='<div style="font-size:6.8pt;color:#94A3B8;margin:0 0 4px 16px;font-style:italic">Information complémentaire (secondaire) : '+SL[q.tfmStatus]+' — ne constitue pas un diagnostic clinique confirmé.</div>';
       }
     });
     out+='</div>';
@@ -4170,13 +4170,13 @@ function varRelHTML(testKey,kpiKey,testData,pop,age){
   var srcTag=rel.measuresSource==='document'?' (référentiel clinique)':' (calculé)';
   var out='<div>';
   if(rel.isRoot){out+='<div style="font-size:7.5pt;color:#2A9D8F;font-weight:700;margin-bottom:8px">⬤ Variable racine — aucune variable amont mesurée</div>';}
-  out+=section('Explained by (amont)',testChips(rel.explainedBy));
-  out+=section('Explains (aval)',testChips(rel.explains));
-  out+=section('Correlated with (liées)',testChips(rel.correlatedWith));
-  out+=section('Refined by (même test)',kpiChips(rel.refinedBy));
-  out+=section('Measures'+srcTag,qualChips(rel.measures));
-  out+=section('Estimates'+srcTag,qualChips(rel.estimates));
-  out+=section('Influences (mécanismes)',mechChips(rel.influences));
+  out+=section('Expliqué par (amont)',testChips(rel.explainedBy));
+  out+=section('Peut contribuer à (aval)',testChips(rel.explains));
+  out+=section('Associé à (liées)',testChips(rel.correlatedWith));
+  out+=section('Précisé par (même test)',kpiChips(rel.refinedBy));
+  out+=section('Mesure'+srcTag,qualChips(rel.measures));
+  out+=section('Estime'+srcTag,qualChips(rel.estimates));
+  out+=section('Influence (mécanismes)',mechChips(rel.influences));
   out+='</div>';
   return out;
 }
@@ -4271,6 +4271,21 @@ function findHypQualityRelation(qualityA,qualityB){
     return(r.explains===qualityA&&r.explained===qualityB)||(r.explains===qualityB&&r.explained===qualityA);
   })[0]||null;
 }
+// Nettoyage de présentation (mission IMPLEMENTATION_PRODUCTISATION_CLINIQUE_LOT1.md) : extrait,
+// quand il existe, le fragment clinique déjà rédigé entre guillemets français dans un champ `via`
+// de HYP_QUALITY_RELATIONS (ex. 'wblt_distance (explicative « mobilité de cheville » de
+// HYP-STA-01)' -> 'mobilité de cheville'). HYP_QUALITY_RELATIONS n'est jamais modifié — lecture
+// seule, utilisée uniquement pour construire une phrase d'affichage qui n'expose jamais le nom de
+// variable technique ni l'identifiant du moteur HYP. Retourne null si le format ne contient pas de
+// fragment extractible (cas réel : 4 des 8 relations aujourd'hui) — l'appelant doit alors utiliser
+// une formulation de repli au niveau de la qualité, jamais afficher `via` brut.
+function hypRelationGloss(via){
+  var m=via&&via.match(/«\s*([^»]+?)\s*»/);
+  return m?m[1]:null;
+}
+// Élision "de"/"d'" devant une qualité commençant par une voyelle (Absorption, Explosivité,
+// Endurance) — pure grammaire d'affichage, aucune donnée clinique concernée.
+function deElided(mot){return/^[AEIOUÉÈÊÀÂÎÔÛ]/i.test(mot)?"d'"+mot:'de '+mot;}
 
 // ── NARRATION MULTI-QUALITÉS — jamais causale sans relation HYP documentée (mission de
 // normalisation architecturale, §7-§10, RÈGLE FONDAMENTALE : "aucune couche ne doit produire une
@@ -4304,7 +4319,11 @@ function buildMultiQualityNarrative(pri){
       var explained=relation.explains===top.fonction?second:top;
       var explainerLabel=explainer.contributeurPrincipal?explainer.contributeurPrincipal.toLowerCase():explainer.fonction.toLowerCase();
       conclusion='Le bilan met en évidence des déficits concordants '+(top.contributeurPrincipal?'du '+topLabel:'de '+top.fonction.toLowerCase())+' et de '+second.fonction.toLowerCase()+'.';
-      consequences='Le déficit de '+explainerLabel+' peut constituer une hypothèse explicative compatible avec le déficit de '+explained.fonction.toLowerCase()+' observé ('+relation.via+'), sans en établir la cause. Ces déficits concordants augmentent le risque lors des situations de charge élevée et limitent la performance globale.';
+      // Mission IMPLEMENTATION_PRODUCTISATION_CLINIQUE_LOT1.md : plus d'interpolation brute de
+      // relation.via (nom de variable + identifiant HYP-XXX-01) — hypRelationGloss() en extrait le
+      // seul fragment clinique déjà rédigé entre guillemets, jamais la variable ni le code moteur.
+      var relGloss=hypRelationGloss(relation.via);
+      consequences='Le déficit de '+explainerLabel+' peut constituer une hypothèse explicative compatible avec le déficit '+deElided(explained.fonction.toLowerCase())+' observé'+(relGloss?' ('+relGloss+')':'')+', sans en établir la cause. Ces déficits concordants augmentent le risque lors des situations de charge élevée et limitent la performance globale.';
     }else{
       conclusion='Le bilan met en évidence des déficits concordants '+(top.contributeurPrincipal?'du '+topLabel:'de '+top.fonction.toLowerCase())+' et de '+second.fonction.toLowerCase()+'.';
       consequences='Les déficits de '+top.fonction.toLowerCase()+' et de '+second.fonction.toLowerCase()+' présentent des profils concordants, sans relation explicative documentée entre eux à ce jour ; ils augmentent conjointement le risque lors des situations de charge élevée et limitent la performance globale.';
@@ -5802,7 +5821,7 @@ function hypObjectForQuality(fSc,quality){
 // la phrase `HYPO[fn](main)` existante (laissée mot pour mot inchangée pour tous les autres cas —
 // rôle diagnostique/confirmatif, ou aucun contributeur, où `HYPO` gère déjà nativement `m=null`).
 function tfmSecondaryContributorNote(fn,sys){
-  return'Élément relationnel TFM associé, à titre explicatif — ne constitue pas une preuve diagnostique de '+fn.toLowerCase()+(sys?' ('+sys.toLowerCase()+')':'')+'.';
+  return'Élément relationnel complémentaire, à titre explicatif — ne constitue pas une preuve diagnostique de '+fn.toLowerCase()+(sys?' ('+sys.toLowerCase()+')':'')+'.';
 }
 
 // ── Présentation HYP-CSM-01 (mission AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md) ─────────────────
@@ -5826,29 +5845,61 @@ var CSM_STATE_LABEL={non_determinable:'Non déterminable',absente:'Absente',susp
 // le champ reste tel quel dans les données (édition praticien via "Modifier le rapport" toujours
 // possible, cf. buildSportifReport qui n'appelle cette fonction que lorsqu'aucune surcharge
 // praticien n'existe — voir Partie 8/IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md).
+// Nettoyage de présentation (mission IMPLEMENTATION_PRODUCTISATION_CLINIQUE_LOT1.md) : reconstruit
+// la phrase d'une relation explicative (csm.explanatoryHypotheses, toujours level==='explanatory_
+// hypothesis') sans jamais exposer le nom de variable technique ni l'identifiant HYP-XXX-01
+// présents dans `via` (HYP_QUALITY_RELATIONS, non modifié). rel.narrative (calculé par CSM, non
+// modifié) reste la donnée de référence, jamais réécrite ; seule sa restitution change. Conserve
+// exactement le même degré de prudence clinique ("peut constituer une hypothèse explicative
+// possible", "sans en établir la cause") — jamais transformé en causalité.
+function csmCleanExplanatoryText(rel){
+  var gloss=hypRelationGloss(rel.via);
+  if(gloss)return'La '+gloss+' peut constituer une hypothèse explicative possible du déficit '+deElided(rel.explained)+', sans en établir la cause.';
+  return'Le déficit '+deElided(rel.explains)+' constitue une hypothèse explicative possible du déficit '+deElided(rel.explained)+', sans en établir la cause.';
+}
 function csmSafeQualityNote(quality,csm){
   if(!csm||!csm.qualities||!csm.qualities[quality]){
     // Qualité non couverte par un moteur HYP (Contrôle Frontal, Contrôle Sensoriel) : même esprit
     // que tfmSecondaryContributorNote, jamais le texte causal HYPO.
-    return'Élément relationnel TFM associé, à titre informatif — ne constitue pas un diagnostic HYP pour '+quality.toLowerCase()+'.';
+    return'Élément relationnel complémentaire, à titre informatif — ne constitue pas un diagnostic clinique confirmé pour '+quality.toLowerCase()+'.';
   }
   var q=csm.qualities[quality];
   if(q.nonDeterminable)return CSM_STATE_LABEL.non_determinable+' avec les données actuellement disponibles pour '+quality.toLowerCase()+'.';
   if(q.suspected)return csmSuspectedNote(quality);
   if(q.objectified){
     var rels=csm.relationships||[];
-    var rel=rels.filter(function(r){return r.level==='explanatory_hypothesis'&&(r.explains===quality||r.explained===quality);})[0]
-      ||rels.filter(function(r){return r.level==='concordant_no_relation'&&(r.qualityA===quality||r.qualityB===quality);})[0];
-    if(rel)return rel.narrative;
-    return'Déficit objectivé par le moteur HYP dédié ('+(q.hypId||'')+') — voir la Synthèse clinique pour le détail.';
+    var explRel=rels.filter(function(r){return r.level==='explanatory_hypothesis'&&(r.explains===quality||r.explained===quality);})[0];
+    if(explRel)return csmCleanExplanatoryText(explRel);
+    var concRel=rels.filter(function(r){return r.level==='concordant_no_relation'&&(r.qualityA===quality||r.qualityB===quality);})[0];
+    if(concRel)return concRel.narrative;
+    return'Déficit objectivé par les résultats des tests évalués — voir la Synthèse clinique pour le détail.';
   }
-  return'Élément relationnel TFM associé, à titre informatif — ne constitue pas un diagnostic HYP pour '+quality.toLowerCase()+'.';
+  return'Élément relationnel complémentaire, à titre informatif — ne constitue pas un diagnostic clinique confirmé pour '+quality.toLowerCase()+'.';
 }
 // Formulation courte, unique, réutilisée partout où l'état "suspectee" doit être présenté (Problème
 // 1) : « un signal existe, la convergence diagnostique n'est pas suffisante pour retenir le
 // déficit » — jamais transformé en déficit confirmé, jamais en non déterminable.
 function csmSuspectedNote(quality){
   return'Un premier signal existe pour '+quality.toLowerCase()+', mais la convergence diagnostique n\'est pas suffisante pour retenir le déficit.';
+}
+// Nettoyage de présentation des textes déjà rédigés par CSM (computeHypClinicalSynthesis01 /
+// computeHypClinicalSynthesisNarrative, non modifiés — mission IMPLEMENTATION_PRODUCTISATION_
+// CLINIQUE_LOT1.md) : remplace uniquement les fragments techniques identifiés par un remplacement
+// exact, jamais une regex générique sur "HYP"/"CSM" qui risquerait de mal reformuler une phrase
+// clinique. Si un fragment n'est pas trouvé (texte CSM inchangé ailleurs), la chaîne d'origine est
+// rendue telle quelle plutôt que de risquer une substitution incorrecte.
+var CSM_TEXT_CLEANUPS=[
+  ["CSM ne détermine","Cette synthèse ne détermine"],
+  ["objectivé par les moteurs HYP avec les données actuellement disponibles","objectivé avec les données actuellement disponibles"],
+  ["Toutes les qualités couvertes par un moteur HYP ont pu être évaluées","Toutes les qualités ont pu être évaluées"],
+  ["avec les règles HYP actuelles","avec les règles cliniques actuelles"],
+  ["avec les données et règles HYP actuelles","avec les données et règles cliniques actuelles"],
+  ["réellement objectivées par leur propre moteur HYP — jamais à partir d'un score ou d'un poids TFM seul.","réellement objectivées de façon indépendante — jamais à partir d'un simple poids relationnel."],
+  ["Les qualités non couvertes par un moteur HYP (Contrôle Frontal, Contrôle Sensoriel) ne sont pas synthétisées ici — hors périmètre du modèle HYP V1 (HYP-CSM-01 lui-même reste une synthèse des 8 qualités HYP, pas une 9e qualité).","Les qualités Contrôle Frontal et Contrôle Sensoriel ne sont pas synthétisées ici — hors périmètre de cette synthèse clinique, qui couvre les 8 qualités fonctionnelles évaluées."]
+];
+function csmSafeText(text){
+  if(!text)return text;
+  return CSM_TEXT_CLEANUPS.reduce(function(t,pair){return t.indexOf(pair[0])>=0?t.split(pair[0]).join(pair[1]):t;},text);
 }
 // Problème 4 : distingue, pour une qualité non déterminable, "aucune mesure exploitable" de "des
 // mesures existent mais aucune norme ne permet de les classifier" — lecture pure de
@@ -6836,7 +6887,7 @@ function buildSportifReport(athlete,bilan,res){
   var prioSplit=priHypObjectifiedSplit(pri,res.clinicalSynthesis);
   if(prioSplit.hyp.length>0){
     html+='<div style="margin-bottom:'+(prioSplit.tfmOnly.length?12:28)+'px">'+sectionTitle(3,'Déficits à investiguer')
-      +'<div style="font-size:8pt;color:#5B7A8C;margin-bottom:14px">Qualités objectivées par un moteur HYP — même niveau de priorité clinique, aucun classement entre elles.</div>'
+      +'<div style="font-size:8pt;color:#5B7A8C;margin-bottom:14px">Qualités objectivées — même niveau de priorité clinique, aucun classement entre elles.</div>'
       +'<div style="display:grid;grid-template-columns:repeat('+prioSplit.hyp.length+',1fr);gap:20px">'
       +prioSplit.hyp.map(function(p){
         var testsHtml=(p.deficitTests||[]).slice(0,3).map(function(dt){return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#F3F6F8;color:#132B3A;font-size:7pt;font-weight:600;margin:2px 4px 0 0">'+dt.label+'</span>';}).join('');
@@ -6873,7 +6924,7 @@ function buildSportifReport(athlete,bilan,res){
       +'</div></div>';
   }
   if(prioSplit.tfmOnly.length>0){
-    html+='<div style="margin-bottom:28px">'+subtleHeader('Information TFM secondaire (hors HYP)')
+    html+='<div style="margin-bottom:28px">'+subtleHeader('Information complémentaire (hors diagnostic clinique)')
       +'<div style="display:flex;flex-wrap:wrap;gap:8px">'
       +prioSplit.tfmOnly.map(function(p){return '<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;background:#F3F6F8;border:1px solid #E1E8EE;font-size:8pt;color:#132B3A"><span style="width:8px;height:8px;border-radius:50%;background:'+colMap[p.status]+'"></span>'+p.fonction+(p.contributeurPrincipal?' · '+p.contributeurPrincipal:'')+'</span>';}).join('')
       +'</div></div>';
@@ -6894,7 +6945,7 @@ function buildSportifReport(athlete,bilan,res){
     // français clinique par CSM, cf. computeHypClinicalSynthesisNarrative — non touché).
     var csmDeficitsTxt=csmPdf.objectified.length
       ?'Un déficit est objectivé pour : '+csmPdf.objectified.map(function(o){return o.quality+' ('+(CSM_STATE_LABEL[o.state]||o.state).toLowerCase()+')';}).join(', ')+'.'
-      :csmPdf.narrative.deficitsObjectives;
+      :csmSafeText(csmPdf.narrative.deficitsObjectives);
     // Problème 1 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) : csm.suspected existe déjà (calculé par
     // computeHypClinicalSynthesis01, non modifié) mais n'était lu par aucun consommateur UI/PDF —
     // ajout strictement additif, lecture seule.
@@ -6912,14 +6963,14 @@ function buildSportifReport(athlete,bilan,res){
         (csmPdf.objectified.length?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">'+csmPdf.objectified.map(function(o){return badge(o.status,o.quality);}).join('')+'</div>':'')
         +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:10px">'+csmDeficitsTxt+'</div>'
         +(csmSuspectedTxt?subtleHeader('Qualités suspectées (preuve partielle)')+'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:14px">'+csmSuspectedTxt+'</div>':'')
-        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:2px">'+csmPdf.narrative.qualitesNonDeterminables+'</div>'
-        +(csmPartialEvidenceQualities.length?'<div style="font-size:7.5pt;color:#94A3B8;line-height:1.6;margin-bottom:14px;font-style:italic">Diagnostic non déterminable avec les données normatives actuellement disponibles pour : '+csmPartialEvidenceQualities.join(', ')+'.</div>':'<div style="margin-bottom:14px"></div>')
+        +'<div style="font-size:9pt;color:#132B3A;line-height:1.7;margin-bottom:2px">'+csmSafeText(csmPdf.narrative.qualitesNonDeterminables)+'</div>'
+        +(csmPartialEvidenceQualities.length?'<div style="font-size:7.5pt;color:#94A3B8;line-height:1.6;margin-bottom:14px;font-style:italic">Résultat non déterminable pour '+csmPartialEvidenceQualities.join(', ')+' : les mesures sont disponibles, mais les références nécessaires à la confirmation de '+(csmPartialEvidenceQualities.length>1?'ces qualités':'cette qualité')+' ne sont pas actuellement exploitables dans cette population.</div>':'<div style="margin-bottom:14px"></div>')
         // Relation explicative (registre documenté, cf. HYP_QUALITY_RELATIONS) et concordance
         // (aucune relation documentée) restent deux registres de preuve distincts — jamais
         // fusionnés dans le même paragraphe (mission AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md §3).
-        +(csmPdf.explanatoryHypotheses.length?subtleHeader('Relations explicatives possibles')+csmPdf.explanatoryHypotheses.map(function(rel){return '<div style="font-size:8.5pt;color:#132B3A;line-height:1.6;margin-bottom:6px;padding-left:10px;border-left:2px solid #2A9D8F">'+rel.narrative+'</div>';}).join(''):'')
+        +(csmPdf.explanatoryHypotheses.length?subtleHeader('Relations explicatives possibles')+csmPdf.explanatoryHypotheses.map(function(rel){return '<div style="font-size:8.5pt;color:#132B3A;line-height:1.6;margin-bottom:6px;padding-left:10px;border-left:2px solid #2A9D8F">'+csmCleanExplanatoryText(rel)+'</div>';}).join(''):'')
         +(csmConcordances.length?subtleHeader('Concordances (sans relation documentée)')+csmConcordances.map(function(r){return '<div style="font-size:8.5pt;color:#5B7A8C;line-height:1.6;margin-bottom:6px">'+r.narrative+'</div>';}).join(''):'')
-        +'<div style="font-size:7.5pt;color:#94A3B8;line-height:1.6;margin-top:14px;padding-top:12px;border-top:1px solid #F3F6F8">'+csmPdf.narrative.limites+'</div>'
+        +'<div style="font-size:7.5pt;color:#94A3B8;line-height:1.6;margin-top:14px;padding-top:12px;border-top:1px solid #F3F6F8">'+csmSafeText(csmPdf.narrative.limites)+'</div>'
       )
       +'</div>';
   }
@@ -7217,7 +7268,7 @@ function buildExpertReport(athlete,bilan,res){
     // explicative et concordance plutôt que de les fusionner dans un seul paragraphe.
     var csmExpDeficitsTxt=csmExp.objectified.length
       ?'Un déficit est objectivé pour : '+csmExp.objectified.map(function(o){return o.quality+' ('+(CSM_STATE_LABEL[o.state]||o.state).toLowerCase()+')';}).join(', ')+'.'
-      :csmExp.narrative.deficitsObjectives;
+      :csmSafeText(csmExp.narrative.deficitsObjectives);
     // Problèmes 1/4 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) — mêmes ajouts additifs que
     // buildSportifReport (commentaire détaillé à cet endroit) : csm.suspected et distinction
     // "aucune donnée" vs "données normatives insuffisantes" au sein de non-déterminable.
@@ -7233,17 +7284,17 @@ function buildExpertReport(athlete,bilan,res){
       html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Qualités suspectées (preuve partielle)</div>';
       html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333">'+csmExpSuspectedTxt+'</p>';
     }
-    html+='<p style="margin:0 0 2px;font-size:9.5pt;color:#333">'+csmExp.narrative.qualitesNonDeterminables+'</p>';
-    if(csmExpPartialEvidenceQualities.length)html+='<p style="margin:0 0 10px;font-size:8pt;color:#888;font-style:italic">Diagnostic non déterminable avec les données normatives actuellement disponibles pour : '+csmExpPartialEvidenceQualities.join(', ')+'.</p>';
+    html+='<p style="margin:0 0 2px;font-size:9.5pt;color:#333">'+csmSafeText(csmExp.narrative.qualitesNonDeterminables)+'</p>';
+    if(csmExpPartialEvidenceQualities.length)html+='<p style="margin:0 0 10px;font-size:8pt;color:#888;font-style:italic">Résultat non déterminable pour '+csmExpPartialEvidenceQualities.join(', ')+' : les mesures sont disponibles, mais les références nécessaires à la confirmation de '+(csmExpPartialEvidenceQualities.length>1?'ces qualités':'cette qualité')+' ne sont pas actuellement exploitables dans cette population.</p>';
     if(csmExp.explanatoryHypotheses.length){
       html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Relations explicatives possibles</div>';
-      csmExp.explanatoryHypotheses.forEach(function(rel){html+='<p style="margin:0 0 6px;font-size:9pt;color:#333;padding-left:8px;border-left:2px solid #2A9D8F">'+rel.narrative+'</p>';});
+      csmExp.explanatoryHypotheses.forEach(function(rel){html+='<p style="margin:0 0 6px;font-size:9pt;color:#333;padding-left:8px;border-left:2px solid #2A9D8F">'+csmCleanExplanatoryText(rel)+'</p>';});
     }
     if(csmExpConcordances.length){
       html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">Concordances (sans relation documentée)</div>';
       csmExpConcordances.forEach(function(r){html+='<p style="margin:0 0 6px;font-size:9pt;color:#666">'+r.narrative+'</p>';});
     }
-    html+='<p style="margin:8px 0 0;font-size:8pt;color:#888;font-style:italic">'+csmExp.narrative.limites+'</p>';
+    html+='<p style="margin:8px 0 0;font-size:8pt;color:#888;font-style:italic">'+csmSafeText(csmExp.narrative.limites)+'</p>';
   }
   // KPI page
   html+='<div class="print-page">';
@@ -8231,11 +8282,11 @@ function AnalyseView(props){
               return h('div',null,
                 split.hyp.length>0&&h('div',{style:{marginBottom:split.tfmOnly.length?12:0}},
                   h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Déficits à investiguer'),
-                  h('div',{style:{color:C.muted,fontSize:10.5,marginBottom:8}},'Qualités objectivées par un moteur HYP — même niveau de priorité clinique, aucun classement entre elles.'),
+                  h('div',{style:{color:C.muted,fontSize:10.5,marginBottom:8}},'Qualités objectivées — même niveau de priorité clinique, aucun classement entre elles.'),
                   h('div',{style:{display:'flex',flexDirection:'column',gap:8}},split.hyp.map(row))
                 ),
                 split.tfmOnly.length>0&&h('div',null,
-                  h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Information TFM secondaire (hors HYP)'),
+                  h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Information complémentaire (hors diagnostic clinique)'),
                   h('div',{style:{display:'flex',flexDirection:'column',gap:8}},split.tfmOnly.map(row))
                 )
               );
@@ -8716,7 +8767,7 @@ function ExpertView(props){
         h(Card,{pad:14},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités objectivement déficitaires'),
           csm.objectified.length===0
-            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — aucun déficit n\'est objectivé par les moteurs HYP avec les données actuellement disponibles.')
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — aucun déficit n\'est objectivé avec les données actuellement disponibles.')
             :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.objectified.map(function(o){return h('div',{key:o.quality,style:{display:'flex',alignItems:'center',gap:8}},h(Badge,{status:o.status,small:true}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},o.quality),h('span',{style:{color:C.muted,fontSize:11}},CSM_STATE_LABEL[o.state]||o.state));}))
         ),
         h(Card,{pad:14},
@@ -8730,14 +8781,14 @@ function ExpertView(props){
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités non déterminables'),
           h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Non déterminable n\'équivaut jamais à normal.'),
           csm.nonDeterminable.length===0
-            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — toutes les qualités couvertes par un moteur HYP ont pu être évaluées.')
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — toutes les qualités couvertes par le diagnostic clinique ont pu être évaluées.')
             :h('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},csm.nonDeterminable.map(function(n){return h('span',{key:n.quality,style:{padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:11}},n.quality+(csmNonDeterminableHasPartialEvidence(n.quality,csm)?' · données normatives insuffisantes':''));}))
         ),
         h(Card,{pad:14},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Relations explicatives possibles'),
           csm.explanatoryHypotheses.length===0
             ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — pas de relation documentée activable entre les qualités actuellement objectivées.')
-            :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},csm.explanatoryHypotheses.map(function(rel,i){return h('div',{key:i,style:{fontSize:12,color:C.text,lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid '+C.teal}},rel.narrative);}))
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},csm.explanatoryHypotheses.map(function(rel,i){return h('div',{key:i,style:{fontSize:12,color:C.text,lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid '+C.teal}},csmCleanExplanatoryText(rel));}))
         ),
         h(Card,{pad:14},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Concordances (sans relation documentée)'),
@@ -8747,7 +8798,7 @@ function ExpertView(props){
         ),
         h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limites de cette synthèse'),
-          h('ul',{style:{margin:0,paddingLeft:16,color:C.muted,fontSize:11,lineHeight:1.6}},csm.limitations.map(function(l,i){return h('li',{key:i},l);}))
+          h('ul',{style:{margin:0,paddingLeft:16,color:C.muted,fontSize:11,lineHeight:1.6}},csm.limitations.map(function(l,i){return h('li',{key:i},csmSafeText(l));}))
         )
       );
     })(),
@@ -8761,7 +8812,7 @@ function ExpertView(props){
       }
       var filteredVarRelKpis=varFilter==='Toutes'?varRelKpis:varRelKpis.filter(function(v){return varMatchesQuality(v,varFilter);});
       return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
-      h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:2}},'Relations variable-à-variable pour chacune des 283 variables du logiciel : variables amont/aval, variables corrélées, variables du même test, qualités mesurées/estimées et mécanismes biomécaniques impactés. Poids calculés automatiquement (TFM + hiérarchie des tests), sauf Measures/Estimates qui viennent du référentiel clinique fourni quand disponible — à valider par l\'équipe clinique.'),
+      h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:2}},'Relations variable-à-variable pour chacune des 283 variables du logiciel : variables amont/aval, variables corrélées, variables du même test, qualités mesurées/estimées et mécanismes biomécaniques impactés. Poids calculés automatiquement (TFM + hiérarchie des tests), sauf Mesure/Estime qui viennent du référentiel clinique fourni quand disponible.'),
       h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:4}},['Toutes'].concat(HYP_CSM_QUALITIES).map(function(q){return h('button',{key:q,onClick:function(){setVarFilter(q);},style:{padding:'4px 11px',borderRadius:20,border:'1px solid '+(varFilter===q?C.teal:C.border),background:varFilter===q?C.teal:'transparent',color:varFilter===q?'#fff':C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},q);})),
       filteredVarRelKpis.length===0&&h('div',{style:{color:C.muted,fontSize:12}},varRelKpis.length===0?'Aucune variable active.':'Aucune variable active liée à '+varFilter+'.'),
       filteredVarRelKpis.map(function(v){
@@ -8793,7 +8844,7 @@ function ExpertView(props){
       // Problème 2) : cet onglet n'affiche plus le texte legacy auto-généré `HYPO[fn]` (registre
       // causal non hedgé), remplacé par csmSafeQualityNote() — jamais de conclusion plus forte que
       // ce que HYP/CSM autorise pour la qualité concernée.
-      pri.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontStyle:'italic',marginBottom:2}},'Formulations alignées sur la Synthèse clinique (HYP/CSM).'),
+      pri.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontStyle:'italic',marginBottom:2}},'Formulations alignées sur la Synthèse clinique.'),
       pri.length===0&&h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.'),pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h(Badge,{status:p.status,small:true}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},'« '+csmSafeQualityNote(p.fonction,res.clinicalSynthesis)+' »'),p.contributeurPrincipal&&h('div',{style:{color:C.muted,fontSize:11,marginTop:6}},'Contributeur : ',h('span',{style:{color:C.tealLight}},p.contributeurPrincipal),p.contributeurSecondaire&&h('span',{style:{color:C.muted}},' · '+p.contributeurSecondaire)));})),
     tab==='orientations'&&(function(){
       // Même principe que "Déficits à investiguer" (mission IMPLEMENTATION_FINAL_PRIORITES_CSM.md) :
@@ -8811,13 +8862,13 @@ function ExpertView(props){
       }
       return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
         split.hyp.map(card),
-        split.tfmOnly.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:split.hyp.length?4:0}},'Information TFM secondaire (hors HYP)'),
+        split.tfmOnly.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:split.hyp.length?4:0}},'Information complémentaire (hors diagnostic clinique)'),
         split.tfmOnly.map(card)
       );
     })(),
     tab==='couverture'&&h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}},FUNCTIONS.map(function(f){var sc=fSc[f];return h('div',{key:f,style:{background:C.card,border:'1px solid '+C.border,borderRadius:8,padding:'10px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}},h('span',{style:{color:C.text,fontSize:12}},f),sc?h('div',{style:{display:'flex',alignItems:'center',gap:6}},h('div',{style:{height:4,width:40,background:C.surface,borderRadius:2,overflow:'hidden'}},h('div',{style:{height:'100%',width:sc.coverage+'%',background:sc.coverage>=75?C.vert:sc.coverage>=50?C.jaune:C.orange,borderRadius:2}})),h('span',{style:{color:C.muted,fontSize:10}},sc.coverage+'%')):h('span',{style:{color:C.muted,fontSize:10}},'—'));})),
     tab==='raisonnement'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
-      h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:4}},'Relations structure → qualité issues du référentiel de raisonnement clinique KINEXUS. Les champs Contribution / Confiance / Spécificité sont des valeurs proposées par KINEXUS à partir du référentiel (non renseignées dans le document source) et doivent être validées par l\'équipe clinique.'),
+      h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:4}},'Relations structure → qualité issues du référentiel de raisonnement clinique KINEXUS. Les champs Contribution / Confiance / Spécificité sont des valeurs proposées par KINEXUS à partir du référentiel (non renseignées dans le document source) — il s\'agit d\'estimations, pas de mesures brutes.'),
       SYSTEMS.filter(function(sys){return STR_QUAL_DETAIL[sys];}).map(function(sys){
         var det=STR_QUAL_DETAIL[sys];
         var comp=SYS_COMPENSATIONS[sys];
