@@ -1279,7 +1279,16 @@ var NORM_POPULATIONS=[
   {key:'allied_health_m',label:'Allied Health / Clinique — Homme (par âge)'},
   {key:'allied_health_f',label:'Allied Health / Clinique — Femme (par âge)'},
   {key:'endurance_m',label:'Sports d\'endurance — Homme'},
-  {key:'endurance_f',label:'Sports d\'endurance — Femme'}
+  {key:'endurance_f',label:'Sports d\'endurance — Femme'},
+  // Isometric Belt Squat (VALD 2026, source_id=BELT_SQUAT_PROPOSAL_2026) — 6 populations DIRECT_BELT_SQUAT,
+  // voir NORMS_V2_BELT_SQUAT ci-dessous. Clé = population_vald+sexe+niveau+sport exacts de la source,
+  // jamais une clé ambiguë du type "Rugby" seul (4 des 6 populations sont Rugby, distinguées ici).
+  {key:'belt_netball_super_league_f',label:'Isometric Belt Squat — Netball Super League (Femme, Elite, Netball)'},
+  {key:'belt_rugby_international_f',label:'Isometric Belt Squat — Rugby International (Femme, International, Rugby)'},
+  {key:'belt_soccer_league2_m',label:'Isometric Belt Squat — Soccer League 2 (Homme, Professionnel, Football)'},
+  {key:'belt_rugby_u18_schools_colleges_m',label:'Isometric Belt Squat — Rugby U18 Schools & Colleges (Homme, U18, Rugby)'},
+  {key:'belt_rugby_u18_regional_academy_m',label:'Isometric Belt Squat — U18 Regional Academy (Homme, Academy U18, Rugby)'},
+  {key:'belt_rugby_senior_professional_m',label:'Isometric Belt Squat — Senior Professional (Homme, Professionnel, Rugby)'}
 ];
 var NORM_SOURCES={
   foot_m_senior:'VALD Normative Data Report — Premier League 2025/26 (in-season, hommes 19-40 ans)',
@@ -1339,7 +1348,13 @@ var NORM_SOURCES={
   allied_health_m:'VALD Normative Data Report — Allied Health / ForceDecks Latest (hommes, par tranche d\'âge)',
   allied_health_f:'VALD Normative Data Report — Allied Health / ForceDecks Latest (femmes, par tranche d\'âge)',
   endurance_m:'VALD Normative Data Report — Endurance Sports (hommes)',
-  endurance_f:'VALD Normative Data Report — Endurance Sports (femmes)'
+  endurance_f:'VALD Normative Data Report — Endurance Sports (femmes)',
+  belt_netball_super_league_f:'VALD 2026 — Isometric Belt Squat, Netball Super League (source_id=BELT_SQUAT_PROPOSAL_2026 ; genou 120–140°, tronc vertical, 3 essais max ; voir KINEXUS_NORMS_V2_MASTER.xlsx / NORMS_V2_BELT_SQUAT)',
+  belt_rugby_international_f:'VALD 2026 — Isometric Belt Squat, Rugby International (source_id=BELT_SQUAT_PROPOSAL_2026 ; genou 120–140°, tronc vertical, 3 essais max ; voir KINEXUS_NORMS_V2_MASTER.xlsx / NORMS_V2_BELT_SQUAT)',
+  belt_soccer_league2_m:'VALD 2026 — Isometric Belt Squat, Soccer League 2 (source_id=BELT_SQUAT_PROPOSAL_2026 ; genou 120–140°, tronc vertical, 3 essais max ; voir KINEXUS_NORMS_V2_MASTER.xlsx / NORMS_V2_BELT_SQUAT)',
+  belt_rugby_u18_schools_colleges_m:'VALD 2026 — Isometric Belt Squat, Rugby U18 Schools & Colleges (source_id=BELT_SQUAT_PROPOSAL_2026 ; genou 120–140°, tronc vertical, 3 essais max ; voir KINEXUS_NORMS_V2_MASTER.xlsx / NORMS_V2_BELT_SQUAT)',
+  belt_rugby_u18_regional_academy_m:'VALD 2026 — Isometric Belt Squat, U18 Regional Academy (source_id=BELT_SQUAT_PROPOSAL_2026 ; genou 120–140°, tronc vertical, 3 essais max ; voir KINEXUS_NORMS_V2_MASTER.xlsx / NORMS_V2_BELT_SQUAT)',
+  belt_rugby_senior_professional_m:'VALD 2026 — Isometric Belt Squat, Senior Professional (source_id=BELT_SQUAT_PROPOSAL_2026 ; genou 120–140°, tronc vertical, 3 essais max ; voir KINEXUS_NORMS_V2_MASTER.xlsx / NORMS_V2_BELT_SQUAT)'
 };
 // Percentile bands [p5,p25,p50,p75,p95], toutes en "plus haut = mieux"
 var NORMS={
@@ -1468,8 +1483,67 @@ var NORMS={
     cmj_rsi_mod:[{maxAge:20,vals:[0.12,0.26,0.34,0.45,0.65]},{maxAge:30,vals:[0.10,0.24,0.35,0.47,0.67]},{maxAge:40,vals:[0.08,0.19,0.28,0.39,0.63]},{maxAge:50,vals:[0.06,0.16,0.24,0.34,0.61]},{maxAge:60,vals:[0.06,0.14,0.21,0.30,0.54]},{maxAge:70,vals:[0.05,0.13,0.23,0.43,0.56]},{maxAge:999,vals:[0.04,0.08,0.13,0.17,0.26]}]
   },
   endurance_m:{cmj_peak_power:[36,50,55,61,73],cmj_height:[21,35,39,44,55],cmj_ft_ct_ratio:[0.45,0.66,0.75,0.86,1.07]},
-  endurance_f:{cmj_peak_power:[31,41,45,50,67],cmj_height:[16,26,29,33,45],cmj_ft_ct_ratio:[0.37,0.55,0.63,0.72,1.09]}
+  endurance_f:{cmj_peak_power:[31,41,45,50,67],cmj_height:[16,26,29,33,45],cmj_ft_ct_ratio:[0.37,0.55,0.63,0.72,1.09]},
+  // Isometric Belt Squat — DIRECT_BELT_SQUAT (VALD 2026, source_id=BELT_SQUAT_PROPOSAL_2026).
+  // Valeurs P5/P25/P50/P75/P95 strictement identiques à KINEXUS_NORMS_V2_MASTER.xlsx /
+  // NORMS_V2_BELT_SQUAT, aucune conversion/interpolation. Distinct des 15 populations
+  // iso_belt_squat_n/nkg ci-dessus (fd_amfootball...fd_hockey_f, general_m/f), qui restent un proxy
+  // IMTP inchangé — voir NORMS_MAPPING_TYPE plus bas pour la distinction explicite PROXY_IMTP vs
+  // DIRECT_BELT_SQUAT.
+  belt_netball_super_league_f:{iso_belt_squat_n:[1833,2170,2913,3293,4921],iso_belt_squat_nkg:[36.2,41.0,44.4,48.6,65.0]},
+  belt_rugby_international_f:{iso_belt_squat_n:[3253,3842,4695,5766,6455],iso_belt_squat_nkg:[51.6,57.5,66.3,77.7,92.8]},
+  belt_soccer_league2_m:{iso_belt_squat_n:[3043,3519,4043,4889,5798],iso_belt_squat_nkg:[46.9,53.8,63.2,72.8,76.0]},
+  belt_rugby_u18_schools_colleges_m:{iso_belt_squat_n:[2630,3529,4271,5177,6197],iso_belt_squat_nkg:[42.2,51.3,59.6,69.1,88.0]},
+  belt_rugby_u18_regional_academy_m:{iso_belt_squat_n:[3602,4733,5704,6707,8072],iso_belt_squat_nkg:[52.2,63.2,73.6,84.6,98.2]},
+  belt_rugby_senior_professional_m:{iso_belt_squat_n:[3887,5144,6302,7374,9277],iso_belt_squat_nkg:[47.7,60.1,70.5,82.6,96.6]}
 };
+// ── NORMS_V2 — Belt Squat, couche source-traçable (mission "INTÉGRATION RÉELLE DES NORMES BELT
+// SQUAT") ────────────────────────────────────────────────────────────────────────────────────
+// Objet purement additif : n'est lu par AUCUNE fonction de calcul clinique (applyThr,
+// computeHypForceKpi, computeHypForce01, computeMoteur inchangés). Sert de couche de traçabilité
+// complète (source_id, protocole, confiance, mapping) au-dessus des valeurs déjà insérées ci-dessus
+// dans NORMS — norm_population_key pointe vers la clé NORMS/NORM_POPULATIONS réellement utilisée
+// par le moteur pour chaque entrée.
+var NORMS_V2_BELT_SQUAT=[
+  {variable_kinexus:'iso_belt_squat_n',norm_population_key:'belt_netball_super_league_f',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Netball Super League',sexe:'Female',niveau:'Elite',sport:'Netball',age_band:null,variable_vald_exacte:'Peak Vertical Force net BW',unite:'N',percentiles:{P5:1833,P25:2170,P50:2913,P75:3293,P95:4921},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_nkg',norm_population_key:'belt_netball_super_league_f',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Netball Super League',sexe:'Female',niveau:'Elite',sport:'Netball',age_band:null,variable_vald_exacte:'Peak Vertical Force / BM',unite:'N/kg',percentiles:{P5:36.2,P25:41.0,P50:44.4,P75:48.6,P95:65.0},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_n',norm_population_key:'belt_rugby_international_f',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Rugby International',sexe:'Female',niveau:'International',sport:'Rugby',age_band:null,variable_vald_exacte:'Peak Vertical Force net BW',unite:'N',percentiles:{P5:3253,P25:3842,P50:4695,P75:5766,P95:6455},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_nkg',norm_population_key:'belt_rugby_international_f',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Rugby International',sexe:'Female',niveau:'International',sport:'Rugby',age_band:null,variable_vald_exacte:'Peak Vertical Force / BM',unite:'N/kg',percentiles:{P5:51.6,P25:57.5,P50:66.3,P75:77.7,P95:92.8},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_n',norm_population_key:'belt_soccer_league2_m',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Soccer League 2',sexe:'Male',niveau:'Professionnel',sport:'Football',age_band:null,variable_vald_exacte:'Peak Vertical Force net BW',unite:'N',percentiles:{P5:3043,P25:3519,P50:4043,P75:4889,P95:5798},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_nkg',norm_population_key:'belt_soccer_league2_m',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Soccer League 2',sexe:'Male',niveau:'Professionnel',sport:'Football',age_band:null,variable_vald_exacte:'Peak Vertical Force / BM',unite:'N/kg',percentiles:{P5:46.9,P25:53.8,P50:63.2,P75:72.8,P95:76.0},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_n',norm_population_key:'belt_rugby_u18_schools_colleges_m',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Rugby U18 Schools & Colleges',sexe:'Male',niveau:'U18',sport:'Rugby',age_band:null,variable_vald_exacte:'Peak Vertical Force net BW',unite:'N',percentiles:{P5:2630,P25:3529,P50:4271,P75:5177,P95:6197},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_nkg',norm_population_key:'belt_rugby_u18_schools_colleges_m',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Rugby U18 Schools & Colleges',sexe:'Male',niveau:'U18',sport:'Rugby',age_band:null,variable_vald_exacte:'Peak Vertical Force / BM',unite:'N/kg',percentiles:{P5:42.2,P25:51.3,P50:59.6,P75:69.1,P95:88.0},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_n',norm_population_key:'belt_rugby_u18_regional_academy_m',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'U18 Regional Academy',sexe:'Male',niveau:'Academy U18',sport:'Rugby',age_band:null,variable_vald_exacte:'Peak Vertical Force net BW',unite:'N',percentiles:{P5:3602,P25:4733,P50:5704,P75:6707,P95:8072},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_nkg',norm_population_key:'belt_rugby_u18_regional_academy_m',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'U18 Regional Academy',sexe:'Male',niveau:'Academy U18',sport:'Rugby',age_band:null,variable_vald_exacte:'Peak Vertical Force / BM',unite:'N/kg',percentiles:{P5:52.2,P25:63.2,P50:73.6,P75:84.6,P95:98.2},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_n',norm_population_key:'belt_rugby_senior_professional_m',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Senior Professional',sexe:'Male',niveau:'Professionnel',sport:'Rugby',age_band:null,variable_vald_exacte:'Peak Vertical Force net BW',unite:'N',percentiles:{P5:3887,P25:5144,P50:6302,P75:7374,P95:9277},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'},
+  {variable_kinexus:'iso_belt_squat_nkg',norm_population_key:'belt_rugby_senior_professional_m',source_id:'BELT_SQUAT_PROPOSAL_2026',source:'VALD 2026',population_vald:'Senior Professional',sexe:'Male',niveau:'Professionnel',sport:'Rugby',age_band:null,variable_vald_exacte:'Peak Vertical Force / BM',unite:'N/kg',percentiles:{P5:47.7,P25:60.1,P50:70.5,P75:82.6,P95:96.6},position_protocole_source:'Genou 120–140°, tronc vertical, 3 essais max',protocole_cible_kinexus:'Isometric Belt Squat à 130° (plage 125–135°)',confiance_source:'Élevée',mapping_kinexus:'DIRECT',mapping_type:'DIRECT_BELT_SQUAT',note_mapping:'Norme spécifique Isometric Belt Squat; ne pas fusionner avec IMTP/ISO squat.'}
+];
+// Distinction explicite PROXY_IMTP (15 populations historiques, force de pic IMTP réutilisée comme
+// proxy — cf. commentaire ligne ~1362, inchangé) vs DIRECT_BELT_SQUAT (6 nouvelles populations
+// ci-dessus, véritable test Isometric Belt Squat). Les deux ensembles de populations sont
+// strictement disjoints (vérifié : aucune des 6 clés belt_* n'existe parmi les 58 clés
+// NORM_POPULATIONS précédentes) — DIRECT_BELT_SQUAT est donc prioritaire PAR CONSTRUCTION dès
+// qu'une population dispose d'une vraie norme Belt Squat, sans qu'aucune logique de résolution
+// supplémentaire n'ait été ajoutée à applyThr/computeHypForceKpi/computeHypForce01/computeMoteur
+// (aucun de ces 4 n'est modifié par cette mission). beltSquatMappingType() ci-dessous est une
+// fonction pure de traçabilité/test, jamais appelée par le moteur clinique.
+var NORMS_MAPPING_TYPE={
+  iso_belt_squat_n:{
+    fd_amfootball:'PROXY_IMTP',fd_bball_m:'PROXY_IMTP',fd_bball_f:'PROXY_IMTP',fd_soccer_m:'PROXY_IMTP',fd_soccer_f:'PROXY_IMTP',
+    fd_afl_m:'PROXY_IMTP',fd_afl_f:'PROXY_IMTP',fd_track_m:'PROXY_IMTP',fd_track_f:'PROXY_IMTP',fd_rugby_m:'PROXY_IMTP',fd_rugby_f:'PROXY_IMTP',
+    fd_hockey_m:'PROXY_IMTP',fd_hockey_f:'PROXY_IMTP',general_m:'PROXY_IMTP',general_f:'PROXY_IMTP',
+    belt_netball_super_league_f:'DIRECT_BELT_SQUAT',belt_rugby_international_f:'DIRECT_BELT_SQUAT',belt_soccer_league2_m:'DIRECT_BELT_SQUAT',
+    belt_rugby_u18_schools_colleges_m:'DIRECT_BELT_SQUAT',belt_rugby_u18_regional_academy_m:'DIRECT_BELT_SQUAT',belt_rugby_senior_professional_m:'DIRECT_BELT_SQUAT'
+  },
+  iso_belt_squat_nkg:{
+    fd_amfootball:'PROXY_IMTP',fd_bball_m:'PROXY_IMTP',fd_bball_f:'PROXY_IMTP',fd_soccer_m:'PROXY_IMTP',fd_soccer_f:'PROXY_IMTP',
+    fd_afl_m:'PROXY_IMTP',fd_afl_f:'PROXY_IMTP',fd_track_m:'PROXY_IMTP',fd_track_f:'PROXY_IMTP',fd_rugby_m:'PROXY_IMTP',fd_rugby_f:'PROXY_IMTP',
+    fd_hockey_m:'PROXY_IMTP',fd_hockey_f:'PROXY_IMTP',general_m:'PROXY_IMTP',general_f:'PROXY_IMTP',
+    belt_netball_super_league_f:'DIRECT_BELT_SQUAT',belt_rugby_international_f:'DIRECT_BELT_SQUAT',belt_soccer_league2_m:'DIRECT_BELT_SQUAT',
+    belt_rugby_u18_schools_colleges_m:'DIRECT_BELT_SQUAT',belt_rugby_u18_regional_academy_m:'DIRECT_BELT_SQUAT',belt_rugby_senior_professional_m:'DIRECT_BELT_SQUAT'
+  }
+};
+function beltSquatMappingType(key,pop){var m=NORMS_MAPPING_TYPE[key];return (m&&m[pop])||null;}
 function resolveBands(entry,age){
   if(!entry)return null;
   if(typeof entry[0]==='number')return entry;
