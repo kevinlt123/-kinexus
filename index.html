@@ -3593,23 +3593,36 @@ function effectiveNormPop(athlete){
   if(athlete.sexe==='M')return'general_m';
   return null;
 }
+// Résolveur additif de population normative PAR TEST (mission "AMÉLIORATION FONCTIONNELLE BELT
+// SQUAT", Phase 3/4). Ne remplace PAS effectiveNormPop/athlete.normPopulation — s'y ajoute.
+// Priorité : 1) athlete.normSelections[testKey] si renseigné (norme spécifique à CE test) ;
+// 2) sinon normPop tel que déjà résolu par effectiveNormPop (comportement historique inchangé
+// si aucune sélection spécifique n'existe) ; le repli THRESHOLDS reste géré en aval par applyThr,
+// strictement inchangé. Fonction pure, aucun effet de bord, aucune valeur normative inventée —
+// se contente de choisir QUELLE population interroger pour un testKey donné.
+function resolveNormPopulationForTest(testKey,normPop,normSelections){
+  if(normSelections&&testKey&&normSelections[testKey])return normSelections[testKey];
+  return normPop;
+}
 function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
 function lsiSt(lsi){if(lsi==null)return null;if(lsi>=95)return'vert';if(lsi>=90)return'jaune';if(lsi>=80)return'orange';return'rouge';}
-function normRefValue(testKey,kpiKey,pop,age){
+function normRefValue(testKey,kpiKey,pop,age,normSelections){
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var key=testKey+'_'+kpiKey;
-  if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){
-    var bands=resolveBands(NORMS[pop][key],age);
+  if(effPop&&NORMS[effPop]&&NORMS[effPop][key]!=null){
+    var bands=resolveBands(NORMS[effPop][key],age);
     if(bands&&bands[3]!=null)return bands[3];
   }
   var t=THRESHOLDS[key];
   if(t)return t.vert;
   return null;
 }
-function normRefText(testKey,kpiKey,pop,age){
+function normRefText(testKey,kpiKey,pop,age,normSelections){
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var key=testKey+'_'+kpiKey;
-  var v=normRefValue(testKey,kpiKey,pop,age);
+  var v=normRefValue(testKey,kpiKey,pop,age,normSelections);
   if(v==null)return null;
-  if(pop&&NORMS[pop]&&NORMS[pop][key]!=null)return'≥ '+v+' (norme)';
+  if(effPop&&NORMS[effPop]&&NORMS[effPop][key]!=null)return'≥ '+v+' (norme)';
   var t=THRESHOLDS[key];
   return(t&&t.dir==='min'?'≤ ':'≥ ')+v;
 }
@@ -4091,34 +4104,35 @@ var MECHANISMS=["PRODUCTION_FORCE_MAXIMALE", "DEVELOPPEMENT_FORCE_RAPIDE", "PROP
 // Capacites fonctionnelles (CAP001-004) : qualites contributrices ponderees, issues du referentiel clinique.
 var CAPACITES_DATA={"SAUT":{"label":"Saut","sousCapacites":[{"name":"Production verticale","qualitesContributrices":[{"quality":"Puissance","poids":"Determinante"},{"quality":"Propulsion","poids":"Determinante"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Explosivité","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]},{"name":"Efficacité du saut","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Stabilisation","poids":"Moderee"}]},{"name":"Sécurité du saut","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Force maximale","poids":"Moderee"}]}]},"ACCELERATION":{"label":"Accélération","sousCapacites":[{"name":"Production initiale de force","qualitesContributrices":[{"quality":"Force maximale","poids":"Determinante"},{"quality":"Explosivité","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Propulsion","poids":"Moderee"}]},{"name":"Propulsion dynamique","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Contrôle moteur","poids":"Moderee"}]},{"name":"Efficacité mécanique","qualitesContributrices":[{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Stabilisation","poids":"Majeure"},{"quality":"Propulsion","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]}]},"RECEPTION":{"label":"Réception","sousCapacites":[{"name":"Dissipation des contraintes","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Stabilisation","poids":"Majeure"},{"quality":"Contrôle moteur","poids":"Moderee"}]},{"name":"Contrôle de la réception","qualitesContributrices":[{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Absorption","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]},{"name":"Transition motrice","qualitesContributrices":[{"quality":"Réactivité","poids":"Determinante"},{"quality":"Propulsion","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Puissance","poids":"Moderee"}]}]},"CHANGEMENT_DE_DIRECTION":{"label":"Changement de direction","sousCapacites":[{"name":"Décélération","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Puissance","poids":"Moderee"}]},{"name":"Réorientation","qualitesContributrices":[{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Absorption","poids":"Majeure"},{"quality":"Propulsion","poids":"Moderee"}]},{"name":"Réaccélération","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Réactivité","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Explosivité","poids":"Majeure"},{"quality":"Force maximale","poids":"Moderee"}]}]}};
 var WCOL={Determinante:'#22C55E',Majeure:'#F97316',Moderee:'#FACC15',Mineure:'#94A3B8'};
-function kpiStatus(testKey,kpiKey,testData,pop,age){
+function kpiStatus(testKey,kpiKey,testData,pop,age,normSelections){
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var test=TBK[testKey];var data=(testData||{})[testKey];
   if(!test||!data||!data.active)return null;
   var kpi=null;test.kpis.forEach(function(k){if(k.key===kpiKey)kpi=k;});
   if(!kpi)return null;
   if(test.bilateral){
     var v=bestVal((data.trials||{})[kpiKey],kpi.dir);
-    return applyThr(testKey+'_'+kpiKey,v,pop,age);
+    return applyThr(testKey+'_'+kpiKey,v,effPop,age);
   }
   var dT=((data.D||{}).trials||{})[kpiKey]||[];
   var gT=((data.G||{}).trials||{})[kpiKey]||[];
   var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);
   var lsi=(kpiKey===test.kpis[0].key&&data.lsiAuto!=null)?data.lsiAuto:autoLSI(vD,vG);
-  return worstStatus([lsiSt(lsi),applyThr(testKey+'_'+kpiKey,vD,pop,age),applyThr(testKey+'_'+kpiKey,vG,pop,age)]);
+  return worstStatus([lsiSt(lsi),applyThr(testKey+'_'+kpiKey,vD,effPop,age),applyThr(testKey+'_'+kpiKey,vG,effPop,age)]);
 }
 function worstStatus(arr){arr=(arr||[]).filter(Boolean);if(!arr.length)return null;return arr.reduce(function(a,b){return s2sc(b)<s2sc(a)?b:a;});}
 var POIDS_RANK={Determinante:4,Majeure:3,Moderee:2,Mineure:1};
 
 // Moteur multi-candidats : pour une variable deficitaire, verifie TOUS les candidats EXPLAINED_BY (pas seulement le
 // premier trouve), garde ceux reellement deficitaires chez ce patient, et les classe par poids puis severite.
-function deriveRootCauses(testKey,kpiKey,testData,pop,age){
+function deriveRootCauses(testKey,kpiKey,testData,pop,age,normSelections){
   var rel=VAR_REL3[testKey+'_'+kpiKey];if(!rel)return[];
   var candidates=[];
   (rel.explainedBy||[]).forEach(function(e){
     var test=TBK[e.test];if(!test)return;
     var deficientKpis=[];
     test.kpis.forEach(function(kpi){
-      var st=kpiStatus(e.test,kpi.key,testData,pop,age);
+      var st=kpiStatus(e.test,kpi.key,testData,pop,age,normSelections);
       if(st==='rouge'||st==='orange')deficientKpis.push({kpi:kpi.key,label:kpi.label,status:st});
     });
     if(deficientKpis.length>0){
@@ -4165,7 +4179,7 @@ function normalizeQualityKey(s){
 }
 // Statut d'une qualite (Force maximale, Explosivite...) : agrege toutes les variables dont MEASURES/ESTIMATES
 // pointent vers cette qualite, ponderees par le poids du lien (Determinante..Mineure).
-function computeQualityStatus(qualityName,testData,pop,age){
+function computeQualityStatus(qualityName,testData,pop,age,normSelections){
   var scores=[];
   var qKey=normalizeQualityKey(qualityName);
   Object.keys(VAR_REL3).forEach(function(key){
@@ -4174,7 +4188,7 @@ function computeQualityStatus(qualityName,testData,pop,age){
     (rel.measures||[]).forEach(function(m){if(normalizeQualityKey(m.function)===qKey)entry=m;});
     if(!entry)(rel.estimates||[]).forEach(function(e){if(normalizeQualityKey(e.function)===qKey)entry=e;});
     if(!entry)return;
-    var st=kpiStatus(rel.test,rel.kpi,testData,pop,age);
+    var st=kpiStatus(rel.test,rel.kpi,testData,pop,age,normSelections);
     if(st)scores.push({status:st,w:POIDS_RANK[entry.poids]||1});
   });
   if(!scores.length)return null;
@@ -4185,7 +4199,7 @@ function computeQualityStatus(qualityName,testData,pop,age){
 
 // Statut d'une capacite fonctionnelle (Saut/Acceleration/Reception/Changement de direction), decomposee par
 // sous-capacite, avec le detail des qualites qui la composent (format checklist du referentiel clinique).
-function computeCapaciteStatus(capKey,testData,pop,age,fSc){
+function computeCapaciteStatus(capKey,testData,pop,age,fSc,normSelections){
   var cap=CAPACITES_DATA[capKey];if(!cap)return null;
   var subs=cap.sousCapacites.map(function(sub){
     var items=sub.qualitesContributrices.map(function(c){
@@ -4194,7 +4208,7 @@ function computeCapaciteStatus(capKey,testData,pop,age,fSc){
       // fSc[qualité].status (jamais recalculé) — le résultat TFM/VAR_REL3 brut, inchangé, reste
       // disponible sous `tfmStatus`, jamais affiché comme diagnostic. `tfmQualityDiagnosticGate`
       // (définie plus bas, avant computeMoteur) ne modifie ni VAR_REL3, ni TFM, ni computeQualityStatus.
-      var gate=tfmQualityDiagnosticGate(fSc,c.quality,computeQualityStatus(c.quality,testData,pop,age));
+      var gate=tfmQualityDiagnosticGate(fSc,c.quality,computeQualityStatus(c.quality,testData,pop,age,normSelections));
       return{quality:c.quality,poids:c.poids,status:gate.status,tfmStatus:gate.tfmStatus,hypGoverned:gate.hypGoverned};
     });
     var tested=items.filter(function(x){return x.status;});
@@ -4287,11 +4301,12 @@ function varRelHTML(testKey,kpiKey,testData,pop,age){
   return out;
 }
 
-function computeTestStatus(key,data,pop,age){
+function computeTestStatus(key,data,pop,age,normSelections){
+  var effPop=resolveNormPopulationForTest(key,pop,normSelections);
   var test=TBK[key];if(!test||!data||!data.active)return null;
   var sts=[];
-  if(test.bilateral){test.kpis.forEach(function(kpi){var v=bestVal((data.trials||{})[kpi.key],kpi.dir);var s=applyThr(key+'_'+kpi.key,v,pop,age);if(s)sts.push({w:3,s:s});});}
-  else{test.kpis.forEach(function(kpi){var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);if(lsi!=null)sts.push({w:3,s:lsiSt(lsi)});[vD,vG].forEach(function(v){var s=applyThr(key+'_'+kpi.key,v,pop,age);if(s)sts.push({w:2,s:s});});});if(data.lsi!=null)sts.push({w:3,s:lsiSt(data.lsi)});}
+  if(test.bilateral){test.kpis.forEach(function(kpi){var v=bestVal((data.trials||{})[kpi.key],kpi.dir);var s=applyThr(key+'_'+kpi.key,v,effPop,age);if(s)sts.push({w:3,s:s});});}
+  else{test.kpis.forEach(function(kpi){var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);if(lsi!=null)sts.push({w:3,s:lsiSt(lsi)});[vD,vG].forEach(function(v){var s=applyThr(key+'_'+kpi.key,v,effPop,age);if(s)sts.push({w:2,s:s});});});if(data.lsi!=null)sts.push({w:3,s:lsiSt(data.lsi)});}
   if(!sts.length)return'jaune';
   var tw=0,ts=0,hasR=false,maj=0;
   sts.forEach(function(x){var sc=s2sc(x.s);if(sc!=null){tw+=x.w;ts+=sc*x.w;}if(x.s==='rouge'){hasR=true;maj++;}if(x.s==='orange')maj++;});
@@ -4944,15 +4959,16 @@ function computeHypPowerSubstitutes(testData,pop,age){
 // jamais déplacées vers Capacité au seul motif qu'elles contiennent le mot « force » (mission
 // d'implémentation, point 7) : la Capacité physiologique reste fondée sur les tests de force
 // dédiés (IMTP/SLIMTP/Belt Squat/etc.), jamais sur les KPI de force internes au mouvement CMJ.
-function computeHypPowerCapacite(testData,pop,age){
+function computeHypPowerCapacite(testData,pop,age,normSelections){
   var belt=(testData||{}).iso_belt_squat,imtp=(testData||{}).imtp,fv=(testData||{}).profil_fv;
-  function bilateralKpi(data,key,kpi){
+  var beltPop=resolveNormPopulationForTest('iso_belt_squat',pop,normSelections);
+  function bilateralKpi(data,key,kpi,kpiPop){
     if(!data||!data.active)return{raw:null,status:null,classifiable:false};
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(key.split('_')[0],kpi));
-    return{raw:raw,status:raw!=null?applyThr(key,raw,pop,age):null,classifiable:false};
+    return{raw:raw,status:raw!=null?applyThr(key,raw,kpiPop!=null?kpiPop:pop,age):null,classifiable:false};
   }
   return{
-    force:{iso_belt_squat_n:(function(){var r=bilateralKpi(belt,'iso_belt_squat_n','n');r.classifiable=true;return r;})()},
+    force:{iso_belt_squat_n:(function(){var r=bilateralKpi(belt,'iso_belt_squat_n','n',beltPop);r.classifiable=true;return r;})()},
     rfd:{imtp_rfd100:bilateralKpi(imtp,'imtp_rfd100','rfd100')},
     ttpf:{imtp_ttpf:bilateralKpi(imtp,'imtp_ttpf','ttpf')},
     profilForceVitesse:{profil_fv_v0:bilateralKpi(fv,'profil_fv_v0','v0')}
@@ -4971,7 +4987,7 @@ function computeHypPowerStrategie(testData){
 // l'état est explicitement 'non_determinable' — jamais replié sur 'absente' comme pour Réactivité/
 // Mobilité (mission d'implémentation, règle absolue : "mieux vaut NON DÉTERMINABLE qu'un
 // diagnostic faux").
-function computeHypPower01(testData,normPop,normAge){
+function computeHypPower01(testData,normPop,normAge,normSelections){
   var cmjRes=computeHypPowerCmj(testData,normPop,normAge);
   var slcmjRes=computeHypPowerSlcmj(testData,normPop,normAge);
   var substitutes=computeHypPowerSubstitutes(testData,normPop,normAge);
@@ -5013,7 +5029,7 @@ function computeHypPower01(testData,normPop,normAge){
     cmj_height:{raw:cmjHeightRaw,status:cmjHeightSt,countsAsDiagnostic:false} // gel : jamais une deuxième preuve, quel que soit son statut.
   };
   var explanatoryEvidence={
-    capacite:computeHypPowerCapacite(testData,normPop,normAge),
+    capacite:computeHypPowerCapacite(testData,normPop,normAge,normSelections),
     strategie:computeHypPowerStrategie(testData)
   };
   var deficientCats=state==='retenue_faible'?[cmjRes.category,secondProof.category]:[];
@@ -5083,21 +5099,22 @@ var HYP_FOR_GLOBAL_TESTS=[
 // "pire côté" — même pattern que sldj_rsi/slcmj_peak_power/wblt_distance). Réutilisée pour les 4
 // tests diagnostiques globaux (_n et _nkg) ET pour les 15 tests segmentaires du Niveau 2 (tous
 // unilatéraux) — aucune duplication de logique entre Niveau 1 et Niveau 2.
-function computeHypForceKpi(testData,testKey,kpi,bilateral,pop,age){
+function computeHypForceKpi(testData,testKey,kpi,bilateral,pop,age,normSelections){
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var data=(testData||{})[testKey];
   var key=testKey+'_'+kpi;
   if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
   if(bilateral){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
-    var st=raw!=null?applyThr(key,raw,pop,age):null;
+    var st=raw!=null?applyThr(key,raw,effPop,age):null;
     if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
     return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
   }
   var dir=testKpiDir(testKey,kpi);
   var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
   var vG=bestVal(((data.G||{}).trials||{})[kpi],dir);
-  var sD=vD!=null?applyThr(key,vD,pop,age):null;
-  var sG=vG!=null?applyThr(key,vG,pop,age):null;
+  var sD=vD!=null?applyThr(key,vD,effPop,age):null;
+  var sG=vG!=null?applyThr(key,vG,effPop,age):null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
   if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
@@ -5129,10 +5146,10 @@ var HYP_FOR_SEGMENTS=[
 // Condition documentée (CLI200-211) : "au moins une variable diagnostique globale déficitaire ET
 // déficit local confirmé" — un déficit segmentaire isolé, sans déficit global retenu, ne déclenche
 // JAMAIS d'orientation segmentaire (mission §5/CAS 9).
-function computeHypForceSegments(testData,globalRetenue,pop,age){
+function computeHypForceSegments(testData,globalRetenue,pop,age,normSelections){
   return HYP_FOR_SEGMENTS.map(function(def){
-    var n=computeHypForceKpi(testData,def.testKey,'n',false,pop,age);
-    var nkg=computeHypForceKpi(testData,def.testKey,'nkg',false,pop,age);
+    var n=computeHypForceKpi(testData,def.testKey,'n',false,pop,age,normSelections);
+    var nkg=computeHypForceKpi(testData,def.testKey,'nkg',false,pop,age,normSelections);
     var classifiable=n.status!=='indisponible'||nkg.status!=='indisponible';
     var deficient=n.status==='deficitaire'||nkg.status==='deficitaire';
     var localStatus=!classifiable?'non_classifiable':(deficient?'deficitaire':'normal');
@@ -5164,10 +5181,10 @@ function computeHypForceExplanatory(testData){
 // si AUCUNE des 4 preuves globales n'est classifiable (contrairement à Puissance, où une seule
 // preuve non classifiable suffit à bloquer — Force tolère une couverture partielle car sa règle
 // est "≥2 parmi 4", pas "2/2 strict").
-function computeHypForce01(testData,normPop,normAge){
+function computeHypForce01(testData,normPop,normAge,normSelections){
   var globals={};
   HYP_FOR_GLOBAL_TESTS.forEach(function(def){
-    globals[def.name]=computeHypForceKpi(testData,def.testKey,'n',def.bilateral,normPop,normAge);
+    globals[def.name]=computeHypForceKpi(testData,def.testKey,'n',def.bilateral,normPop,normAge,normSelections);
   });
   var evaluable=HYP_FOR_GLOBAL_TESTS.map(function(d){return d.name;}).filter(function(k){return globals[k].status!=='indisponible';});
   var deficientTests=evaluable.filter(function(k){return globals[k].status==='deficitaire';});
@@ -5182,7 +5199,7 @@ function computeHypForce01(testData,normPop,normAge){
   // seulement une graduation du support (mécanique HYP existante, ADR déjà validés ailleurs).
   var confirmatives={};
   HYP_FOR_GLOBAL_TESTS.forEach(function(def){
-    confirmatives[def.name.replace('_n','_nkg')]=computeHypForceKpi(testData,def.testKey,'nkg',def.bilateral,normPop,normAge);
+    confirmatives[def.name.replace('_n','_nkg')]=computeHypForceKpi(testData,def.testKey,'nkg',def.bilateral,normPop,normAge,normSelections);
   });
   var confirmativeConvergent=deficientTests.some(function(k){
     var nkgKey=k.replace('_n','_nkg');
@@ -5204,7 +5221,7 @@ function computeHypForce01(testData,normPop,normAge){
   });
 
   var globalRetenue=(state==='retenue_faible'||state==='retenue_moderee'||state==='retenue_forte');
-  var segments=computeHypForceSegments(testData,globalRetenue,normPop,normAge);
+  var segments=computeHypForceSegments(testData,globalRetenue,normPop,normAge,normSelections);
 
   var deficientCats=deficientTests.map(function(k){return globals[k].category;});
   var status=hypStatusFromState(state,deficientCats);
@@ -5289,8 +5306,9 @@ function computeHypExplosivityConfirmative(testData,pop,age){
 // biomécanique CMJ, conservée telle que documentée (mission §4) : les variables de force du CMJ ne
 // sont jamais déplacées vers la Capacité, la Capacité reste fondée sur les tests de force dédiés.
 // Extrait représentatif des listes complètes documentées, jamais classifié en diagnostic.
-function computeHypExplosivityExplanatory(testData,pop,age){
+function computeHypExplosivityExplanatory(testData,pop,age,normSelections){
   var belt=(testData||{}).iso_belt_squat,imtp=(testData||{}).imtp;
+  var beltPop=resolveNormPopulationForTest('iso_belt_squat',pop,normSelections);
   function bilateralRaw(data,key,kpi){
     if(!data||!data.active)return{raw:null,status:null,classifiable:false};
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(key.split('_')[0],kpi));
@@ -5298,7 +5316,7 @@ function computeHypExplosivityExplanatory(testData,pop,age){
   }
   return{
     forceCapacite:{
-      iso_belt_squat_n:(function(){var r=bilateralRaw(belt,'iso_belt_squat_n','n');r.classifiable=true;r.status=r.raw!=null?applyThr('iso_belt_squat_n',r.raw,pop,age):null;return r;})()
+      iso_belt_squat_n:(function(){var r=bilateralRaw(belt,'iso_belt_squat_n','n');r.classifiable=true;r.status=r.raw!=null?applyThr('iso_belt_squat_n',r.raw,beltPop,age):null;return r;})()
     },
     rfd:{
       imtp_rfd100:bilateralRaw(imtp,'imtp_rfd100','rfd100'),
@@ -5317,7 +5335,7 @@ function computeHypExplosivityExplanatory(testData,pop,age){
 // Point d'entrée. Fonction pure. Modèle d'état standard à 2 mécanismes (comme Puissance) : Absente
 // -> Suspectée -> Retenue/Faible -> Retenue/Modérée -> Retenue/Forte. `non_determinable` dès que
 // l'une des deux preuves n'est pas classifiable — jamais un repli sur 'absente'.
-function computeHypExplosivity01(testData,normPop,normAge){
+function computeHypExplosivity01(testData,normPop,normAge,normSelections){
   var rfdRes=computeHypExplosivityCmjKpi(testData,'conc_rfd','cmj_conc_rfd',normPop,normAge);
   var impulseRes=computeHypExplosivityCmjKpi(testData,'conc_impulse_100','cmj_conc_impulse_100',normPop,normAge);
 
@@ -5338,7 +5356,7 @@ function computeHypExplosivity01(testData,normPop,normAge){
   }
 
   var confirmative=computeHypExplosivityConfirmative(testData,normPop,normAge);
-  var explanatory=computeHypExplosivityExplanatory(testData,normPop,normAge);
+  var explanatory=computeHypExplosivityExplanatory(testData,normPop,normAge,normSelections);
   var confirmativeConvergent=state==='retenue_faible'&&confirmative.cmj_peak_power.status==='deficitaire';
   var biomeca=explanatory.biomecanique;
   var explanatoryConvergent=state==='retenue_faible'&&confirmativeConvergent&&['cmj_depth','cmj_rsi_mod','cmj_ecc_mean_power','cmj_ecc_peak_vel'].some(function(k){return biomeca[k].status==='deficitaire';});
@@ -5578,21 +5596,22 @@ function computeHypStabilization01(testData,normPop,normAge){
 // inatteignable avec des données réelles tant qu'aucune norme repeated_hop n'existe -> au mieux
 // 'suspectee' (heel_raise_reps seul déficitaire) ou 'absente'.
 
-function computeHypEnduranceKpi(testData,testKey,kpi,bilateral,pop,age){
+function computeHypEnduranceKpi(testData,testKey,kpi,bilateral,pop,age,normSelections){
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var data=(testData||{})[testKey];
   var key=testKey+'_'+kpi;
   if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
   if(bilateral){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
-    var st=raw!=null?applyThr(key,raw,pop,age):null;
+    var st=raw!=null?applyThr(key,raw,effPop,age):null;
     if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
     return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
   }
   var dir=testKpiDir(testKey,kpi);
   var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
   var vG=bestVal(((data.G||{}).trials||{})[kpi],dir);
-  var sD=vD!=null?applyThr(key,vD,pop,age):null;
-  var sG=vG!=null?applyThr(key,vG,pop,age):null;
+  var sD=vD!=null?applyThr(key,vD,effPop,age):null;
+  var sG=vG!=null?applyThr(key,vG,effPop,age):null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
   if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
@@ -5636,31 +5655,31 @@ function computeHypEnduranceConfirmative(testData,pop,age){
 // de fond (4 tests globaux + 11 familles segmentaires, `_n`/`_nkg`) et vitesse de développement de
 // force (cinétique RFD, valeur brute uniquement, aucun seuil sur aucune des 15 familles).
 var HYP_END_SEGMENTS=['knee_ext','knee_flex','soleus_iso','gastro_iso','hip_flex','hip_ext','hip_abd','hip_add','df_iso','inv_iso','ev_iso'];
-function computeHypEnduranceExplanatory(testData,pop,age){
+function computeHypEnduranceExplanatory(testData,pop,age,normSelections){
   var forceDeFond={
-    imtp_n:computeHypEnduranceKpi(testData,'imtp','n',true,pop,age),
-    imtp_nkg:computeHypEnduranceKpi(testData,'imtp','nkg',true,pop,age),
-    slimtp_n:computeHypEnduranceKpi(testData,'slimtp','n',false,pop,age),
-    slimtp_nkg:computeHypEnduranceKpi(testData,'slimtp','nkg',false,pop,age),
-    iso_belt_squat_n:computeHypEnduranceKpi(testData,'iso_belt_squat','n',true,pop,age),
-    iso_belt_squat_nkg:computeHypEnduranceKpi(testData,'iso_belt_squat','nkg',true,pop,age),
-    sl_iso_push_n:computeHypEnduranceKpi(testData,'sl_iso_push','n',false,pop,age),
-    sl_iso_push_nkg:computeHypEnduranceKpi(testData,'sl_iso_push','nkg',false,pop,age)
+    imtp_n:computeHypEnduranceKpi(testData,'imtp','n',true,pop,age,normSelections),
+    imtp_nkg:computeHypEnduranceKpi(testData,'imtp','nkg',true,pop,age,normSelections),
+    slimtp_n:computeHypEnduranceKpi(testData,'slimtp','n',false,pop,age,normSelections),
+    slimtp_nkg:computeHypEnduranceKpi(testData,'slimtp','nkg',false,pop,age,normSelections),
+    iso_belt_squat_n:computeHypEnduranceKpi(testData,'iso_belt_squat','n',true,pop,age,normSelections),
+    iso_belt_squat_nkg:computeHypEnduranceKpi(testData,'iso_belt_squat','nkg',true,pop,age,normSelections),
+    sl_iso_push_n:computeHypEnduranceKpi(testData,'sl_iso_push','n',false,pop,age,normSelections),
+    sl_iso_push_nkg:computeHypEnduranceKpi(testData,'sl_iso_push','nkg',false,pop,age,normSelections)
   };
   var forceSegmentaire={};
   HYP_END_SEGMENTS.forEach(function(seg){
-    forceSegmentaire[seg+'_n']=computeHypEnduranceKpi(testData,seg,'n',false,pop,age);
-    forceSegmentaire[seg+'_nkg']=computeHypEnduranceKpi(testData,seg,'nkg',false,pop,age);
+    forceSegmentaire[seg+'_n']=computeHypEnduranceKpi(testData,seg,'n',false,pop,age,normSelections);
+    forceSegmentaire[seg+'_nkg']=computeHypEnduranceKpi(testData,seg,'nkg',false,pop,age,normSelections);
   });
   var cinetiqueTests=['imtp','slimtp','iso_belt_squat','sl_iso_push'].concat(HYP_END_SEGMENTS);
   var cinetique={};
   cinetiqueTests.forEach(function(t){
-    cinetique[t+'_rfd100']=computeHypEnduranceKpi(testData,t,'rfd100',t==='imtp'||t==='iso_belt_squat',pop,age);
+    cinetique[t+'_rfd100']=computeHypEnduranceKpi(testData,t,'rfd100',t==='imtp'||t==='iso_belt_squat',pop,age,normSelections);
   });
   return{forceDeFond:forceDeFond,forceSegmentaire:forceSegmentaire,cinetique:cinetique};
 }
 
-function computeHypEndurance01(testData,normPop,normAge){
+function computeHypEndurance01(testData,normPop,normAge,normSelections){
   var diag=computeHypEnduranceDiagnostic(testData,normPop,normAge);
   var classifiable=HYP_END_DIAG_KEYS.filter(function(k){return diag[k].status!=='indisponible';});
   var deficient=HYP_END_DIAG_KEYS.filter(function(k){return diag[k].status==='deficitaire';});
@@ -5671,7 +5690,7 @@ function computeHypEndurance01(testData,normPop,normAge){
   else state='retenue_faible';
 
   var confirmative=computeHypEnduranceConfirmative(testData,normPop,normAge);
-  var explanatory=computeHypEnduranceExplanatory(testData,normPop,normAge);
+  var explanatory=computeHypEnduranceExplanatory(testData,normPop,normAge,normSelections);
 
   // Confirmative -> Faible/Modéré : 9 variables réellement indépendantes des 6 diagnostiques
   // (KPI distincts du même test, pas d'auto-référence — contrairement à Stabilisation). Explicative
@@ -6281,9 +6300,9 @@ function absorptionSousDomainesSummary(functionScores){
   });
 }
 
-function computeMoteur(testData,questData,normPop,normAge){
+function computeMoteur(testData,questData,normPop,normAge,normSelections){
   testData=testData||{};questData=questData||{};
-  var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge);});
+  var tSt={};Object.keys(testData).forEach(function(k){if(testData[k]&&testData[k].active)tSt[k]=computeTestStatus(k,testData[k],normPop,normAge,normSelections);});
   var fSc={};
   FUNCTIONS.forEach(function(fn){
     var fk=FN_KEY[fn];var tw=0,ts=0,hasR=false,maj=0,cov=0,poss=0;
@@ -6371,7 +6390,7 @@ function computeMoteur(testData,questData,normPop,normAge){
   // Mobilité, qui conservent un repli TFM quand HYP ne peut rien déterminer — cf.
   // IMPLEMENTATION_HYP_PUI01.md. Aucune autre qualité, aucun autre output de computeMoteur n'est
   // touché par ce bloc.
-  var hypPui01=computeHypPower01(testData,normPop,normAge);
+  var hypPui01=computeHypPower01(testData,normPop,normAge,normSelections);
   var puiEvaluable=hypPui01.state!=='non_determinable';
   var puiStatus=null;
   if(puiEvaluable){
@@ -6392,7 +6411,7 @@ function computeMoteur(testData,questData,normPop,normAge){
   // vaut NON DÉTERMINABLE qu'un diagnostic faux"). Divergence assumée par rapport à Absorption/
   // Réactivité/Mobilité (repli TFM), cohérente avec Puissance — cf. IMPLEMENTATION_HYP_FOR01.md.
   // Aucune autre qualité, aucun autre output de computeMoteur n'est touché par ce bloc.
-  var hypFor01=computeHypForce01(testData,normPop,normAge);
+  var hypFor01=computeHypForce01(testData,normPop,normAge,normSelections);
   var forEvaluable=hypFor01.state!=='non_determinable';
   var forStatus=null;
   if(forEvaluable){
@@ -6420,7 +6439,7 @@ function computeMoteur(testData,questData,normPop,normAge){
   // compris quand il ne peut rien déterminer (status:null explicite, même principe que HYP-PUI-01
   // — "mieux vaut NON DÉTERMINABLE qu'un diagnostic faux"). Aucune autre qualité, aucun autre
   // output de computeMoteur n'est touché par ce bloc — cf. IMPLEMENTATION_HYP_EXP01.md.
-  var hypExp01=computeHypExplosivity01(testData,normPop,normAge);
+  var hypExp01=computeHypExplosivity01(testData,normPop,normAge,normSelections);
   var expEvaluable=hypExp01.state!=='non_determinable';
   var expStatus=null;
   if(expEvaluable){
@@ -6470,7 +6489,7 @@ function computeMoteur(testData,questData,normPop,normAge){
   // déficitaires requis (gel CLI080, KINEXUS_REASONING_ENGINE_V1.md §7) — cf.
   // AUDIT_IMPLEMENTATION_HYP_END01.md. Aucune autre qualité, aucun autre output de computeMoteur
   // n'est touché par ce bloc.
-  var hypEnd01=computeHypEndurance01(testData,normPop,normAge);
+  var hypEnd01=computeHypEndurance01(testData,normPop,normAge,normSelections);
   var endEvaluable=hypEnd01.state!=='non_determinable';
   var endStatus=null;
   if(endEvaluable){
@@ -6526,9 +6545,9 @@ function computeMoteur(testData,questData,normPop,normAge){
     for(var dk=0;dk<deficitTests.length&&!rootCauses.length;dk++){
       var dtest=TBK[deficitTests[dk].key];if(!dtest)continue;
       for(var ki=0;ki<dtest.kpis.length&&!rootCauses.length;ki++){
-        var kpiSt=kpiStatus(deficitTests[dk].key,dtest.kpis[ki].key,testData,normPop,normAge);
+        var kpiSt=kpiStatus(deficitTests[dk].key,dtest.kpis[ki].key,testData,normPop,normAge,normSelections);
         if(kpiSt!=='rouge'&&kpiSt!=='orange')continue;
-        var rc=deriveRootCauses(deficitTests[dk].key,dtest.kpis[ki].key,testData,normPop,normAge);
+        var rc=deriveRootCauses(deficitTests[dk].key,dtest.kpis[ki].key,testData,normPop,normAge,normSelections);
         if(rc.length){rootCauses=rc;rootCauseTest=dtest.label;rootCauseKpi=dtest.kpis[ki].label;}
       }
     }
@@ -6546,10 +6565,10 @@ function computeMoteur(testData,questData,normPop,normAge){
   if(rtpActive.length>0){var pass=0;rtpActive.forEach(function(k){var d=testData[k];var test=TBK[k];if(!test)return;if(!test.bilateral){var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);if(lsi!=null&&lsi>=95)pass++;}else{var st=computeTestStatus(k,d);if(st==='vert'||st==='jaune')pass++;}});var aclScore=null;if(questData.acl_rsi&&questData.acl_rsi.answers)aclScore=QBK.acl_rsi.scoring(questData.acl_rsi.answers);var aclOk=aclScore==null||aclScore>=77;var ratio=rtpActive.length>0?pass/rtpActive.length:0;var rStatus,rLabel;if(ratio>=0.9&&aclOk){rStatus='vert';rLabel='Prêt au retour au sport';}else if(ratio>=0.7){rStatus='jaune';rLabel='À surveiller';}else{rStatus='rouge';rLabel='Non prêt';}rtpStatus={status:rStatus,label:rLabel,ratio:Math.round(ratio*100),passCount:pass,totalCount:rtpActive.length,aclScore:aclScore};}
   var qualityScores={};
   ['Force maximale','Explosivité','Puissance','Réactivité','Propulsion','Absorption','Stabilisation','Contrôle moteur','Résistance neuromusculaire'].forEach(function(q){
-    qualityScores[q]=tfmQualityDiagnosticGate(fSc,q,computeQualityStatus(q,testData,normPop,normAge));
+    qualityScores[q]=tfmQualityDiagnosticGate(fSc,q,computeQualityStatus(q,testData,normPop,normAge,normSelections));
   });
   var capaciteScores={};
-  Object.keys(CAPACITES_DATA).forEach(function(ck){capaciteScores[ck]=computeCapaciteStatus(ck,testData,normPop,normAge,fSc);});
+  Object.keys(CAPACITES_DATA).forEach(function(ck){capaciteScores[ck]=computeCapaciteStatus(ck,testData,normPop,normAge,fSc,normSelections);});
   // HYP-CSM-01 — branchement (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md) : calculée UNE SEULE fois
   // par cycle de computeMoteur(), à partir de fSc déjà entièrement construit (8 moteurs HYP déjà
   // exécutés ci-dessus). Fonction pure, lecture seule : ne recalcule, ne modifie et ne réinvoque
@@ -7051,7 +7070,7 @@ function buildSportifReport(athlete,bilan,res){
     var reeducPrior=(athlete.bilans||[]).filter(function(b){return b.id!==bilan.id&&new Date(b.date)<new Date(bilan.date);}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
     if(reeducPrior.length>0){
       var reeducPrev=reeducPrior[0];
-      var reeducPrevRes=computeMoteur(reeducPrev.testData,reeducPrev.questData,effectiveNormPop(athlete),age);
+      var reeducPrevRes=computeMoteur(reeducPrev.testData,reeducPrev.questData,effectiveNormPop(athlete),age,athlete.normSelections);
       var reeducCommon=FUNCTIONS.filter(function(f){return fSc[f]&&reeducPrevRes.functionScores[f];});
       if(reeducCommon.length>0){
         var reeducCurAvg=reeducCommon.reduce(function(s,f){return s+FN_GAUGE_PCT[fSc[f].status];},0)/reeducCommon.length;
@@ -7353,6 +7372,15 @@ function buildSportifReport(athlete,bilan,res){
       'margin-bottom:26px'
     );
   }
+
+  // Bloc clinique dédié Belt Squat (Phase 6, mission "AMÉLIORATION FONCTIONNELLE BELT SQUAT") —
+  // additif : n'apparaît que si le test a réellement été réalisé pour ce bilan. Distinct et séparé
+  // de la conclusion globale "Force" (section Qualités fonctionnelles, page 2) — jamais confondu.
+  // Affiche le résultat BRUT du test (raw + 5 percentiles + population + protocole + type de norme
+  // DIRECT_BELT_SQUAT/PROXY_IMTP), relu tel quel depuis NORMS/NORMS_V2_BELT_SQUAT/applyThr, aucune
+  // valeur recalculée ni inventée.
+  var beltSquatBlock=beltSquatReportBlockHtml(td,effectiveNormPop(athlete),age,athlete.normSelections);
+  if(beltSquatBlock)html+=panel(beltSquatBlock,'margin-bottom:26px');
 
   // 3. Où sont les asymétries ? (le LSI est l'information principale — mis en évidence, G/D clairement différenciés)
   html+=sectionTitle(3,'Asymétries majeures',true);
@@ -7665,6 +7693,21 @@ function buildExpertReport(athlete,bilan,res){
   html+='<table class="print-table"><thead><tr><th>Test</th><th>KPI</th><th>Droite / Valeur</th><th>Gauche</th><th>LSI %</th><th>Statut</th></tr></thead><tbody>';
   Object.keys(td).forEach(function(key){var data=td[key];if(!data||!data.active)return;var test=TBK[key];if(!test)return;var status=tSt[key];test.kpis.forEach(function(kpi){if(test.bilateral){var val=bestVal((data.trials||{})[kpi.key],kpi.dir);if(val==null)return;html+='<tr><td>'+test.label+'</td><td>'+kpi.label+'</td><td colspan="2" style="text-align:center">'+roundStep(val,kpi.step)+'</td><td>—</td><td>'+(status?'<span class="print-badge '+status+'">'+SL[status]+'</span>':'')+'</td></tr>';}else{var dV=bestVal(((data.D||{}).trials||{})[kpi.key],kpi.dir);var gV=bestVal(((data.G||{}).trials||{})[kpi.key],kpi.dir);if(dV==null&&gV==null)return;var lsi=data.lsiAuto!=null?data.lsiAuto:'—';html+='<tr><td>'+test.label+'</td><td>'+kpi.label+'</td><td>'+(dV!=null?roundStep(dV,kpi.step):'—')+'</td><td>'+(gV!=null?roundStep(gV,kpi.step):'—')+'</td><td>'+lsi+'</td><td>'+(status?'<span class="print-badge '+status+'">'+SL[status]+'</span>':'')+'</td></tr>';}});});
   html+='</tbody></table></div>';
+
+  // Bloc clinique dédié Belt Squat (Phase 6) — additif, complète le tableau générique ci-dessus
+  // avec les 5 percentiles/protocole/type de norme, qui n'y figurent pas. Voir buildSportifReport
+  // pour le détail du raisonnement (même fonction partagée, beltSquatReportBlockHtml).
+  {
+    var expertAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
+    var beltSquatBlockExpert=beltSquatReportBlockHtml(td,effectiveNormPop(athlete),expertAge,athlete.normSelections);
+    if(beltSquatBlockExpert){
+      html+='<div class="print-page print-page-expert">';
+      html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Belt Squat — '+athlete.prenom+' '+athlete.nom+'</div></div>';
+      html+='<div class="print-section-title">Belt Squat — Détail normatif</div>';
+      html+='<div class="print-card">'+beltSquatBlockExpert+'</div>';
+      html+='</div>';
+    }
+  }
   // Systèmes + Hypothèses + Orientations + RTP
   html+='<div class="print-page print-page-expert">';
   html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Analyse experte — '+athlete.prenom+' '+athlete.nom+'</div></div>';
@@ -7771,7 +7814,7 @@ var smallTextareaStyle=Object.assign({},smallInputStyle,{resize:'vertical',lineH
 function ReportPreview(props){
   var athlete=props.athlete,bilan=props.bilan;
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge);},[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,athlete.normSelections);},[bilan,athlete.normPopulation,athlete.normSelections,athlete.sexe,athleteAge]);
   var defaults=useMemo(function(){return defaultReportTexts(athlete,bilan,res);},[bilan,res]);
   var priKeyCounter=useRef(0);
   function withKey(p){priKeyCounter.current+=1;return Object.assign({},p,{_key:'p'+priKeyCounter.current});}
@@ -8105,8 +8148,20 @@ function Dashboard(props){
 
 function AthleteForm(props){
   var init=props.initial||{};
-  var [form,setForm]=useState({prenom:init.prenom||'',nom:init.nom||'',sport:init.sport||'',niveau:init.niveau||'Amateur',poste:init.poste||'',poids:init.poids||'',taille:init.taille||'',dateNaissance:init.dateNaissance||'',sexe:init.sexe||'',normPopulation:init.normPopulation||''});
+  var [form,setForm]=useState({prenom:init.prenom||'',nom:init.nom||'',sport:init.sport||'',niveau:init.niveau||'Amateur',poste:init.poste||'',poids:init.poids||'',taille:init.taille||'',dateNaissance:init.dateNaissance||'',sexe:init.sexe||'',normPopulation:init.normPopulation||'',normSelections:init.normSelections||{}});
   function set(k,v){setForm(function(p){var n=Object.assign({},p);n[k]=v;return n;});}
+  // Norme spécifique par test (mission "AMÉLIORATION FONCTIONNELLE BELT SQUAT", Phase 3) — additive,
+  // n'écrase jamais athlete.normPopulation (population globale). Si aucune norme spécifique n'est
+  // choisie ici, le comportement reste EXACTEMENT celui d'avant (résolution via normPopulation
+  // seule, cf. resolveNormPopulationForTest).
+  function setNormSelection(testKey,v){
+    setForm(function(p){
+      var next=Object.assign({},p.normSelections);
+      if(v)next[testKey]=v;else delete next[testKey];
+      return Object.assign({},p,{normSelections:next});
+    });
+  }
+  var BELT_SQUAT_POPULATIONS=NORM_POPULATIONS.filter(function(p){return p.key.indexOf('belt_')===0;});
   var valid=form.prenom&&form.nom&&form.sport;
   return h('div',{style:{maxWidth:560,margin:'0 auto'}},
     h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:4}},props.initial?'Modifier le sportif':'Nouveau sportif'),
@@ -8126,6 +8181,9 @@ function AthleteForm(props){
       h('div',{style:{marginTop:14}},
         h(FldIn,{label:'Population de référence (normes)',value:form.normPopulation,onChange:function(v){set('normPopulation',v);},options:[{value:'',label:'— Seuils génériques —'}].concat(NORM_POPULATIONS.map(function(p){return{value:p.key,label:p.label};})),note:form.normPopulation?NORM_SOURCES[form.normPopulation]:'Sélectionnez une population VALD pour comparer ce sportif à des normes réelles (force, saut…) plutôt qu\'aux seuils génériques.'})
       ),
+      BELT_SQUAT_POPULATIONS.length>0&&h('div',{style:{marginTop:14}},
+        h(FldIn,{label:'Norme spécifique — Isometric Belt Squat (optionnel)',value:form.normSelections.iso_belt_squat||'',onChange:function(v){setNormSelection('iso_belt_squat',v);},options:[{value:'',label:'— Utiliser la population de référence ci-dessus —'}].concat(BELT_SQUAT_POPULATIONS.map(function(p){return{value:p.key,label:p.label};})),note:form.normSelections.iso_belt_squat?NORM_SOURCES[form.normSelections.iso_belt_squat]:'Ne s\'applique QU\'au test Isometric Belt Squat — n\'affecte jamais les normes des autres tests (CMJ, Drop Jump, etc.), qui continuent d\'utiliser la population de référence ci-dessus.'})
+      ),
       h('div',{style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:18}},
         h(Btn,{onClick:props.onCancel},'Annuler'),
         h(Btn,{primary:true,disabled:!valid,onClick:function(){valid&&props.onSave(Object.assign({},form,{id:init.id||Date.now(),bilans:init.bilans||[]}));}},props.initial?'Enregistrer':'Créer le sportif')
@@ -8144,7 +8202,10 @@ function AthleteProfile(props){
         h('h2',{style:{margin:'0 0 2px',fontSize:20,fontWeight:800,color:C.text}},a.prenom+' '+a.nom),
         h('div',{style:{color:C.muted,fontSize:12}},a.sport+(a.poste?' · '+a.poste:'')+' · '+a.niveau),
         h('div',{style:{color:C.muted,fontSize:11,marginTop:1}},(age?age+' ans · ':'')+(a.poids?a.poids+' kg · ':'')+(a.taille?a.taille+' cm':'')),
-        a.normPopulation&&h('div',{style:{marginTop:5,display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.teal+'15',border:'1px solid '+C.teal+'40'}},h('span',{style:{color:C.teal,fontSize:10,fontWeight:700}},'📊 Normes : '+((NORM_POPULATIONS.find(function(p){return p.key===a.normPopulation;})||{}).label||a.normPopulation)))
+        h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:5}},
+          a.normPopulation&&h('div',{style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.teal+'15',border:'1px solid '+C.teal+'40'}},h('span',{style:{color:C.teal,fontSize:10,fontWeight:700}},'📊 Normes : '+((NORM_POPULATIONS.find(function(p){return p.key===a.normPopulation;})||{}).label||a.normPopulation))),
+          a.normSelections&&a.normSelections.iso_belt_squat&&h('div',{style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.petrol+'18',border:'1px solid '+C.petrol+'40'}},h('span',{style:{color:C.petrol,fontSize:10,fontWeight:700}},'🎯 Belt Squat : '+((NORM_POPULATIONS.find(function(p){return p.key===a.normSelections.iso_belt_squat;})||{}).label||a.normSelections.iso_belt_squat)))
+        )
       ),
       h('div',{style:{display:'flex',gap:8}},h(Btn,{small:true,onClick:props.onEdit},'✎'),h(Btn,{primary:true,small:true,onClick:props.onNewBilan},'+ Bilan'))
     ),
@@ -8271,6 +8332,8 @@ function TestKpiChart(props){
 
 function TestDetailPage(props){
   var test=props.test,data=props.data||{active:true},pop=props.pop,athleteAge=props.athleteAge,onChange=props.onChange,onYBTChange=props.onYBTChange,onBack=props.onBack;
+  var normSelections=props.normSelections;
+  var effPop=resolveNormPopulationForTest(test.key,pop,normSelections);
   // Navigation directe test précédent/suivant (mission IMPLEMENTATION_UX_SAISIE_LOTA.md, Objectif
   // 4/4A) : reprend simplement l'ordre déjà actif de la batterie sélectionnée par le praticien
   // (props.navIndex/props.navTotal, calculés par TestEntry) — aucun nouvel ordre clinique inventé,
@@ -8287,17 +8350,26 @@ function TestDetailPage(props){
       h('span',{style:{color:C.muted,fontSize:11,fontWeight:600}},(navIndex+1)+' / '+navTotal+' de la batterie'),
       h(Btn,{small:true,disabled:!onNext,onClick:onNext},'Test suivant ›')
     ),
+    // Carte clinique détaillée Belt Squat (Phase 1/2 — additive, ne remplace pas la saisie
+    // générique ci-dessous, s'affiche uniquement pour ce test). Valeurs lues en direct depuis les
+    // essais déjà tapés (aucune duplication manuelle). Réutilise NormDetailCard, générique.
+    test.key==='iso_belt_squat'&&h('div',{className:'g2',style:{marginBottom:16}},
+      h(NormDetailCard,{variableKinexus:'iso_belt_squat_n',label:'Peak Force (N)',unite:'N',step:1,
+        raw:bestVal((data.trials||{}).n,'max'),pop:effPop,age:athleteAge,v2Entries:NORMS_V2_BELT_SQUAT}),
+      h(NormDetailCard,{variableKinexus:'iso_belt_squat_nkg',label:'Relative Peak Force (N/kg)',unite:'N/kg',step:0.01,
+        raw:bestVal((data.trials||{}).nkg,'max'),pop:effPop,age:athleteAge,v2Entries:NORMS_V2_BELT_SQUAT})
+    ),
     test.ybt
       ?h(YBTEntry,{data:data,onChange:onYBTChange})
       :h('div',null,
         h('div',{className:'g3'},
           test.kpis.map(function(kpi){
-            var normLabel=normRefText(test.key,kpi.key,pop,athleteAge);
-            var normVal=normRefValue(test.key,kpi.key,pop,athleteAge);
+            var normLabel=normRefText(test.key,kpi.key,pop,athleteAge,normSelections);
+            var normVal=normRefValue(test.key,kpi.key,pop,athleteAge,normSelections);
             if(test.bilateral){
               var trials=(data.trials||{})[kpi.key]||[];
               var v=bestVal(trials,kpi.dir);
-              var status=applyThr(test.key+'_'+kpi.key,v,pop,athleteAge);
+              var status=applyThr(test.key+'_'+kpi.key,v,effPop,athleteAge);
               return h(Card,{key:kpi.key,pad:14},
                 h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}},
                   h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},kpi.label),
@@ -8311,8 +8383,8 @@ function TestDetailPage(props){
             var dT=((data.D||{}).trials||{})[kpi.key]||[];
             var gT=((data.G||{}).trials||{})[kpi.key]||[];
             var vD=bestVal(dT,kpi.dir),vG=bestVal(gT,kpi.dir);
-            var stD=applyThr(test.key+'_'+kpi.key,vD,pop,athleteAge);
-            var stG=applyThr(test.key+'_'+kpi.key,vG,pop,athleteAge);
+            var stD=applyThr(test.key+'_'+kpi.key,vD,effPop,athleteAge);
+            var stG=applyThr(test.key+'_'+kpi.key,vG,effPop,athleteAge);
             return h(Card,{key:kpi.key,pad:14},
               h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:2}},kpi.label),
               normLabel&&h('div',{style:{color:C.muted,fontSize:10,marginBottom:8}},'Cible : '+normLabel),
@@ -8334,6 +8406,7 @@ function TestEntry(props){
   var athlete=props.athlete||{};
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
   var pop=effectiveNormPop(athlete);
+  var normSelections=athlete.normSelections;
   var [testData,setTestData]=useState(bilan.testData||{});
   var [questData,setQuestData]=useState(bilan.questData||{});
   var [tab,setTab]=useState('tests');
@@ -8417,6 +8490,7 @@ function TestEntry(props){
       test:otTest,
       data:testData[openTest]||{active:true},
       pop:pop,
+      normSelections:normSelections,
       athleteAge:athleteAge,
       onChange:function(side,kpiKey,trials){updateTrials(openTest,side,kpiKey,trials);},
       onYBTChange:function(newData){setTestData(function(prev){var n=Object.assign({},prev);n[openTest]=newData;return n;});},
@@ -8458,7 +8532,7 @@ function TestEntry(props){
           // statut de complétion UX, jamais un statut clinique (Objectif 6).
           var comp=testCompletion(test,data);
           var hasValue=comp.filled>0;
-          var status=hasValue?computeTestStatus(test.key,data,pop,athleteAge):null;
+          var status=hasValue?computeTestStatus(test.key,data,pop,athleteAge,normSelections):null;
           return h('div',{key:test.key,style:{background:active?C.teal+'06':C.card,border:'1px solid '+(active?C.teal+'40':C.border),borderRadius:10,overflow:'hidden'}},
             h('div',{style:{display:'flex',alignItems:'center',padding:'11px 14px',cursor:'pointer'},onClick:function(){if(!active)toggle(test.key);setOpenTest(test.key);}},
               h('div',{onClick:function(e){e.stopPropagation();toggle(test.key);},style:{width:17,height:17,borderRadius:4,border:'2px solid '+(active?C.teal:C.border),background:active?C.teal:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginRight:10}},active&&h('span',{style:{color:'#fff',fontSize:10,fontWeight:800}},'✓')),
@@ -8509,7 +8583,7 @@ function AnalyseView(props){
   var [validated,setValidated]=useState(bilan.statut==='Validé');
   var [showPrintMenu,setShowPrintMenu]=useState(false);
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge);},[bilan,athlete.normPopulation,athlete.sexe,athleteAge]);
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,athlete.normSelections);},[bilan,athlete.normPopulation,athlete.normSelections,athlete.sexe,athleteAge]);
   var mouvementAnalysis=useMemo(function(){
     return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),athleteAge,res.functionScores):null;
   },[bilan,athlete.normPopulation,athlete.sexe,athleteAge,res]);
@@ -8527,7 +8601,7 @@ function AnalyseView(props){
   var priorBilans=(athlete.bilans||[]).filter(function(b){return b.id!==bilan.id&&new Date(b.date)<new Date(bilan.date);}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
   if(priorBilans.length>0){
     var prevBilan=priorBilans[0];
-    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),athleteAge);
+    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),athleteAge,athlete.normSelections);
     var commonFns=FUNCTIONS.filter(function(f){return res.functionScores[f]&&prevRes.functionScores[f];});
     if(commonFns.length>0){
       var curAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[res.functionScores[f].status];},0)/commonFns.length;
@@ -9103,12 +9177,124 @@ function FunctionGaugeCard(props){
     sc&&h('div',{style:{color:C.muted,fontSize:8,marginTop:2,textAlign:'center'}},'Couverture '+sc.coverage+'%')
   );
 }
+// Recherche générique, source-traçable, d'une entrée dans un tableau NORMS_V2_* (ex.
+// NORMS_V2_BELT_SQUAT) — mission "AMÉLIORATION FONCTIONNELLE BELT SQUAT", Phase 1. Ne devine
+// jamais : retourne null si aucune entrée ne correspond exactement (variable + population).
+// Réutilisable pour tout futur tableau NORMS_V2_<TEST> partageant le même schéma d'entrée
+// (variable_kinexus, norm_population_key, percentiles, source, mapping_type, protocole...).
+function findNormsV2Entry(v2Array,variableKinexus,normPopulationKey){
+  if(!v2Array||!normPopulationKey)return null;
+  var found=null;
+  v2Array.forEach(function(e){if(!found&&e.variable_kinexus===variableKinexus&&e.norm_population_key===normPopulationKey)found=e;});
+  return found;
+}
+// Carte clinique réutilisable pour une variable normée : valeur brute + statut + les 5 percentiles
+// (P5/P25/P50/P75/P95) quand ils sont réellement disponibles + population/source/protocole/type de
+// norme. N'invente ni n'interpole jamais un percentile — n'affiche que ce que resolveBands renvoie
+// réellement ; si seul un THRESHOLD existe (repli universel), affiche l'unique seuil disponible,
+// exactement comme aujourd'hui. Utilise beltSquatMappingType() déjà existant pour la distinction
+// DIRECT_BELT_SQUAT/PROXY_IMTP — aucune logique parallèle recréée. Ne modifie ni ne recalcule
+// aucune norme : lecture seule de NORMS/NORMS_MAPPING_TYPE/l'entrée NORMS_V2_* fournie par
+// l'appelant (v2Entries, tableau optionnel — ex. NORMS_V2_BELT_SQUAT — pour que ce composant reste
+// réutilisable par de futurs tests normés sans dépendre d'un tableau NORMS_V2 particulier).
+function NormDetailCard(props){
+  var variableKinexus=props.variableKinexus,pop=props.pop,age=props.age,raw=props.raw;
+  var label=props.label,unite=props.unite,step=props.step,v2Entries=props.v2Entries;
+  var mappingType=pop?beltSquatMappingType(variableKinexus,pop):null;
+  var bandsEntry=(pop&&NORMS[pop])?NORMS[pop][variableKinexus]:null;
+  var bands=bandsEntry?resolveBands(bandsEntry,age):null;
+  var status=(raw!=null&&pop)?applyThr(variableKinexus,raw,pop,age):null;
+  var popLabel=pop?((NORM_POPULATIONS.find(function(p){return p.key===pop;})||{}).label||pop):null;
+  var v2Entry=findNormsV2Entry(v2Entries,variableKinexus,pop);
+  var pctRows=(bands&&bands.length===5)?[['P5',bands[0]],['P25',bands[1]],['P50',bands[2]],['P75',bands[3]],['P95',bands[4]]]:null;
+  var thresholdFallback=(!bandsEntry&&THRESHOLDS[variableKinexus])?THRESHOLDS[variableKinexus]:null;
+  return h(Card,{pad:16},
+    label&&h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:6}},label),
+    h('div',{style:{display:'flex',alignItems:'baseline',gap:10,marginBottom:8}},
+      h('span',{style:{fontSize:24,fontWeight:800,color:status?SC[status]:C.text}},raw!=null?roundStep(raw,step)+(unite?' '+unite:''):'—'),
+      status&&h(Badge,{status:status})
+    ),
+    popLabel
+      ?h('div',{style:{fontSize:11.5,color:C.text,marginBottom:pctRows||thresholdFallback?8:0}},'Norme : '+popLabel)
+      :h('div',{style:{fontSize:11.5,color:C.muted,marginBottom:0}},'Aucune population de référence sélectionnée — seuils génériques uniquement.'),
+    pctRows&&h('div',{style:{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4,marginBottom:8}},
+      pctRows.map(function(r){return h('div',{key:r[0],style:{textAlign:'center',background:C.surface,borderRadius:6,padding:'4px 2px'}},
+        h('div',{style:{fontSize:8.5,color:C.muted,fontWeight:700}},r[0]),
+        h('div',{style:{fontSize:10.5,color:C.text,fontWeight:700}},r[1])
+      );})
+    ),
+    !pctRows&&thresholdFallback&&h('div',{style:{fontSize:11,color:C.muted,marginBottom:8}},'Seuil générique (repli universel) : ≥ '+thresholdFallback.vert+(unite?' '+unite:'')),
+    !bands&&!thresholdFallback&&pop&&h('div',{style:{fontSize:11,color:C.muted,marginBottom:8}},'Aucune norme disponible pour cette variable et cette population.'),
+    mappingType&&h('div',{style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,marginBottom:8,background:(mappingType==='DIRECT_BELT_SQUAT'?C.teal:'#B08900')+'18',border:'1px solid '+(mappingType==='DIRECT_BELT_SQUAT'?C.teal:'#B08900')+'50'}},
+      h('span',{style:{fontSize:9.5,fontWeight:700,color:mappingType==='DIRECT_BELT_SQUAT'?C.teal:'#B08900'}},mappingType==='DIRECT_BELT_SQUAT'?'Norme directe':'Norme proxy')
+    ),
+    v2Entry
+      ?h('div',{style:{fontSize:10,color:C.muted,lineHeight:1.6}},
+          h('div',null,'Population : '+v2Entry.population_vald+' — '+v2Entry.sexe+' — '+v2Entry.niveau+' — '+v2Entry.sport),
+          h('div',null,'Source : '+v2Entry.source+' / '+v2Entry.source_id),
+          h('div',null,'Type de norme : '+v2Entry.mapping_type),
+          v2Entry.position_protocole_source&&h('div',null,'Protocole normatif (source) : '+v2Entry.position_protocole_source),
+          v2Entry.protocole_cible_kinexus&&h('div',null,'Protocole cible Kinexus : '+v2Entry.protocole_cible_kinexus)
+        )
+      :(mappingType==='PROXY_IMTP'&&h('div',{style:{fontSize:10,color:C.muted,lineHeight:1.6}},'Force de pic IMTP réutilisée historiquement comme substitut du Belt Squat (aucune mesure Belt Squat réelle pour cette population) — voir NORM_SOURCES.'))
+  );
+}
+// Bloc HTML (chaîne, pas React) pour le rapport imprimé — Phase 6, mission "AMÉLIORATION
+// FONCTIONNELLE BELT SQUAT". Même logique de lecture que NormDetailCard (aucune duplication de
+// valeur : relit NORMS/NORMS_MAPPING_TYPE/NORMS_V2_BELT_SQUAT/applyThr tels quels), mais produit du
+// HTML string car le rapport imprimé (buildSportifReport/buildExpertReport) est assemblé en chaîne,
+// jamais en composants React. Retourne '' si le test Belt Squat n'a pas été réalisé pour ce bilan —
+// le bloc n'apparaît alors pas du tout dans le rapport (additif, jamais un espace vide inventé).
+function beltSquatReportBlockHtml(testData,pop,age,normSelections){
+  var belt=(testData||{}).iso_belt_squat;
+  if(!belt||!belt.active)return'';
+  var effPop=resolveNormPopulationForTest('iso_belt_squat',pop,normSelections);
+  var rawN=bestVal((belt.trials||{}).n,'max');
+  var rawNkg=bestVal((belt.trials||{}).nkg,'max');
+  if(rawN==null&&rawNkg==null)return'';
+  function statBlock(variableKinexus,rawVal,unite,titre,step){
+    if(rawVal==null)return'';
+    var mappingType=effPop?beltSquatMappingType(variableKinexus,effPop):null;
+    var bandsEntry=(effPop&&NORMS[effPop])?NORMS[effPop][variableKinexus]:null;
+    var bands=bandsEntry?resolveBands(bandsEntry,age):null;
+    var status=applyThr(variableKinexus,rawVal,effPop,age);
+    var popLabel=effPop?((NORM_POPULATIONS.find(function(p){return p.key===effPop;})||{}).label||effPop):null;
+    var v2Entry=findNormsV2Entry(NORMS_V2_BELT_SQUAT,variableKinexus,effPop);
+    var pctHtml=(bands&&bands.length===5)
+      ?'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:8px 0">'
+        +[['P5',bands[0]],['P25',bands[1]],['P50',bands[2]],['P75',bands[3]],['P95',bands[4]]].map(function(r){
+          return'<div style="text-align:center;background:#F8FAFB;border-radius:6px;padding:4px 2px"><div style="font-size:7.5pt;color:#94A3B8;font-weight:700">'+r[0]+'</div><div style="font-size:9pt;color:#132B3A;font-weight:700">'+r[1]+'</div></div>';
+        }).join('')
+      +'</div>'
+      :'';
+    var statusHtml=status?'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:'+SBG[status]+';border:1px solid '+SC[status]+'40;color:'+SC[status]+';font-size:9.5pt;font-weight:700">'+SL[status]+'</span>':'';
+    var mappingHtml=mappingType?('<div style="margin-top:7px;font-size:7.5pt;font-weight:700;color:'+(mappingType==='DIRECT_BELT_SQUAT'?'#0F766E':'#B08900')+'">'+(mappingType==='DIRECT_BELT_SQUAT'?'DIRECT_BELT_SQUAT — norme Belt Squat réelle':'PROXY_IMTP — norme substitutive (force de pic IMTP), pas une mesure Belt Squat')+'</div>'):'';
+    var protocolHtml=v2Entry?('<div style="margin-top:8px;font-size:7.3pt;color:#5B7A8C;line-height:1.6">'
+      +'Protocole normatif — source : '+v2Entry.position_protocole_source+'<br/>'
+      +'Protocole normatif — cible Kinexus : '+v2Entry.protocole_cible_kinexus+'<br/>'
+      +'Source : '+v2Entry.source+' / '+v2Entry.source_id
+      +'</div>'):'';
+    return'<div style="background:#F8FAFB;border:1px solid #E7ECF1;border-radius:10px;padding:14px 16px">'
+      +'<div style="font-size:7.5pt;color:#5B7A8C;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">'+titre+'</div>'
+      +'<div style="font-size:18pt;font-weight:800;color:#132B3A;margin-bottom:6px">'+roundStep(rawVal,step)+' '+unite+'</div>'
+      +(popLabel?'<div style="font-size:8pt;color:#132B3A;margin-bottom:6px">Norme : '+popLabel+'</div>':'<div style="font-size:8pt;color:#94A3B8;margin-bottom:6px">Aucune population de référence — seuils génériques</div>')
+      +pctHtml+statusHtml+mappingHtml+protocolHtml
+      +'</div>';
+  }
+  return'<div style="font-size:8.5pt;font-weight:800;color:#132B3A;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Belt Squat — Force maximale</div>'
+    +'<div style="font-size:8.5pt;color:#5B7A8C;margin-bottom:14px;line-height:1.5">Résultat détaillé du test <strong>Isometric Belt Squat</strong> — distinct de la conclusion globale de la qualité Force (ci-après, section Qualités fonctionnelles).</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +statBlock('iso_belt_squat_n',rawN,'N','Peak Force',1)
+    +statBlock('iso_belt_squat_nkg',rawNkg,'N/kg','Relative Peak Force',0.01)
+    +'</div>';
+}
 function KpiResultCard(props){
-  var kpi=props.kpi,trials=props.trials||[],testKey=props.testKey,pop=props.pop,age=props.age;
+  var kpi=props.kpi,trials=props.trials||[],testKey=props.testKey,pop=props.pop,age=props.age,normSelections=props.normSelections;
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var best=bestVal(trials,kpi.dir);
-  var status=applyThr(testKey+'_'+kpi.key,best,pop,age);
-  var normLabel=normRefText(testKey,kpi.key,pop,age);
-  var normVal=normRefValue(testKey,kpi.key,pop,age);
+  var status=applyThr(testKey+'_'+kpi.key,best,effPop,age);
+  var normLabel=normRefText(testKey,kpi.key,pop,age,normSelections);
+  var normVal=normRefValue(testKey,kpi.key,pop,age,normSelections);
   var vals=trials.filter(function(v){return v!=null;}).map(Number);
   var maxScale=Math.max.apply(null,vals.concat(normVal!=null?[normVal]:[],[0.001]));
   return h('div',{style:{background:C.surface,border:'1px solid '+(status?SC[status]+'50':C.border),borderLeft:'3px solid '+(status?SC[status]:C.border),borderRadius:8,padding:'9px 10px'}},
@@ -9136,6 +9322,7 @@ function KpiResultCard(props){
 function ResultsBrowser(props){
   var td=props.testData||{};var athlete=props.athlete||{};var athleteAge=props.athleteAge;var tSt=props.testStatuses||{};
   var pop=effectiveNormPop(athlete);
+  var normSelections=athlete.normSelections;
   var activeTests=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];});
   var [sel,setSel]=useState(activeTests[0]||null);
   if(sel&&activeTests.indexOf(sel)<0)sel=activeTests[0]||null;
@@ -9161,13 +9348,13 @@ function ResultsBrowser(props){
         )
       ),
       test.bilateral
-        ?h('div',{className:'g2'},test.kpis.map(function(kpi){return h(KpiResultCard,{key:kpi.key,kpi:kpi,trials:(data.trials||{})[kpi.key]||[],testKey:sel,pop:pop,age:athleteAge});}))
+        ?h('div',{className:'g2'},test.kpis.map(function(kpi){return h(KpiResultCard,{key:kpi.key,kpi:kpi,trials:(data.trials||{})[kpi.key]||[],testKey:sel,pop:pop,age:athleteAge,normSelections:normSelections});}))
         :sideView==='detail'
           ?h('div',{className:'gh',style:{display:'grid',gap:14}},['D','G'].map(function(side){
               var sd=data[side]||{};
               return h('div',{key:side,style:{background:C.card,border:'1px solid '+C.border,borderRadius:10,padding:12}},
                 h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:10}},h('span',{style:{width:22,height:22,borderRadius:'50%',background:side==='D'?C_D+'30':C_G+'30',border:'1.5px solid '+(side==='D'?C_D:C_G),display:'flex',alignItems:'center',justifyContent:'center',color:side==='D'?C_D:C_G,fontSize:11,fontWeight:800,flexShrink:0}},side),h('span',{style:{color:side==='D'?C.text:C.muted,fontSize:12.5,fontWeight:700}},side==='D'?'Droite':'Gauche')),
-                h('div',{className:'g2'},test.kpis.map(function(kpi){return h(KpiResultCard,{key:kpi.key,kpi:kpi,trials:((sd.trials||{})[kpi.key])||[],testKey:sel,pop:pop,age:athleteAge});}))
+                h('div',{className:'g2'},test.kpis.map(function(kpi){return h(KpiResultCard,{key:kpi.key,kpi:kpi,trials:((sd.trials||{})[kpi.key])||[],testKey:sel,pop:pop,age:athleteAge,normSelections:normSelections});}))
               );
             }))
           :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},test.kpis.map(function(kpi){
@@ -9273,7 +9460,7 @@ function ExpertView(props){
       h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:4}},['Toutes'].concat(HYP_CSM_QUALITIES).map(function(q){return h('button',{key:q,onClick:function(){setVarFilter(q);},style:{padding:'4px 11px',borderRadius:20,border:'1px solid '+(varFilter===q?C.teal:C.border),background:varFilter===q?C.teal:'transparent',color:varFilter===q?'#fff':C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},q);})),
       filteredVarRelKpis.length===0&&h('div',{style:{color:C.muted,fontSize:12}},varRelKpis.length===0?'Aucune variable active.':'Aucune variable active liée à '+varFilter+'.'),
       filteredVarRelKpis.map(function(v){
-        var st=kpiStatus(v.testKey,v.kpi.key,td,effectiveNormPop(athlete),athleteAge);
+        var st=kpiStatus(v.testKey,v.kpi.key,td,effectiveNormPop(athlete),athleteAge,normSelections);
         return h(Card,{key:v.testKey+'_'+v.kpi.key,pad:14,style:{borderLeft:'3px solid '+(st?SC[st]:C.border)}},
           h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},
             h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},v.testLabel),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},v.kpi.label)),
@@ -9363,8 +9550,8 @@ function HistoriqueView(props){
   var b1=bilans.find(function(b){return b.id==sel1;});
   var b2=bilans.find(function(b){return b.id==sel2;});
   var histAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var r1=b1?computeMoteur(b1.testData,b1.questData,effectiveNormPop(athlete),histAge):null;
-  var r2=b2?computeMoteur(b2.testData,b2.questData,effectiveNormPop(athlete),histAge):null;
+  var r1=b1?computeMoteur(b1.testData,b1.questData,effectiveNormPop(athlete),histAge,athlete.normSelections):null;
+  var r2=b2?computeMoteur(b2.testData,b2.questData,effectiveNormPop(athlete),histAge,athlete.normSelections):null;
   function fmtD(d){return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'});}
   if(bilans.length<2)return h(Card,{pad:24,style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:13}},'Au moins 2 bilans sont nécessaires pour la comparaison.'));
   var opts=bilans.map(function(b){return{value:b.id,label:b.type+' · '+b.sousType+' ('+fmtD(b.date)+')'};});
