@@ -1966,6 +1966,282 @@ function buildNormsV2TestOptions(testKey,testLabel){
   out.sort(function(a,b){return a.label.localeCompare(b.label);});
   return out;
 }
+// ── AUTO-SÉLECTION DES NORMES (mission "AUDIT ET CONCEPTION DE L'AUTO-SÉLECTION DES NORMES
+// KINEXUS", tableaux 1-3 valides par le praticien) ────────────────────────────────────────────
+// Contrat absolu : ne retourne JAMAIS une entree qui n'existe pas reellement dans NORMS_V2 /
+// NORMS_V2_BELT_SQUAT. Aucune moyenne, fusion, interpolation, ni combinaison artificielle
+// sexe+sport+age provenant de lignes differentes. normSelections[testKey] manuel reste
+// TOUJOURS prioritaire (verifie au point d'appel, effectiveNormSelections ci-dessous, jamais
+// ici). N'ecrit rien dans applyThr/pctStatus/THRESHOLDS/NORMS -- determine uniquement QUELLE
+// entree utiliser, jamais QUEL statut.
+//
+// Table 1 (validee) : Kinexus sport -> populations VALD autorisees. sexeContext est une
+// annotation FIGEE, ecrite une seule fois ici a partir du NOM de la population (jamais recalculee
+// au runtime) -- UNIQUEMENT pour les populations dont le champ sexe structure est "Unknown" alors
+// que le nom indique clairement Men's/Women's. Quand sexeContext est null, le matcher retombe sur
+// le champ sexe structure de l'entree tel quel (fiable pour Endurance Sports / Weightlifting ;
+// "Unknown" pour Basketball generique et les 3 variantes Rugby -- ce qui les exclut naturellement
+// de toute selection automatique ferme des que le sexe de l'athlete est connu, conformement a
+// l'arbitrage du praticien : ces populations restent des candidats internes, jamais une selection
+// automatique seule).
+var SPORT_NORMS_V2_MAP={
+  'Football':[
+    {population_vald:'Men’s Football (Soccer)',sexeContext:'Male'},
+    {population_vald:'Women’s Football (Soccer)',sexeContext:'Female'},
+    {population_vald:'Men’s Youth Football (Soccer)',sexeContext:'Male'},
+    {population_vald:'College - Men’s Soccer',sexeContext:'Male'},
+    {population_vald:'College - Women’s Soccer',sexeContext:'Female'}
+  ],
+  'Basketball':[
+    {population_vald:'Basketball',sexeContext:null},
+    {population_vald:'College - Men’s Basketball',sexeContext:'Male'},
+    {population_vald:'College - Women’s Basketball',sexeContext:'Female'}
+  ],
+  // Arbitrage praticien : "Rugby" reste une categorie unique -- Union/League/Australian Football
+  // ne sont JAMAIS distingues automatiquement -> ambiguite systematique des lors qu'un candidat
+  // Rugby existe pour la variable (cf. resolveAutomaticNormSelectionForVariable).
+  'Rugby':[
+    {population_vald:'Rugby Union',sexeContext:null},
+    {population_vald:'Rugby League',sexeContext:null},
+    {population_vald:'Rugby & Australian Football',sexeContext:null}
+  ],
+  'Tennis':[
+    {population_vald:'Men’s Tennis',sexeContext:'Male'},
+    {population_vald:'Women’s Tennis',sexeContext:'Female'}
+  ],
+  'Handball':[
+    {population_vald:'Men’s Handball',sexeContext:'Male'}
+  ],
+  'Volleyball':[
+    {population_vald:'College - Men’s Volleyball',sexeContext:'Male'}
+  ],
+  'Natation':[
+    {population_vald:'College - Men’s Swimming',sexeContext:'Male'},
+    {population_vald:'College - Women’s Swimming',sexeContext:'Female'}
+  ],
+  'Athletisme':[
+    {population_vald:'College - Men’s Track & Field',sexeContext:'Male'},
+    {population_vald:'College - Women’s Track & Field',sexeContext:'Female'}
+  ],
+  'Endurance':[{population_vald:'Endurance Sports',sexeContext:null}],
+  'Halterophilie':[{population_vald:'Weightlifting',sexeContext:null}]
+};
+var SPORT_NORMS_V2_MAP_NORM={};
+Object.keys(SPORT_NORMS_V2_MAP).forEach(function(k){SPORT_NORMS_V2_MAP_NORM[k.toLowerCase()]=SPORT_NORMS_V2_MAP[k];});
+function lookupSportNormsMap(sportRaw){
+  if(!sportRaw)return null;
+  return SPORT_NORMS_V2_MAP_NORM[String(sportRaw).trim().toLowerCase()]||null;
+}
+// Table 2 (validee) : fallback non sportif par variable, dans l'ordre de priorite stricte.
+// General Population et Allied Health restent deux populations distinctes, jamais renommees
+// l'une en l'autre. Pour imtp_n/imtp_nkg, General Population est TOUJOURS prioritaire sur Allied
+// Health meme si Allied Health offre une bande d'age plus precise (arbitrage praticien §3).
+var NORMS_V2_FALLBACK_POPULATION={
+  imtp_n:['General Population','Allied Health'],
+  imtp_nkg:['General Population','Allied Health'],
+  imtp_rfd100:['General Population'],
+  cmj_peak_power:['Allied Health'],
+  slcmj_peak_power:['Allied Health'],
+  dj_rsi:['Allied Health'],
+  sldj_rsi:['Allied Health']
+};
+function normalizeSexeForAutoSelect(sexe){
+  if(sexe==='M')return'Male';
+  if(sexe==='F')return'Female';
+  return null; // jamais de deduction -- sexe absent/non reconnu = pas d'auto-selection.
+}
+function athleteAgeYears(athlete){
+  if(!athlete||!athlete.dateNaissance)return null;
+  return Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25));
+}
+// Parse "10-20 years" / "13-14 years old" / tout format equivalent deja present dans NORMS_V2 --
+// extrait les deux bornes numeriques telles quelles, n'invente jamais de categorie (U18/Senior/
+// Adult) absente de la source.
+function parseAgeBandRange(band){
+  if(!band)return null;
+  var m=String(band).match(/(\d+)\s*-\s*(\d+)/);
+  if(!m)return null;
+  return{min:parseInt(m[1],10),max:parseInt(m[2],10)};
+}
+function ageWithinBand(age,band){
+  var r=parseAgeBandRange(band);
+  if(!r||age==null)return false;
+  return age>=r.min&&age<=r.max;
+}
+// Retrecit une liste de candidats reels par age : prefere une bande qui contient effectivement
+// l'age de l'athlete ; a defaut, une entree sans age_band (correspondance sure, jamais un age
+// invente) ; sinon, aucune correspondance surete (liste vide) plutot qu'un choix au hasard parmi
+// des bandes qui ne correspondent pas.
+function narrowCandidatesByAge(list,age){
+  if(age==null)return{entries:list,usedAge:false};
+  var withBand=list.filter(function(e){return e.age_band&&ageWithinBand(age,e.age_band);});
+  if(withBand.length)return{entries:withBand,usedAge:true};
+  var noBand=list.filter(function(e){return e.age_band==null;});
+  if(noBand.length)return{entries:noBand,usedAge:false};
+  return{entries:[],usedAge:false};
+}
+// Resolveur principal pour les 7 variables NORMS_V2 (jamais Belt Squat, cf.
+// resolveAutomaticBeltSquatSelection ci-dessous, mecanisme distinct).
+// Retour : {selected,matchLevel,ambiguous,candidates,sportAmbiguous,sportCandidates,reason}.
+// - selected : l'entree REELLE utilisee pour le statut clinique (sport OU fallback), ou null.
+// - ambiguous : true uniquement si le niveau qui a produit `selected` (ou qui aurait du le
+//   produire) presente plusieurs candidats reels sans distinction possible -- jamais de choix
+//   arbitraire, selected reste alors null.
+// - sportAmbiguous/sportCandidates : informatif -- une ambiguite au niveau sportif ne bloque
+//   JAMAIS le repli vers le fallback non sportif (regle explicite du praticien).
+function resolveAutomaticNormSelectionForVariable(variableKinexus,athlete){
+  var entries=NORMS_V2[variableKinexus]||[];
+  var result={selected:null,matchLevel:'none',ambiguous:false,candidates:[],sportAmbiguous:false,sportCandidates:[],reason:''};
+  if(!athlete||!athlete.sexe){result.reason='Sexe non renseigné — aucune sélection automatique.';return result;}
+  var sexe=normalizeSexeForAutoSelect(athlete.sexe);
+  if(!sexe){result.reason='Sexe non reconnu — aucune sélection automatique.';return result;}
+  var age=athleteAgeYears(athlete);
+
+  var mapList=lookupSportNormsMap(athlete.sport);
+  if(mapList){
+    // sportCandidates : sexe verifie (soit sexeContext curee, soit champ structure fiable) ->
+    // seuls ceux-ci peuvent produire une selection automatique ferme (arbitrage praticien).
+    // sportUnverifiedCandidates : population sportive reelle mais sexe non verifiable (Basketball
+    // generique, les 3 variantes Rugby) -- reste un candidat INTERNE, ne produit jamais seul un
+    // statut automatique ; pour Rugby specifiquement, signale une ambiguite systematique (§1/§2)
+    // meme quand aucun candidat verifie n'existe, plutot que de retomber silencieusement au
+    // fallback sans laisser de trace que des donnees sportives existaient.
+    var sportCandidates=[],sportUnverifiedCandidates=[];
+    mapList.forEach(function(m){
+      entries.forEach(function(e){
+        if(e.population_vald!==m.population_vald)return;
+        var effSexe=m.sexeContext!=null?m.sexeContext:e.sexe;
+        if(effSexe===sexe){sportCandidates.push(e);}
+        else if(effSexe==null||effSexe==='Unknown'){sportUnverifiedCandidates.push(e);}
+      });
+    });
+    result.sportCandidates=sportCandidates;
+    if(sportCandidates.length){
+      var narrowedSport=narrowCandidatesByAge(sportCandidates,age);
+      if(narrowedSport.entries.length===1){
+        result.selected=narrowedSport.entries[0];
+        result.matchLevel=narrowedSport.usedAge?'sport_sex_age':'sport_sex';
+        result.candidates=narrowedSport.entries;
+        return result;
+      }
+      if(narrowedSport.entries.length>1){
+        result.sportAmbiguous=true; // signale, mais ne bloque pas le repli (regle praticien).
+      }
+    }else if(sportUnverifiedCandidates.length){
+      // Aucun candidat au sexe verifie -- des populations sportives existent mais sans sexe
+      // verifiable (ex. Rugby : Union/League/Australian Football, jamais de sexe structure).
+      // Ambiguite systematique signalee, jamais une selection automatique ferme.
+      result.sportAmbiguous=true;
+      result.sportCandidates=sportUnverifiedCandidates;
+    }
+  }
+
+  var fallbackList=NORMS_V2_FALLBACK_POPULATION[variableKinexus]||[];
+  for(var i=0;i<fallbackList.length;i++){
+    var popName=fallbackList[i];
+    var fbCandidates=entries.filter(function(e){return e.population_vald===popName&&e.sexe===sexe;});
+    if(!fbCandidates.length)continue;
+    var narrowedFb=narrowCandidatesByAge(fbCandidates,age);
+    if(narrowedFb.entries.length===1){
+      result.selected=narrowedFb.entries[0];
+      result.matchLevel=narrowedFb.usedAge?'general_sex_age':'general_sex';
+      result.candidates=narrowedFb.entries;
+      return result;
+    }
+    if(narrowedFb.entries.length>1){
+      result.ambiguous=true;
+      result.candidates=narrowedFb.entries;
+      result.matchLevel='general_ambiguous';
+      return result;
+    }
+  }
+  result.reason='Aucune norme automatique disponible (ni sportive, ni de référence) pour cette variable.';
+  return result;
+}
+// IMTP est porte par 2 variables NORMS_V2 (imtp_n/imtp_nkg) partageant UN seul selecteur (comme
+// pour la selection manuelle). Une correspondance sportive n'est retenue pour 'imtp' que si elle
+// est reellement coherente dans les DEUX variables (ex. Weightlifting existe pour n ET nkg ;
+// Endurance Sports n'existe que pour n -- dans ce cas la selection sportive n'est PAS retenue,
+// on retombe sur le fallback General Population, coherent lui sur les deux variables). Jamais de
+// selecteur qui laisserait nkg silencieusement sans statut alors qu'une correspondance existait.
+function resolveAutomaticNormSelectionForImtp(athlete){
+  var primary=resolveAutomaticNormSelectionForVariable('imtp_n',athlete);
+  if(primary.selected&&(primary.matchLevel==='sport_sex_age'||primary.matchLevel==='sport_sex')){
+    var sel=normsV2SelectorFromEntry(primary.selected);
+    var crossCheck=resolveNormsV2Selection('imtp_nkg',sel);
+    if(!crossCheck||!crossCheck.matched){
+      // Incoherent entre n et nkg -> ne pas utiliser ce niveau sportif, repli fallback uniquement.
+      return resolveAutomaticNormSelectionForVariable('imtp_n',Object.assign({},athlete,{sport:null}));
+    }
+  }
+  return primary;
+}
+// Belt Squat : mecanisme DISTINCT (deja existant, string-based vers NORM_POPULATIONS/NORMS,
+// jamais NORMS_V2). NORMS_V2_BELT_SQUAT porte sport/niveau/sexe structures et fiables (pas de
+// texte a interpreter) ainsi que le norm_population_key legacy exact a utiliser tel quel.
+// Correspondance EXACTE requise sur sport + sexe + niveau (§10, jamais un classement de niveaux).
+function resolveAutomaticBeltSquatSelection(athlete){
+  var entries=NORMS_V2_BELT_SQUAT||[];
+  var result={selected:null,matchLevel:'none',ambiguous:false,candidates:[],reason:''};
+  if(!athlete||!athlete.sexe){result.reason='Sexe non renseigné.';return result;}
+  var sexe=normalizeSexeForAutoSelect(athlete.sexe);
+  if(!sexe){result.reason='Sexe non reconnu.';return result;}
+  if(!athlete.sport||!athlete.niveau){result.reason='Sport ou niveau non renseigné — aucune norme Belt Squat automatique.';return result;}
+  var sportNorm=String(athlete.sport).trim().toLowerCase();
+  var niveauNorm=String(athlete.niveau).trim().toLowerCase();
+  var candidates=entries.filter(function(e){
+    return e.sexe===sexe&&e.sport&&String(e.sport).trim().toLowerCase()===sportNorm&&e.niveau&&String(e.niveau).trim().toLowerCase()===niveauNorm;
+  });
+  // Une population Belt Squat porte 2 entrees (iso_belt_squat_n + iso_belt_squat_nkg) : on
+  // deduplique par norm_population_key pour compter des POPULATIONS candidates, pas des lignes.
+  var byKey={};candidates.forEach(function(e){byKey[e.norm_population_key]=byKey[e.norm_population_key]||e;});
+  var distinct=Object.keys(byKey).map(function(k){return byKey[k];});
+  if(distinct.length===1){
+    result.selected=distinct[0];
+    result.matchLevel='sport_sex_level';
+    result.candidates=distinct;
+    return result;
+  }
+  if(distinct.length>1){
+    result.ambiguous=true;result.candidates=distinct;result.matchLevel='ambiguous';return result;
+  }
+  result.reason='Aucune norme Belt Squat correspondant exactement à sport+sexe+niveau.';
+  return result;
+}
+var NORMS_V2_AUTO_TESTKEYS=['cmj','slcmj','dj','sldj'];
+var TESTKEY_TO_NORMS_V2_VARIABLE={cmj:'cmj_peak_power',slcmj:'slcmj_peak_power',dj:'dj_rsi',sldj:'sldj_rsi'};
+// Point d'entree unique consomme par l'UI/le rapport ET par tous les calculs cliniques (via les
+// call sites qui lisaient auparavant athlete.normSelections directement). Ne modifie JAMAIS
+// athlete.normSelections (les selections manuelles restantes intactes) -- construit un objet
+// EFFECTIF ou l'auto-selection ne comble que les testKey sans selection manuelle. Retourne
+// {normSelections, meta} : normSelections a la forme exacte attendue par
+// resolveNormsV2Selection/resolveNormPopulationForTest (jamais de champ parasite) ; meta porte
+// les informations d'affichage (automatique/manuel, matchLevel, ambiguite, candidats).
+function effectiveNormSelections(athlete){
+  var manual=(athlete&&athlete.normSelections)||{};
+  var normSelections={};var meta={};
+  Object.keys(manual).forEach(function(k){normSelections[k]=manual[k];});
+  NORMS_V2_AUTO_TESTKEYS.forEach(function(testKey){
+    if(manual[testKey]!=null){meta[testKey]={source:'manual'};return;}
+    var variableKinexus=TESTKEY_TO_NORMS_V2_VARIABLE[testKey];
+    var auto=resolveAutomaticNormSelectionForVariable(variableKinexus,athlete);
+    if(auto.selected){normSelections[testKey]=normsV2SelectorFromEntry(auto.selected);}
+    meta[testKey]={source:'automatic',matchLevel:auto.matchLevel,ambiguous:auto.ambiguous,candidates:auto.candidates,sportAmbiguous:auto.sportAmbiguous,sportCandidates:auto.sportCandidates,reason:auto.reason,entry:auto.selected};
+  });
+  if(manual.imtp!=null){meta.imtp={source:'manual'};}
+  else{
+    var autoImtp=resolveAutomaticNormSelectionForImtp(athlete);
+    if(autoImtp.selected){normSelections.imtp=normsV2SelectorFromEntry(autoImtp.selected);}
+    meta.imtp={source:'automatic',matchLevel:autoImtp.matchLevel,ambiguous:autoImtp.ambiguous,candidates:autoImtp.candidates,sportAmbiguous:autoImtp.sportAmbiguous,sportCandidates:autoImtp.sportCandidates,reason:autoImtp.reason,entry:autoImtp.selected};
+  }
+  if(manual.iso_belt_squat!=null){meta.iso_belt_squat={source:'manual'};}
+  else{
+    var autoBelt=resolveAutomaticBeltSquatSelection(athlete);
+    if(autoBelt.selected){normSelections.iso_belt_squat=autoBelt.selected.norm_population_key;}
+    meta.iso_belt_squat={source:'automatic',matchLevel:autoBelt.matchLevel,ambiguous:autoBelt.ambiguous,candidates:autoBelt.candidates,reason:autoBelt.reason,entry:autoBelt.selected};
+  }
+  return{normSelections:normSelections,meta:meta};
+}
 function resolveBands(entry,age){
   if(!entry)return null;
   if(typeof entry[0]==='number')return entry;
@@ -7532,7 +7808,7 @@ function buildSportifReport(athlete,bilan,res){
     var reeducPrior=(athlete.bilans||[]).filter(function(b){return b.id!==bilan.id&&new Date(b.date)<new Date(bilan.date);}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
     if(reeducPrior.length>0){
       var reeducPrev=reeducPrior[0];
-      var reeducPrevRes=computeMoteur(reeducPrev.testData,reeducPrev.questData,effectiveNormPop(athlete),age,athlete.normSelections);
+      var reeducPrevRes=computeMoteur(reeducPrev.testData,reeducPrev.questData,effectiveNormPop(athlete),age,effectiveNormSelections(athlete).normSelections);
       var reeducCommon=FUNCTIONS.filter(function(f){return fSc[f]&&reeducPrevRes.functionScores[f];});
       if(reeducCommon.length>0){
         var reeducCurAvg=reeducCommon.reduce(function(s,f){return s+FN_GAUGE_PCT[fSc[f].status];},0)/reeducCommon.length;
@@ -7841,13 +8117,18 @@ function buildSportifReport(athlete,bilan,res){
   // Affiche le résultat BRUT du test (raw + 5 percentiles + population + protocole + type de norme
   // DIRECT_BELT_SQUAT/PROXY_IMTP), relu tel quel depuis NORMS/NORMS_V2_BELT_SQUAT/applyThr, aucune
   // valeur recalculée ni inventée.
-  var beltSquatBlock=beltSquatReportBlockHtml(td,effectiveNormPop(athlete),age,athlete.normSelections);
+  // Sélections normatives EFFECTIVES (manuelles prioritaires, sinon auto-sélection — mission
+  // "AUTO-SÉLECTION DES NORMES") : jamais de statut clinique produit à partir d'une norme qui
+  // n'existe pas réellement dans NORMS_V2/NORMS_V2_BELT_SQUAT (cf. effectiveNormSelections).
+  var effNormSel=effectiveNormSelections(athlete).normSelections;
+  var beltSquatBlock=beltSquatReportBlockHtml(td,effectiveNormPop(athlete),age,effNormSel);
   if(beltSquatBlock)html+=panel(beltSquatBlock,'margin-bottom:26px');
 
   // Blocs clinique NORMS_V2 par test (mission "ACTIVATION DES NOUVELLES NORMES") — additifs,
-  // n'apparaissent que si une norme NORMS_V2 a été explicitement sélectionnée pour le test
-  // concerné (CMJ/SLCMJ/DJ/SLDJ/IMTP). Même principe que le bloc Belt Squat ci-dessus.
-  normsV2AllTestReportBlocksHtml(td,effectiveNormPop(athlete),age,athlete.normSelections).forEach(function(block){
+  // n'apparaissent que si une norme NORMS_V2 a été explicitement sélectionnée (manuellement ou
+  // automatiquement) pour le test concerné (CMJ/SLCMJ/DJ/SLDJ/IMTP). Même principe que le bloc
+  // Belt Squat ci-dessus.
+  normsV2AllTestReportBlocksHtml(td,effectiveNormPop(athlete),age,effNormSel).forEach(function(block){
     html+=panel(block,'margin-bottom:26px');
   });
 
@@ -8168,7 +8449,8 @@ function buildExpertReport(athlete,bilan,res){
   // pour le détail du raisonnement (même fonction partagée, beltSquatReportBlockHtml).
   {
     var expertAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-    var beltSquatBlockExpert=beltSquatReportBlockHtml(td,effectiveNormPop(athlete),expertAge,athlete.normSelections);
+    var effNormSelExpert=effectiveNormSelections(athlete).normSelections;
+    var beltSquatBlockExpert=beltSquatReportBlockHtml(td,effectiveNormPop(athlete),expertAge,effNormSelExpert);
     if(beltSquatBlockExpert){
       html+='<div class="print-page print-page-expert">';
       html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Belt Squat — '+athlete.prenom+' '+athlete.nom+'</div></div>';
@@ -8176,7 +8458,7 @@ function buildExpertReport(athlete,bilan,res){
       html+='<div class="print-card">'+beltSquatBlockExpert+'</div>';
       html+='</div>';
     }
-    normsV2AllTestReportBlocksHtml(td,effectiveNormPop(athlete),expertAge,athlete.normSelections).forEach(function(block,i){
+    normsV2AllTestReportBlocksHtml(td,effectiveNormPop(athlete),expertAge,effNormSelExpert).forEach(function(block,i){
       html+='<div class="print-page print-page-expert">';
       html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Norme spécifique NORMS_V2 — '+athlete.prenom+' '+athlete.nom+'</div></div>';
       html+='<div class="print-section-title">Détail normatif (NORMS_V2)</div>';
@@ -8290,7 +8572,7 @@ var smallTextareaStyle=Object.assign({},smallInputStyle,{resize:'vertical',lineH
 function ReportPreview(props){
   var athlete=props.athlete,bilan=props.bilan;
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,athlete.normSelections);},[bilan,athlete.normPopulation,athlete.normSelections,athlete.sexe,athleteAge]);
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,effectiveNormSelections(athlete).normSelections);},[bilan,athlete.normPopulation,athlete.normSelections,athlete.sport,athlete.niveau,athlete.sexe,athleteAge]);
   var defaults=useMemo(function(){return defaultReportTexts(athlete,bilan,res);},[bilan,res]);
   var priKeyCounter=useRef(0);
   function withKey(p){priKeyCounter.current+=1;return Object.assign({},p,{_key:'p'+priKeyCounter.current});}
@@ -8709,6 +8991,20 @@ function AthleteProfile(props){
             var sel=a.normSelections&&a.normSelections[cfg.testKey];
             if(!sel||typeof sel!=='object')return null;
             return h('div',{key:cfg.testKey,style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.petrol+'18',border:'1px solid '+C.petrol+'40'}},h('span',{style:{color:C.petrol,fontSize:10,fontWeight:700}},'🎯 '+cfg.label+' : '+sel.population_vald+' (Source '+sel.source_id+')'));
+          }),
+          // Auto-sélection des normes (mission "AUTO-SÉLECTION DES NORMES KINEXUS") — n'affiche QUE
+          // les testKey sans sélection manuelle (jamais en double avec les badges ci-dessus).
+          // matchLevel restitué tel quel pour traçabilité ; ambiguïté explicitement signalée,
+          // jamais un choix arbitraire silencieux.
+          [{testKey:'cmj',label:'CMJ'},{testKey:'slcmj',label:'SLCMJ'},{testKey:'dj',label:'DJ'},{testKey:'sldj',label:'SLDJ'},{testKey:'imtp',label:'IMTP'},{testKey:'iso_belt_squat',label:'Belt Squat'}].map(function(cfg){
+            var eff=effectiveNormSelections(a);
+            var m=eff.meta[cfg.testKey];
+            if(!m||m.source!=='automatic')return null;
+            if(m.ambiguous)return h('div',{key:'auto_'+cfg.testKey,style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:'#B0890018',border:'1px solid #B0890050'}},h('span',{style:{color:'#B08900',fontSize:10,fontWeight:700}},'⚠️ '+cfg.label+' : plusieurs normes compatibles — sélection manuelle requise'));
+            var picked=eff.normSelections[cfg.testKey];
+            if(!picked)return null;
+            var popLabel=typeof picked==='string'?((NORM_POPULATIONS.find(function(p){return p.key===picked;})||{}).label||picked):(picked.population_vald+(picked.source_id?' — Source '+picked.source_id:''));
+            return h('div',{key:'auto_'+cfg.testKey,style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.teal+'12',border:'1px dashed '+C.teal+'50'}},h('span',{style:{color:C.teal,fontSize:10,fontWeight:700}},'🤖 '+cfg.label+' (auto) : '+popLabel));
           })
         )
       ),
@@ -8911,7 +9207,7 @@ function TestEntry(props){
   var athlete=props.athlete||{};
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
   var pop=effectiveNormPop(athlete);
-  var normSelections=athlete.normSelections;
+  var normSelections=effectiveNormSelections(athlete).normSelections;
   var [testData,setTestData]=useState(bilan.testData||{});
   var [questData,setQuestData]=useState(bilan.questData||{});
   var [tab,setTab]=useState('tests');
@@ -9088,7 +9384,8 @@ function AnalyseView(props){
   var [validated,setValidated]=useState(bilan.statut==='Validé');
   var [showPrintMenu,setShowPrintMenu]=useState(false);
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,athlete.normSelections);},[bilan,athlete.normPopulation,athlete.normSelections,athlete.sexe,athleteAge]);
+  var effNormSel=useMemo(function(){return effectiveNormSelections(athlete).normSelections;},[athlete.normSelections,athlete.sport,athlete.niveau,athlete.sexe,athlete.dateNaissance]);
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,effNormSel);},[bilan,athlete.normPopulation,effNormSel,athlete.sexe,athleteAge]);
   var mouvementAnalysis=useMemo(function(){
     return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),athleteAge,res.functionScores):null;
   },[bilan,athlete.normPopulation,athlete.sexe,athleteAge,res]);
@@ -9106,7 +9403,7 @@ function AnalyseView(props){
   var priorBilans=(athlete.bilans||[]).filter(function(b){return b.id!==bilan.id&&new Date(b.date)<new Date(bilan.date);}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
   if(priorBilans.length>0){
     var prevBilan=priorBilans[0];
-    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),athleteAge,athlete.normSelections);
+    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),athleteAge,effNormSel);
     var commonFns=FUNCTIONS.filter(function(f){return res.functionScores[f]&&prevRes.functionScores[f];});
     if(commonFns.length>0){
       var curAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[res.functionScores[f].status];},0)/commonFns.length;
@@ -9901,7 +10198,7 @@ function KpiResultCard(props){
 function ResultsBrowser(props){
   var td=props.testData||{};var athlete=props.athlete||{};var athleteAge=props.athleteAge;var tSt=props.testStatuses||{};
   var pop=effectiveNormPop(athlete);
-  var normSelections=athlete.normSelections;
+  var normSelections=effectiveNormSelections(athlete).normSelections;
   var activeTests=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];});
   var [sel,setSel]=useState(activeTests[0]||null);
   if(sel&&activeTests.indexOf(sel)<0)sel=activeTests[0]||null;
@@ -10129,8 +10426,9 @@ function HistoriqueView(props){
   var b1=bilans.find(function(b){return b.id==sel1;});
   var b2=bilans.find(function(b){return b.id==sel2;});
   var histAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var r1=b1?computeMoteur(b1.testData,b1.questData,effectiveNormPop(athlete),histAge,athlete.normSelections):null;
-  var r2=b2?computeMoteur(b2.testData,b2.questData,effectiveNormPop(athlete),histAge,athlete.normSelections):null;
+  var histNormSel=effectiveNormSelections(athlete).normSelections;
+  var r1=b1?computeMoteur(b1.testData,b1.questData,effectiveNormPop(athlete),histAge,histNormSel):null;
+  var r2=b2?computeMoteur(b2.testData,b2.questData,effectiveNormPop(athlete),histAge,histNormSel):null;
   function fmtD(d){return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit'});}
   if(bilans.length<2)return h(Card,{pad:24,style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:13}},'Au moins 2 bilans sont nécessaires pour la comparaison.'));
   var opts=bilans.map(function(b){return{value:b.id,label:b.type+' · '+b.sousType+' ('+fmtD(b.date)+')'};});
