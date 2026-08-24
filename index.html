@@ -5227,10 +5227,25 @@ function computeHypAbsorptionCore(cmjValues,pop,age){
   else if(deficient.length===1)niveau='a_surveiller';
   else niveau='ok';
   var profil=impSt==null?'non_couvert_impulse_non_classifiable':'non_couvert';
+  // symmetryEvidence braking_rfd (mission CSM V2 §5) : seule variable CMJ avec une paire G/D réelle
+  // dans ASYM_SIDE_PAIRS (ecc_decel_rfd_L/ecc_decel_rfd_R), déjà présente dans cmjValues via
+  // resolveCmjValues. Réutilise autoLSI()/lsiSt() tels quels — aucun seuil créé, aucun recalcul de
+  // norme. rawL/rawR (pas rawD/rawG) : ce sont des valeurs de plateforme G/D d'un mouvement
+  // bilatéral, pas un test unilatéral D/G comme WBLT/SLCMJ.
+  var rfdL=cmjValues.ecc_decel_rfd_L,rfdR=cmjValues.ecc_decel_rfd_R;
+  var rfdLsi=(rfdL!=null&&rfdR!=null)?autoLSI(rfdL,rfdR):null;
+  var brakingRfdSymmetry={
+    available:(rfdL!=null&&rfdR!=null),
+    rawL:rfdL,rawR:rfdR,
+    lsi:rfdLsi,
+    asymmetryPercent:rfdLsi!=null?Math.round((100-rfdLsi)*10)/10:null,
+    status:rfdLsi!=null?(lsiSt(rfdLsi)==='vert'||lsiSt(rfdLsi)==='jaune'?'normal':'deficient'):'non_determinable',
+    source:'lsiSt_generic_v1'
+  };
   return{
     niveau:niveau,profil:profil,
     variables:{
-      braking_rfd:{raw:rfdRaw,status:rfdSt},
+      braking_rfd:{raw:rfdRaw,status:rfdSt,symmetryEvidence:brakingRfdSymmetry},
       force_zero_vel:{raw:fzvRaw,status:fzvSt},
       braking_impulse:{raw:impRaw,status:impSt,classifiable:false}
     }
@@ -6057,6 +6072,22 @@ function computeHypExplosivityExplanatory(testData,pop,age,normSelections){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(key.split('_')[0],kpi));
     return{raw:raw,status:null,classifiable:false};
   }
+  // symmetryEvidence braking_rfd (mission CSM V2 §5) : même variable, même mécanisme que
+  // computeHypAbsorptionCore ci-dessus — réutilise resolveCmjValues (déjà la voie établie pour lire
+  // ecc_decel_rfd_L/R) plutôt que de relire testData.cmj.trials directement, pour éviter toute
+  // divergence de convention de direction (cmjKpiDir vs testKpiDir). Aucun seuil créé, aucun
+  // recalcul de norme.
+  var cmjValuesForSymmetry=resolveCmjValues({testData:testData||{}});
+  var rfdL=cmjValuesForSymmetry.ecc_decel_rfd_L,rfdR=cmjValuesForSymmetry.ecc_decel_rfd_R;
+  var rfdLsi=(rfdL!=null&&rfdR!=null)?autoLSI(rfdL,rfdR):null;
+  var brakingRfdSymmetry={
+    available:(rfdL!=null&&rfdR!=null),
+    rawL:rfdL,rawR:rfdR,
+    lsi:rfdLsi,
+    asymmetryPercent:rfdLsi!=null?Math.round((100-rfdLsi)*10)/10:null,
+    status:rfdLsi!=null?(lsiSt(rfdLsi)==='vert'||lsiSt(rfdLsi)==='jaune'?'normal':'deficient'):'non_determinable',
+    source:'lsiSt_generic_v1'
+  };
   return{
     forceCapacite:{
       iso_belt_squat_n:(function(){var r=bilateralRaw(belt,'iso_belt_squat_n','n');r.classifiable=true;r.status=r.raw!=null?applyThr('iso_belt_squat_n',r.raw,beltPop,age):null;return r;})()
@@ -6071,7 +6102,7 @@ function computeHypExplosivityExplanatory(testData,pop,age,normSelections){
       cmj_rsi_mod:computeHypExplosivityCmjKpi(testData,'rsi_mod','cmj_rsi_mod',pop,age,normSelections),
       cmj_ecc_mean_power:computeHypExplosivityCmjKpi(testData,'ecc_mean_power','cmj_ecc_mean_power',pop,age,normSelections),
       cmj_ecc_peak_vel:computeHypExplosivityCmjKpi(testData,'ecc_peak_vel','cmj_ecc_peak_vel',pop,age,normSelections),
-      cmj_braking_rfd:Object.assign({nomenclatureNonConfirmee:true},computeHypExplosivityCmjKpi(testData,'braking_rfd','cmj_braking_rfd',pop,age,normSelections))
+      cmj_braking_rfd:Object.assign({nomenclatureNonConfirmee:true,symmetryEvidence:brakingRfdSymmetry},computeHypExplosivityCmjKpi(testData,'braking_rfd','cmj_braking_rfd',pop,age,normSelections))
     }
   };
 }
@@ -6666,6 +6697,169 @@ function computeHypClinicalSynthesis01(functionScores){
     precision:precision,
     limitations:limitations,
     narrative:computeHypClinicalSynthesisNarrative(objectified,nonDeterminable,relationships,explanatoryHypotheses,explanatoryNotes)
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// ── CSM V2 — ABSOLUTE × SYMMETRY × FUNCTIONAL DISSOCIATION ──────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════════════════════
+// Mission dédiée (implémentation CSM V2, validée après plusieurs passes d'audit read-only).
+// CSM V2 N'EST PAS un remplacement de HYP-CSM-01 (computeHypClinicalSynthesis01 ci-dessus, jamais
+// touché) — c'est une couche additionnelle, séparée, elle aussi purement en lecture sur
+// `functionScores` déjà produit par computeMoteur(). Ne lit JAMAIS testData. Ne recalcule JAMAIS
+// un LSI, un seuil, un statut absolu, une convergence, un state, un support. Fonction pure,
+// non branchée dans computeMoteur() à ce stade (même étape prudente que HYP-CSM-01 V1, qui a été
+// implémenté avant d'être câblé — cf. IMPLEMENTATION_HYP_CSM01.md puis
+// IMPLEMENTATION_HYP_CSM_UI_PDF.md, deux missions distinctes).
+//
+// Principe verrouillé : ABSOLUTE ≠ SYMMETRY. Aucun axe ne neutralise l'autre. Toute conclusion
+// conserve sa preuve source (quality, variable, hypId, absolute{status,state}, symmetryEvidence
+// complet avec son propre `source`).
+
+// Axe ABSOLUTE : catégorisation normal/deficient/non_determinable, réutilisant EXCLUSIVEMENT les
+// 3 helpers déjà définis pour CSM V1 (csmIsNonDeterminable/csmIsAbsent/csmIsObjectified, ci-dessus)
+// — aucune nouvelle règle de classification. 'suspectee' (état intermédiaire, non confirmé) tombe
+// dans non_determinable pour la composition de patterns : ni assez de preuve pour 'normal', ni
+// assez pour 'deficient' au sens objectivé de CSM V1 — décision de composition à valider par le
+// praticien si un traitement différent de 'suspectee' est souhaité.
+function csmV2AbsoluteAxis(hyp){
+  if(csmIsNonDeterminable(hyp))return'non_determinable';
+  if(csmIsAbsent(hyp))return'normal';
+  if(csmIsObjectified(hyp))return'deficient';
+  return'non_determinable'; // 'suspectee' : non tranché, jamais forcé vers normal ou deficient.
+}
+
+// Axe SYMMETRY : parcours générique, purement structurel, des emplacements déjà validés où un
+// moteur HYP peut avoir placé un `symmetryEvidence` (diagnosticEvidence.*, confirmativeEvidence.*,
+// explanatoryEvidence.* — y compris nested un niveau, ex. explanatoryEvidence.biomecanique.*,
+// explanatoryEvidence.mobiliteCheville.* — et hyp.segments[*].{n,nkg}, et diagnosticEvidence.sls.
+// kpis.*). Aucune liste de variables codée en dur : dès qu'un objet expose une clé `symmetryEvidence`
+// (objet), il est collecté tel quel, jamais recalculé, jamais renommé. Profondeur plafonnée à 4
+// (garde-fou structurel, jamais atteinte par la profondeur réelle des contrats HYP V1 actuels).
+function csmV2CollectSymmetryEvidence(node,pathPrefix,depth,out){
+  if(!node||typeof node!=='object'||depth>4)return;
+  if(node.symmetryEvidence&&typeof node.symmetryEvidence==='object'){
+    out.push({variable:pathPrefix,symmetryEvidence:node.symmetryEvidence});
+    return; // feuille de preuve trouvée — ne recurse pas dans les champs internes de symmetryEvidence lui-même.
+  }
+  if(Array.isArray(node)){
+    node.forEach(function(item,i){csmV2CollectSymmetryEvidence(item,pathPrefix+'['+i+']',depth+1,out);});
+    return;
+  }
+  Object.keys(node).forEach(function(k){
+    var v=node[k];
+    if(v&&typeof v==='object')csmV2CollectSymmetryEvidence(v,pathPrefix?pathPrefix+'.'+k:k,depth+1,out);
+  });
+}
+var CSM_V2_SYMMETRY_ROOTS=['diagnosticEvidence','confirmativeEvidence','explanatoryEvidence'];
+function csmV2SymmetryIndexForHyp(hyp){
+  var out=[];
+  if(!hyp)return out;
+  CSM_V2_SYMMETRY_ROOTS.forEach(function(root){csmV2CollectSymmetryEvidence(hyp[root],root,0,out);});
+  if(Array.isArray(hyp.segments))csmV2CollectSymmetryEvidence(hyp.segments,'segments',0,out);
+  return out;
+}
+// Index complet {quality → {variable → symmetryEvidence}} — réutilise `qualities` déjà construit
+// par computeHypClinicalSynthesisQualities (CSM V1, jamais dupliqué ni recalculé ici).
+function computeCsmV2SymmetryEvidence(qualities){
+  var out={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var entries=csmV2SymmetryIndexForHyp(qualities[q].hyp);
+    var byVariable={};
+    entries.forEach(function(e){byVariable[e.variable]=e.symmetryEvidence;});
+    out[q]=byVariable;
+  });
+  return out;
+}
+
+// Composition ABSOLUTE × SYMMETRY — matrice verrouillée (mission §6). Seules 3 des 9 combinaisons
+// produisent un pattern nommé ; les 6 autres (normal|normal, tout ce qui implique non_determinable)
+// restent des observations disponibles dans absoluteEvidence/symmetryEvidence sans pattern généré
+// — jamais une conclusion clinique inventée pour combler l'absence de règle.
+var CSM_V2_ABS_SYM_PATTERNS={
+  'normal|deficient':'ABSOLUTE_NORMAL_ASYMMETRY_DEFICIENT',
+  'deficient|normal':'ABSOLUTE_DEFICIENT_ASYMMETRY_NORMAL',
+  'deficient|deficient':'ABSOLUTE_DEFICIENT_ASYMMETRY_DEFICIENT'
+};
+
+// Dissociation fonctionnelle Force préservée + qualité cible déficitaire — réutilise EXCLUSIVEMENT
+// les relations {explains:'Force',...} déjà présentes dans HYP_QUALITY_RELATIONS (Puissance/
+// Explosivité/Endurance/Stabilisation — 4 relations, vérifié par filtre direct sur le tableau
+// existant, jamais une liste recopiée à la main). Force→Réactivité et Force→Absorption ne sont pas
+// dans HYP_QUALITY_RELATIONS aujourd'hui : elles n'apparaissent donc jamais ici, sans code
+// d'exclusion spécifique — simple conséquence de l'absence dans la source. Contrairement à
+// computeHypClinicalSynthesisRelationships (CSM V1, qui exige les DEUX qualités objectivées),
+// cette dissociation autorise explicitement préservé+déficitaire (mission §7, IMPORTANT).
+function computeCsmV2Dissociations(qualities){
+  var out=[];
+  HYP_QUALITY_RELATIONS.filter(function(r){return r.explains==='Force';}).forEach(function(rel){
+    var explainsHyp=qualities[rel.explains]&&qualities[rel.explains].hyp;
+    var explainedHyp=qualities[rel.explained]&&qualities[rel.explained].hyp;
+    var explainsAxis=csmV2AbsoluteAxis(explainsHyp);
+    var explainedAxis=csmV2AbsoluteAxis(explainedHyp);
+    if(explainsAxis==='normal'&&explainedAxis==='deficient'){
+      out.push({
+        dissociationId:'FORCE_PRESERVED_FUNCTIONAL_QUALITY_DEFICIENT',
+        explains:rel.explains,explained:rel.explained,via:rel.via,
+        explainsEvidence:{status:explainsHyp?explainsHyp.status:null,state:explainsHyp?explainsHyp.state:null},
+        explainedEvidence:{status:explainedHyp?explainedHyp.status:null,state:explainedHyp?explainedHyp.state:null}
+      });
+    }
+  });
+  return out;
+}
+
+// Point d'entrée CSM V2. Fonction pure : ne lit que `functionScores` (déjà produit par
+// computeMoteur()), ne modifie rien, n'écrit rien, n'appelle aucun des 8 computeHypXxx01, ne rappelle
+// jamais computeHypClinicalSynthesis01 (V1) — les deux couches restent indépendantes, jamais
+// fusionnées. Non branché dans computeMoteur() à ce stade (cf. bandeau d'en-tête ci-dessus).
+function computeCsmV2(functionScores){
+  var qualities=computeHypClinicalSynthesisQualities(functionScores);
+  var absoluteEvidence={};
+  var symmetryEvidence=computeCsmV2SymmetryEvidence(qualities);
+  var patterns=[];
+
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var hyp=qualities[q].hyp;
+    absoluteEvidence[q]={status:qualities[q].status,state:qualities[q].state};
+    var axis=csmV2AbsoluteAxis(hyp);
+    var symVars=symmetryEvidence[q]||{};
+    Object.keys(symVars).forEach(function(variable){
+      var se=symVars[variable];
+      var key=axis+'|'+(se?se.status:'non_determinable');
+      var patternId=CSM_V2_ABS_SYM_PATTERNS[key];
+      if(patternId){
+        patterns.push({
+          patternId:patternId,quality:q,variable:variable,hypId:hyp?hyp.hypId:null,
+          absolute:{axis:axis,status:hyp?hyp.status:null,state:hyp?hyp.state:null},
+          symmetry:se
+        });
+      }
+    });
+  });
+
+  var dissociations=computeCsmV2Dissociations(qualities);
+
+  return{
+    csmV2Id:'CSM-V2',
+    version:'1.0',
+    absoluteEvidence:absoluteEvidence,
+    symmetryEvidence:symmetryEvidence,
+    functionalRelations:HYP_QUALITY_RELATIONS,
+    patterns:patterns,
+    dissociations:dissociations,
+    // Mission §9 : aucun seuil de convergence inter-variable/inter-qualité n'a été validé — ce
+    // pattern reste explicitement non généré, jamais déduit d'un simple LSI déficitaire isolé.
+    unipodalFunctionalDeficit:{
+      state:'non_determinable',
+      reason:"Aucun seuil de convergence inter-variable/inter-qualité validé par le praticien (mission CSM V2 §9) — non généré, quel que soit le nombre de symmetryEvidence.status='deficient' observés."
+    },
+    limitations:[
+      "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
+      "L'état HYP 'suspectee' est traité comme non_determinable pour l'axe Absolute (composition de patterns uniquement) — ni assez confirmé pour 'normal', ni pour 'deficient' au sens objectivé de CSM V1.",
+      "UNIPODAL_FUNCTIONAL_DEFICIT n'est jamais généré à ce stade — voir unipodalFunctionalDeficit.reason.",
+      "Non branché dans computeMoteur() ni dans aucun rapport/UI à ce stade — fonction pure indépendante, disponible pour un câblage ultérieur explicitement autorisé."
+    ]
   };
 }
 
