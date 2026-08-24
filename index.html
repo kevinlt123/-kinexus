@@ -5390,18 +5390,19 @@ function computeHypReactivityDj(testData,pop,age,normSelections){
 // (evaluateWbltDistance, hyp_engine_lot1.js), pas une règle nouvelle.
 function computeHypReactivitySldj(testData,pop,age,normSelections){
   var sldjData=(testData||{}).sldj;
-  if(!sldjData||!sldjData.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null};
+  if(!sldjData||!sldjData.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   var vD=bestVal(((sldjData.D||{}).trials||{}).rsi,testKpiDir('sldj','rsi'));
   var vG=bestVal(((sldjData.G||{}).trials||{}).rsi,testKpiDir('sldj','rsi'));
   var sD=vD!=null?computeStatusWithNormsV2('sldj_rsi','sldj',vD,pop,age,normSelections).status:null;
   var sG=vG!=null?computeStatusWithNormsV2('sldj_rsi','sldj',vG,pop,age,normSelections).status:null;
   var lsi=sldjData.lsiAuto!=null?sldjData.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
-  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null};
+  var symmetryEvidence={available:(vD!=null&&vG!=null),rawD:vD,rawG:vG,lsi:lsi,asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',source:'lsiSt_generic_v1'};
+  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
   var rank={rouge:0,orange:1,jaune:2,vert:3};
   var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
   var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
-  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst};
+  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
 }
 // Variables confirmatives/explicatives documentées (CARTOGRAPHIE_REACTIVITE_HYP_REA01.md) — lues
 // pour traçabilité, jamais classifiées (aucun seuil NORMS ni THRESHOLDS aujourd'hui), jamais
@@ -5536,18 +5537,19 @@ function computeHypReactivity01(testData,normPop,normAge,normSelections){
 // calcul dans index.html — exposés comme non calculés, jamais supprimés du raisonnement.
 function computeHypMobilityWblt(testData,pop,age){
   var data=(testData||{}).wblt;
-  if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null};
+  if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   var vD=bestVal(((data.D||{}).trials||{}).distance,testKpiDir('wblt','distance'));
   var vG=bestVal(((data.G||{}).trials||{}).distance,testKpiDir('wblt','distance'));
   var sD=vD!=null?applyThr('wblt_distance',vD,pop,age):null;
   var sG=vG!=null?applyThr('wblt_distance',vG,pop,age):null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
-  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null};
+  var symmetryEvidence={available:(vD!=null&&vG!=null),rawD:vD,rawG:vG,lsi:lsi,asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',source:'lsiSt_generic_v1'};
+  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
   var rank={rouge:0,orange:1,jaune:2,vert:3};
   var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
   var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
-  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst};
+  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
 }
 // Point d'entrée. Fonction pure. Modèle d'état = celui déjà validé du projet, exception ADR-005
 // (1 mécanisme suffit) — jamais d'état 'suspectee' pour cette qualité (aucun seuil de convergence
@@ -5628,18 +5630,19 @@ function computeHypPowerCmj(testData,pop,age,normSelections){
 // slcmj est un test unilatéral (D/G) à LSI, comme sldj pour HYP-REA-01 — même lecture "pire côté".
 function computeHypPowerSlcmj(testData,pop,age,normSelections){
   var data=(testData||{}).slcmj;
-  if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null};
+  if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   var vD=bestVal(((data.D||{}).trials||{}).peak_power,testKpiDir('slcmj','peak_power'));
   var vG=bestVal(((data.G||{}).trials||{}).peak_power,testKpiDir('slcmj','peak_power'));
   var sD=vD!=null?computeStatusWithNormsV2('slcmj_peak_power','slcmj',vD,pop,age,normSelections).status:null;
   var sG=vG!=null?computeStatusWithNormsV2('slcmj_peak_power','slcmj',vG,pop,age,normSelections).status:null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
-  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null};
+  var symmetryEvidence={available:(vD!=null&&vG!=null),rawD:vD,rawG:vG,lsi:lsi,asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',source:'lsiSt_generic_v1'};
+  if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
   var rank={rouge:0,orange:1,jaune:2,vert:3};
   var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
   var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
-  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst};
+  return{status:deficient?'deficitaire':'normal',lsi:lsi,rawD:vD,rawG:vG,category:worst,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
 }
 // Preuves diagnostiques secondaires (gel point 5, HYP_ARCHITECTURE_PHASE_C.md) — jamais consultées
 // si slcmj_peak_power est lui-même classifiable ; jamais un renfort à poids égal.
@@ -5842,12 +5845,12 @@ var HYP_FOR_GLOBAL_TESTS=[
 function computeHypForceKpi(testData,testKey,kpi,bilateral,pop,age,normSelections){
   var data=(testData||{})[testKey];
   var key=testKey+'_'+kpi;
-  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
+  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   if(bilateral){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
     var st=raw!=null?computeStatusWithNormsV2(key,testKey,raw,pop,age,normSelections).status:null;
-    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
-    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
+    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
+    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   }
   var dir=testKpiDir(testKey,kpi);
   var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
@@ -5856,11 +5859,12 @@ function computeHypForceKpi(testData,testKey,kpi,bilateral,pop,age,normSelection
   var sG=vG!=null?computeStatusWithNormsV2(key,testKey,vG,pop,age,normSelections).status:null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
-  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  var symmetryEvidence={available:(vD!=null&&vG!=null),rawD:vD,rawG:vG,lsi:lsi,asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',source:'lsiSt_generic_v1'};
+  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
   var rank={rouge:0,orange:1,jaune:2,vert:3};
   var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
   var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
-  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
 }
 // Niveau 2 — 15 tests segmentaires documentés (`CLI200`-`211`, HYP_ARCHITECTURE_PHASE_C.md /
 // CARTOGRAPHIE_ROLE_CLINIQUE_HYP_FORCE.md). Groupes sans aucune norme (df_iso/inv_iso/ev_iso/
@@ -6178,12 +6182,12 @@ function computeHypExplosivity01(testData,normPop,normAge,normSelections){
 function computeHypStabilizationKpi(testData,testKey,kpi,bilateral,pop,age){
   var data=(testData||{})[testKey];
   var key=testKey+'_'+kpi;
-  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
+  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   if(bilateral){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
     var st=raw!=null?applyThr(key,raw,pop,age):null;
-    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
-    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
+    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
+    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   }
   var dir=testKpiDir(testKey,kpi);
   var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
@@ -6192,11 +6196,12 @@ function computeHypStabilizationKpi(testData,testKey,kpi,bilateral,pop,age){
   var sG=vG!=null?applyThr(key,vG,pop,age):null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
-  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  var symmetryEvidence={available:(vD!=null&&vG!=null),rawD:vD,rawG:vG,lsi:lsi,asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',source:'lsiSt_generic_v1'};
+  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
   var rank={rouge:0,orange:1,jaune:2,vert:3};
   var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
   var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
-  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
 }
 
 var HYP_STA_SLS_KPIS=['ttf','cop_path','cop_vel','ellipse_area','cop_range_ml','cop_range_ap','mean_velocity'];
@@ -6338,12 +6343,12 @@ function computeHypStabilization01(testData,normPop,normAge){
 function computeHypEnduranceKpi(testData,testKey,kpi,bilateral,pop,age,normSelections){
   var data=(testData||{})[testKey];
   var key=testKey+'_'+kpi;
-  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
+  if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   if(bilateral){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
     var st=raw!=null?computeStatusWithNormsV2(key,testKey,raw,pop,age,normSelections).status:null;
-    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
-    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
+    if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
+    return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
   }
   var dir=testKpiDir(testKey,kpi);
   var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
@@ -6352,11 +6357,12 @@ function computeHypEnduranceKpi(testData,testKey,kpi,bilateral,pop,age,normSelec
   var sG=vG!=null?computeStatusWithNormsV2(key,testKey,vG,pop,age,normSelections).status:null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
-  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  var symmetryEvidence={available:(vD!=null&&vG!=null),rawD:vD,rawG:vG,lsi:lsi,asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',source:'lsiSt_generic_v1'};
+  if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
   var rank={rouge:0,orange:1,jaune:2,vert:3};
   var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
   var deficient=sides.some(function(s){return s==='orange'||s==='rouge';});
-  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi};
+  return{status:deficient?'deficitaire':'normal',category:worst,raw:null,rawD:vD,rawG:vG,lsi:lsi,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
 }
 
 var HYP_END_DIAG_KEYS=['heel_raise_reps','repeated_hop_n_hops','repeated_hop_rsi_fatigue','repeated_hop_height_fatigue','repeated_hop_ct_drift','repeated_hop_stiffness_fatigue'];
