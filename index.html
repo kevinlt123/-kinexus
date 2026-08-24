@@ -6812,7 +6812,9 @@ function computeCsmV2Dissociations(qualities){
 // Point d'entrée CSM V2. Fonction pure : ne lit que `functionScores` (déjà produit par
 // computeMoteur()), ne modifie rien, n'écrit rien, n'appelle aucun des 8 computeHypXxx01, ne rappelle
 // jamais computeHypClinicalSynthesis01 (V1) — les deux couches restent indépendantes, jamais
-// fusionnées. Non branché dans computeMoteur() à ce stade (cf. bandeau d'en-tête ci-dessus).
+// fusionnées. Branché dans computeMoteur() (res.clinicalSynthesisV2) depuis le commit 34aa0b2, et
+// exposé dans ExpertView (onglet "CSM V2") et dans le bloc technique de buildExpertReport() depuis
+// le commit 9978572.
 function computeCsmV2(functionScores){
   var qualities=computeHypClinicalSynthesisQualities(functionScores);
   var absoluteEvidence={};
@@ -6848,6 +6850,13 @@ function computeCsmV2(functionScores){
     functionalRelations:HYP_QUALITY_RELATIONS,
     patterns:patterns,
     dissociations:dissociations,
+    // Niveau 5 (EVIDENCE/PATTERN/DISSOCIATION/RELATION/CLINICAL_HYPOTHESIS, mission spécification
+    // CSM V2 §3/§8/§12) : toujours vide — aucune règle de génération automatique d'une hypothèse
+    // clinique à partir d'une dissociation n'a été validée. Une hypothèse clinique nécessiterait (1)
+    // une dissociation existante, (2) une relation documentée la sous-tendant, (3) une règle
+    // clinique explicite validée par le praticien, (4) un libellé exact validé — aucune de ces
+    // conditions n'est aujourd'hui codée. Ne jamais peupler ce tableau sans validation explicite.
+    clinicalHypotheses:[],
     // Mission §9 : aucun seuil de convergence inter-variable/inter-qualité n'a été validé — ce
     // pattern reste explicitement non généré, jamais déduit d'un simple LSI déficitaire isolé.
     unipodalFunctionalDeficit:{
@@ -6858,7 +6867,7 @@ function computeCsmV2(functionScores){
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
       "L'état HYP 'suspectee' est traité comme non_determinable pour l'axe Absolute (composition de patterns uniquement) — ni assez confirmé pour 'normal', ni pour 'deficient' au sens objectivé de CSM V1.",
       "UNIPODAL_FUNCTIONAL_DEFICIT n'est jamais généré à ce stade — voir unipodalFunctionalDeficit.reason.",
-      "Non branché dans computeMoteur() ni dans aucun rapport/UI à ce stade — fonction pure indépendante, disponible pour un câblage ultérieur explicitement autorisé."
+      "clinicalHypotheses reste toujours vide ([]) — aucune règle de génération automatique d'hypothèse clinique n'a été validée à ce stade (mission spécification CSM V2 §12)."
     ]
   };
 }
@@ -10621,6 +10630,12 @@ function ExpertView(props){
                   h('div',{style:{color:C.muted}},d.explained+': status='+fmt(d.explainedEvidence.status)+' · state='+fmt(d.explainedEvidence.state))
                 );
               }))
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Clinical Hypotheses ('+csmV2.clinicalHypotheses.length+')'),
+          csmV2.clinicalHypotheses.length===0
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune hypothèse clinique retenue — aucune règle de génération automatique n\'a été validée à ce stade.')
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csmV2.clinicalHypotheses.map(function(ch,i){return h('div',{key:i,style:{fontSize:10.5,fontFamily:'monospace',color:C.text,lineHeight:1.7,borderLeft:'2px solid '+C.teal,paddingLeft:8}},JSON.stringify(ch));}))
         ),
         h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:6}},'Unipodal Functional Deficit'),
