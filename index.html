@@ -5480,7 +5480,7 @@ function computeHypReactivity01(testData,normPop,normAge,normSelections){
   // jamais un statut affiché sans preuve réelle (cf. AUDIT_TRANSVERSAL_HYP_V1.md §6).
   var diagnosticEvidence={
     dj_rsi:{status:djRes.status,raw:djRes.raw,category:djRes.category},
-    sldj_rsi:{status:sldjRes.status,rawD:sldjRes.rawD,rawG:sldjRes.rawG,lsi:sldjRes.lsi,category:sldjRes.category}
+    sldj_rsi:{status:sldjRes.status,rawD:sldjRes.rawD,rawG:sldjRes.rawG,lsi:sldjRes.lsi,category:sldjRes.category,sideStatus:sldjRes.sideStatus,symmetryEvidence:sldjRes.symmetryEvidence}
   };
   var deficientCats=mechanisms.map(function(m){return m==='dj'?djRes.category:sldjRes.category;});
   var status=dataAvailable?hypStatusFromState(state,deficientCats):null;
@@ -5565,7 +5565,7 @@ function computeHypMobility01(testData,normPop,normAge){
   // 'absente' même sans donnée. Le signal fiable reste `dataAvailable`. `status` en tient compte :
   // null si aucune donnée, jamais un statut affiché sans preuve réelle.
   var diagnosticEvidence={
-    wblt_distance:{status:res.status,rawD:res.rawD,rawG:res.rawG,category:res.category}
+    wblt_distance:{status:res.status,rawD:res.rawD,rawG:res.rawG,category:res.category,sideStatus:res.sideStatus,symmetryEvidence:res.symmetryEvidence}
   };
   var confirmativeEvidence={
     wblt_lsi:{value:res.lsi,elevates:false} // auto-référentiel (dérivé de la même mesure) — ADR-008, jamais élévateur.
@@ -5766,7 +5766,7 @@ function computeHypPower01(testData,normPop,normAge,normSelections){
 
   var diagnosticEvidence={
     cmj_peak_power:{status:cmjRes.status,raw:cmjRes.raw,category:cmjRes.category},
-    slcmj_peak_power:{status:slcmjRes.status,rawD:slcmjRes.rawD,rawG:slcmjRes.rawG,lsi:slcmjRes.lsi,category:slcmjRes.category}
+    slcmj_peak_power:{status:slcmjRes.status,rawD:slcmjRes.rawD,rawG:slcmjRes.rawG,lsi:slcmjRes.lsi,category:slcmjRes.category,sideStatus:slcmjRes.sideStatus,symmetryEvidence:slcmjRes.symmetryEvidence}
   };
   var confirmativeEvidence={
     cmj_height:{raw:cmjHeightRaw,status:cmjHeightSt,countsAsDiagnostic:false} // gel : jamais une deuxième preuve, quel que soit son statut.
