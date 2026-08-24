@@ -7512,7 +7512,13 @@ function computeMoteur(testData,questData,normPop,normAge,normSelections){
   // exécutés ci-dessus). Fonction pure, lecture seule : ne recalcule, ne modifie et ne réinvoque
   // aucun des 8 moteurs HYP. fSc lui-même n'est jamais réassigné après cet appel.
   var clinicalSynthesis=computeHypClinicalSynthesis01(fSc);
-  return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus,qualityScores:qualityScores,capaciteScores:capaciteScores,clinicalSynthesis:clinicalSynthesis};
+  // CSM V2 — branchement (mission implémentation CSM V2, ABSOLUTE × SYMMETRY × FUNCTIONAL
+  // DISSOCIATION) : même principe que HYP-CSM-01 ci-dessus — calculée une seule fois par cycle de
+  // computeMoteur(), à partir de fSc déjà entièrement construit. Fonction pure, lecture seule ;
+  // n'appelle, ne réinvoque et ne modifie aucun des 8 moteurs HYP ni computeHypClinicalSynthesis01
+  // (V1) lui-même — les deux couches restent indépendantes, jamais fusionnées.
+  var clinicalSynthesisV2=computeCsmV2(fSc);
+  return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus,qualityScores:qualityScores,capaciteScores:capaciteScores,clinicalSynthesis:clinicalSynthesis,clinicalSynthesisV2:clinicalSynthesisV2};
 }
 
 
@@ -8635,6 +8641,34 @@ function buildExpertReport(athlete,bilan,res){
       csmExpConcordances.forEach(function(r){html+='<p style="margin:0 0 6px;font-size:9pt;color:#666">'+r.narrative+'</p>';});
     }
     html+='<p style="margin:8px 0 0;font-size:8pt;color:#888;font-style:italic">'+csmSafeText(csmExp.narrative.limites)+'</p>';
+  }
+  // CSM V2 — bloc de TEST additif (mission implémentation CSM V2, câblage). Lit exclusivement
+  // res.clinicalSynthesisV2, déjà calculé une seule fois par computeMoteur() — aucun recalcul.
+  // Volontairement une présentation BRUTE (structure de données, pas une phrase narrative
+  // clinique) : sert à vérifier visuellement le câblage et les données réellement produites, pas
+  // un rendu final destiné au praticien. Ne remplace ni ne modifie le bloc "Synthèse clinique"
+  // (HYP-CSM-01 / V1) ci-dessus.
+  if(res.clinicalSynthesisV2){
+    var csmV2Rep=res.clinicalSynthesisV2;
+    html+='<div class="print-section-title" style="margin-top:12px">CSM V2 — Absolute × Symmetry × Functional Dissociation (bloc de test)</div>';
+    html+='<p style="margin:0 0 8px;font-size:8pt;color:#888;font-style:italic">Bloc technique de vérification, non destiné à une lecture clinique finale.</p>';
+    if(csmV2Rep.patterns.length){
+      html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Patterns Absolute × Symmetry ('+csmV2Rep.patterns.length+')</div>';
+      csmV2Rep.patterns.forEach(function(p){
+        html+='<p style="margin:0 0 4px;font-size:8.5pt;color:#333;font-family:monospace">'+p.patternId+' — '+p.quality+' / '+p.variable+' ('+p.hypId+') — absolute:'+p.absolute.axis+' ('+p.absolute.state+') × symmetry:'+p.symmetry.status+' (lsi='+(p.symmetry.lsi!=null?p.symmetry.lsi:'—')+', '+p.symmetry.source+')</p>';
+      });
+    }else{
+      html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucun pattern Absolute×Symmetry généré pour ce bilan.</p>';
+    }
+    if(csmV2Rep.dissociations.length){
+      html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">Dissociations fonctionnelles</div>';
+      csmV2Rep.dissociations.forEach(function(d){
+        html+='<p style="margin:0 0 4px;font-size:8.5pt;color:#333;font-family:monospace">'+d.dissociationId+' — '+d.explains+' ('+d.explainsEvidence.state+') préservée × '+d.explained+' ('+d.explainedEvidence.state+') déficitaire — via '+d.via+'</p>';
+      });
+    }else{
+      html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucune dissociation fonctionnelle générée pour ce bilan.</p>';
+    }
+    html+='<p style="margin:4px 0 0;font-size:8pt;color:#888;font-style:italic">UNIPODAL_FUNCTIONAL_DEFICIT : '+csmV2Rep.unipodalFunctionalDeficit.state+' — '+csmV2Rep.unipodalFunctionalDeficit.reason+'</p>';
   }
   // KPI page
   html+='<div class="print-page print-page-expert">';
