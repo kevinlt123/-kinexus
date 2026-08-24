@@ -10499,7 +10499,7 @@ function ExpertView(props){
     test.kpis.forEach(function(kpi){if(VAR_REL3[tk+'_'+kpi.key])varRelKpis.push({testKey:tk,testLabel:test.label,kpi:kpi});});
   });
   return h('div',null,
-    h(TabBar,{tabs:[['fonctions','Fonctions'],['synthese','Synthèse clinique'],['kpi','Résultats'],['variables','Variables'],['capacites','Capacités'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Relations structure-qualité']],active:tab,onChange:setTab,groupBreaks:{fonctions:"Vue d'ensemble",kpi:'Détail des données',hypotheses:'Interprétation',couverture:'Référence'}}),
+    h(TabBar,{tabs:[['fonctions','Fonctions'],['synthese','Synthèse clinique'],['csmv2','CSM V2'],['kpi','Résultats'],['variables','Variables'],['capacites','Capacités'],['systemes','Systèmes'],['hypotheses','Hypothèses'],['orientations','Orientations'],['couverture','Couverture'],['raisonnement','Relations structure-qualité']],active:tab,onChange:setTab,groupBreaks:{fonctions:"Vue d'ensemble",kpi:'Détail des données',hypotheses:'Interprétation',couverture:'Référence'}}),
     // HYP-CSM-01 — synthèse clinique multi-qualités (mission IMPLEMENTATION_HYP_CSM_UI_PDF.md).
     // Lit exclusivement res.clinicalSynthesis (déjà calculé une seule fois par computeMoteur()) —
     // ne recalcule rien, ne remplace aucun onglet existant (Fonctions/Capacités/Hypothèses restent
@@ -10549,6 +10549,87 @@ function ExpertView(props){
         h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limites de cette synthèse'),
           h('ul',{style:{margin:0,paddingLeft:16,color:C.muted,fontSize:11,lineHeight:1.6}},csm.limitations.map(function(l,i){return h('li',{key:i},csmSafeText(l));}))
+        )
+      );
+    })(),
+    // CSM V2 — outil d'audit technique (mission exposition ExpertView). Lit exclusivement
+    // res.clinicalSynthesisV2, déjà calculé une seule fois par computeMoteur() — aucun recalcul,
+    // aucune nouvelle règle clinique, ne modifie ni ne remplace l'onglet "Synthèse clinique"
+    // (HYP-CSM-01 / V1) ci-dessus. Présentation volontairement brute/exhaustive (pas encore une
+    // interface clinique finale) : rien n'est masqué au motif que la valeur est non_determinable.
+    tab==='csmv2'&&(function(){
+      var csmV2=res.clinicalSynthesisV2;
+      if(!csmV2)return h('div',{style:{color:C.muted,fontSize:13}},'CSM V2 non disponible.');
+      var qKeys=HYP_CSM_QUALITIES;
+      var fmt=function(v){return v==null?'—':String(v);};
+      return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+        h(Card,{pad:14,style:{background:C.surface}},
+          h('div',{style:{color:C.muted,fontSize:11,fontStyle:'italic'}},'Outil d\'audit technique — lecture brute de res.clinicalSynthesisV2 ('+csmV2.csmV2Id+' v'+csmV2.version+'). Non destiné à une lecture clinique finale.')
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Absolute Evidence'),
+          h('div',{style:{display:'flex',flexDirection:'column',gap:4}},qKeys.map(function(q){
+            var a=csmV2.absoluteEvidence[q]||{};
+            return h('div',{key:q,style:{display:'flex',gap:10,fontSize:11,fontFamily:'monospace'}},
+              h('span',{style:{width:110,color:C.text,fontWeight:600}},q),
+              h('span',{style:{color:C.muted}},'status='+fmt(a.status)+' · state='+fmt(a.state))
+            );
+          }))
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Symmetry Evidence'),
+          qKeys.map(function(q){
+            var vars=(csmV2.symmetryEvidence&&csmV2.symmetryEvidence[q])||{};
+            var varKeys=Object.keys(vars);
+            return h('div',{key:q,style:{marginBottom:10}},
+              h('div',{style:{color:C.text,fontWeight:600,fontSize:12,marginBottom:4}},q),
+              varKeys.length===0
+                ?h('div',{style:{color:C.muted,fontSize:11,paddingLeft:10}},'Aucune symmetryEvidence trouvée pour cette qualité.')
+                :h('div',{style:{display:'flex',flexDirection:'column',gap:4,paddingLeft:10}},varKeys.map(function(v){
+                    var se=vars[v]||{};
+                    var rawTxt=('rawD'in se)?('rawD='+fmt(se.rawD)+' · rawG='+fmt(se.rawG)):(('rawL'in se)?('rawL='+fmt(se.rawL)+' · rawR='+fmt(se.rawR)):'');
+                    return h('div',{key:v,style:{fontSize:10.5,fontFamily:'monospace',color:C.muted,lineHeight:1.7,borderLeft:'2px solid '+C.border,paddingLeft:8}},
+                      h('div',{style:{color:C.text}},v),
+                      h('div',null,'available='+fmt(se.available)+' · '+rawTxt+' · lsi='+fmt(se.lsi)+' · asymmetryPercent='+fmt(se.asymmetryPercent)+' · status='+fmt(se.status)+' · source='+fmt(se.source))
+                    );
+                  }))
+            );
+          })
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Patterns ('+csmV2.patterns.length+')'),
+          csmV2.patterns.length===0
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucun pattern Absolute×Symmetry généré pour ce bilan.')
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csmV2.patterns.map(function(p,i){
+                return h('div',{key:i,style:{fontSize:10.5,fontFamily:'monospace',color:C.text,lineHeight:1.7,borderLeft:'2px solid '+C.teal,paddingLeft:8}},
+                  h('div',{style:{fontWeight:700}},p.patternId),
+                  h('div',{style:{color:C.muted}},p.quality+' / '+p.variable+' ('+fmt(p.hypId)+')'),
+                  h('div',{style:{color:C.muted}},'absolute: axis='+fmt(p.absolute.axis)+' · status='+fmt(p.absolute.status)+' · state='+fmt(p.absolute.state)),
+                  h('div',{style:{color:C.muted}},'symmetry: status='+fmt(p.symmetry.status)+' · lsi='+fmt(p.symmetry.lsi)+' · asymmetryPercent='+fmt(p.symmetry.asymmetryPercent)+' · source='+fmt(p.symmetry.source))
+                );
+              }))
+        ),
+        h(Card,{pad:14},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Functional Dissociations ('+csmV2.dissociations.length+')'),
+          csmV2.dissociations.length===0
+            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune dissociation fonctionnelle générée pour ce bilan.')
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csmV2.dissociations.map(function(d,i){
+                return h('div',{key:i,style:{fontSize:10.5,fontFamily:'monospace',color:C.text,lineHeight:1.7,borderLeft:'2px solid '+C.teal,paddingLeft:8}},
+                  h('div',{style:{fontWeight:700}},d.dissociationId),
+                  h('div',{style:{color:C.muted}},d.explains+' × '+d.explained+' — via '+fmt(d.via)),
+                  h('div',{style:{color:C.muted}},d.explains+': status='+fmt(d.explainsEvidence.status)+' · state='+fmt(d.explainsEvidence.state)),
+                  h('div',{style:{color:C.muted}},d.explained+': status='+fmt(d.explainedEvidence.status)+' · state='+fmt(d.explainedEvidence.state))
+                );
+              }))
+        ),
+        h(Card,{pad:14,style:{background:C.surface}},
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:6}},'Unipodal Functional Deficit'),
+          h('div',{style:{fontSize:12,color:C.muted,fontFamily:'monospace'}},'state='+fmt(csmV2.unipodalFunctionalDeficit.state)),
+          h('div',{style:{fontSize:11,color:C.muted,fontStyle:'italic',marginTop:4}},csmV2.unipodalFunctionalDeficit.reason)
+        ),
+        csmV2.limitations&&csmV2.limitations.length>0&&h(Card,{pad:14,style:{background:C.surface}},
+          h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limitations'),
+          h('ul',{style:{margin:0,paddingLeft:16,color:C.muted,fontSize:11,lineHeight:1.6}},csmV2.limitations.map(function(l,i){return h('li',{key:i},l);}))
         )
       );
     })(),
