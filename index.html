@@ -1544,6 +1544,428 @@ var NORMS_MAPPING_TYPE={
   }
 };
 function beltSquatMappingType(key,pop){var m=NORMS_MAPPING_TYPE[key];return (m&&m[pop])||null;}
+// ── NORMS_V2 — 7 variables VALD HIGH validees (mission "INTEGRATION COMPLETE DE LA BASE
+// NORMATIVE VALIDEE KINEXUS") ────────────────────────────────────────────────────────────────
+// Source de verite : KINEXUS_NORMS_V2_MASTER.xlsx / feuille NORMS_V2_READY (1385 lignes), filtree
+// aux 1325 lignes des 7 variables VALD HIGH (imtp_n/imtp_nkg/imtp_rfd100/cmj_peak_power/
+// slcmj_peak_power/dj_rsi/sldj_rsi) -- les 60 lignes Belt Squat de NORMS_V2_READY restent gerees
+// exclusivement par NORMS_V2_BELT_SQUAT ci-dessus, jamais dupliquees ici.
+// Structure source-tracable : variable_kinexus -> liste d'ENTREES, chacune portant sa propre
+// source (source_id/source_file/table_index/table_title_h3/test_vald), sa population/sexe/
+// age_band/niveau/sport, le libelle VALD exact (variable_vald_exacte), son unite, et ses
+// percentiles TELS QUE PRESENTS DANS LA SOURCE -- grille heterogene volontairement conservee (5
+// points 1st/25th/50th/75th/99th pour 131 entrees, 11 points 1st/10th/20th.../90th/99th pour 60
+// entrees Allied Health/General Population), jamais completee ni reduite a un format commun.
+// Plusieurs entrees PEUVENT coexister pour la meme variable+population+sexe+age_band (sources
+// VALD multiples, jamais fusionnees, jamais ecrasees -- voir resolveNormsV2Entries ci-dessous et
+// le rapport de mission pour le detail des collisions identifiees).
+// Cas particulier documente (2 groupes, cf. COLLISIONS de KINEXUS_NORMS_V2_MASTER.xlsx) :
+// cmj_peak_power/dj_rsi pour "Women's Football (Soccer)" (source S013) contiennent chacun 2 series
+// de percentiles distinctes sous la meme population_vald/sexe/age_band, sans niveau/sport
+// disambiguant dans l'extraction source -- les 2 series sont conservees comme 2 entrees separees
+// (entry_index 1/2), JAMAIS fusionnees ni moyennees, avec entry_note explicite.
+// Objet PUREMENT ADDITIF : n'est lu par AUCUNE fonction de calcul clinique existante (applyThr,
+// computeHypForceKpi, computeHypForce01/Power01/Explosivity01/Endurance01, computeMoteur
+// inchanges). L'ACTIVATION CLINIQUE (faire produire un statut vert/jaune/orange/rouge a partir de
+// ces entrees, a la maniere de NORMS pour Belt Squat) N'EST PAS FAITE ICI -- voir le rapport de
+// mission (Phase 8/9) pour les raisons explicites (grilles heterogenes non consommables par
+// pctStatus tel quel ; choix de source non tranche quand plusieurs existent pour une meme
+// population ; risque de reproduire le probleme "population globale a une seule variable" deja
+// identifie pour Belt Squat) et la decision requise avant toute activation.
+var NORMS_V2={
+  imtp_n:[
+    {source_id:'S008',source_file:'3296b73d-VALD_Normative_Data_Report__IMTP__General_Population.html',table_index:'2',table_title_h3:'Peak Force',test_vald:'Isometric Mid-Thigh Pull (IMTP)',population_vald:'General Population',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Force',unite:'N',percentiles:{'1st':1647,'25th':2324,'50th':2582,'75th':2822,'99th':3547},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S008',source_file:'3296b73d-VALD_Normative_Data_Report__IMTP__General_Population.html',table_index:'2',table_title_h3:'Peak Force',test_vald:'Isometric Mid-Thigh Pull (IMTP)',population_vald:'General Population',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Force',unite:'N',percentiles:{'1st':1299,'25th':1585,'50th':1754,'75th':1971,'99th':2944},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'39',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':978,'25th':2084,'50th':2541,'75th':3070,'99th':4475},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'39',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':875,'25th':1924,'50th':2457,'75th':3126,'99th':4542},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'39',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1179,'25th':2196,'50th':2635,'75th':3105,'99th':4481},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'39',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1467,'25th':2133,'50th':2519,'75th':2928,'99th':4296},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'39',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1539,'25th':2008,'50th':2451,'75th':3671,'99th':4304},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'39',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1637,'25th':2099,'50th':2307,'75th':2638,'99th':2986},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'43',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1014,'25th':1448,'50th':1706,'75th':1943,'99th':2577},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'43',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1029,'25th':1386,'50th':1618,'75th':1822,'99th':2562},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'43',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1027,'25th':1512,'50th':1762,'75th':2003,'99th':2566},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'43',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':962,'25th':1478,'50th':1819,'75th':2134,'99th':2741},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'43',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1157,'25th':1382,'50th':1571,'75th':1870,'99th':2103},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'43',table_title_h3:'Peak Vertical Force (N)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force (N)',unite:null,percentiles:{'1st':1145,'25th':1569,'50th':1851,'75th':1932,'99th':2133},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S029',source_file:'e9f62a23-VALD_Normative_Data_Report__Endurance_Sports.html',table_index:'31',table_title_h3:'Peak Force',test_vald:'Isometric Mid Thigh Pull',population_vald:'Endurance Sports',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Force',unite:null,percentiles:{'1st':1603,'25th':2736,'50th':3175,'75th':3621,'99th':4551},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S029',source_file:'e9f62a23-VALD_Normative_Data_Report__Endurance_Sports.html',table_index:'31',table_title_h3:'Peak Force',test_vald:'Isometric Mid Thigh Pull',population_vald:'Endurance Sports',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Force',unite:null,percentiles:{'1st':1265,'25th':1988,'50th':2268,'75th':2587,'99th':3394},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S030',source_file:'ea1bbca5-VALD_Normative_Data_Report__Weightlifting.html',table_index:'9',table_title_h3:'Peak Vertical Force',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Weightlifting',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force',unite:null,percentiles:{'1st':1404,'25th':2757,'50th':3261,'75th':3966,'99th':5051},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'},
+    {source_id:'S030',source_file:'ea1bbca5-VALD_Normative_Data_Report__Weightlifting.html',table_index:'9',table_title_h3:'Peak Vertical Force',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Weightlifting',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force',unite:null,percentiles:{'1st':1585,'25th':2233,'50th':2458,'75th':2884,'99th':3704},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme grandeur (force de pic absolue), test IMTP confirme'}
+  ],
+  imtp_nkg:[
+    {source_id:'S008',source_file:'3296b73d-VALD_Normative_Data_Report__IMTP__General_Population.html',table_index:'1',table_title_h3:'Relative Peak Force',test_vald:'Isometric Mid-Thigh Pull (IMTP)',population_vald:'General Population',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Relative Peak Force',unite:'N/kg',percentiles:{'1st':21,'25th':27,'50th':30,'75th':33,'99th':40},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S008',source_file:'3296b73d-VALD_Normative_Data_Report__IMTP__General_Population.html',table_index:'1',table_title_h3:'Relative Peak Force',test_vald:'Isometric Mid-Thigh Pull (IMTP)',population_vald:'General Population',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Relative Peak Force',unite:'N/kg',percentiles:{'1st':18,'25th':24,'50th':26,'75th':29,'99th':35},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'37',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':17,'25th':26,'50th':30,'75th':36,'99th':50},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'37',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':16,'25th':27,'50th':32,'75th':38,'99th':51},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'37',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':17,'25th':26,'50th':31,'75th':36,'99th':47},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'37',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':17,'25th':24,'50th':28,'75th':32,'99th':47},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'37',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':16,'25th':23,'50th':29,'75th':37,'99th':41},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'37',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':19,'25th':22,'50th':25,'75th':29,'99th':35},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'41',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':15,'25th':21,'50th':24,'75th':28,'99th':38},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'41',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':15,'25th':22,'50th':25,'75th':28,'99th':36},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'41',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':15,'25th':21,'50th':24,'75th':28,'99th':38},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'41',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':16,'25th':20,'50th':24,'75th':30,'99th':37},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'41',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':17,'25th':21,'50th':22,'75th':26,'99th':29},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'41',table_title_h3:'Peak Vertical Force / BM (N/kg)',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM (N/kg)',unite:null,percentiles:{'1st':17,'25th':21,'50th':23,'75th':25,'99th':33},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S022',source_file:'c02df81d-VALD_Normative_Data_Report__IMTP__Rugby__Football.html',table_index:'1',table_title_h3:'Peak Force Asymmetry',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Rugby & Australian Football',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Relative Peak Force (N/kg)',unite:null,percentiles:{'1st':25,'25th':34,'50th':39,'75th':45,'99th':54},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S030',source_file:'ea1bbca5-VALD_Normative_Data_Report__Weightlifting.html',table_index:'11',table_title_h3:'Peak Vertical Force / BM',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Weightlifting',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM',unite:null,percentiles:{'1st':22.6,'25th':31.9,'50th':38.1,'75th':42.4,'99th':52.6},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'},
+    {source_id:'S030',source_file:'ea1bbca5-VALD_Normative_Data_Report__Weightlifting.html',table_index:'11',table_title_h3:'Peak Vertical Force / BM',test_vald:'Isometric Mid-Thigh Pull',population_vald:'Weightlifting',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Vertical Force / BM',unite:null,percentiles:{'1st':20.9,'25th':28.3,'50th':33.2,'75th':37.2,'99th':44.9},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'N/kg par definition (force / masse corporelle)'}
+  ],
+  imtp_rfd100:[
+    {source_id:'S008',source_file:'3296b73d-VALD_Normative_Data_Report__IMTP__General_Population.html',table_index:'4',table_title_h3:'RFD at 100 ms',test_vald:'Isometric Mid-Thigh Pull (IMTP)',population_vald:'General Population',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'RFD at 100 ms',unite:'N/s',percentiles:{'1st':400,'25th':1214,'50th':2025,'75th':3209,'99th':6097},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme definition exacte (N/s, 0-100ms)'},
+    {source_id:'S008',source_file:'3296b73d-VALD_Normative_Data_Report__IMTP__General_Population.html',table_index:'4',table_title_h3:'RFD at 100 ms',test_vald:'Isometric Mid-Thigh Pull (IMTP)',population_vald:'General Population',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'RFD at 100 ms',unite:'N/s',percentiles:{'1st':285,'25th':900,'50th':1321,'75th':1919,'99th':4882},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Meme definition exacte (N/s, 0-100ms)'}
+  ],
+  cmj_peak_power:[
+    {source_id:'S001',source_file:'05a60538-VALD_Normative_Data_Report__College__Mens_Swimming.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Men’s Swimming',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':41,'25th':52,'50th':57,'75th':61,'99th':72},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S002',source_file:'07ae9a47-VALD_Normative_Data_Report__College__Mens_Basketball.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Men’s Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':43,'25th':54,'50th':59,'75th':64,'99th':79},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S003',source_file:'153ea586-VALD_Normative_Data_Report__Rugby_Union.html',table_index:'7',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'Rugby Union',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':35,'25th':48,'50th':53,'75th':58,'99th':73},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S006',source_file:'211551a8-VALD_Normative_Data_Report__Rugby_League.html',table_index:'8',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'Rugby League',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':38,'25th':50,'50th':56,'75th':63,'99th':83},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S007',source_file:'25ba9fc6-VALD_Normative_Data_Report__College__Womens_Track__Field.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Women’s Track & Field',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':32,'25th':46,'50th':53,'75th':58,'99th':69},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S009',source_file:'32ca207f-VALD_Normative_Data_Report__College__Mens_Volleyball.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Men’s Volleyball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':47,'25th':56,'50th':60,'75th':65,'99th':77},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S012',source_file:'4d415ec4-VALD_Normative_Data_Report__College__Womens_Basketball.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Women’s Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':30,'25th':41,'50th':46,'75th':50,'99th':63},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S013',source_file:'4e510f35-VALD_Normative_Data_Report__Womens_Football_Soccer__Playing_Level.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':34,'25th':43,'50th':47,'75th':50,'99th':62},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici',entry_index:1,entry_note:'Sous-groupe non distingue par la source extraite (meme population_vald/sexe/age_band pour 2 series de percentiles distinctes dans la meme table VALD) -- conserve separement, jamais fusionne (cf. COLLISIONS, source unique avec valeurs multiples).'},
+    {source_id:'S013',source_file:'4e510f35-VALD_Normative_Data_Report__Womens_Football_Soccer__Playing_Level.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':28,'25th':38,'50th':42,'75th':47,'99th':60},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici',entry_index:2,entry_note:'Sous-groupe non distingue par la source extraite (meme population_vald/sexe/age_band pour 2 series de percentiles distinctes dans la meme table VALD) -- conserve separement, jamais fusionne (cf. COLLISIONS, source unique avec valeurs multiples).'},
+    {source_id:'S014',source_file:'52f2a8d8-VALD_Normative_Data_Report__College__Mens_Soccer.html',table_index:'4',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Men’s Soccer',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':41,'25th':50,'50th':54,'75th':59,'99th':71},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S015',source_file:'5770b709-VALD_Normative_Data_Report__Womens_Football_Soccer__Age_Groups.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':28,'25th':39,'50th':44,'75th':48,'99th':60},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S015',source_file:'5770b709-VALD_Normative_Data_Report__Womens_Football_Soccer__Age_Groups.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:'15-20 years',niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':34,'25th':42,'50th':48,'75th':52,'99th':62},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S015',source_file:'5770b709-VALD_Normative_Data_Report__Womens_Football_Soccer__Age_Groups.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':33,'25th':41,'50th':46,'75th':49,'99th':60},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S015',source_file:'5770b709-VALD_Normative_Data_Report__Womens_Football_Soccer__Age_Groups.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':28,'25th':41,'50th':48,'75th':50,'99th':58},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'1',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':28,'25th':43,'50th':49,'75th':56,'99th':72},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'1',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':27,'25th':42,'50th':48,'75th':56,'99th':72},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'1',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':30,'25th':46,'50th':51,'75th':57,'99th':72},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'1',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':28,'25th':42,'50th':47,'75th':52,'99th':70},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'1',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':28,'25th':38,'50th':43,'75th':47,'99th':68},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'1',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':28,'25th':34,'50th':38,'75th':41,'99th':68},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'7',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':23,'25th':35,'50th':40,'75th':45,'99th':59},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'7',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':25,'25th':36,'50th':40,'75th':45,'99th':58},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'7',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':25,'25th':37,'50th':42,'75th':47,'99th':59},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'7',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':24,'25th':32,'50th':37,'75th':42,'99th':59},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'7',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':21,'25th':27,'50th':30,'75th':35,'99th':47},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'7',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':20,'25th':27,'50th':31,'75th':34,'99th':45},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S018',source_file:'772fbb4b-VALD_Normative_Data_Report__Mens_Football_Soccer.html',table_index:'17',table_title_h3:'FT:CT Ratio',test_vald:'Countermovement Jump',population_vald:'Men’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':39,'25th':50,'50th':54,'75th':59,'99th':72},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S019',source_file:'95210803-VALD_Normative_Data_Report__Mens_Tennis.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'Men’s Tennis',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':35,'25th':47,'50th':52,'75th':57,'99th':70},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'1',table_title_h3:'Peak Power / BM (Male)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':28.7,'10th':37.8,'20th':42.1,'30th':45.1,'40th':47.6,'50th':50.1,'60th':52.5,'70th':54.9,'80th':58,'90th':62.4,'99th':73.2},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'1',table_title_h3:'Peak Power / BM (Male)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Male',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':29.4,'10th':38.3,'20th':42.6,'30th':45.6,'40th':48.2,'50th':50.6,'60th':53,'70th':55.5,'80th':58.4,'90th':63.1,'99th':73.6},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'1',table_title_h3:'Peak Power / BM (Male)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Male',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':31.2,'10th':41.3,'20th':45.1,'30th':47.7,'40th':50,'50th':52.2,'60th':54.2,'70th':56.6,'80th':59.5,'90th':63.6,'99th':73.6},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'1',table_title_h3:'Peak Power / BM (Male)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Male',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':28.5,'10th':37.3,'20th':41,'30th':43.3,'40th':45.4,'50th':47.4,'60th':49.6,'70th':52.1,'80th':54.9,'90th':59.3,'99th':70.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'1',table_title_h3:'Peak Power / BM (Male)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Male',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':26.9,'10th':33.3,'20th':36,'30th':38,'40th':39.9,'50th':41.7,'60th':43.6,'70th':45.9,'80th':48.9,'90th':53.1,'99th':68.3},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'1',table_title_h3:'Peak Power / BM (Male)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Male',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':25.2,'10th':30.4,'20th':32.9,'30th':34.8,'40th':36.6,'50th':38.3,'60th':40.3,'70th':42.5,'80th':45.2,'90th':49.6,'99th':66.5},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'1',table_title_h3:'Peak Power / BM (Male)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Male',age_band:'60-70 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':24.3,'10th':28.2,'20th':30.2,'30th':31.5,'40th':32.6,'50th':34,'60th':35.7,'70th':37.4,'80th':39.9,'90th':44.3,'99th':65.2},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'1',table_title_h3:'Peak Power / BM (Male)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Male',age_band:'70-100 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':24,'10th':25.6,'20th':27.3,'30th':28.4,'40th':30,'50th':30.8,'60th':32.4,'70th':34,'80th':36.4,'90th':40.4,'99th':53.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'7',table_title_h3:'Peak Power / BM (Female)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':23.2,'10th':30.8,'20th':34.3,'30th':36.6,'40th':38.6,'50th':40.5,'60th':42.3,'70th':44.4,'80th':47,'90th':51.1,'99th':59.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'7',table_title_h3:'Peak Power / BM (Female)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Female',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':25.8,'10th':33.4,'20th':36.1,'30th':38,'40th':39.8,'50th':41.4,'60th':43,'70th':44.9,'80th':47.3,'90th':51.1,'99th':59.7},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'7',table_title_h3:'Peak Power / BM (Female)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Female',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':25.4,'10th':32.5,'20th':35.6,'30th':37.9,'40th':39.8,'50th':41.7,'60th':43.6,'70th':45.8,'80th':48.6,'90th':52.7,'99th':60.1},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'7',table_title_h3:'Peak Power / BM (Female)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Female',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':23.1,'10th':28.8,'20th':31.4,'30th':33.6,'40th':35.5,'50th':37.2,'60th':38.9,'70th':41,'80th':43.5,'90th':47.2,'99th':59},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'7',table_title_h3:'Peak Power / BM (Female)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Female',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':20.9,'10th':25.8,'20th':28.3,'30th':29.9,'40th':31.7,'50th':33.3,'60th':34.9,'70th':36.6,'80th':39.2,'90th':42.5,'99th':56.7},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'7',table_title_h3:'Peak Power / BM (Female)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Female',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':20.5,'10th':23.9,'20th':26.1,'30th':27.9,'40th':29.6,'50th':30.9,'60th':32.4,'70th':34.1,'80th':35.8,'90th':39.8,'99th':51.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'7',table_title_h3:'Peak Power / BM (Female)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Female',age_band:'60-70 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':20.3,'10th':22.6,'20th':24.6,'30th':25.9,'40th':28,'50th':30,'60th':32.3,'70th':37.2,'80th':45.3,'90th':48.7,'99th':51.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'7',table_title_h3:'Peak Power / BM (Female)',test_vald:'Countermovement Jump',population_vald:'Allied Health',sexe:'Female',age_band:'70-100 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':20.7,'10th':21.7,'20th':22.4,'30th':22.9,'40th':23.3,'50th':24.3,'60th':24.8,'70th':25.8,'80th':26.7,'90th':28.6,'99th':30.7},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S026',source_file:'e054abfe-VALD_Normative_Data_Report__Womens_Tennis.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'Women’s Tennis',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':32,'25th':39,'50th':42,'75th':45,'99th':53},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S027',source_file:'e4363531-VALD_Normative_Data_Report__College__Womens_Soccer.html',table_index:'4',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Women’s Soccer',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':31,'25th':41,'50th':44,'75th':48,'99th':59},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S028',source_file:'e9173eb5-VALD_Normative_Data_Report__College__Womens_Swimming.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Women’s Swimming',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':32,'25th':39,'50th':43,'75th':47,'99th':56},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S029',source_file:'e9f62a23-VALD_Normative_Data_Report__Endurance_Sports.html',table_index:'15',table_title_h3:'Concentric Peak Power - Relative',test_vald:'Countermovement Jump',population_vald:'Endurance Sports',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative',unite:null,percentiles:{'1st':36,'25th':50,'50th':55,'75th':61,'99th':73},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S029',source_file:'e9f62a23-VALD_Normative_Data_Report__Endurance_Sports.html',table_index:'15',table_title_h3:'Concentric Peak Power - Relative',test_vald:'Countermovement Jump',population_vald:'Endurance Sports',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative',unite:null,percentiles:{'1st':31,'25th':41,'50th':45,'75th':50,'99th':67},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S030',source_file:'ea1bbca5-VALD_Normative_Data_Report__Weightlifting.html',table_index:'3',table_title_h3:'Peak Power / BM',test_vald:'Countermovement Jump',population_vald:'Weightlifting',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM',unite:null,percentiles:{'1st':37.4,'25th':46.7,'50th':53.9,'75th':62.9,'99th':81.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S030',source_file:'ea1bbca5-VALD_Normative_Data_Report__Weightlifting.html',table_index:'3',table_title_h3:'Peak Power / BM',test_vald:'Countermovement Jump',population_vald:'Weightlifting',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM',unite:null,percentiles:{'1st':32.2,'25th':39.3,'50th':43.3,'75th':47.8,'99th':64},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S031',source_file:'ec8476d7-VALD_Normative_Data_Report__Basketball.html',table_index:'6',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':41,'25th':55,'50th':61,'75th':67,'99th':84},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S032',source_file:'ed71d199-VALD_Normative_Data_Report__College__Womens_Volleyball.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Men’s Volleyball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':34,'25th':44,'50th':48,'75th':53,'99th':66},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S033',source_file:'efc61492-VALD_Normative_Data_Report__Mens_Handball.html',table_index:'3',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'Men’s Handball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':31,'25th':44,'50th':50,'75th':57,'99th':79},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S034',source_file:'f3d5f964-VALD_Normative_Data_Report__College__Mens_Track__Field.html',table_index:'6',table_title_h3:'Eccentric Duration',test_vald:'Countermovement Jump',population_vald:'College - Men’s Track & Field',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':52,'25th':62,'50th':66,'75th':69,'99th':78},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S035',source_file:'f8a0b056-VALD_Normative_Data_Report__Mens_Youth_Football_Soccer__by_age_groups.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Men’s Youth Football (Soccer)',sexe:'Unknown',age_band:'13-14 years old',niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':36,'25th':46,'50th':50,'75th':54,'99th':62},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S035',source_file:'f8a0b056-VALD_Normative_Data_Report__Mens_Youth_Football_Soccer__by_age_groups.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Men’s Youth Football (Soccer)',sexe:'Unknown',age_band:'15-16 years old',niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':39,'25th':48,'50th':52,'75th':55,'99th':64},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S035',source_file:'f8a0b056-VALD_Normative_Data_Report__Mens_Youth_Football_Soccer__by_age_groups.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Men’s Youth Football (Soccer)',sexe:'Unknown',age_band:'17-18 years old',niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':41,'25th':49,'50th':54,'75th':59,'99th':75},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S035',source_file:'f8a0b056-VALD_Normative_Data_Report__Mens_Youth_Football_Soccer__by_age_groups.html',table_index:'10',table_title_h3:'Concentric Peak Power',test_vald:'Countermovement Jump (CMJ)',population_vald:'Men’s Youth Football (Soccer)',sexe:'Unknown',age_band:'19-20 years old',niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power',unite:'W/kg',percentiles:{'1st':39,'25th':50,'50th':56,'75th':61,'99th':76},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'},
+    {source_id:'S036',source_file:'f8b50684-VALD_Normative_Data_Report__Womens_Football_Soccer.html',table_index:'8',table_title_h3:'FT:CT Ratio',test_vald:'Countermovement Jump',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':36,'25th':45,'50th':49,'75th':55,'99th':64},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja largement couvert par NORMS actuel, confirme ici'}
+  ],
+  slcmj_peak_power:[
+    {source_id:'S002',source_file:'07ae9a47-VALD_Normative_Data_Report__College__Mens_Basketball.html',table_index:'7',table_title_h3:'Eccentric Duration',test_vald:'Single Leg Jump',population_vald:'College - Men’s Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':26,'25th':35,'50th':39,'75th':44,'99th':54},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S003',source_file:'153ea586-VALD_Normative_Data_Report__Rugby_Union.html',table_index:'11',table_title_h3:'Eccentric Duration',test_vald:'Single Leg Jump',population_vald:'Rugby Union',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':20,'25th':29,'50th':33,'75th':37,'99th':46},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S006',source_file:'211551a8-VALD_Normative_Data_Report__Rugby_League.html',table_index:'12',table_title_h3:'Eccentric Duration',test_vald:'Single Leg Jump',population_vald:'Rugby League',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':23,'25th':33,'50th':36,'75th':43,'99th':80},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S012',source_file:'4d415ec4-VALD_Normative_Data_Report__College__Womens_Basketball.html',table_index:'9',table_title_h3:'Eccentric Duration',test_vald:'Single Leg Jump',population_vald:'College - Women’s Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':19,'25th':28,'50th':30,'75th':34,'99th':44},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S014',source_file:'52f2a8d8-VALD_Normative_Data_Report__College__Mens_Soccer.html',table_index:'7',table_title_h3:'Eccentric Duration',test_vald:'Single Leg Jump',population_vald:'College - Men’s Soccer',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':28,'25th':35,'50th':38,'75th':41,'99th':48},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'28',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':14,'25th':25,'50th':29,'75th':33,'99th':44},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'28',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':12,'25th':24,'50th':29,'75th':33,'99th':45},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'28',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':16,'25th':27,'50th':30,'75th':34,'99th':44},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'28',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':15,'25th':24,'50th':28,'75th':31,'99th':41},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'28',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':13,'25th':21,'50th':24,'75th':27,'99th':39},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'28',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':13,'25th':19,'50th':21,'75th':24,'99th':43},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'33',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':13,'25th':21,'50th':24,'75th':28,'99th':39},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'33',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':14,'25th':22,'50th':25,'75th':28,'99th':39},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'33',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':13,'25th':21,'50th':25,'75th':29,'99th':39},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'33',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':13,'25th':19,'50th':22,'75th':25,'99th':34},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'33',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':13,'25th':17,'50th':18,'75th':21,'99th':30},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'33',table_title_h3:'Peak Power / BM (W/kg)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (W/kg)',unite:null,percentiles:{'1st':9,'25th':14,'50th':16,'75th':20,'99th':24},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'13',table_title_h3:'Peak Power / BM (Male)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':17.8,'10th':23.6,'20th':26.3,'30th':28.3,'40th':29.9,'50th':31.5,'60th':33,'70th':34.8,'80th':37,'90th':40.4,'99th':48.1},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'13',table_title_h3:'Peak Power / BM (Male)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Male',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':18.4,'10th':24.6,'20th':27.3,'30th':29.3,'40th':31,'50th':32.6,'60th':34.3,'70th':36.2,'80th':38.4,'90th':41.8,'99th':48.7},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'13',table_title_h3:'Peak Power / BM (Male)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Male',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':19.2,'10th':25.3,'20th':27.9,'30th':29.6,'40th':30.9,'50th':32.3,'60th':33.8,'70th':35.4,'80th':37.3,'90th':40.6,'99th':47.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'13',table_title_h3:'Peak Power / BM (Male)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Male',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':17.2,'10th':22.5,'20th':25,'30th':26.6,'40th':27.9,'50th':29.4,'60th':30.7,'70th':32.1,'80th':34.1,'90th':37.1,'99th':46},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'13',table_title_h3:'Peak Power / BM (Male)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Male',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':15.6,'10th':20.6,'20th':22.4,'30th':23.8,'40th':24.9,'50th':26,'60th':27.3,'70th':28.8,'80th':30.8,'90th':33.5,'99th':44.5},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'13',table_title_h3:'Peak Power / BM (Male)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Male',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':14.7,'10th':18.8,'20th':20.4,'30th':21.2,'40th':22.3,'50th':23.5,'60th':24.6,'70th':26.1,'80th':27.4,'90th':29.8,'99th':42.4},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'13',table_title_h3:'Peak Power / BM (Male)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Male',age_band:'60-70 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':14.7,'10th':16.7,'20th':17.9,'30th':18.8,'40th':20,'50th':20.9,'60th':21.9,'70th':23.2,'80th':24.3,'90th':26.6,'99th':31.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'13',table_title_h3:'Peak Power / BM (Male)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Male',age_band:'70-100 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Male)',unite:null,percentiles:{'1st':14.8,'10th':17.2,'20th':19.1,'30th':22.2,'40th':22.5,'50th':23.2,'60th':23.4,'70th':25.6,'80th':27.4,'90th':30.4,'99th':35.6},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'19',table_title_h3:'Peak Power / BM (Female)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':14.3,'10th':19.4,'20th':21.5,'30th':23.1,'40th':24.5,'50th':25.8,'60th':27.1,'70th':28.7,'80th':30.5,'90th':33.4,'99th':39.7},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'19',table_title_h3:'Peak Power / BM (Female)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Female',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':16.4,'10th':21.3,'20th':23.1,'30th':24.6,'40th':25.9,'50th':27,'60th':28.3,'70th':29.7,'80th':31.6,'90th':34.4,'99th':40.4},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'19',table_title_h3:'Peak Power / BM (Female)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Female',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':15.4,'10th':20,'20th':22,'30th':23.4,'40th':24.7,'50th':25.9,'60th':27.3,'70th':28.7,'80th':30.6,'90th':33.2,'99th':39.6},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'19',table_title_h3:'Peak Power / BM (Female)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Female',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':13.8,'10th':17.8,'20th':19.7,'30th':20.9,'40th':22,'50th':23,'60th':24.2,'70th':25.5,'80th':27.3,'90th':30.3,'99th':37.6},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'19',table_title_h3:'Peak Power / BM (Female)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Female',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':12.4,'10th':16.6,'20th':18.2,'30th':19.6,'40th':20.6,'50th':21.7,'60th':22.8,'70th':23.9,'80th':25.1,'90th':27.7,'99th':34.8},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'19',table_title_h3:'Peak Power / BM (Female)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Female',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':11.4,'10th':14,'20th':15.5,'30th':17,'40th':17.9,'50th':19,'60th':20.1,'70th':21.1,'80th':22.3,'90th':24.1,'99th':31.7},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'19',table_title_h3:'Peak Power / BM (Female)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Female',age_band:'60-70 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':12.3,'10th':13.9,'20th':15.2,'30th':16,'40th':16.9,'50th':17.7,'60th':18.4,'70th':19.1,'80th':19.9,'90th':21.5,'99th':35.1},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'19',table_title_h3:'Peak Power / BM (Female)',test_vald:'Single Leg Jump',population_vald:'Allied Health',sexe:'Female',age_band:'70-100 years',niveau:null,sport:null,variable_vald_exacte:'Peak Power / BM (Female)',unite:null,percentiles:{'1st':12,'10th':12.2,'20th':12.4,'30th':12.5,'40th':12.7,'50th':12.8,'60th':13.7,'70th':14.5,'80th':15.3,'90th':16.1,'99th':16.9},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S027',source_file:'e4363531-VALD_Normative_Data_Report__College__Womens_Soccer.html',table_index:'9',table_title_h3:'Eccentric Duration',test_vald:'Single Leg Jump',population_vald:'College - Women’s Soccer',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':20,'25th':28,'50th':30,'75th':34,'99th':42},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S031',source_file:'ec8476d7-VALD_Normative_Data_Report__Basketball.html',table_index:'10',table_title_h3:'Eccentric Duration',test_vald:'Single Leg Jump',population_vald:'Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':26,'25th':34,'50th':38,'75th':42,'99th':51},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'},
+    {source_id:'S033',source_file:'efc61492-VALD_Normative_Data_Report__Mens_Handball.html',table_index:'6',table_title_h3:'Eccentric Duration',test_vald:'Single Leg Jump',population_vald:'Men’s Handball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Concentric Peak Power - Relative (W/kg)',unite:null,percentiles:{'1st':23,'25th':30,'50th':32,'75th':37,'99th':47},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Validation clinique explicite : Single Leg Jump VALD = SLCMJ Kinexus'}
+  ],
+  dj_rsi:[
+    {source_id:'S002',source_file:'07ae9a47-VALD_Normative_Data_Report__College__Mens_Basketball.html',table_index:'5',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'College - Men’s Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.93,'25th':1.27,'50th':1.52,'75th':1.85,'99th':2.73},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S003',source_file:'153ea586-VALD_Normative_Data_Report__Rugby_Union.html',table_index:'8',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'Rugby Union',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':1.03,'25th':1.96,'50th':2.44,'75th':2.92,'99th':4.04},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S006',source_file:'211551a8-VALD_Normative_Data_Report__Rugby_League.html',table_index:'9',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'Rugby League',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.37,'25th':1.42,'50th':1.77,'75th':2.23,'99th':3.15},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S009',source_file:'32ca207f-VALD_Normative_Data_Report__College__Mens_Volleyball.html',table_index:'4',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'College - Men’s Volleyball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':1.88,'25th':2.52,'50th':2.8,'75th':3.17,'99th':3.9},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S012',source_file:'4d415ec4-VALD_Normative_Data_Report__College__Womens_Basketball.html',table_index:'5',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'College - Women’s Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.79,'25th':1.27,'50th':1.52,'75th':1.84,'99th':2.7},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S013',source_file:'4e510f35-VALD_Normative_Data_Report__Womens_Football_Soccer__Playing_Level.html',table_index:'21',table_title_h3:'Reactive Strength Index',test_vald:'Drop Jump',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':1.15,'25th':1.43,'50th':1.52,'75th':2.08,'99th':3.04},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel',entry_index:1,entry_note:'Sous-groupe non distingue par la source extraite (meme population_vald/sexe/age_band pour 2 series de percentiles distinctes dans la meme table VALD) -- conserve separement, jamais fusionne (cf. COLLISIONS, source unique avec valeurs multiples).'},
+    {source_id:'S013',source_file:'4e510f35-VALD_Normative_Data_Report__Womens_Football_Soccer__Playing_Level.html',table_index:'21',table_title_h3:'Reactive Strength Index',test_vald:'Drop Jump',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.69,'25th':1.11,'50th':1.53,'75th':1.97,'99th':3.01},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel',entry_index:2,entry_note:'Sous-groupe non distingue par la source extraite (meme population_vald/sexe/age_band pour 2 series de percentiles distinctes dans la meme table VALD) -- conserve separement, jamais fusionne (cf. COLLISIONS, source unique avec valeurs multiples).'},
+    {source_id:'S014',source_file:'52f2a8d8-VALD_Normative_Data_Report__College__Mens_Soccer.html',table_index:'5',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'College - Men’s Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.87,'25th':1.38,'50th':1.75,'75th':2.22,'99th':3.34},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S015',source_file:'5770b709-VALD_Normative_Data_Report__Womens_Football_Soccer__Age_Groups.html',table_index:'21',table_title_h3:'Reactive Strength Index',test_vald:'Drop Jump',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.74,'25th':1.17,'50th':1.52,'75th':1.98,'99th':3.01},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S015',source_file:'5770b709-VALD_Normative_Data_Report__Womens_Football_Soccer__Age_Groups.html',table_index:'21',table_title_h3:'Reactive Strength Index',test_vald:'Drop Jump',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.69,'25th':1.15,'50th':1.54,'75th':1.97,'99th':3.02},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'20',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.47,'25th':1.11,'50th':1.43,'75th':1.88,'99th':2.74},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'20',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.46,'25th':1,'50th':1.28,'75th':1.86,'99th':2.81},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'20',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.51,'25th':1.23,'50th':1.53,'75th':1.97,'99th':2.74},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'20',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.53,'25th':1.1,'50th':1.38,'75th':1.74,'99th':2.68},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'20',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.4,'25th':0.86,'50th':1.11,'75th':1.43,'99th':2.42},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'20',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.45,'25th':0.89,'50th':1.13,'75th':1.45,'99th':2.06},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'22',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.47,'25th':0.86,'50th':1.13,'75th':1.54,'99th':2.52},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'22',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.52,'25th':0.84,'50th':1.04,'75th':1.42,'99th':2.11},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'22',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.47,'25th':0.92,'50th':1.25,'75th':1.68,'99th':2.57},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'22',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.46,'25th':0.74,'50th':1.1,'75th':1.23,'99th':2.29},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'22',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.69,'25th':1.03,'50th':1.32,'75th':1.81,'99th':1.97},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S017',source_file:'75dc7114-VALD_Normative_Data_Report__AlliedHealth_2022__ForceDecks.html',table_index:'22',table_title_h3:'RSI (Flight Time/Contact Time)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Unknown',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight Time/Contact Time)',unite:null,percentiles:{'1st':0.46,'25th':0.6,'50th':0.82,'75th':1.1,'99th':1.36},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S018',source_file:'772fbb4b-VALD_Normative_Data_Report__Mens_Football_Soccer.html',table_index:'18',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'Men’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.95,'25th':2.01,'50th':2.52,'75th':2.96,'99th':3.91},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S019',source_file:'95210803-VALD_Normative_Data_Report__Mens_Tennis.html',table_index:'4',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'Men’s Tennis',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.79,'25th':1.22,'50th':1.62,'75th':2.55,'99th':3.52},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'31',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.56,'10th':0.98,'20th':1.21,'30th':1.42,'40th':1.61,'50th':1.8,'60th':1.99,'70th':2.2,'80th':2.43,'90th':2.76,'99th':3.5},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'31',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.61,'10th':0.97,'20th':1.21,'30th':1.41,'40th':1.62,'50th':1.83,'60th':2.04,'70th':2.26,'80th':2.52,'90th':2.91,'99th':3.59},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'31',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.59,'10th':1.07,'20th':1.3,'30th':1.5,'40th':1.7,'50th':1.88,'60th':2.07,'70th':2.26,'80th':2.48,'90th':2.79,'99th':3.49},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'31',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.47,'10th':0.94,'20th':1.12,'30th':1.3,'40th':1.49,'50th':1.67,'60th':1.83,'70th':2,'80th':2.24,'90th':2.49,'99th':3.05},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'31',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.51,'10th':0.77,'20th':0.95,'30th':1.14,'40th':1.34,'50th':1.45,'60th':1.59,'70th':1.77,'80th':1.94,'90th':2.16,'99th':2.78},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'31',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.36,'10th':0.64,'20th':0.83,'30th':1.09,'40th':1.23,'50th':1.36,'60th':1.51,'70th':1.73,'80th':1.94,'90th':2.17,'99th':2.81},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'31',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'60-70 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.51,'10th':0.6,'20th':0.8,'30th':0.91,'40th':1.14,'50th':1.38,'60th':1.5,'70th':1.52,'80th':1.55,'90th':1.67,'99th':2.11},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'33',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.47,'10th':0.78,'20th':0.95,'30th':1.11,'40th':1.28,'50th':1.46,'60th':1.63,'70th':1.85,'80th':2.08,'90th':2.39,'99th':3.08},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'33',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.53,'10th':0.77,'20th':0.93,'30th':1.06,'40th':1.22,'50th':1.41,'60th':1.58,'70th':1.79,'80th':2,'90th':2.31,'99th':3.04},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'33',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.51,'10th':0.86,'20th':1.07,'30th':1.26,'40th':1.43,'50th':1.58,'60th':1.77,'70th':1.99,'80th':2.21,'90th':2.48,'99th':3.15},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'33',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.38,'10th':0.74,'20th':0.89,'30th':1.03,'40th':1.18,'50th':1.3,'60th':1.46,'70th':1.64,'80th':1.82,'90th':2.11,'99th':3.01},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'33',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.29,'10th':0.61,'20th':0.78,'30th':0.92,'40th':1,'50th':1.14,'60th':1.26,'70th':1.43,'80th':1.59,'90th':1.82,'99th':2.37},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'33',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.29,'10th':0.53,'20th':0.6,'30th':0.7,'40th':0.83,'50th':0.95,'60th':1.15,'70th':1.37,'80th':1.55,'90th':1.91,'99th':2.15},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'33',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'60-70 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.46,'10th':1.04,'20th':1.82,'30th':2.11,'40th':2.28,'50th':2.38,'60th':2.53,'70th':2.74,'80th':2.78,'90th':2.86,'99th':3.09},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S021',source_file:'ba31fd3c-VALD_Normative_Data_Report__Mens_Youth_Football_Soccer.html',table_index:'6',table_title_h3:'Active Stiffness',test_vald:'Drop Jump',population_vald:'Men’s Youth Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.97,'25th':2.05,'50th':2.55,'75th':2.95,'99th':3.96},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S027',source_file:'e4363531-VALD_Normative_Data_Report__College__Womens_Soccer.html',table_index:'5',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'College - Women’s Soccer',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.75,'25th':1.08,'50th':1.32,'75th':1.77,'99th':2.74},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S031',source_file:'ec8476d7-VALD_Normative_Data_Report__Basketball.html',table_index:'7',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'Basketball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.83,'25th':1.59,'50th':2.06,'75th':2.42,'99th':3.31},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S033',source_file:'efc61492-VALD_Normative_Data_Report__Mens_Handball.html',table_index:'4',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'Men’s Handball',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':1.13,'25th':1.51,'50th':1.69,'75th':1.99,'99th':2.72},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S035',source_file:'f8a0b056-VALD_Normative_Data_Report__Mens_Youth_Football_Soccer__by_age_groups.html',table_index:'21',table_title_h3:'Reactive Strength Index',test_vald:'Drop Jump',population_vald:'Men’s Youth Football (Soccer)',sexe:'Unknown',age_band:'15-16 years old',niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':1.57,'25th':1.81,'50th':1.96,'75th':2.05,'99th':2.47},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S035',source_file:'f8a0b056-VALD_Normative_Data_Report__Mens_Youth_Football_Soccer__by_age_groups.html',table_index:'21',table_title_h3:'Reactive Strength Index',test_vald:'Drop Jump',population_vald:'Men’s Youth Football (Soccer)',sexe:'Unknown',age_band:'17-18 years old',niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':1.04,'25th':2,'50th':2.47,'75th':2.93,'99th':3.46},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S035',source_file:'f8a0b056-VALD_Normative_Data_Report__Mens_Youth_Football_Soccer__by_age_groups.html',table_index:'21',table_title_h3:'Reactive Strength Index',test_vald:'Drop Jump',population_vald:'Men’s Youth Football (Soccer)',sexe:'Unknown',age_band:'19-20 years old',niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':1.23,'25th':2.12,'50th':2.7,'75th':2.88,'99th':3.77},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S036',source_file:'f8b50684-VALD_Normative_Data_Report__Womens_Football_Soccer.html',table_index:'9',table_title_h3:'Contact Time',test_vald:'Drop Jump',population_vald:'Women’s Football (Soccer)',sexe:'Unknown',age_band:null,niveau:null,sport:null,variable_vald_exacte:'Reactive Strength Index',unite:null,percentiles:{'1st':0.8,'25th':1.39,'50th':2.02,'75th':2.65,'99th':3.46},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'}
+  ],
+  sldj_rsi:[
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'35',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:null,niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.42,'10th':0.73,'20th':0.87,'30th':0.98,'40th':1.08,'50th':1.16,'60th':1.24,'70th':1.34,'80th':1.45,'90th':1.6,'99th':1.97},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'35',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.46,'10th':0.77,'20th':0.9,'30th':1.01,'40th':1.1,'50th':1.18,'60th':1.26,'70th':1.36,'80th':1.47,'90th':1.63,'99th':2.02},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'35',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.47,'10th':0.77,'20th':0.91,'30th':1.01,'40th':1.11,'50th':1.2,'60th':1.29,'70th':1.37,'80th':1.48,'90th':1.62,'99th':1.96},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'35',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.37,'10th':0.66,'20th':0.8,'30th':0.9,'40th':0.99,'50th':1.06,'60th':1.14,'70th':1.25,'80th':1.36,'90th':1.53,'99th':1.86},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'35',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.31,'10th':0.49,'20th':0.65,'30th':0.77,'40th':0.86,'50th':0.94,'60th':1.06,'70th':1.12,'80th':1.29,'90th':1.53,'99th':2.04},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'35',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.34,'10th':0.61,'20th':0.68,'30th':0.74,'40th':0.86,'50th':0.93,'60th':0.98,'70th':1.05,'80th':1.12,'90th':1.25,'99th':1.56},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'35',table_title_h3:'RSI (Flight/Contact Time) (Male)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Male',age_band:'60-70 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Male)',unite:null,percentiles:{'1st':0.42,'10th':0.52,'20th':0.63,'30th':0.74,'40th':0.85,'50th':0.97,'60th':1.08,'70th':1.16,'80th':1.17,'90th':1.18,'99th':1.18},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'37',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:null,niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.36,'10th':0.58,'20th':0.71,'30th':0.8,'40th':0.89,'50th':0.97,'60th':1.05,'70th':1.13,'80th':1.24,'90th':1.39,'99th':1.68},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'37',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'10-20 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.38,'10th':0.62,'20th':0.74,'30th':0.84,'40th':0.93,'50th':0.99,'60th':1.07,'70th':1.14,'80th':1.26,'90th':1.41,'99th':1.68},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'37',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'20-30 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.37,'10th':0.59,'20th':0.74,'30th':0.84,'40th':0.92,'50th':1.01,'60th':1.09,'70th':1.18,'80th':1.28,'90th':1.41,'99th':1.71},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'37',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'30-40 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.29,'10th':0.5,'20th':0.62,'30th':0.7,'40th':0.79,'50th':0.86,'60th':0.92,'70th':1.01,'80th':1.06,'90th':1.2,'99th':1.46},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'37',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'40-50 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.29,'10th':0.55,'20th':0.6,'30th':0.65,'40th':0.74,'50th':0.78,'60th':0.85,'70th':0.93,'80th':1.01,'90th':1.15,'99th':1.52},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'37',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'50-60 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.29,'10th':0.44,'20th':0.62,'30th':0.64,'40th':0.69,'50th':0.79,'60th':0.9,'70th':0.96,'80th':1.04,'90th':1.08,'99th':1.17},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'},
+    {source_id:'S020',source_file:'b5d6d14c-VALD_Normative_Data_Report__Allied_Health__ForceDecks_Latest_1.html',table_index:'37',table_title_h3:'RSI (Flight/Contact Time) (Female)',test_vald:'Single Leg Drop Jump',population_vald:'Allied Health',sexe:'Female',age_band:'60-70 years',niveau:null,sport:null,variable_vald_exacte:'RSI (Flight/Contact Time) (Female)',unite:null,percentiles:{'1st':0.57,'10th':0.59,'20th':0.6,'30th':0.62,'40th':0.64,'50th':0.65,'60th':0.66,'70th':0.67,'80th':0.68,'90th':0.69,'99th':0.7},confidence:'HIGH',mapping_status:'INTEGRABLE',mapping_note:'Deja couvert par THRESHOLDS universel'}
+  ]
+};
+// Resolveur en LECTURE SEULE : retourne la LISTE des entrees NORMS_V2 correspondant a une
+// variable et, optionnellement, une population/sexe/age_band/source -- ne choisit JAMAIS une
+// seule entree parmi plusieurs, ne fusionne JAMAIS deux entrees, ne calcule aucun statut
+// clinique. Usage : tracabilite, futurs affichages, ou base d'une future decision d'activation
+// clinique (hors perimetre de cette mission).
+function resolveNormsV2Entries(variableKinexus,filters){
+  var all=NORMS_V2[variableKinexus]||[];
+  filters=filters||{};
+  return all.filter(function(e){
+    if(filters.population_vald!==undefined&&e.population_vald!==filters.population_vald)return false;
+    if(filters.sexe!==undefined&&e.sexe!==filters.sexe)return false;
+    if(filters.age_band!==undefined&&e.age_band!==filters.age_band)return false;
+    if(filters.source_id!==undefined&&e.source_id!==filters.source_id)return false;
+    return true;
+  });
+}
+// ── ACTIVATION CLINIQUE NORMS_V2 (mission "ACTIVATION DES NOUVELLES NORMES") ──────────────────
+// Revision (correction de decision clinique explicite du praticien, posterieure a l'Option 1
+// initiale) : le moteur accepte desormais deux formats de grille NORMS_V2, jamais interpoles,
+// jamais reduits, jamais fusionnes :
+//  - grille a 5 points (1st/25th/50th/75th/99th, 133 entrees) -> bornes P25/P50/P75, EXACTEMENT
+//    la regle historique (mode 'p25_p50_p75') : <P25->rouge, [P25,P50)->orange, [P50,P75)->jaune,
+//    >=P75->vert.
+//  - grille a 11 points (1st/10th/20th/30th/40th/50th/60th/70th/80th/90th/99th, 60 entrees
+//    Allied Health/General Population) -> AUCUNE fabrication de P25/P75. Le praticien a valide
+//    explicitement l'usage des percentiles publies les plus proches comme bornes : P20 (borne
+//    basse), P50 (mediane), P80 (borne haute) -> mode 'p20_p50_p80' : <P20->rouge,
+//    [P20,P50)->orange, [P50,P80)->jaune, >=P80->vert. CETTE REGLE EST UNE CLASSIFICATION
+//    KINEXUS (pas une classification fournie par VALD) -- doit toujours etre presentee comme
+//    telle dans l'UI/le rapport (cf. normsV2EntryLabel / normsV2TestReportBlockHtml).
+// Aucune autre combinaison de percentiles ne produit de statut (jamais d'invention/interpolation).
+function normsV2StatusBands(entry){
+  if(!entry||!entry.percentiles)return null;
+  var p=entry.percentiles;
+  if(p['25th']!=null&&p['50th']!=null&&p['75th']!=null){
+    var p25=Number(p['25th']),p50=Number(p['50th']),p75=Number(p['75th']);
+    if(!isNaN(p25)&&!isNaN(p50)&&!isNaN(p75))return{mode:'p25_p50_p75',low:p25,mid:p50,high:p75,lowLabel:'P25',midLabel:'P50',highLabel:'P75'};
+  }
+  if(p['20th']!=null&&p['50th']!=null&&p['80th']!=null){
+    var p20=Number(p['20th']),p50b=Number(p['50th']),p80=Number(p['80th']);
+    if(!isNaN(p20)&&!isNaN(p50b)&&!isNaN(p80))return{mode:'p20_p50_p80',low:p20,mid:p50b,high:p80,lowLabel:'P20',midLabel:'P50',highLabel:'P80'};
+  }
+  return null;
+}
+function normsV2IsClinicallyActive(entry){return normsV2StatusBands(entry)!=null;}
+// Meme LOGIQUE de seuillage que pctStatus (fonction existante, NON modifiee) appliquee aux bornes
+// resolues par normsV2StatusBands, quel que soit le mode : <bas->rouge, [bas,milieu)->orange,
+// [milieu,haut)->jaune, >=haut->vert. Aucune regle clinique nouvelle pour le mode p25_p50_p75
+// (identique a avant) ; le mode p20_p50_p80 est la classification Kinexus decrite ci-dessus.
+function normsV2Status(entry,val){
+  var b=normsV2StatusBands(entry);
+  if(!b||val==null)return null;
+  if(val>=b.high)return'vert';
+  if(val>=b.mid)return'jaune';
+  if(val>=b.low)return'orange';
+  return'rouge';
+}
+// Position normative continue (0-100), interpolee UNIQUEMENT entre percentiles reellement publies
+// dans l'entree (jamais un point invente, jamais extrapole au-dela des bornes connues) -- usage
+// d'affichage exclusivement, ne produit jamais de statut clinique, jamais lue par un moteur HYP.
+function normsV2ContinuousPercentile(entry,val){
+  if(!entry||!entry.percentiles||val==null)return null;
+  var pts=Object.keys(entry.percentiles).map(function(k){
+    var pctNum=parseFloat(k);var v=Number(entry.percentiles[k]);
+    return(isNaN(pctNum)||isNaN(v))?null:{p:pctNum,v:v};
+  }).filter(Boolean).sort(function(a,b){return a.v-b.v;});
+  if(pts.length<2)return null;
+  if(val<=pts[0].v)return pts[0].p;
+  if(val>=pts[pts.length-1].v)return pts[pts.length-1].p;
+  for(var i=0;i<pts.length-1;i++){
+    if(val>=pts[i].v&&val<=pts[i+1].v){
+      var span=pts[i+1].v-pts[i].v;
+      var ratio=span!==0?(val-pts[i].v)/span:0;
+      return Math.round((pts[i].p+ratio*(pts[i+1].p-pts[i].p))*10)/10;
+    }
+  }
+  return null;
+}
+// Resout un selecteur normSelections[testKey] de type NORMS_V2 -- reconnu UNIQUEMENT quand ce
+// selecteur est un OBJET {population_vald,[source_id],[sexe],[age_band],[entry_index]} (jamais une
+// chaine : une chaine reste le mecanisme historique NORM_POPULATIONS/NORMS, totalement inchange).
+// Ne choisit JAMAIS automatiquement entre plusieurs sources concurrentes : si population_vald seul
+// correspond a >1 entree et qu'aucun source_id/entry_index ne leve l'ambiguite, retourne
+// ambiguous:true avec la liste COMPLETE des candidats -- jamais une fusion, jamais un choix
+// arbitraire, jamais une moyenne.
+function resolveNormsV2Selection(variableKinexus,selector){
+  if(!selector||typeof selector!=='object')return null;
+  var filters={};
+  if(selector.population_vald!==undefined)filters.population_vald=selector.population_vald;
+  if(selector.source_id!==undefined)filters.source_id=selector.source_id;
+  if(selector.sexe!==undefined)filters.sexe=selector.sexe;
+  if(selector.age_band!==undefined)filters.age_band=selector.age_band;
+  var candidates=resolveNormsV2Entries(variableKinexus,filters);
+  if(selector.entry_index!=null)candidates=candidates.filter(function(e){return e.entry_index===selector.entry_index;});
+  if(!candidates.length)return{matched:null,ambiguous:false,candidates:[]};
+  if(candidates.length>1)return{matched:null,ambiguous:true,candidates:candidates};
+  return{matched:candidates[0],ambiguous:false,candidates:candidates};
+}
+// Pont d'activation : calcule un statut clinique pour variableKinexus/testKey, en preferant
+// NORMS_V2 UNIQUEMENT quand normSelections[testKey] est explicitement un objet (selecteur V2) ET
+// que l'entree resolue est clinically_active (P25/P50/P75 explicites). Comportement HISTORIQUE
+// GARANTI STRICTEMENT IDENTIQUE dans tous les autres cas (normSelections[testKey] absent, ou
+// chaine -- le mecanisme resolveNormPopulationForTest/applyThr existant, totalement inchange, est
+// alors seul utilise). N'ALTERE NI applyThr NI pctStatus NI THRESHOLDS NI aucune regle HYP -- se
+// contente de choisir, en amont, QUELLE donnee interroger et par quel calcul (identique) produire
+// un statut vert/jaune/orange/rouge.
+// Correction de coherence (mission "ACTIVATION DES NOUVELLES NORMES", derniere passe de
+// verification) : un selecteur NORMS_V2 (objet) sur un testKey ne doit JAMAIS affecter une
+// variable que NORMS_V2 ne suit pas du tout pour ce test (ex. cmj_depth/dj_contact_time/
+// imtp_ttpf -- aucune donnee NORMS_V2). Sans ce garde-fou, ces KPI retomberaient a tort sur
+// `status:null` des qu'un selecteur V2 existe pour LEUR test, alors qu'ils devraient continuer a
+// utiliser la population de reference globale (comportement legacy, strictement inchange) --
+// exactement comme en l'absence de toute selection. Seules les variables reellement presentes
+// dans NORMS_V2 passent par la branche NORMS_V2 ci-dessous.
+function computeStatusWithNormsV2(variableKinexus,testKey,rawVal,pop,age,normSelections){
+  var selector=normSelections&&normSelections[testKey];
+  if(selector&&typeof selector==='object'&&NORMS_V2[variableKinexus]){
+    var res=resolveNormsV2Selection(variableKinexus,selector);
+    if(res&&res.matched){
+      var active=normsV2IsClinicallyActive(res.matched);
+      return{
+        status:(active&&rawVal!=null)?normsV2Status(res.matched,rawVal):null,
+        source:'NORMS_V2',entry:res.matched,ambiguous:false,clinicallyActive:active,
+        continuousPercentile:rawVal!=null?normsV2ContinuousPercentile(res.matched,rawVal):null
+      };
+    }
+    if(res&&res.ambiguous)return{status:null,source:'NORMS_V2',entry:null,ambiguous:true,candidates:res.candidates,clinicallyActive:false,continuousPercentile:null};
+    return{status:null,source:'NORMS_V2',entry:null,ambiguous:false,clinicallyActive:false,continuousPercentile:null};
+  }
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
+  var st=rawVal!=null?applyThr(variableKinexus,rawVal,effPop,age):null;
+  return{status:st,source:'legacy',entry:null,ambiguous:false,clinicallyActive:st!=null,continuousPercentile:null};
+}
+// ── UI "Normes specifiques par test" generalisee a NORMS_V2 (mission "ACTIVATION DES NOUVELLES
+// NORMES") -- un testKey peut s'appuyer sur PLUSIEURS variables NORMS_V2 (ex. imtp -> imtp_n ET
+// imtp_nkg, memes N/Kg d'une seule et meme population/source). Les options proposees sont l'union
+// dedupliquee de toutes les entrees NORMS_V2 des variables du testKey ; chaque option porte un
+// libelle entierement compose a partir des SEULS champs de la source (jamais de combinaison
+// artificielle), et un selecteur {population_vald,[sexe],[age_band],source_id,[entry_index]}
+// -- source_id TOUJOURS inclus (jamais de choix automatique implicite entre sources concurrentes).
+var NORMS_V2_TEST_VARS={cmj:['cmj_peak_power'],slcmj:['slcmj_peak_power'],dj:['dj_rsi'],sldj:['sldj_rsi'],imtp:['imtp_n','imtp_nkg']};
+function normsV2SelectorKey(sel){
+  if(!sel)return'';
+  return[sel.population_vald,sel.sexe,sel.age_band,sel.source_id,sel.entry_index].map(function(v){return v==null?'':v;}).join('||');
+}
+// sexe/age_band TOUJOURS inclus (meme quand null) : resolveNormsV2Selection/resolveNormsV2Entries
+// traitent un filtre explicitement absent (undefined) comme "non applique" mais un filtre
+// explicitement null comme "doit correspondre a une entree sans cette donnee" -- omettre ces
+// champs ici romprait la desambiguisation entre une entree sans sexe/age_band publie et une
+// entree concurrente qui en publie un (meme population_vald/source_id).
+function normsV2SelectorFromEntry(entry){
+  var sel={population_vald:entry.population_vald,source_id:entry.source_id,sexe:entry.sexe,age_band:entry.age_band};
+  if(entry.entry_index!=null)sel.entry_index=entry.entry_index;
+  return sel;
+}
+function normsV2EntryLabel(testLabel,entry){
+  var parts=[testLabel,entry.population_vald];
+  if(entry.sexe)parts.push(entry.sexe);
+  if(entry.age_band)parts.push(entry.age_band);
+  if(entry.niveau)parts.push(entry.niveau);
+  if(entry.sport)parts.push(entry.sport);
+  parts.push('Source '+entry.source_id+(entry.entry_index!=null?' (serie '+entry.entry_index+')':''));
+  var label=parts.join(' — ');
+  var bands=normsV2StatusBands(entry);
+  var nPct=Object.keys(entry.percentiles||{}).length;
+  if(!bands)label+=' · non active (percentiles insuffisants pour un statut — position uniquement)';
+  else if(bands.mode==='p20_p50_p80')label+=' · grille VALD à '+nPct+' percentiles — statut KINEXUS (bornes P20/P50/P80, classification Kinexus, jamais une classification VALD)';
+  return label;
+}
+function buildNormsV2TestOptions(testKey,testLabel){
+  var vars=NORMS_V2_TEST_VARS[testKey]||[];
+  var seen={};var out=[];
+  vars.forEach(function(v){
+    (NORMS_V2[v]||[]).forEach(function(e){
+      var sel=normsV2SelectorFromEntry(e);
+      var k=normsV2SelectorKey(sel);
+      if(seen[k])return;
+      seen[k]=true;
+      var bands=normsV2StatusBands(e);
+      out.push({key:k,label:normsV2EntryLabel(testLabel,e),selector:sel,active:bands!=null,gridMode:bands?bands.mode:null});
+    });
+  });
+  out.sort(function(a,b){return a.label.localeCompare(b.label);});
+  return out;
+}
 function resolveBands(entry,age){
   if(!entry)return null;
   if(typeof entry[0]==='number')return entry;
@@ -3600,15 +4022,32 @@ function effectiveNormPop(athlete){
 // si aucune sélection spécifique n'existe) ; le repli THRESHOLDS reste géré en aval par applyThr,
 // strictement inchangé. Fonction pure, aucun effet de bord, aucune valeur normative inventée —
 // se contente de choisir QUELLE population interroger pour un testKey donné.
+// Contrat : ne retourne JAMAIS un objet -- un selecteur NORMS_V2 (objet) n'est JAMAIS un population
+// key valide pour NORMS[pop][...] (applyThr/normRefValue/etc. l'ignoreraient silencieusement en
+// tombant sur THRESHOLDS generiques, ce qui casserait a tort les AUTRES KPI du meme test non
+// couverts par NORMS_V2). Quand normSelections[testKey] est un objet, tous les appelants de cette
+// fonction retombent donc sur normPop (population de reference globale de l'athlete) exactement
+// comme en l'absence de selection -- SEUL computeStatusWithNormsV2 lit normSelections[testKey]
+// directement pour appliquer un selecteur NORMS_V2 aux variables qu'il couvre reellement.
 function resolveNormPopulationForTest(testKey,normPop,normSelections){
-  if(normSelections&&testKey&&normSelections[testKey])return normSelections[testKey];
+  if(normSelections&&testKey&&typeof normSelections[testKey]==='string'&&normSelections[testKey])return normSelections[testKey];
   return normPop;
 }
 function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
 function lsiSt(lsi){if(lsi==null)return null;if(lsi>=95)return'vert';if(lsi>=90)return'jaune';if(lsi>=80)return'orange';return'rouge';}
 function normRefValue(testKey,kpiKey,pop,age,normSelections){
-  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var key=testKey+'_'+kpiKey;
+  var selector=normSelections&&normSelections[testKey];
+  if(selector&&typeof selector==='object'){
+    var res=resolveNormsV2Selection(key,selector);
+    if(res&&res.matched){
+      var b=normsV2StatusBands(res.matched);
+      if(b)return b.high;
+    }
+    var tV2=THRESHOLDS[key];
+    return tV2?tV2.vert:null;
+  }
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   if(effPop&&NORMS[effPop]&&NORMS[effPop][key]!=null){
     var bands=resolveBands(NORMS[effPop][key],age);
     if(bands&&bands[3]!=null)return bands[3];
@@ -3618,10 +4057,17 @@ function normRefValue(testKey,kpiKey,pop,age,normSelections){
   return null;
 }
 function normRefText(testKey,kpiKey,pop,age,normSelections){
-  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var key=testKey+'_'+kpiKey;
+  var selector=normSelections&&normSelections[testKey];
   var v=normRefValue(testKey,kpiKey,pop,age,normSelections);
   if(v==null)return null;
+  if(selector&&typeof selector==='object'){
+    var res=resolveNormsV2Selection(key,selector);
+    if(res&&res.matched&&normsV2StatusBands(res.matched))return'≥ '+v+' (NORMS_V2)';
+    var tV2=THRESHOLDS[key];
+    return(tV2&&tV2.dir==='min'?'≤ ':'≥ ')+v;
+  }
+  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   if(effPop&&NORMS[effPop]&&NORMS[effPop][key]!=null)return'≥ '+v+' (norme)';
   var t=THRESHOLDS[key];
   return(t&&t.dir==='min'?'≤ ':'≥ ')+v;
@@ -4105,20 +4551,20 @@ var MECHANISMS=["PRODUCTION_FORCE_MAXIMALE", "DEVELOPPEMENT_FORCE_RAPIDE", "PROP
 var CAPACITES_DATA={"SAUT":{"label":"Saut","sousCapacites":[{"name":"Production verticale","qualitesContributrices":[{"quality":"Puissance","poids":"Determinante"},{"quality":"Propulsion","poids":"Determinante"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Explosivité","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]},{"name":"Efficacité du saut","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Stabilisation","poids":"Moderee"}]},{"name":"Sécurité du saut","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Force maximale","poids":"Moderee"}]}]},"ACCELERATION":{"label":"Accélération","sousCapacites":[{"name":"Production initiale de force","qualitesContributrices":[{"quality":"Force maximale","poids":"Determinante"},{"quality":"Explosivité","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Propulsion","poids":"Moderee"}]},{"name":"Propulsion dynamique","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Contrôle moteur","poids":"Moderee"}]},{"name":"Efficacité mécanique","qualitesContributrices":[{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Stabilisation","poids":"Majeure"},{"quality":"Propulsion","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]}]},"RECEPTION":{"label":"Réception","sousCapacites":[{"name":"Dissipation des contraintes","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Stabilisation","poids":"Majeure"},{"quality":"Contrôle moteur","poids":"Moderee"}]},{"name":"Contrôle de la réception","qualitesContributrices":[{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Absorption","poids":"Majeure"},{"quality":"Réactivité","poids":"Moderee"}]},{"name":"Transition motrice","qualitesContributrices":[{"quality":"Réactivité","poids":"Determinante"},{"quality":"Propulsion","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Puissance","poids":"Moderee"}]}]},"CHANGEMENT_DE_DIRECTION":{"label":"Changement de direction","sousCapacites":[{"name":"Décélération","qualitesContributrices":[{"quality":"Absorption","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Contrôle moteur","poids":"Majeure"},{"quality":"Force maximale","poids":"Majeure"},{"quality":"Puissance","poids":"Moderee"}]},{"name":"Réorientation","qualitesContributrices":[{"quality":"Contrôle moteur","poids":"Determinante"},{"quality":"Stabilisation","poids":"Determinante"},{"quality":"Réactivité","poids":"Majeure"},{"quality":"Absorption","poids":"Majeure"},{"quality":"Propulsion","poids":"Moderee"}]},{"name":"Réaccélération","qualitesContributrices":[{"quality":"Propulsion","poids":"Determinante"},{"quality":"Réactivité","poids":"Determinante"},{"quality":"Puissance","poids":"Majeure"},{"quality":"Explosivité","poids":"Majeure"},{"quality":"Force maximale","poids":"Moderee"}]}]}};
 var WCOL={Determinante:'#22C55E',Majeure:'#F97316',Moderee:'#FACC15',Mineure:'#94A3B8'};
 function kpiStatus(testKey,kpiKey,testData,pop,age,normSelections){
-  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
+  var variable=testKey+'_'+kpiKey;
   var test=TBK[testKey];var data=(testData||{})[testKey];
   if(!test||!data||!data.active)return null;
   var kpi=null;test.kpis.forEach(function(k){if(k.key===kpiKey)kpi=k;});
   if(!kpi)return null;
   if(test.bilateral){
     var v=bestVal((data.trials||{})[kpiKey],kpi.dir);
-    return applyThr(testKey+'_'+kpiKey,v,effPop,age);
+    return computeStatusWithNormsV2(variable,testKey,v,pop,age,normSelections).status;
   }
   var dT=((data.D||{}).trials||{})[kpiKey]||[];
   var gT=((data.G||{}).trials||{})[kpiKey]||[];
   var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);
   var lsi=(kpiKey===test.kpis[0].key&&data.lsiAuto!=null)?data.lsiAuto:autoLSI(vD,vG);
-  return worstStatus([lsiSt(lsi),applyThr(testKey+'_'+kpiKey,vD,effPop,age),applyThr(testKey+'_'+kpiKey,vG,effPop,age)]);
+  return worstStatus([lsiSt(lsi),computeStatusWithNormsV2(variable,testKey,vD,pop,age,normSelections).status,computeStatusWithNormsV2(variable,testKey,vG,pop,age,normSelections).status]);
 }
 function worstStatus(arr){arr=(arr||[]).filter(Boolean);if(!arr.length)return null;return arr.reduce(function(a,b){return s2sc(b)<s2sc(a)?b:a;});}
 var POIDS_RANK={Determinante:4,Majeure:3,Moderee:2,Mineure:1};
@@ -4302,11 +4748,10 @@ function varRelHTML(testKey,kpiKey,testData,pop,age){
 }
 
 function computeTestStatus(key,data,pop,age,normSelections){
-  var effPop=resolveNormPopulationForTest(key,pop,normSelections);
   var test=TBK[key];if(!test||!data||!data.active)return null;
   var sts=[];
-  if(test.bilateral){test.kpis.forEach(function(kpi){var v=bestVal((data.trials||{})[kpi.key],kpi.dir);var s=applyThr(key+'_'+kpi.key,v,effPop,age);if(s)sts.push({w:3,s:s});});}
-  else{test.kpis.forEach(function(kpi){var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);if(lsi!=null)sts.push({w:3,s:lsiSt(lsi)});[vD,vG].forEach(function(v){var s=applyThr(key+'_'+kpi.key,v,effPop,age);if(s)sts.push({w:2,s:s});});});if(data.lsi!=null)sts.push({w:3,s:lsiSt(data.lsi)});}
+  if(test.bilateral){test.kpis.forEach(function(kpi){var v=bestVal((data.trials||{})[kpi.key],kpi.dir);var s=computeStatusWithNormsV2(key+'_'+kpi.key,key,v,pop,age,normSelections).status;if(s)sts.push({w:3,s:s});});}
+  else{test.kpis.forEach(function(kpi){var dT=((data.D||{}).trials||{})[kpi.key]||[];var gT=((data.G||{}).trials||{})[kpi.key]||[];var vD=bestVal(dT,kpi.dir);var vG=bestVal(gT,kpi.dir);var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);if(lsi!=null)sts.push({w:3,s:lsiSt(lsi)});[vD,vG].forEach(function(v){var s=computeStatusWithNormsV2(key+'_'+kpi.key,key,v,pop,age,normSelections).status;if(s)sts.push({w:2,s:s});});});if(data.lsi!=null)sts.push({w:3,s:lsiSt(data.lsi)});}
   if(!sts.length)return'jaune';
   var tw=0,ts=0,hasR=false,maj=0;
   sts.forEach(function(x){var sc=s2sc(x.s);if(sc!=null){tw+=x.w;ts+=sc*x.w;}if(x.s==='rouge'){hasR=true;maj++;}if(x.s==='orange')maj++;});
@@ -4531,14 +4976,14 @@ function computeHypAbsorptionStrategie(cmjValues,pop,age){
     braking_duration:{raw:durRaw,status:null,classifiable:false} // aucun seuil cmj_braking_duration dans index.html.
   };
 }
-function computeHypAbsorptionReactive(testData,pop,age){
+function computeHypAbsorptionReactive(testData,pop,age,normSelections){
   var djData=(testData||{}).dj;
   if(!djData||!djData.active)return{dj_rsi:{raw:null,status:null},dj_contact_time:{raw:null,status:null,classifiable:false}};
   var trials=djData.trials||{};
   var rsiRaw=bestVal(trials.rsi,testKpiDir('dj','rsi'));
   var ctRaw=bestVal(trials.contact_time,testKpiDir('dj','contact_time'));
   return{
-    dj_rsi:{raw:rsiRaw,status:rsiRaw!=null?applyThr('dj_rsi',rsiRaw,pop,age):null},
+    dj_rsi:{raw:rsiRaw,status:rsiRaw!=null?computeStatusWithNormsV2('dj_rsi','dj',rsiRaw,pop,age,normSelections).status:null},
     dj_contact_time:{raw:ctRaw,status:null,classifiable:false} // aucun seuil dj_contact_time dans index.html.
   };
 }
@@ -4562,13 +5007,13 @@ function computeHypAbsorptionAsymetrie(cmjValues,pop,age){
 // rien. cmjActive reproduit le gating déjà appliqué par les appelants existants de
 // resolveCmjValues (computeMouvementAnalysis gate sur testData.cmj.active côté appelant plutôt
 // que dans resolveCmjValues lui-même) — jamais de lecture de trials périmés sur un test inactif.
-function computeHypAbsorption01(testData,normPop,normAge){
+function computeHypAbsorption01(testData,normPop,normAge,normSelections){
   var cmjActive=!!(testData&&testData.cmj&&testData.cmj.active);
   var cmjValues=cmjActive?resolveCmjValues({testData:testData||{}}):{};
   var core=computeHypAbsorptionCore(cmjValues,normPop,normAge);
   var capaciteEcc=computeHypAbsorptionCapaciteEcc(cmjValues,normPop,normAge);
   var strategie=computeHypAbsorptionStrategie(cmjValues,normPop,normAge);
-  var reactive=computeHypAbsorptionReactive(testData,normPop,normAge);
+  var reactive=computeHypAbsorptionReactive(testData,normPop,normAge,normSelections);
   var receptionImpact=computeHypAbsorptionReceptionImpact();
   var asymetrie=cmjActive?computeHypAbsorptionAsymetrie(cmjValues,normPop,normAge):null;
 
@@ -4657,23 +5102,23 @@ function computeHypAbsorption01(testData,normPop,normAge){
 // exception clinique comme Mobilité/ADR-005. Le mécanisme de progression Faible->Modérée->Forte
 // est conservé tel quel (générique) pour ne pas devoir réécrire ce moteur si un seuil est ajouté
 // plus tard, mais ne produit aujourd'hui jamais autre chose que 'faible'.
-function computeHypReactivityDj(testData,pop,age){
+function computeHypReactivityDj(testData,pop,age,normSelections){
   var djData=(testData||{}).dj;
   if(!djData||!djData.active)return{status:'indisponible',raw:null,category:null};
   var raw=bestVal((djData.trials||{}).rsi,testKpiDir('dj','rsi'));
-  var st=raw!=null?applyThr('dj_rsi',raw,pop,age):null;
+  var st=raw!=null?computeStatusWithNormsV2('dj_rsi','dj',raw,pop,age,normSelections).status:null;
   if(!st)return{status:'indisponible',raw:raw,category:null};
   return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
 }
 // sldj est un test unilatéral (D/G) à LSI, comme wblt pour HYP-MOB-01 — même lecture "pire côté"
 // (evaluateWbltDistance, hyp_engine_lot1.js), pas une règle nouvelle.
-function computeHypReactivitySldj(testData,pop,age){
+function computeHypReactivitySldj(testData,pop,age,normSelections){
   var sldjData=(testData||{}).sldj;
   if(!sldjData||!sldjData.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null};
   var vD=bestVal(((sldjData.D||{}).trials||{}).rsi,testKpiDir('sldj','rsi'));
   var vG=bestVal(((sldjData.G||{}).trials||{}).rsi,testKpiDir('sldj','rsi'));
-  var sD=vD!=null?applyThr('sldj_rsi',vD,pop,age):null;
-  var sG=vG!=null?applyThr('sldj_rsi',vG,pop,age):null;
+  var sD=vD!=null?computeStatusWithNormsV2('sldj_rsi','sldj',vD,pop,age,normSelections).status:null;
+  var sG=vG!=null?computeStatusWithNormsV2('sldj_rsi','sldj',vG,pop,age,normSelections).status:null;
   var lsi=sldjData.lsiAuto!=null?sldjData.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
   if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null};
@@ -4721,9 +5166,9 @@ function computeHypReactivityExplanatory(testData){
 }
 // Point d'entrée. Fonction pure : ne lit que testData/normPop/normAge, ne modifie rien, n'écrit
 // rien.
-function computeHypReactivity01(testData,normPop,normAge){
-  var djRes=computeHypReactivityDj(testData,normPop,normAge);
-  var sldjRes=computeHypReactivitySldj(testData,normPop,normAge);
+function computeHypReactivity01(testData,normPop,normAge,normSelections){
+  var djRes=computeHypReactivityDj(testData,normPop,normAge,normSelections);
+  var sldjRes=computeHypReactivitySldj(testData,normPop,normAge,normSelections);
   var djDeficient=djRes.status==='deficitaire';
   var sldjDeficient=sldjRes.status==='deficitaire';
   var mechanisms=[];
@@ -4896,22 +5341,22 @@ function computeHypMobility01(testData,normPop,normAge){
 // slcmj_peak_power NI pour aucun des 3 substituts, la convergence 2/2 ne peut jamais être évaluée
 // que dans un sens (cmj seul classifiable) — le moteur retourne alors explicitement
 // `state:'non_determinable'`, jamais une absence de seuil transformée en statut 'normal'.
-function computeHypPowerCmj(testData,pop,age){
+function computeHypPowerCmj(testData,pop,age,normSelections){
   var data=(testData||{}).cmj;
   if(!data||!data.active)return{status:'indisponible',raw:null,category:null};
   var raw=bestVal((data.trials||{}).peak_power,testKpiDir('cmj','peak_power'));
-  var st=raw!=null?applyThr('cmj_peak_power',raw,pop,age):null;
+  var st=raw!=null?computeStatusWithNormsV2('cmj_peak_power','cmj',raw,pop,age,normSelections).status:null;
   if(!st)return{status:'indisponible',raw:raw,category:null};
   return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
 }
 // slcmj est un test unilatéral (D/G) à LSI, comme sldj pour HYP-REA-01 — même lecture "pire côté".
-function computeHypPowerSlcmj(testData,pop,age){
+function computeHypPowerSlcmj(testData,pop,age,normSelections){
   var data=(testData||{}).slcmj;
   if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null};
   var vD=bestVal(((data.D||{}).trials||{}).peak_power,testKpiDir('slcmj','peak_power'));
   var vG=bestVal(((data.G||{}).trials||{}).peak_power,testKpiDir('slcmj','peak_power'));
-  var sD=vD!=null?applyThr('slcmj_peak_power',vD,pop,age):null;
-  var sG=vG!=null?applyThr('slcmj_peak_power',vG,pop,age):null;
+  var sD=vD!=null?computeStatusWithNormsV2('slcmj_peak_power','slcmj',vD,pop,age,normSelections).status:null;
+  var sG=vG!=null?computeStatusWithNormsV2('slcmj_peak_power','slcmj',vG,pop,age,normSelections).status:null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
   if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null};
@@ -4922,23 +5367,25 @@ function computeHypPowerSlcmj(testData,pop,age){
 }
 // Preuves diagnostiques secondaires (gel point 5, HYP_ARCHITECTURE_PHASE_C.md) — jamais consultées
 // si slcmj_peak_power est lui-même classifiable ; jamais un renfort à poids égal.
-function computeHypPowerSubstitutes(testData,pop,age){
+function computeHypPowerSubstitutes(testData,pop,age,normSelections){
   var dj=(testData||{}).dj,sldj=(testData||{}).sldj,cmjr=(testData||{}).cmjr;
   function bilateralPeak(data,key){
     if(!data||!data.active)return{status:'indisponible',raw:null,category:null};
     var kpi=key.split('_').slice(1).join('_');
     var testKey=key.split('_')[0];
+    var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
-    var st=raw!=null?applyThr(key,raw,pop,age):null;
+    var st=raw!=null?applyThr(key,raw,effPop,age):null;
     if(!st)return{status:'indisponible',raw:raw,category:null};
     return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
   }
   function sldjPeak(data){
     if(!data||!data.active)return{status:'indisponible',rawD:null,rawG:null,category:null};
+    var sldjPop=resolveNormPopulationForTest('sldj',pop,normSelections);
     var vD=bestVal(((data.D||{}).trials||{}).peak_prop_power,testKpiDir('sldj','peak_prop_power'));
     var vG=bestVal(((data.G||{}).trials||{}).peak_prop_power,testKpiDir('sldj','peak_prop_power'));
-    var sD=vD!=null?applyThr('sldj_peak_prop_power',vD,pop,age):null;
-    var sG=vG!=null?applyThr('sldj_peak_prop_power',vG,pop,age):null;
+    var sD=vD!=null?applyThr('sldj_peak_prop_power',vD,sldjPop,age):null;
+    var sG=vG!=null?applyThr('sldj_peak_prop_power',vG,sldjPop,age):null;
     var sides=[sD,sG].filter(Boolean);
     if(!sides.length)return{status:'indisponible',rawD:vD,rawG:vG,category:null};
     var rank={rouge:0,orange:1,jaune:2,vert:3};
@@ -4967,9 +5414,26 @@ function computeHypPowerCapacite(testData,pop,age,normSelections){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(key.split('_')[0],kpi));
     return{raw:raw,status:raw!=null?applyThr(key,raw,kpiPop!=null?kpiPop:pop,age):null,classifiable:false};
   }
+  // imtp_rfd100 est une des 7 variables NORMS_V2 : contrairement aux autres KPI de bilateralKpi
+  // (imtp_ttpf/profil_fv_v0, aucune donnee NORMS_V2), un selecteur NORMS_V2 explicite pour 'imtp'
+  // doit y etre applique -- jamais silencieusement ignore. bilateralKpi ne passait ici NI
+  // resolveNormPopulationForTest NI normSelections (comportement historique : toujours `pop`
+  // global) ; on ne branche donc NORMS_V2 QUE quand un selecteur objet existe reellement pour
+  // 'imtp', pour ne rien changer au comportement historique en son absence (aucun selecteur
+  // chaine legacy n'etait honore ici avant -- cela reste inchange).
+  var imtpSelector=normSelections&&normSelections.imtp;
+  var imtpRfd100Res=(function(){
+    if(!imtp||!imtp.active)return{raw:null,status:null,classifiable:false};
+    var raw=bestVal((imtp.trials||{}).rfd100,testKpiDir('imtp','rfd100'));
+    var status=null;
+    if(raw!=null){
+      status=(imtpSelector&&typeof imtpSelector==='object')?computeStatusWithNormsV2('imtp_rfd100','imtp',raw,pop,age,normSelections).status:applyThr('imtp_rfd100',raw,pop,age);
+    }
+    return{raw:raw,status:status,classifiable:false};
+  })();
   return{
     force:{iso_belt_squat_n:(function(){var r=bilateralKpi(belt,'iso_belt_squat_n','n',beltPop);r.classifiable=true;return r;})()},
-    rfd:{imtp_rfd100:bilateralKpi(imtp,'imtp_rfd100','rfd100')},
+    rfd:{imtp_rfd100:imtpRfd100Res},
     ttpf:{imtp_ttpf:bilateralKpi(imtp,'imtp_ttpf','ttpf')},
     profilForceVitesse:{profil_fv_v0:bilateralKpi(fv,'profil_fv_v0','v0')}
   };
@@ -4988,9 +5452,9 @@ function computeHypPowerStrategie(testData){
 // Mobilité (mission d'implémentation, règle absolue : "mieux vaut NON DÉTERMINABLE qu'un
 // diagnostic faux").
 function computeHypPower01(testData,normPop,normAge,normSelections){
-  var cmjRes=computeHypPowerCmj(testData,normPop,normAge);
-  var slcmjRes=computeHypPowerSlcmj(testData,normPop,normAge);
-  var substitutes=computeHypPowerSubstitutes(testData,normPop,normAge);
+  var cmjRes=computeHypPowerCmj(testData,normPop,normAge,normSelections);
+  var slcmjRes=computeHypPowerSlcmj(testData,normPop,normAge,normSelections);
+  var substitutes=computeHypPowerSubstitutes(testData,normPop,normAge,normSelections);
 
   var secondProof=slcmjRes,secondProofSource='slcmj_peak_power';
   if(slcmjRes.status==='indisponible'){
@@ -5100,21 +5564,20 @@ var HYP_FOR_GLOBAL_TESTS=[
 // tests diagnostiques globaux (_n et _nkg) ET pour les 15 tests segmentaires du Niveau 2 (tous
 // unilatéraux) — aucune duplication de logique entre Niveau 1 et Niveau 2.
 function computeHypForceKpi(testData,testKey,kpi,bilateral,pop,age,normSelections){
-  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var data=(testData||{})[testKey];
   var key=testKey+'_'+kpi;
   if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
   if(bilateral){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
-    var st=raw!=null?applyThr(key,raw,effPop,age):null;
+    var st=raw!=null?computeStatusWithNormsV2(key,testKey,raw,pop,age,normSelections).status:null;
     if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
     return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
   }
   var dir=testKpiDir(testKey,kpi);
   var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
   var vG=bestVal(((data.G||{}).trials||{})[kpi],dir);
-  var sD=vD!=null?applyThr(key,vD,effPop,age):null;
-  var sG=vG!=null?applyThr(key,vG,effPop,age):null;
+  var sD=vD!=null?computeStatusWithNormsV2(key,testKey,vD,pop,age,normSelections).status:null;
+  var sG=vG!=null?computeStatusWithNormsV2(key,testKey,vG,pop,age,normSelections).status:null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
   if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
@@ -5285,21 +5748,21 @@ function computeHypForce01(testData,normPop,normAge,normSelections){
 //     segmentaire (11 familles) : AUCUN seuil.
 // Conséquence directe, volontaire : la convergence 2/2 ne peut aujourd'hui jamais être évaluée
 // -> `state:'non_determinable'` explicite, jamais une absence de seuil transformée en 'normal'.
-function computeHypExplosivityCmjKpi(testData,kpi,key,pop,age){
+function computeHypExplosivityCmjKpi(testData,kpi,key,pop,age,normSelections){
   var data=(testData||{}).cmj;
   if(!data||!data.active)return{status:'indisponible',raw:null,category:null};
   var raw=bestVal((data.trials||{})[kpi],testKpiDir('cmj',kpi));
-  var st=raw!=null?applyThr(key,raw,pop,age):null;
+  var st=raw!=null?computeStatusWithNormsV2(key,'cmj',raw,pop,age,normSelections).status:null;
   if(!st)return{status:'indisponible',raw:raw,category:null};
   return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
 }
 // Confirmatives documentées (jamais une deuxième preuve diagnostique, jamais génératrices).
-function computeHypExplosivityConfirmative(testData,pop,age){
+function computeHypExplosivityConfirmative(testData,pop,age,normSelections){
   return{
-    cmj_peak_power:computeHypExplosivityCmjKpi(testData,'peak_power','cmj_peak_power',pop,age),
-    cmj_conc_peak_force:computeHypExplosivityCmjKpi(testData,'conc_peak_force','cmj_conc_peak_force',pop,age),
-    cmj_conc_mean_force:computeHypExplosivityCmjKpi(testData,'conc_mean_force','cmj_conc_mean_force',pop,age),
-    cmj_conc_impulse:computeHypExplosivityCmjKpi(testData,'conc_impulse','cmj_conc_impulse',pop,age)
+    cmj_peak_power:computeHypExplosivityCmjKpi(testData,'peak_power','cmj_peak_power',pop,age,normSelections),
+    cmj_conc_peak_force:computeHypExplosivityCmjKpi(testData,'conc_peak_force','cmj_conc_peak_force',pop,age,normSelections),
+    cmj_conc_mean_force:computeHypExplosivityCmjKpi(testData,'conc_mean_force','cmj_conc_mean_force',pop,age,normSelections),
+    cmj_conc_impulse:computeHypExplosivityCmjKpi(testData,'conc_impulse','cmj_conc_impulse',pop,age,normSelections)
   };
 }
 // Explicatives — distinction Capacité de force (tests dédiés) / Vitesse de développement (RFD) /
@@ -5323,12 +5786,12 @@ function computeHypExplosivityExplanatory(testData,pop,age,normSelections){
       imtp_ttpf:bilateralRaw(imtp,'imtp_ttpf','ttpf')
     },
     biomecanique:{
-      cmj_depth:computeHypExplosivityCmjKpi(testData,'depth','cmj_depth',pop,age),
-      cmj_conc_duration:computeHypExplosivityCmjKpi(testData,'conc_duration','cmj_conc_duration',pop,age),
-      cmj_rsi_mod:computeHypExplosivityCmjKpi(testData,'rsi_mod','cmj_rsi_mod',pop,age),
-      cmj_ecc_mean_power:computeHypExplosivityCmjKpi(testData,'ecc_mean_power','cmj_ecc_mean_power',pop,age),
-      cmj_ecc_peak_vel:computeHypExplosivityCmjKpi(testData,'ecc_peak_vel','cmj_ecc_peak_vel',pop,age),
-      cmj_braking_rfd:Object.assign({nomenclatureNonConfirmee:true},computeHypExplosivityCmjKpi(testData,'braking_rfd','cmj_braking_rfd',pop,age))
+      cmj_depth:computeHypExplosivityCmjKpi(testData,'depth','cmj_depth',pop,age,normSelections),
+      cmj_conc_duration:computeHypExplosivityCmjKpi(testData,'conc_duration','cmj_conc_duration',pop,age,normSelections),
+      cmj_rsi_mod:computeHypExplosivityCmjKpi(testData,'rsi_mod','cmj_rsi_mod',pop,age,normSelections),
+      cmj_ecc_mean_power:computeHypExplosivityCmjKpi(testData,'ecc_mean_power','cmj_ecc_mean_power',pop,age,normSelections),
+      cmj_ecc_peak_vel:computeHypExplosivityCmjKpi(testData,'ecc_peak_vel','cmj_ecc_peak_vel',pop,age,normSelections),
+      cmj_braking_rfd:Object.assign({nomenclatureNonConfirmee:true},computeHypExplosivityCmjKpi(testData,'braking_rfd','cmj_braking_rfd',pop,age,normSelections))
     }
   };
 }
@@ -5336,8 +5799,8 @@ function computeHypExplosivityExplanatory(testData,pop,age,normSelections){
 // -> Suspectée -> Retenue/Faible -> Retenue/Modérée -> Retenue/Forte. `non_determinable` dès que
 // l'une des deux preuves n'est pas classifiable — jamais un repli sur 'absente'.
 function computeHypExplosivity01(testData,normPop,normAge,normSelections){
-  var rfdRes=computeHypExplosivityCmjKpi(testData,'conc_rfd','cmj_conc_rfd',normPop,normAge);
-  var impulseRes=computeHypExplosivityCmjKpi(testData,'conc_impulse_100','cmj_conc_impulse_100',normPop,normAge);
+  var rfdRes=computeHypExplosivityCmjKpi(testData,'conc_rfd','cmj_conc_rfd',normPop,normAge,normSelections);
+  var impulseRes=computeHypExplosivityCmjKpi(testData,'conc_impulse_100','cmj_conc_impulse_100',normPop,normAge,normSelections);
 
   var rfdClassified=rfdRes.status!=='indisponible';
   var impulseClassified=impulseRes.status!=='indisponible';
@@ -5355,7 +5818,7 @@ function computeHypExplosivity01(testData,normPop,normAge,normSelections){
     else state='absente';
   }
 
-  var confirmative=computeHypExplosivityConfirmative(testData,normPop,normAge);
+  var confirmative=computeHypExplosivityConfirmative(testData,normPop,normAge,normSelections);
   var explanatory=computeHypExplosivityExplanatory(testData,normPop,normAge,normSelections);
   var confirmativeConvergent=state==='retenue_faible'&&confirmative.cmj_peak_power.status==='deficitaire';
   var biomeca=explanatory.biomecanique;
@@ -5597,21 +6060,20 @@ function computeHypStabilization01(testData,normPop,normAge){
 // 'suspectee' (heel_raise_reps seul déficitaire) ou 'absente'.
 
 function computeHypEnduranceKpi(testData,testKey,kpi,bilateral,pop,age,normSelections){
-  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
   var data=(testData||{})[testKey];
   var key=testKey+'_'+kpi;
   if(!data||!data.active)return{status:'indisponible',category:null,raw:null,rawD:null,rawG:null,lsi:null};
   if(bilateral){
     var raw=bestVal((data.trials||{})[kpi],testKpiDir(testKey,kpi));
-    var st=raw!=null?applyThr(key,raw,effPop,age):null;
+    var st=raw!=null?computeStatusWithNormsV2(key,testKey,raw,pop,age,normSelections).status:null;
     if(!st)return{status:'indisponible',category:null,raw:raw,rawD:null,rawG:null,lsi:null};
     return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',category:st,raw:raw,rawD:null,rawG:null,lsi:null};
   }
   var dir=testKpiDir(testKey,kpi);
   var vD=bestVal(((data.D||{}).trials||{})[kpi],dir);
   var vG=bestVal(((data.G||{}).trials||{})[kpi],dir);
-  var sD=vD!=null?applyThr(key,vD,effPop,age):null;
-  var sG=vG!=null?applyThr(key,vG,effPop,age):null;
+  var sD=vD!=null?computeStatusWithNormsV2(key,testKey,vD,pop,age,normSelections).status:null;
+  var sG=vG!=null?computeStatusWithNormsV2(key,testKey,vG,pop,age,normSelections).status:null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
   if(!sides.length)return{status:'indisponible',category:null,raw:null,rawD:vD,rawG:vG,lsi:lsi};
@@ -6336,7 +6798,7 @@ function computeMoteur(testData,questData,normPop,normAge,normSelections){
   // intégralement, sous `tfmFallback` — jamais supprimé, disponible pour tout consommateur
   // legacy/relationnel. Aucune autre qualité, aucun autre output de computeMoteur n'est touché.
   var absTfmGeneric=fSc['Absorption']||null;
-  var hypAbs01=computeHypAbsorption01(testData,normPop,normAge);
+  var hypAbs01=computeHypAbsorption01(testData,normPop,normAge,normSelections);
   fSc['Absorption']={
     status:hypAbs01.status, // null explicitement si non_determinable — jamais un repli TFM qui pourrait le contredire.
     confidence:hypAbs01.convergence.distinctMechanismsObserved>=2?'elevee':(hypAbs01.convergence.distinctMechanismsObserved===1?'faible':'faible'),
@@ -6353,7 +6815,7 @@ function computeMoteur(testData,questData,normPop,normAge,normSelections){
   // déjà calculé plus haut n'est plus jamais affiché comme `.status` mais reste conservé sous
   // `tfmFallback`. Aucune autre qualité, aucun autre output de computeMoteur n'est touché.
   var reaTfmGeneric=fSc['Réactivité']||null;
-  var hypRea01=computeHypReactivity01(testData,normPop,normAge);
+  var hypRea01=computeHypReactivity01(testData,normPop,normAge,normSelections);
   var reaDirectStatuses=[hypRea01.diagnosticEvidence.dj_rsi.category,hypRea01.diagnosticEvidence.sldj_rsi.category].filter(Boolean);
   var reaCov=reaDirectStatuses.length;
   fSc['Réactivité']={
@@ -7382,6 +7844,13 @@ function buildSportifReport(athlete,bilan,res){
   var beltSquatBlock=beltSquatReportBlockHtml(td,effectiveNormPop(athlete),age,athlete.normSelections);
   if(beltSquatBlock)html+=panel(beltSquatBlock,'margin-bottom:26px');
 
+  // Blocs clinique NORMS_V2 par test (mission "ACTIVATION DES NOUVELLES NORMES") — additifs,
+  // n'apparaissent que si une norme NORMS_V2 a été explicitement sélectionnée pour le test
+  // concerné (CMJ/SLCMJ/DJ/SLDJ/IMTP). Même principe que le bloc Belt Squat ci-dessus.
+  normsV2AllTestReportBlocksHtml(td,effectiveNormPop(athlete),age,athlete.normSelections).forEach(function(block){
+    html+=panel(block,'margin-bottom:26px');
+  });
+
   // 3. Où sont les asymétries ? (le LSI est l'information principale — mis en évidence, G/D clairement différenciés)
   html+=sectionTitle(3,'Asymétries majeures',true);
   // Précision, pas diagnostic (mission IMPLEMENTATION_VISUEL_RAPPORT_KINEXUS_V1.md, objectif 6A) —
@@ -7707,6 +8176,13 @@ function buildExpertReport(athlete,bilan,res){
       html+='<div class="print-card">'+beltSquatBlockExpert+'</div>';
       html+='</div>';
     }
+    normsV2AllTestReportBlocksHtml(td,effectiveNormPop(athlete),expertAge,athlete.normSelections).forEach(function(block,i){
+      html+='<div class="print-page print-page-expert">';
+      html+='<div class="print-header"><div class="print-logo">KINEXUS</div><div style="font-size:9pt;color:#666">Norme spécifique NORMS_V2 — '+athlete.prenom+' '+athlete.nom+'</div></div>';
+      html+='<div class="print-section-title">Détail normatif (NORMS_V2)</div>';
+      html+='<div class="print-card">'+block+'</div>';
+      html+='</div>';
+    });
   }
   // Systèmes + Hypothèses + Orientations + RTP
   html+='<div class="print-page print-page-expert">';
@@ -8184,6 +8660,30 @@ function AthleteForm(props){
       BELT_SQUAT_POPULATIONS.length>0&&h('div',{style:{marginTop:14}},
         h(FldIn,{label:'Norme spécifique — Isometric Belt Squat (optionnel)',value:form.normSelections.iso_belt_squat||'',onChange:function(v){setNormSelection('iso_belt_squat',v);},options:[{value:'',label:'— Utiliser la population de référence ci-dessus —'}].concat(BELT_SQUAT_POPULATIONS.map(function(p){return{value:p.key,label:p.label};})),note:form.normSelections.iso_belt_squat?NORM_SOURCES[form.normSelections.iso_belt_squat]:'Ne s\'applique QU\'au test Isometric Belt Squat — n\'affecte jamais les normes des autres tests (CMJ, Drop Jump, etc.), qui continuent d\'utiliser la population de référence ci-dessus.'})
       ),
+      [{testKey:'cmj',label:'CMJ'},{testKey:'slcmj',label:'Single Leg CMJ'},{testKey:'dj',label:'Drop Jump'},{testKey:'sldj',label:'Single Leg Drop Jump'},{testKey:'imtp',label:'IMTP'}].map(function(cfg){
+        var opts=buildNormsV2TestOptions(cfg.testKey,cfg.label);
+        if(!opts.length)return null;
+        var currentSel=form.normSelections[cfg.testKey];
+        var currentKey=(currentSel&&typeof currentSel==='object')?normsV2SelectorKey(currentSel):'';
+        var selectedOpt=opts.filter(function(o){return o.key===currentKey;})[0];
+        return h('div',{key:cfg.testKey,style:{marginTop:14}},
+          h(FldIn,{
+            label:'Norme spécifique — '+cfg.label+' (optionnel)',
+            value:currentKey,
+            onChange:function(v){
+              if(!v){setNormSelection(cfg.testKey,null);return;}
+              var opt=opts.filter(function(o){return o.key===v;})[0];
+              setNormSelection(cfg.testKey,opt?opt.selector:null);
+            },
+            options:[{value:'',label:'— Utiliser la population de référence ci-dessus —'}].concat(opts.map(function(o){return{value:o.key,label:o.label};})),
+            note:selectedOpt?(
+              !selectedOpt.active?'⚠️ Percentiles insuffisants pour produire un statut clinique : position normative affichée seule dans le rapport — n\'affecte aucun autre test.':
+              selectedOpt.gridMode==='p20_p50_p80'?'Grille VALD à 11 percentiles — statut calculé avec une règle de classification KINEXUS (bornes P20/P50/P80), jamais présentée comme une classification VALD. N\'affecte QUE ce test.':
+              'Norme NORMS_V2 activée pour ce test uniquement — n\'affecte aucun autre test.'
+            ):'Ne s\'applique QU\'au test '+cfg.label+' — n\'affecte jamais les normes des autres tests.'
+          })
+        );
+      }),
       h('div',{style:{display:'flex',gap:10,justifyContent:'flex-end',marginTop:18}},
         h(Btn,{onClick:props.onCancel},'Annuler'),
         h(Btn,{primary:true,disabled:!valid,onClick:function(){valid&&props.onSave(Object.assign({},form,{id:init.id||Date.now(),bilans:init.bilans||[]}));}},props.initial?'Enregistrer':'Créer le sportif')
@@ -8204,7 +8704,12 @@ function AthleteProfile(props){
         h('div',{style:{color:C.muted,fontSize:11,marginTop:1}},(age?age+' ans · ':'')+(a.poids?a.poids+' kg · ':'')+(a.taille?a.taille+' cm':'')),
         h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:5}},
           a.normPopulation&&h('div',{style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.teal+'15',border:'1px solid '+C.teal+'40'}},h('span',{style:{color:C.teal,fontSize:10,fontWeight:700}},'📊 Normes : '+((NORM_POPULATIONS.find(function(p){return p.key===a.normPopulation;})||{}).label||a.normPopulation))),
-          a.normSelections&&a.normSelections.iso_belt_squat&&h('div',{style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.petrol+'18',border:'1px solid '+C.petrol+'40'}},h('span',{style:{color:C.petrol,fontSize:10,fontWeight:700}},'🎯 Belt Squat : '+((NORM_POPULATIONS.find(function(p){return p.key===a.normSelections.iso_belt_squat;})||{}).label||a.normSelections.iso_belt_squat)))
+          a.normSelections&&a.normSelections.iso_belt_squat&&h('div',{style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.petrol+'18',border:'1px solid '+C.petrol+'40'}},h('span',{style:{color:C.petrol,fontSize:10,fontWeight:700}},'🎯 Belt Squat : '+((NORM_POPULATIONS.find(function(p){return p.key===a.normSelections.iso_belt_squat;})||{}).label||a.normSelections.iso_belt_squat))),
+          [{testKey:'cmj',label:'CMJ'},{testKey:'slcmj',label:'SLCMJ'},{testKey:'dj',label:'DJ'},{testKey:'sldj',label:'SLDJ'},{testKey:'imtp',label:'IMTP'}].map(function(cfg){
+            var sel=a.normSelections&&a.normSelections[cfg.testKey];
+            if(!sel||typeof sel!=='object')return null;
+            return h('div',{key:cfg.testKey,style:{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 9px',borderRadius:20,background:C.petrol+'18',border:'1px solid '+C.petrol+'40'}},h('span',{style:{color:C.petrol,fontSize:10,fontWeight:700}},'🎯 '+cfg.label+' : '+sel.population_vald+' (Source '+sel.source_id+')'));
+          })
         )
       ),
       h('div',{style:{display:'flex',gap:8}},h(Btn,{small:true,onClick:props.onEdit},'✎'),h(Btn,{primary:true,small:true,onClick:props.onNewBilan},'+ Bilan'))
@@ -9288,21 +9793,95 @@ function beltSquatReportBlockHtml(testData,pop,age,normSelections){
     +statBlock('iso_belt_squat_nkg',rawNkg,'N/kg','Relative Peak Force',0.01)
     +'</div>';
 }
+// Bloc rapport generique NORMS_V2 (mission "ACTIVATION DES NOUVELLES NORMES") -- analogue a
+// beltSquatReportBlockHtml mais pour CMJ/SLCMJ/DJ/SLDJ/IMTP. N'apparait QUE si une norme NORMS_V2
+// (selecteur objet) a ete explicitement choisie pour CE test dans normSelections -- jamais par
+// defaut, jamais pour Belt Squat (mecanisme legacy inchange, cf. beltSquatReportBlockHtml
+// ci-dessus, totalement separe). Affiche la grille COMPLETE de percentiles publies (5 ou 11
+// points selon la source, jamais reduite a [P5,P25,P50,P75,P95]), le statut (uniquement si
+// P25/P50/P75 explicites), la population/source, et la position normative continue en repli
+// quand la grille n'est pas activable.
+function normsV2TestReportBlockHtml(testData,testKey,testLabel,pop,age,normSelections){
+  var selector=normSelections&&normSelections[testKey];
+  if(!selector||typeof selector!=='object')return'';
+  var test=TBK[testKey];var data=(testData||{})[testKey];
+  if(!test||!data||!data.active)return'';
+  var kpisWithNorms=test.kpis.filter(function(k){return NORMS_V2[testKey+'_'+k.key];});
+  if(!kpisWithNorms.length)return'';
+  function oneVal(kpi,rawVal,sideLabel){
+    if(rawVal==null)return'';
+    var variable=testKey+'_'+kpi.key;
+    var res=computeStatusWithNormsV2(variable,testKey,rawVal,pop,age,normSelections);
+    var entry=res.entry;
+    var pctHtml='';
+    if(entry&&entry.percentiles){
+      var keys=Object.keys(entry.percentiles).sort(function(a,b){return parseFloat(a)-parseFloat(b);});
+      pctHtml='<div style="display:grid;grid-template-columns:repeat('+keys.length+',1fr);gap:3px;margin:8px 0">'
+        +keys.map(function(k){return'<div style="text-align:center;background:#F8FAFB;border-radius:6px;padding:3px 1px"><div style="font-size:6.5pt;color:#94A3B8;font-weight:700">'+k+'</div><div style="font-size:8pt;color:#132B3A;font-weight:700">'+entry.percentiles[k]+'</div></div>';}).join('')
+        +'</div>';
+    }
+    var statusHtml=res.status?'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:'+SBG[res.status]+';border:1px solid '+SC[res.status]+'40;color:'+SC[res.status]+';font-size:9.5pt;font-weight:700">'+SL[res.status]+'</span>':'';
+    var popHtml=entry?('<div style="font-size:8pt;color:#132B3A;margin-bottom:6px">Norme (NORMS_V2) : '+entry.population_vald+(entry.sexe?' — '+entry.sexe:'')+(entry.age_band?' — '+entry.age_band:'')+(entry.niveau?' — '+entry.niveau:'')+(entry.sport?' — '+entry.sport:'')+'</div>'):(res.ambiguous?'<div style="font-size:8pt;color:#B08900;font-weight:700;margin-bottom:6px">⚠️ Sources NORMS_V2 concurrentes — sélection à préciser</div>':'<div style="font-size:8pt;color:#94A3B8;margin-bottom:6px">Aucune correspondance NORMS_V2</div>');
+    var gridSize=entry?Object.keys(entry.percentiles||{}).length:0;
+    var sourceHtml=entry?('<div style="margin-top:7px;font-size:7.3pt;color:#5B7A8C">Source : '+entry.source_id+' — grille VALD à '+gridSize+' percentiles</div>'):'';
+    var inactiveHtml=(entry&&!res.clinicallyActive)?('<div style="margin-top:5px;font-size:7.3pt;color:#B08900;font-weight:700">Percentiles insuffisants — position uniquement, aucun statut clinique'+(rawVal!=null?' (≈P'+normsV2ContinuousPercentile(entry,rawVal)+')':'')+'</div>'):'';
+    var bands=entry?normsV2StatusBands(entry):null;
+    var kinexusRuleHtml=(bands&&bands.mode==='p20_p50_p80')?('<div style="margin-top:5px;font-size:7.3pt;color:#B08900;font-weight:700">Statut KINEXUS (bornes P20/P50/P80) — classification Kinexus, PAS une classification fournie par VALD.</div>'):'';
+    return'<div style="background:#F8FAFB;border:1px solid #E7ECF1;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+      +'<div style="font-size:7.5pt;color:#5B7A8C;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">'+kpi.label+(sideLabel?' — '+sideLabel:'')+'</div>'
+      +'<div style="font-size:18pt;font-weight:800;color:#132B3A;margin-bottom:6px">'+roundStep(rawVal,kpi.step)+'</div>'
+      +popHtml+pctHtml+statusHtml+sourceHtml+inactiveHtml+kinexusRuleHtml
+      +'</div>';
+  }
+  var body=kpisWithNorms.map(function(kpi){
+    if(test.bilateral){
+      var v=bestVal((data.trials||{})[kpi.key],kpi.dir);
+      return oneVal(kpi,v,null);
+    }
+    var vD=bestVal(((data.D||{}).trials||{})[kpi.key],kpi.dir);
+    var vG=bestVal(((data.G||{}).trials||{})[kpi.key],kpi.dir);
+    return oneVal(kpi,vD,'Droite')+oneVal(kpi,vG,'Gauche');
+  }).join('');
+  if(!body)return'';
+  return'<div style="font-size:8.5pt;font-weight:800;color:#132B3A;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">'+testLabel+' — Norme spécifique (NORMS_V2)</div>'
+    +'<div style="font-size:8.5pt;color:#5B7A8C;margin-bottom:14px;line-height:1.5">Norme sélectionnée spécifiquement pour ce test — grille complète conservée, jamais réduite.</div>'
+    +'<div>'+body+'</div>';
+}
+var NORMS_V2_REPORT_TESTS=[{testKey:'cmj',label:'CMJ'},{testKey:'slcmj',label:'Single Leg CMJ'},{testKey:'dj',label:'Drop Jump'},{testKey:'sldj',label:'Single Leg Drop Jump'},{testKey:'imtp',label:'IMTP'}];
+function normsV2AllTestReportBlocksHtml(testData,pop,age,normSelections){
+  return NORMS_V2_REPORT_TESTS.map(function(cfg){return normsV2TestReportBlockHtml(testData,cfg.testKey,cfg.label,pop,age,normSelections);}).filter(Boolean);
+}
 function KpiResultCard(props){
   var kpi=props.kpi,trials=props.trials||[],testKey=props.testKey,pop=props.pop,age=props.age,normSelections=props.normSelections;
-  var effPop=resolveNormPopulationForTest(testKey,pop,normSelections);
+  var variable=testKey+'_'+kpi.key;
   var best=bestVal(trials,kpi.dir);
-  var status=applyThr(testKey+'_'+kpi.key,best,effPop,age);
+  var v2Res=computeStatusWithNormsV2(variable,testKey,best,pop,age,normSelections);
+  var status=v2Res.status;
   var normLabel=normRefText(testKey,kpi.key,pop,age,normSelections);
   var normVal=normRefValue(testKey,kpi.key,pop,age,normSelections);
   var vals=trials.filter(function(v){return v!=null;}).map(Number);
   var maxScale=Math.max.apply(null,vals.concat(normVal!=null?[normVal]:[],[0.001]));
+  // Detail NORMS_V2 (mission "ACTIVATION DES NOUVELLES NORMES") : n'apparait QUE si une norme
+  // NORMS_V2 est effectivement selectionnee pour ce test (selecteur objet) -- jamais pour Belt
+  // Squat (selecteur chaine, mecanisme legacy inchange) ni pour un test sans selection specifique.
+  var v2Entry=v2Res.entry;
+  var v2Bands=v2Entry?normsV2StatusBands(v2Entry):null;
+  var v2GridSize=v2Entry?Object.keys(v2Entry.percentiles||{}).length:0;
+  var v2Detail=v2Entry?h('div',{style:{fontSize:8,color:C.muted,lineHeight:1.55,marginBottom:6,background:C.bg,borderRadius:6,padding:'5px 7px'}},
+    h('div',null,'NORMS_V2 — '+v2Entry.population_vald+(v2Entry.sexe?' — '+v2Entry.sexe:'')+(v2Entry.age_band?' — '+v2Entry.age_band:'')+(v2Entry.niveau?' — '+v2Entry.niveau:'')+(v2Entry.sport?' — '+v2Entry.sport:'')),
+    h('div',null,'Source : '+v2Entry.source_id+(v2Entry.source_file?' ('+v2Entry.source_file+')':'')+' — grille VALD à '+v2GridSize+' percentiles'),
+    v2GridSize>0&&h('div',null,'Grille complète : '+Object.keys(v2Entry.percentiles).sort(function(a,b){return parseFloat(a)-parseFloat(b);}).map(function(k){return k+'='+v2Entry.percentiles[k];}).join(', ')+' '+(v2Entry.unite||'')),
+    !v2Res.clinicallyActive&&h('div',{style:{color:'#B08900',fontWeight:700}},'⚠️ Percentiles insuffisants — aucun statut clinique (position uniquement'+(best!=null?', ≈P'+normsV2ContinuousPercentile(v2Entry,best):'')+')'),
+    v2Res.clinicallyActive&&v2Bands&&v2Bands.mode==='p20_p50_p80'&&h('div',{style:{color:'#B08900',fontWeight:700}},'Statut KINEXUS (bornes P20/P50/P80) — classification Kinexus, PAS une classification fournie par VALD.'),
+    v2Res.clinicallyActive&&best!=null&&h('div',null,'Position normative continue : ≈P'+normsV2ContinuousPercentile(v2Entry,best))
+  ):(v2Res.ambiguous?h('div',{style:{fontSize:8,color:'#B08900',fontWeight:700,marginBottom:6}},'⚠️ Plusieurs sources NORMS_V2 concurrentes correspondent — sélection à préciser (source), aucun choix automatique.'):null);
   return h('div',{style:{background:C.surface,border:'1px solid '+(status?SC[status]+'50':C.border),borderLeft:'3px solid '+(status?SC[status]:C.border),borderRadius:8,padding:'9px 10px'}},
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:6,marginBottom:1}},
       h('span',{style:{color:C.muted,fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.03em',lineHeight:1.3}},kpi.label),
       best!=null&&h('span',{style:{color:status?SC[status]:C.tealLight,fontSize:13,fontWeight:800,flexShrink:0,whiteSpace:'nowrap'}},roundStep(best,kpi.step))
     ),
     normLabel&&h('div',{style:{color:C.muted,fontSize:8.5,marginBottom:6}},normLabel),
+    v2Detail,
     vals.length>0
       ?h('div',{style:{display:'flex',alignItems:'flex-end',gap:4,height:34,marginTop:2}},
           [0,1,2].map(function(i){
