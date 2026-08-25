@@ -7428,6 +7428,7 @@ function computeCsmV2(functionScores,testData){
   // computeCsmV2ClinicalProfile lui-même (fonction pure de pure agrégation, aucun appel aux moteurs
   // HYP, aucune lecture de testData/norms).
   var clinicalProfileV2=computeCsmV2ClinicalProfile(absoluteEvidence,symmetryEvidence,fusedDissociations,unipodalFunctionalDeficitV2,qualities);
+  var synthesisV2=computeCsmV2ClinicalSynthesis(clinicalProfileV2,clinicalHypothesesV2,unipodalFunctionalDeficitV2,fusedDissociations);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7469,7 +7470,12 @@ function computeCsmV2(functionScores,testData){
     // recalcul de statut, aucune norme/seuil/valeur inventés) — cf. computeCsmV2ClinicalProfile /
     // computeCsmV2ClinicalSynthesis.
     clinicalProfile:clinicalProfileV2,
-    synthesis:computeCsmV2ClinicalSynthesis(clinicalProfileV2,clinicalHypothesesV2,unipodalFunctionalDeficitV2,fusedDissociations),
+    synthesis:synthesisV2,
+    // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
+    // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
+    // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
+    // l'identique par buildExpertReport() et ExpertView (mission O §17).
+    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence),
     limitations:[
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
@@ -7842,6 +7848,35 @@ function csmV2FriendlyKpiLabel(variablePath){
   CSM_V2_KPI_LABEL_CACHE[variablePath]=out;
   return out;
 }
+// Mission O — identification du "côté le plus faible" pour une entrée keyFindings donnée. Réutilise
+// EXCLUSIVEMENT le champ `dir` déjà présent dans le catalogue TESTS (LOCKED, 'max'=plus haut est
+// meilleur, 'min'=plus bas est meilleur — déjà utilisé par bestVal partout ailleurs) — jamais un
+// nouveau seuil, jamais une norme inventée : uniquement une comparaison D vs G sur des valeurs déjà
+// mesurées, dans le sens déjà défini par le test lui-même. Retourne null si le testKey/kpiKey ne
+// peut pas être résolu (jamais une côté inventé faute de mieux).
+function csmV2ResolveKpiDir(variablePath){
+  var stripped=(variablePath||'')
+    .replace(/^diagnosticEvidence\./,'').replace(/^confirmativeEvidence\./,'')
+    .replace(/^explanatoryEvidence\.[a-zA-Z]+\./,'').replace(/^segments\[\d+\]\./,'')
+    .replace(/^productionRapideForce\./,'').replace(/^freinageUnipodal\./,'')
+    .replace(/^reactiviteSecondaire\./,'').replace(/^mobiliteSecondaire\./,'').replace(/^receptionUnipodale\./,'');
+  var nested=stripped.match(/^(\w+)\.kpis\.(\w+)$/);
+  if(nested)stripped=nested[1]+'_'+nested[2];
+  var testKeys=Object.keys(TBK).filter(function(k){return stripped.indexOf(k+'_')===0;}).sort(function(a,b){return b.length-a.length;});
+  if(!testKeys.length)return null;
+  var tk=testKeys[0],kpiKey=stripped.slice(tk.length+1),test=TBK[tk];
+  var kpi=(test.kpis||[]).filter(function(k){return k.key===kpiKey;})[0];
+  return kpi?kpi.dir:null;
+}
+function csmV2WeakerSideLabel(kf){
+  if(!kf||kf.left==null||kf.right==null)return null;
+  var dir=csmV2ResolveKpiDir(kf.variable);
+  if(!dir)return null;
+  if(kf.left===kf.right)return null;
+  if(dir==='max')return kf.left<kf.right?'droit':'gauche'; // left=rawD, right=rawG (convention D/G du fichier)
+  if(dir==='min')return kf.left>kf.right?'droit':'gauche';
+  return null;
+}
 // M14 — traduction de explainedDeficitSource en phrase clinique lisible (jamais "source:symmetry").
 function csmV2FriendlySourceLabel(source){
   if(source==='symmetry')return'une asymétrie mesurée (LSI)';
@@ -7888,6 +7923,239 @@ function csmV2SafeValue(v,unit){
 var CSM_V2_AXIS_OBJECTIVE={
   'cycle étirement-raccourcissement':"Restaurer la capacité à absorber puis restituer rapidement la charge."
 };
+
+// ── CSM V2.2 — MISSION O — COMPTE RENDU CLINIQUE AUTOMATIQUE ────────────────────────────────────
+// computeCsmV2ClinicalReport() : couche additive PURE. Consomme EXCLUSIVEMENT clinicalProfile/
+// synthesis/absoluteEvidence/symmetryEvidence déjà calculés par computeCsmV2() — ne recalcule
+// AUCUNE norme, AUCUN LSI, AUCUN statut ; ne modifie AUCUN moteur HYP LOCKED ; ne crée AUCUNE
+// nouvelle relation clinique (les seules relations utilisées sont fusedDissociations/
+// clinicalHypotheses, déjà LOCKED). Chaque section ne produit un texte QUE si les données réelles
+// le permettent — jamais un gabarit rempli par défaut. Un objet UNIQUE (`clinicalReport`) est exposé
+// sur le retour de computeCsmV2(), consommé à l'identique par buildExpertReport() et ExpertView
+// (mission O §17) — aucune divergence de contenu possible entre les deux.
+function csmV2JoinList(arr){
+  if(!arr||!arr.length)return'';
+  if(arr.length===1)return arr[0];
+  return arr.slice(0,-1).join(', ')+' et '+arr[arr.length-1];
+}
+// Retrouve une entrée symmetryEvidence par suffixe de variable, normalisée en {variable,left,right,
+// lsi,asymmetryPercent,status,source} (left=D, right=G, convention déjà utilisée partout ailleurs
+// dans ce fichier) — lit `symmetryEvidence[quality]` déjà calculé, jamais recalculé. Contrairement à
+// clinicalProfile[q].keyFindings (qui ne liste QUE les entrées déficitaires), ceci retrouve
+// N'IMPORTE QUEL statut (normal/deficient/non_determinable) — nécessaire pour les sections qui
+// doivent aussi décrire une capacité préservée.
+function csmV2FindEvidenceEntry(symmetryEvidenceForQuality,variableSuffix){
+  var keys=Object.keys(symmetryEvidenceForQuality||{}).filter(function(k){return k.indexOf(variableSuffix)!==-1;});
+  if(!keys.length)return null;
+  var k=keys[0],se=symmetryEvidenceForQuality[k];
+  if(!se||!se.available)return null;
+  return{variable:k,left:se.rawD!=null?se.rawD:se.rawL,right:se.rawG!=null?se.rawG:se.rawR,lsi:se.lsi,asymmetryPercent:se.asymmetryPercent,status:se.status,source:se.source};
+}
+var CSM_V2_REPORT_CATEGORY_LABEL={Mobilité:'la mobilité',Force:'la force',Puissance:'la propulsion',Absorption:'la capacité de freinage',Réactivité:'la réactivité',Stabilisation:'le contrôle fonctionnel unipodal',Explosivité:'la vitesse de force',Endurance:'l’endurance musculaire'};
+// §1 — Objet de l'évaluation : uniquement les catégories réellement évaluées (state!=='non_determinable').
+function csmV2ReportObjetSection(clinicalProfile){
+  var evaluated=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].state!=='non_determinable';});
+  if(!evaluated.length)return{id:'objet',title:'Objet de l’évaluation',text:null,evidence:[]};
+  var text="L'évaluation fonctionnelle a associé l'analyse de "+csmV2JoinList(evaluated.map(function(q){return CSM_V2_REPORT_CATEGORY_LABEL[q]||q.toLowerCase();}))+".";
+  return{id:'objet',title:'Objet de l’évaluation',text:text,evidence:[]};
+}
+// §3 — Mobilité (WBLT + association Y-Balance, réutilise mobilityYbtAssociation déjà calculée K5).
+function csmV2ReportMobiliteSection(clinicalProfile,symmetryEvidence){
+  var wblt=csmV2FindEvidenceEntry(symmetryEvidence['Mobilité'],'wblt_distance');
+  if(!wblt)return{id:'mobilite',title:'Mobilité',text:null,kpi:null,evidence:[]};
+  var side=csmV2WeakerSideLabel(wblt);
+  var parts=[];
+  if(wblt.status==='deficient')parts.push('Une restriction de mobilité en charge (WBLT) est retrouvée'+(side?' du côté '+side:'')+'.');
+  else if(wblt.status==='normal')parts.push('La mobilité en charge (WBLT) apparaît symétrique.');
+  var ybt=csmV2FindEvidenceEntry(symmetryEvidence['Mobilité'],'ybt_ant');
+  var evidence=[wblt];
+  if(wblt.status==='deficient'&&ybt&&ybt.status==='deficient'){
+    parts.push("Cette limitation de mobilité est associée à une diminution de la portée antérieure au Y-Balance Test, sans qu'un rapport direct entre les deux mesures puisse être établi à lui seul.");
+    evidence.push(ybt);
+  }
+  return{id:'mobilite',title:'Mobilité',text:parts.length?parts.join(' '):null,kpi:wblt,evidence:evidence};
+}
+// §4 — Force maximale (JAMAIS mélangée à la RFD, cf. §5, mission M/O L3).
+function csmV2ReportForceMaximaleSection(clinicalProfile,symmetryEvidence){
+  var pq=clinicalProfile['Force'];
+  var rows=csmV2KpiTableRows(symmetryEvidence['Force']).filter(function(r){return r.variable.indexOf('productionRapideForce.')!==0;});
+  if(!rows.length)return{id:'force_maximale',title:'Force maximale',text:null,evidence:[]};
+  var deficientCount=rows.filter(function(r){return r.status==='deficient';}).length;
+  var normalCount=rows.filter(function(r){return r.status==='normal';}).length;
+  var text=null;
+  if(deficientCount===0&&normalCount>0)text="Les différentes mesures isométriques suggèrent une force maximale globalement préservée.";
+  else if(deficientCount>0&&normalCount>0)text="Le profil de force maximale apparaît hétérogène selon les conditions de test.";
+  else if(deficientCount>0)text="Un déficit de force maximale est objectivé ("+pq.severity+").";
+  return{id:'force_maximale',title:'Force maximale',text:text,evidence:rows.slice(0,6)};
+}
+// §5 — Production rapide de force (RFD 100/200ms, rapidForceDeficit déjà calculé mission K1).
+function csmV2ReportRfdSection(clinicalProfile){
+  var pq=clinicalProfile['Force'];
+  var rfd=pq.rapidForceDeficit;
+  if(!rfd||!rfd.supported)return{id:'production_rapide',title:'Production rapide de force',text:null,evidence:[]};
+  var text=(pq.severity==='preserved')
+    ?"La production rapide de force apparaît davantage altérée que la force maximale."
+    :"Un déficit de production rapide de force est objectivé.";
+  return{id:'production_rapide',title:'Production rapide de force',text:text,evidence:rfd.keyFindings};
+}
+// §6 — Propulsion (Puissance) — jamais un KPI de freinage (Absorption) utilisé ici.
+function csmV2ReportPropulsionSection(clinicalProfile,symmetryEvidence){
+  var pq=clinicalProfile['Puissance'];
+  var rows=csmV2KpiTableRows(symmetryEvidence['Puissance']);
+  if(!rows.length)return{id:'propulsion',title:'Propulsion',text:null,evidence:[]};
+  var text=pq.severity==='preserved'?"La propulsion apparaît préservée sur les indicateurs disponibles."
+    :(pq.severity==='majeur'||pq.severity==='modere')?"Un déficit de propulsion est objectivé ("+pq.severity+").":null;
+  return{id:'propulsion',title:'Propulsion',text:text,evidence:rows.slice(0,6)};
+}
+// §7 — Absorption/Freinage — réutilise convergenceNarratives déjà calculée (mission L5), jamais recalculée.
+function csmV2ReportAbsorptionSection(clinicalProfile,convergenceNarratives){
+  var pq=clinicalProfile['Absorption'];
+  var conv=(convergenceNarratives||[]).filter(function(n){return n.quality==='Absorption';})[0];
+  var text=conv?conv.sentence:((pq.severity==='majeur'||pq.severity==='modere')?"Un déficit de la capacité de freinage/absorption est objectivé.":null);
+  return{id:'absorption',title:'Absorption / Freinage',text:text,evidence:pq.keyFindings};
+}
+// §8 — Réactivité : RSI = preuve diagnostique prioritaire, height/contact_time = preuves secondaires.
+function csmV2ReportReactiviteSection(clinicalProfile,symmetryEvidence){
+  var pq=clinicalProfile['Réactivité'];
+  var rsi=csmV2FindEvidenceEntry(symmetryEvidence['Réactivité'],'sldj_rsi');
+  if(!rsi||rsi.status!=='deficient'){
+    var text=(pq.severity==='majeur'||pq.severity==='modere')?"Un déficit de réactivité est objectivé.":null;
+    return{id:'reactivite',title:'Réactivité',text:text,evidence:pq.keyFindings};
+  }
+  var height=csmV2FindEvidenceEntry(symmetryEvidence['Réactivité'],'sldj_height');
+  var ct=csmV2FindEvidenceEntry(symmetryEvidence['Réactivité'],'sldj_contact_time');
+  var extra=[];
+  if(height&&height.status==='deficient')extra.push('une diminution de la hauteur de saut');
+  if(ct&&ct.status==='deficient')extra.push('une augmentation du temps de contact');
+  var text2="La réactivité unipodale apparaît nettement diminuée, avec une baisse du RSI (LSI="+rsi.lsi+"%)"+(extra.length?' associée à '+csmV2JoinList(extra):'')+'.';
+  var evidence=[rsi].concat(height&&height.status==='deficient'?[height]:[]).concat(ct&&ct.status==='deficient'?[ct]:[]);
+  return{id:'reactivite',title:'Réactivité',text:text2,evidence:evidence};
+}
+// §9 — Stabilisation / contrôle unipodal.
+function csmV2ReportStabilisationSection(clinicalProfile){
+  var pq=clinicalProfile['Stabilisation'];
+  if(pq.severity!=='majeur'&&pq.severity!=='modere')return{id:'stabilisation',title:'Stabilisation / Contrôle unipodal',text:null,evidence:[]};
+  var side=null;
+  (pq.keyFindings||[]).some(function(kf){var s=csmV2WeakerSideLabel(kf);if(s){side=s;return true;}return false;});
+  var text="Le contrôle de réception/stabilisation apparaît altéré"+(side?' du côté '+side:'')+".";
+  var mobilityCross=(pq.keyFindings||[]).some(function(kf){return kf.variable.indexOf('mobiliteCheville')!==-1;});
+  if(mobilityCross)text+=" Une composante de mobilité de cheville est documentée dans ce même contexte, sans qu'un rapport direct puisse être établi à lui seul.";
+  return{id:'stabilisation',title:'Stabilisation / Contrôle unipodal',text:text,evidence:pq.keyFindings};
+}
+// §10 — Analyse transversale : profils A-F, chacun généré UNIQUEMENT si les données le supportent.
+function csmV2ReportTransversaleProfiles(clinicalProfile,mobilityYbt,symmetryEvidence){
+  var profiles=[];
+  function deficient(q){var p=clinicalProfile[q];return p.severity==='majeur'||p.severity==='modere';}
+  if(clinicalProfile['Force'].severity==='preserved'&&clinicalProfile['Force'].rapidForceDeficit&&clinicalProfile['Force'].rapidForceDeficit.supported){
+    profiles.push({id:'A',sentence:"La force maximale apparaît relativement préservée, tandis que la production rapide de force est déficitaire — profil compatible avec une limitation sélective de la vitesse d'expression de force."});
+  }
+  if(clinicalProfile['Force'].severity==='preserved'&&deficient('Absorption')){
+    profiles.push({id:'B',sentence:"Le déficit observé semble davantage lié à la gestion de la force (freinage) qu'à la capacité de force maximale, qui apparaît préservée."});
+  }
+  if(deficient('Réactivité')&&deficient('Absorption')){
+    profiles.push({id:'C',sentence:"La coexistence d'un déficit de réactivité et d'un déficit d'absorption est compatible avec une limitation du cycle étirement-raccourcissement (gestion puis restitution rapide de la charge)."});
+  }
+  if(mobilityYbt&&mobilityYbt.supported){
+    profiles.push({id:'D',sentence:mobilityYbt.sentence});
+  }
+  var unipodalQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].keyFindings&&clinicalProfile[q].keyFindings.length>0;});
+  if(unipodalQualities.length>=3){
+    profiles.push({id:'E',sentence:"Plusieurs qualités présentent des asymétries D/G objectivées ("+csmV2JoinList(unipodalQualities.map(csmV2QualityDisplayLabel))+"), ce qui souligne le caractère préférentiellement unipodal des déficits observés."});
+  }
+  var cmjEntry=csmV2FindEvidenceEntry(symmetryEvidence['Absorption'],'diagnosticEvidence.braking_rfd');
+  var sljEntries=(clinicalProfile['Absorption'].keyFindings||[]).filter(function(k){return k.variable.indexOf('freinageUnipodal.')===0;});
+  if(cmjEntry&&cmjEntry.status!=='deficient'&&sljEntries.some(function(k){return k.status==='deficient';})){
+    profiles.push({id:'F',sentence:"La performance bilatérale (CMJ) apparaît relativement correcte alors que les tests unilatéraux (Single Leg Jump) révèlent une asymétrie marquée — la performance bilatérale peut donc masquer une asymétrie unilatérale réelle."});
+  }
+  return profiles;
+}
+// §12 — Capacités préservées.
+function csmV2ReportPreservedSection(synthesis,symmetryEvidence){
+  if(!synthesis.preservedQualities.length)return{id:'preservees',title:'Capacités préservées',text:null,evidence:[]};
+  var text="Les capacités suivantes apparaissent globalement préservées : "+csmV2JoinList(synthesis.preservedQualities.map(csmV2QualityDisplayLabel))+".";
+  var evidence=[];
+  synthesis.preservedQualities.forEach(function(q){
+    evidence=evidence.concat(csmV2KpiTableRows(symmetryEvidence[q]).filter(function(r){return r.status==='normal';}).slice(0,2));
+  });
+  return{id:'preservees',title:'Capacités préservées',text:text,evidence:evidence};
+}
+// §13 — Conclusion clinique.
+function csmV2ReportConclusionSection(synthesis){
+  if(!synthesis.priorityDeficits.length&&!synthesis.preservedQualities.length)return{id:'conclusion',title:'Conclusion clinique',text:null,evidence:[]};
+  var parts=[];
+  if(synthesis.preservedQualities.length&&synthesis.maxForceVsRapidOpposition.forcePreserved){
+    parts.push("Le bilan objective une récupération relativement satisfaisante de la force maximale,");
+  }else if(synthesis.preservedQualities.length){
+    parts.push("Le bilan objective une préservation partielle de certaines capacités ("+csmV2JoinList(synthesis.preservedQualities.map(csmV2QualityDisplayLabel))+"),");
+  }
+  if(synthesis.priorityDeficits.length){
+    var top=synthesis.priorityDeficits[0];
+    parts.push("associée à des déficits persistants principalement observés au niveau de "+csmV2QualityDisplayLabel(top.quality)+(synthesis.priorityDeficits.length>1?" et des qualités apparentées":"")+".");
+  }
+  if(synthesis.maxForceVsRapidOpposition.supported){
+    parts.push("Ces déficits deviennent plus marqués lorsque les tâches imposent une gestion rapide, excentrique, réactive ou unipodale de la charge.");
+  }
+  return{id:'conclusion',title:'Conclusion clinique',text:parts.length?parts.join(' '):null,evidence:[]};
+}
+// §14 — Axes de progression : "Pourquoi ?" réutilise EXCLUSIVEMENT clinicalProfile[q].keyFindings /
+// rapidForceDeficit.keyFindings déjà calculés — jamais un nouvel objectif inventé (cf. CSM_V2_AXIS_OBJECTIVE).
+// Même table que celle utilisée pour générer les axes eux-mêmes (computeCsmV2ProgressionAxes) —
+// répétée ici à l'identique pour mapper un axe déjà produit vers les qualités qui l'ont déclenché.
+var CSM_V2_AXIS_QUALITY_MAP={
+  'mobilité de cheville':['Mobilité'],'force spécifique':['Force'],
+  'production rapide de force':['Force','Explosivité'],'travail excentrique':['Absorption'],
+  'cycle étirement-raccourcissement':['Réactivité'],'progression pliométrique':['Réactivité','Explosivité'],
+  'réceptions':['Stabilisation'],'contrôle unipodal':['Stabilisation']
+};
+function csmV2AxisWhyFindings(axis,clinicalProfile){
+  var triggeringQ=CSM_V2_AXIS_QUALITY_MAP[axis]||[];
+  var whyFindings=[];
+  triggeringQ.forEach(function(q){
+    var pq=clinicalProfile[q];
+    if(pq.severity==='majeur'||pq.severity==='modere')whyFindings=whyFindings.concat(pq.keyFindings);
+    if(q==='Force'&&pq.rapidForceDeficit&&pq.rapidForceDeficit.supported)whyFindings=whyFindings.concat(pq.rapidForceDeficit.keyFindings);
+  });
+  return whyFindings;
+}
+function csmV2ReportAxesSection(synthesis,clinicalProfile){
+  var items=synthesis.progressionAxes.map(function(axis,i){
+    return{rank:i+1,axis:axis,why:csmV2AxisWhyFindings(axis,clinicalProfile).slice(0,3),objective:CSM_V2_AXIS_OBJECTIVE[axis]||null};
+  });
+  return{id:'axes',title:'Axes de progression',items:items};
+}
+// §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
+// synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
+function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence){
+  var sections=[];
+  sections.push(csmV2ReportObjetSection(clinicalProfile));
+  sections.push({id:'synthese',title:'Synthèse clinique',text:synthesis.summary,evidence:synthesis.keyFindings});
+  sections.push(csmV2ReportMobiliteSection(clinicalProfile,symmetryEvidence));
+  sections.push(csmV2ReportForceMaximaleSection(clinicalProfile,symmetryEvidence));
+  sections.push(csmV2ReportRfdSection(clinicalProfile));
+  sections.push(csmV2ReportPropulsionSection(clinicalProfile,symmetryEvidence));
+  sections.push(csmV2ReportAbsorptionSection(clinicalProfile,synthesis.convergenceNarratives));
+  sections.push(csmV2ReportReactiviteSection(clinicalProfile,symmetryEvidence));
+  sections.push(csmV2ReportStabilisationSection(clinicalProfile));
+  var profiles=csmV2ReportTransversaleProfiles(clinicalProfile,synthesis.mobilityYbtAssociation,symmetryEvidence);
+  sections.push({id:'transversale',title:'Analyse transversale',text:profiles.length?profiles.map(function(p){return p.sentence;}).join(' '):null,profiles:profiles,evidence:[]});
+  sections.push({id:'principaux_deficits',title:'Principaux déficits',items:synthesis.priorityDeficits.slice(0,5),evidence:[]});
+  sections.push(csmV2ReportPreservedSection(synthesis,symmetryEvidence));
+  sections.push(csmV2ReportConclusionSection(synthesis));
+  sections.push(csmV2ReportAxesSection(synthesis,clinicalProfile));
+  sections.push({id:'reevaluation',title:'Réévaluation',text:synthesis.reassessmentRecommendation,evidence:[]});
+  var allText=sections.map(function(s){return s.text||'';}).join(' ');
+  var forbiddenFound=(CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING||[]).filter(function(w){return allText.toLowerCase().indexOf(String(w).toLowerCase())>=0;});
+  return{
+    reportId:'CSM-V2-CLINICAL-REPORT',
+    sections:sections,
+    forbiddenWordingCheck:{passed:forbiddenFound.length===0,found:forbiddenFound},
+    limitations:[
+      "computeCsmV2ClinicalReport (mission O) ne recalcule aucune norme/LSI/statut — pure assemblage de texte à partir de clinicalProfile/synthesis/symmetryEvidence déjà calculés par computeCsmV2().",
+      "Le \"côté le plus faible\" (csmV2WeakerSideLabel) réutilise uniquement le champ `dir` déjà présent dans le catalogue TESTS (LOCKED) — jamais un seuil inventé ; retourne null (silencieux) si le testKey/kpiKey ne peut pas être résolu.",
+      "Analyse transversale (§10) : les profils A-F sont générés indépendamment les uns des autres, chacun sous condition stricte sur des données déjà calculées — jamais un texte par défaut si aucun profil n'est supporté (text=null dans ce cas)."
+    ]
+  };
+}
 
 
 // Objectif : pour toute qualité dotée d'un moteur HYP actif, le statut affichable comme DIAGNOSTIC
@@ -9682,6 +9950,39 @@ function buildExpertReport(athlete,bilan,res){
     var csmV2Rep=res.clinicalSynthesisV2;
     var csmV2Syn=csmV2Rep.synthesis;
     var CSM_V2_SEVERITY_EMOJI={majeur:'🔴',modere:'🟠',preserved:'🟢'};
+    // ── Mission O — COMPTE RENDU D'ÉVALUATION FONCTIONNELLE ─────────────────────────────────────
+    // Lit EXCLUSIVEMENT csmV2Rep.clinicalReport (déjà calculé par computeCsmV2ClinicalReport() dans
+    // computeCsmV2() — AUCUN recalcul ici, simple rendu section par section). Une section dont
+    // `text` est null (données insuffisantes) n'est jamais affichée avec un texte de repli inventé —
+    // elle est simplement omise. Même objet consommé par ExpertView (mission O §17).
+    if(csmV2Rep.clinicalReport){
+      var crO=csmV2Rep.clinicalReport;
+      html+='<div class="print-section-title" style="margin-top:14px">Compte rendu d\'évaluation fonctionnelle</div>';
+      crO.sections.forEach(function(s){
+        if(s.id==='principaux_deficits'){
+          if(!s.items.length)return;
+          html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">'+s.title+'</div>';
+          s.items.forEach(function(p){
+            html+='<p style="margin:5px 0 0;font-size:8.5pt;color:#333;font-weight:700">'+p.rank+'. '+csmV2QualityDisplayLabel(p.quality)+' — déficit '+p.severity+'</p>';
+            (p.keyFindings||[]).slice(0,3).forEach(function(kf){html+='<p style="margin:0 0 0 14px;font-size:8pt;color:#555">'+csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' — LSI '+kf.lsi+'%':'')+'</p>';});
+          });
+          return;
+        }
+        if(s.id==='axes'){
+          if(!s.items.length)return;
+          html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">'+s.title+'</div>';
+          s.items.forEach(function(it){
+            html+='<p style="margin:6px 0 0;font-size:8.5pt;color:#333;font-weight:700">Priorité '+it.rank+' — '+it.axis+'</p>';
+            if(it.why.length)html+='<p style="margin:0 0 0 14px;font-size:8pt;color:#555"><em>Pourquoi ?</em> '+it.why.map(function(kf){return csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' (LSI '+kf.lsi+'%)':'');}).join(', ')+'.</p>';
+            if(it.objective)html+='<p style="margin:0 0 4px 14px;font-size:8pt;color:#555"><em>Objectif</em> — '+it.objective+'</p>';
+          });
+          return;
+        }
+        if(!s.text)return;
+        html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">'+s.title+'</div>';
+        html+='<p style="margin:0 0 4px;font-size:9pt;color:#333;line-height:1.55">'+s.text+'</p>';
+      });
+    }
     // ── Mission CSM V2.2, Étape L — NIVEAU 1 : synthèse clinique visuelle ───────────────────────
     // Lit EXCLUSIVEMENT csmV2Rep.clinicalProfile / csmV2Rep.synthesis / csmV2Rep.clinicalHypotheses
     // (déjà calculés par computeCsmV2()/computeMoteur() — AUCUN recalcul clinique dans le renderer,
@@ -11745,6 +12046,44 @@ function ExpertView(props){
         h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.muted,fontSize:11,fontStyle:'italic'}},'Outil d\'audit technique — lecture brute de res.clinicalSynthesisV2 ('+csmV2.csmV2Id+' v'+csmV2.version+'). Non destiné à une lecture clinique finale.')
         ),
+        // Mission O — Compte rendu d'évaluation fonctionnelle : lit EXCLUSIVEMENT csmV2.clinicalReport
+        // (même objet, même référence que buildExpertReport — aucun recalcul, mission O §17). Une
+        // section sans texte (données insuffisantes) est omise, jamais un texte de repli inventé.
+        (function(){
+          var crO=csmV2.clinicalReport;
+          if(!crO)return null;
+          return h(Card,{pad:14},
+            h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Compte rendu d\'évaluation fonctionnelle'),
+            h('div',{style:{display:'flex',flexDirection:'column',gap:8}},crO.sections.map(function(s){
+              if(s.id==='principaux_deficits'){
+                if(!s.items.length)return null;
+                return h('div',{key:s.id},
+                  h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:2,textTransform:'uppercase',letterSpacing:'0.04em'}},s.title),
+                  s.items.map(function(p){return h('div',{key:p.quality,style:{fontSize:11.5,color:C.text,marginBottom:2}},
+                    h('div',{style:{fontWeight:700}},p.rank+'. '+fmt(csmV2QualityDisplayLabel(p.quality))+' — déficit '+p.severity),
+                    h('div',{style:{paddingLeft:12,color:C.muted,fontSize:10.5}},(p.keyFindings||[]).slice(0,3).map(function(kf){return fmt(csmV2FriendlyKpiLabel(kf.variable))+(kf.lsi!=null?' — LSI '+kf.lsi+'%':'');}).join(' · '))
+                  );})
+                );
+              }
+              if(s.id==='axes'){
+                if(!s.items.length)return null;
+                return h('div',{key:s.id},
+                  h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:2,textTransform:'uppercase',letterSpacing:'0.04em'}},s.title),
+                  s.items.map(function(it){return h('div',{key:it.axis,style:{fontSize:11.5,color:C.text,marginBottom:2}},
+                    h('div',{style:{fontWeight:700}},'Priorité '+it.rank+' — '+it.axis),
+                    it.why.length?h('div',{style:{paddingLeft:12,color:C.muted,fontSize:10.5}},'Pourquoi ? '+it.why.map(function(kf){return fmt(csmV2FriendlyKpiLabel(kf.variable));}).join(', ')):null,
+                    it.objective?h('div',{style:{paddingLeft:12,color:C.muted,fontSize:10.5,fontStyle:'italic'}},'Objectif — '+it.objective):null
+                  );})
+                );
+              }
+              if(!s.text)return null;
+              return h('div',{key:s.id},
+                h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:2,textTransform:'uppercase',letterSpacing:'0.04em'}},s.title),
+                h('div',{style:{fontSize:12,color:C.text,lineHeight:1.55}},s.text)
+              );
+            }))
+          );
+        })(),
         // Synthèse clinique (mission CSM V2.2, Étape J) : lit exclusivement csmV2.clinicalProfile/
         // csmV2.synthesis — même objet, même référence que buildExpertReport (aucun recalcul, aucune
         // divergence possible entre PDF et ExpertView, mission Étape J §9/§12/§13).
