@@ -5139,7 +5139,11 @@ var HYP_QUALITY_RELATIONS=[
   {explains:'Puissance',explained:'Explosivité',via:'cmj_peak_power (confirmative documentée de HYP-EXP-01)'},
   {explains:'Explosivité',explained:'Puissance',via:'cmj_conc_rfd (explicative « stratégie » de HYP-PUI-01)'},
   {explains:'Mobilité',explained:'Stabilisation',via:'wblt_distance (explicative « mobilité de cheville » de HYP-STA-01)'},
-  {explains:'Réactivité',explained:'Endurance',via:'repeated_hop_mean_rsi (rôle partagé explicative Réactivité / confirmative Endurance)'}
+  {explains:'Réactivité',explained:'Endurance',via:'repeated_hop_mean_rsi (rôle partagé explicative Réactivité / confirmative Endurance)'},
+  // Mission CSM V2.2, Étape F : sldj_rsi est un mécanisme diagnostique réel de HYP-REA-01 (1 des 2
+  // mécanismes requis pour l'état de Réactivité), déjà unilatéral D/G avec symmetryEvidence réelle
+  // (autoLSI/lsiSt, inchangés) — aucun nouveau calcul créé pour cette relation.
+  {explains:'Réactivité',explained:'Explosivité',via:'sldj_rsi (diagnostique de HYP-REA-01, symmetryEvidence D/G réelle)'}
 ];
 function findHypQualityRelation(qualityA,qualityB){
   return HYP_QUALITY_RELATIONS.filter(function(r){
@@ -6113,7 +6117,10 @@ function computeHypExplosivityExplanatory(testData,pop,age,normSelections){
       cmj_rsi_mod:computeHypExplosivityCmjKpi(testData,'rsi_mod','cmj_rsi_mod',pop,age,normSelections),
       cmj_ecc_mean_power:computeHypExplosivityCmjKpi(testData,'ecc_mean_power','cmj_ecc_mean_power',pop,age,normSelections),
       cmj_ecc_peak_vel:computeHypExplosivityCmjKpi(testData,'ecc_peak_vel','cmj_ecc_peak_vel',pop,age,normSelections),
-      cmj_braking_rfd:Object.assign({nomenclatureNonConfirmee:true,symmetryEvidence:brakingRfdSymmetry},computeHypExplosivityCmjKpi(testData,'braking_rfd','cmj_braking_rfd',pop,age,normSelections))
+      // nomenclatureNonConfirmee levé (mission CSM V2.2 Explosivité, décision praticien) :
+      // correspondance cmj_braking_rfd <-> CMJ_ECC_DECEL_RFD explicitement confirmée. Flag purement
+      // documentaire — jamais lu ailleurs dans le code, aucun effet fonctionnel, cf. audit préalable.
+      cmj_braking_rfd:Object.assign({nomenclatureNonConfirmee:false,symmetryEvidence:brakingRfdSymmetry},computeHypExplosivityCmjKpi(testData,'braking_rfd','cmj_braking_rfd',pop,age,normSelections))
     }
   };
 }
@@ -6182,7 +6189,7 @@ function computeHypExplosivity01(testData,normPop,normAge,normSelections){
     },
     limitations:[
       "cmj_conc_rfd, cmj_conc_impulse_100 : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiables aujourd'hui -> non_determinable en pratique.",
-      "cmj_braking_rfd (explicative biomécanique) : correspondance de nommage inférée (CMJ_ECC_DECEL_RFD), non confirmée par le praticien — exposée telle quelle, jamais utilisée pour trancher seule."
+      "cmj_braking_rfd (explicative biomécanique) : correspondance de nommage (CMJ_ECC_DECEL_RFD) confirmée par le praticien (mission CSM V2.2 Explosivité) — son statut absolu reste 'indisponible' (aucun seuil), seule sa symmetryEvidence (LSI) est désormais utilisable comme preuve diagnostique, et uniquement via CSM_V2_SYMMETRY_DIAGNOSTIC_AUTHORIZATION pour Force→Explosivité et Puissance→Explosivité."
     ],
     note:"cmj_peak_power, cmj_height, slcmj_height, dj_rsi et sldj_rsi ne sont jamais lus par ce moteur au-delà de cmj_peak_power (confirmative documentée) — aucun rôle documenté pour les autres dans HYP-EXP-01, jamais attribué arbitrairement (mission §6)."
   };
@@ -6844,27 +6851,86 @@ function computeCsmV2Dissociations(qualities){
 // Mobilité→Stabilisation, décision verrouillée) ; les 6 autres restent explicitement représentées
 // avec allowed=false — jamais une absence silencieuse qui laisserait croire à un oubli.
 var CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING=['cause','causal','responsable de','explique','provient de','est dû à','entraîne','provoque','déterminé par'];
+// symmetryRole (mission CSM V2.2, Étape B) : 'diagnostic_allowed' signifie qu'une dissociation dont
+// explainedDeficitSource==='symmetry' (déficit prouvé PAR LA SEULE symétrie, aucune contribution
+// absolute) PEUT produire une clinicalHypothesis pour cette relation ; 'reinforcing_only' (ou null)
+// signifie qu'un déficit purement symmetry ne suffit jamais — seul un déficit absolute ou
+// absolute_and_symmetry peut produire une hypothèse (cf. porte 3bis de computeCsmV2ClinicalHypotheses
+// ci-dessous). JAMAIS déduit automatiquement de CSM_V2_SYMMETRY_DIAGNOSTIC_AUTHORIZATION (Étape A) —
+// référentiel indépendant, seule autorité clinique pour la couche hypothèse. Un déficit
+// absolute_and_symmetry n'a PAS besoin de 'diagnostic_allowed' : l'absolute à lui seul suffit déjà
+// à justifier l'hypothèse (comportement V2.1 inchangé, jamais durci par cette étape).
 var CLINICAL_HYPOTHESIS_WHITELIST=[
-  {explains:'Force',explained:'Puissance',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'reinforcing_only',unipodalRole:'contextual_only',confidenceLevel:null,
+  {explains:'Force',explained:'Puissance',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'diagnostic_allowed',unipodalRole:'contextual_only',confidenceLevel:null,
     wording:{
       technique:"Dissociation Force préservée / Puissance déficitaire, compatible avec une contribution insuffisante de la capacité de force à l'expression de puissance.",
       kine:"La dissociation observée est compatible avec une contribution de la force à la limitation de puissance observée.",
       patient:"La force de base semble préservée, alors que l'expression de puissance est diminuée ; ce profil peut orienter vers un travail spécifique de puissance."
     },
     forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
-  {explains:'Force',explained:'Explosivité',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
-  {explains:'Force',explained:'Endurance',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
-  {explains:'Force',explained:'Stabilisation',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
-  {explains:'Puissance',explained:'Explosivité',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  // Mission CSM V2.2, Étape E : activée — wording fourni verbatim par le praticien, copié à
+  // l'identique (jamais reformulé, jamais raccourci).
+  {explains:'Force',explained:'Explosivité',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'diagnostic_allowed',unipodalRole:'contextual_only',confidenceLevel:null,
+    wording:{
+      technique:"Une asymétrie importante de la force de freinage lors du CMJ peut limiter l’expression explosive du membre inférieur et contribuer à une production de force moins homogène entre les deux côtés.",
+      kine:"Une asymétrie de la capacité à freiner rapidement la charge lors du CMJ peut limiter l’expression de l’explosivité et témoigner d’une contribution différente des deux membres.",
+      patient:"Votre capacité à freiner rapidement le mouvement n’est pas la même des deux côtés. Cette différence peut limiter votre capacité à produire un mouvement explosif de façon homogène."
+    },
+    forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  // Mission CSM V2.2, Étape D1 : activée — wording fourni verbatim par le praticien (une seule
+  // formulation validée, réutilisée à l'identique dans les 3 registres technique/kiné/patient du
+  // contrat existant — jamais reformulée, jamais raccourcie, jamais déclinée en variantes).
+  {explains:'Force',explained:'Endurance',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'diagnostic_allowed',unipodalRole:'contextual_only',confidenceLevel:null,
+    wording:{
+      technique:"Un déficit de force est associé à une capacité réduite à maintenir une production de force efficace lors d'efforts répétés.",
+      kine:"Un déficit de force est associé à une capacité réduite à maintenir une production de force efficace lors d'efforts répétés.",
+      patient:"Un déficit de force est associé à une capacité réduite à maintenir une production de force efficace lors d'efforts répétés."
+    },
+    forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  // Mission CSM V2.2, Étape D1 : activée — wording fourni verbatim par le praticien (même principe
+  // que ci-dessus).
+  {explains:'Force',explained:'Stabilisation',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'diagnostic_allowed',unipodalRole:'contextual_only',confidenceLevel:null,
+    wording:{
+      technique:"Un déficit de force est associé à une moindre capacité à produire et contrôler les forces nécessaires à la stabilisation.",
+      kine:"Un déficit de force est associé à une moindre capacité à produire et contrôler les forces nécessaires à la stabilisation.",
+      patient:"Un déficit de force est associé à une moindre capacité à produire et contrôler les forces nécessaires à la stabilisation."
+    },
+    forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  // Mission CSM V2.2, Étape E : activée — wording fourni verbatim par le praticien, copié à
+  // l'identique (jamais reformulé, jamais raccourci).
+  {explains:'Puissance',explained:'Explosivité',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'diagnostic_allowed',unipodalRole:'contextual_only',confidenceLevel:null,
+    wording:{
+      technique:"Une asymétrie importante de la capacité de freinage lors du CMJ peut perturber l’expression de la puissance et limiter la production explosive du membre inférieur.",
+      kine:"Une asymétrie de la capacité à absorber et freiner rapidement la charge peut contribuer à une expression asymétrique de la puissance et de l’explosivité.",
+      patient:"Vos deux jambes ne freinent pas le mouvement de la même manière. Cette différence peut réduire la qualité et l’efficacité de votre mouvement explosif."
+    },
+    forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
   {explains:'Explosivité',explained:'Puissance',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
-  {explains:'Mobilité',explained:'Stabilisation',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'reinforcing_only',unipodalRole:'contextual_only',confidenceLevel:null,
+  {explains:'Mobilité',explained:'Stabilisation',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'diagnostic_allowed',unipodalRole:'contextual_only',confidenceLevel:null,
     wording:{
       technique:"Dissociation Mobilité préservée / Stabilisation déficitaire, compatible avec une contribution indépendante d'un déficit de stabilité non expliqué par une restriction de mobilité de cheville.",
       kine:"Le déficit de stabilisation observé ne semble pas compatible avec une restriction de mobilité de cheville comme facteur principal.",
       patient:"Votre mobilité de cheville est dans la norme ; la difficulté de stabilité observée pourrait donc relever d'un autre mécanisme."
     },
     forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
-  {explains:'Réactivité',explained:'Endurance',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING}
+  // Mission CSM V2.2, Étape D1 : activée — wording fourni verbatim par le praticien (même principe
+  // que ci-dessus).
+  {explains:'Réactivité',explained:'Endurance',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'diagnostic_allowed',unipodalRole:'contextual_only',confidenceLevel:null,
+    wording:{
+      technique:"Un déficit de réactivité est associé à une moindre capacité à répéter efficacement des actions dynamiques.",
+      kine:"Un déficit de réactivité est associé à une moindre capacité à répéter efficacement des actions dynamiques.",
+      patient:"Un déficit de réactivité est associé à une moindre capacité à répéter efficacement des actions dynamiques."
+    },
+    forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  // Mission CSM V2.2, Étape F : activée — via sldj_rsi (diagnostique HYP-REA-01, symmetryEvidence
+  // réelle) — wording fourni verbatim par le praticien, copié à l'identique.
+  {explains:'Réactivité',explained:'Explosivité',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'diagnostic_allowed',unipodalRole:'contextual_only',confidenceLevel:null,
+    wording:{
+      technique:"Une réactivité insuffisante peut limiter l’expression de l’explosivité en réduisant la capacité à produire et restituer rapidement de la force lors des actions à cycle étirement-raccourcissement.",
+      kine:"Un déficit de réactivité peut limiter la capacité à utiliser efficacement le cycle étirement-raccourcissement et ainsi réduire l’expression de l’explosivité.",
+      patient:"Votre capacité à rebondir rapidement est insuffisante et peut limiter votre capacité à produire rapidement de la force."
+    },
+    forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING}
 ];
 // Le matching se fait EXCLUSIVEMENT sur le couple {explains,explained} — jamais sur dissociationId
 // seul (audit H6/H11 : Force→Puissance et Force→Stabilisation partagent le même dissociationId
@@ -6877,34 +6943,67 @@ function clinicalHypothesisWordingContainsForbidden(wording,forbiddenList){
   var text=[wording.technique,wording.kine,wording.patient].join(' ').toLowerCase();
   return (forbiddenList||[]).filter(function(w){return text.indexOf(String(w).toLowerCase())>=0;});
 }
-// Couche POSTÉRIEURE à computeCsmV2Dissociations — itère EXCLUSIVEMENT `dissociations` (sortie déjà
-// produite par le moteur, jamais recalculée) et lit `qualities` (déjà produit par
+// Couche POSTÉRIEURE à computeCsmV2Dissociations/computeCsmV2FusedDissociations — itère
+// EXCLUSIVEMENT `fusedDissociations` (sortie déjà produite par computeCsmV2FusedDissociations,
+// Étape A, jamais recalculée) et lit `qualities` (déjà produit par
 // computeHypClinicalSynthesisQualities, jamais recalculé). Aucune dissociation reconstruite depuis
-// diagnosticEvidence/patterns/symmetryEvidence/raw data/unipodalFunctionalDeficit. symmetryEvidence
-// et unipodalFunctionalDeficit ne sont JAMAIS une condition de gating ici (rôles
-// 'reinforcing_only'/'contextual_only' uniquement, portés dans la structure de sortie pour
-// traçabilité — jamais lus dans les `if` de blocage ci-dessous).
-function computeCsmV2ClinicalHypotheses(dissociations,qualities){
+// diagnosticEvidence/patterns/symmetryEvidence/raw data/unipodalFunctionalDeficit.
+// unipodalFunctionalDeficit n'est JAMAIS une condition de gating ici ('contextual_only', porté dans
+// la structure de sortie pour traçabilité uniquement).
+//
+// Mission CSM V2.2, Étape B (raccordement contrôlé) : `fusedDissociations` est une sur-ensemble
+// prouvé de l'ancien `dissociations` V2.1 — pour toute relation, l'axe `explains` y est TOUJOURS
+// évalué avec symmetryAllowed=false (identique à csmV2AbsoluteAxis seul), et l'axe `explained` y
+// retombe EXACTEMENT sur le comportement absolute-only dès que explainedDeficitSource==='absolute'
+// (cas A de csmV2FusedDiagnosticAxis). Consommer `fusedDissociations` ici au lieu de `dissociations`
+// ne change donc RIEN au comportement V2.1 historique pour Force→Puissance/Mobilité→Stabilisation
+// quand le déficit est déjà démontré par l'absolute seul (vérifié empiriquement, cf. rapport Étape
+// B) — et ajoute la seule capacité réellement nouvelle : une hypothèse devient atteignable quand le
+// déficit de la qualité expliquée provient UNIQUEMENT de la symétrie (explainedDeficitSource===
+// 'symmetry'), sous réserve de la porte 3bis ci-dessous.
+function computeCsmV2ClinicalHypotheses(fusedDissociations,qualities){
   var out=[];
-  (dissociations||[]).forEach(function(d){
+  (fusedDissociations||[]).forEach(function(d){
     var entry=findClinicalHypothesisWhitelistEntry(d.explains,d.explained);
     if(!entry||!entry.allowed)return; // Porte 2 : relation absente de la whitelist, ou allowed=false.
     if(entry.allowed&&!entry.wording){
       if(typeof console!=='undefined'&&console.warn)console.warn('[CSM V2.1 CLINICAL_HYPOTHESIS_WHITELIST] Relation '+d.explains+'→'+d.explained+' allowed=true mais aucun wording validé — hypothèse non générée (erreur de configuration).');
       return; // Porte 6 : jamais de wording généré dynamiquement si aucun texte pré-validé n'existe.
     }
+    // Porte 3bis (mission CSM V2.2, Étape B) : un déficit PUREMENT symmetry (aucune contribution
+    // absolute) ne peut produire une hypothèse que si la relation porte explicitement
+    // symmetryRole==='diagnostic_allowed'. Un déficit 'absolute' ou 'absolute_and_symmetry' n'est
+    // JAMAIS soumis à cette porte — l'absolute à lui seul suffisait déjà en V2.1, jamais durci ici.
+    if(d.explainedDeficitSource==='symmetry'&&entry.symmetryRole!=='diagnostic_allowed')return;
     var explainedHyp=qualities[d.explained]&&qualities[d.explained].hyp;
+    // Support : TOUJOURS lu tel quel depuis le moteur HYP propriétaire (qualities[explained].hyp.
+    // support) — jamais recalculé, jamais promu, jamais inventé, quelle que soit
+    // explainedDeficitSource (mission CSM V2.2, Étape C, RÈGLE ABSOLUE).
     var supportLevel=explainedHyp&&explainedHyp.support?explainedHyp.support.level:null;
-    var rank=supportLevel?(CLINICAL_HYPOTHESIS_SUPPORT_RANK[supportLevel]||0):0;
-    var minRank=CLINICAL_HYPOTHESIS_SUPPORT_RANK[entry.minSupport]||0;
-    if(rank<minRank)return; // Porte 3 : support réel (lu depuis le moteur HYP propriétaire) insuffisant.
+    // Porte 3 (support) — mission CSM V2.2, Étape C : distingue explicitement preuve absolue et
+    // preuve de symétrie. Un déficit PUREMENT symmetry (explainedDeficitSource==='symmetry'), sur
+    // une relation où symmetryRole==='diagnostic_allowed' (déjà garanti ici par la porte 3bis
+    // ci-dessus, revérifié par défense en profondeur) et allowed===true (déjà garanti par la porte
+    // 2) : la symétrie EST DÉJÀ la preuve diagnostique du déficit — exiger EN PLUS un support HYP
+    // absolu reviendrait à exiger une seconde preuve indépendante qu'aucune autre porte de ce moteur
+    // ne demande. Dans ce cas UNIQUEMENT, la porte support absolu est levée — `supportLevel` n'est ni
+    // recalculé ni promu : il reste tel quel (souvent `null` en pratique, cf. H27/H28 de l'Étape B)
+    // dans la sortie ci-dessous, jamais transformé en 'faible'. Pour 'absolute' et
+    // 'absolute_and_symmetry', RIEN NE CHANGE : la règle de support V2.1 originale s'applique
+    // strictement, sans aucune exception — jamais contournée pour ces deux provenances.
+    var symmetryOnlyDiagnostic=d.explainedDeficitSource==='symmetry'&&entry.symmetryRole==='diagnostic_allowed'&&entry.allowed===true;
+    if(!symmetryOnlyDiagnostic){
+      var rank=supportLevel?(CLINICAL_HYPOTHESIS_SUPPORT_RANK[supportLevel]||0):0;
+      var minRank=CLINICAL_HYPOTHESIS_SUPPORT_RANK[entry.minSupport]||0;
+      if(rank<minRank)return; // Porte 3 : support réel (lu depuis le moteur HYP propriétaire) insuffisant.
+    }
     var additionalConditionsSatisfied=(entry.additionalConditions||[]).every(function(){return true;});
     if(!additionalConditionsSatisfied)return; // Porte 4 : liste vide aujourd'hui pour les 2 relations actives -> toujours vraie.
     var forbiddenFound=clinicalHypothesisWordingContainsForbidden(entry.wording,entry.forbiddenWording);
     if(forbiddenFound.length)return; // Porte 7/8 : aucun mot interdit dans le wording réellement utilisé.
     // symmetryEvidence : réutilise csmV2SymmetryIndexForHyp (fonction verrouillée, inchangée) sur
     // qualities[explained].hyp — jamais un recalcul, jamais une condition de gating (cf. commentaire
-    // de fonction ci-dessus), uniquement une information de traçabilité 'reinforcing_only'.
+    // de fonction ci-dessus), uniquement une information de traçabilité.
     var symIndex=csmV2SymmetryIndexForHyp(explainedHyp);
     var symAvailable=symIndex.length>0;
     var symStatus=null;
@@ -6919,12 +7018,139 @@ function computeCsmV2ClinicalHypotheses(dissociations,qualities){
       dissociation:{dissociationId:d.dissociationId,explains:d.explains,explained:d.explained},
       support:{level:supportLevel},
       evidence:{explains:d.explainsEvidence,explained:d.explainedEvidence},
+      explainedDeficitSource:d.explainedDeficitSource||'absolute',
       symmetryEvidence:{status:symStatus,available:symAvailable,role:entry.symmetryRole},
       unipodalContext:{role:entry.unipodalRole},
       wording:entry.wording,
       forbiddenWordingCheck:{passed:true,found:[]},
       conditions:{additionalConditions:entry.additionalConditions,satisfied:additionalConditionsSatisfied}
     });
+  });
+  return out;
+}
+
+// ── CSM V2.2 — ÉTAPE A — AXE DIAGNOSTIQUE FUSIONNÉ (ABSOLUTE + SYMMETRY) ─────────────────────
+// Mission CSM V2.2, Étape A uniquement (post-audit pré-codage H13-H22, 11/11 PASS en simulation
+// avant codage). Couche 100% nouvelle et STRICTEMENT PARALLÈLE — ne modifie, n'appelle et n'est
+// appelée par AUCUNE fonction verrouillée : computeCsmV2Dissociations, csmV2AbsoluteAxis,
+// computeCsmV2SymmetryEvidence, csmV2CollectSymmetryEvidence, csmV2UnipodalDeficientMechanisms,
+// computeCsmV2UnipodalFunctionalDeficit, HYP_QUALITY_RELATIONS, THRESHOLDS,
+// CSM_V2_ABS_SYM_PATTERNS, les moteurs HYP, computeMoteur, ExpertView, buildExpertReport,
+// buildSportifReport restent tous byte-identiques. `computeCsmV2()` lui-même N'EST PAS TOUCHÉ à
+// cette étape (aucun champ ajouté à son objet de retour) — la couche ci-dessous existe mais n'est
+// appelée par personne dans le pipeline `computeMoteur()`/`computeCsmV2()` : c'est un moteur
+// disponible, pas encore branché, conformément à la décision « STOP obligatoire après l'Étape A,
+// avant tout raccordement aux clinicalHypotheses ».
+//
+// Mécanisme 2 (computeAsymEngine/computeAsymPhase/AsymSpecs/effectiveBiomecaBands/asymétrie par
+// phase du CMJ/hypAbs01.asymetrie) : jamais lu, jamais appelé, jamais référencé ci-dessous — hors
+// périmètre strict de cette étape, gel historique HYP-ABS-01_V2.md §9 intact.
+//
+// CSM_V2_SYMMETRY_DIAGNOSTIC_AUTHORIZATION : référentiel INDÉPENDANT de HYP_QUALITY_RELATIONS et
+// de CLINICAL_HYPOTHESIS_WHITELIST (jamais dérivé automatiquement de l'un ni de l'autre) — 8
+// entrées explicites, une par relation de HYP_QUALITY_RELATIONS, portant uniquement la question
+// « la symétrie peut-elle constituer une preuve diagnostique de déficit pour la qualité expliquée
+// de cette relation ? ». Mission CSM V2.2 Explosivité (post-audit E1-E30) : Force→Explosivité et
+// Puissance→Explosivité activées — nomenclature cmj_braking_rfd confirmée par le praticien, LSI
+// (Mécanisme 1, autoLSI/lsiSt inchangés) utilisable comme preuve diagnostique de déficit pour ces 2
+// relations. Explosivité→Puissance reste false : Explosivité ne peut jamais atteindre 'normal' côté
+// explains (aucun seuil absolu, et la symétrie ne prouve jamais 'normal', règle verrouillée
+// inchangée) — activer cette entrée serait sans le moindre effet, laissée false pour rester honnête
+// sur l'état réel. Réactivité→Explosivité (Étape F) : ajoutée en HYP_QUALITY_RELATIONS via
+// sldj_rsi, mécanisme diagnostique réel avec symmetryEvidence D/G — autorisée.
+var CSM_V2_SYMMETRY_DIAGNOSTIC_AUTHORIZATION=[
+  {explains:'Force',explained:'Puissance',symmetryDiagnosticAllowed:true},
+  {explains:'Force',explained:'Explosivité',symmetryDiagnosticAllowed:true},
+  {explains:'Force',explained:'Endurance',symmetryDiagnosticAllowed:true},
+  {explains:'Force',explained:'Stabilisation',symmetryDiagnosticAllowed:true},
+  {explains:'Puissance',explained:'Explosivité',symmetryDiagnosticAllowed:true},
+  {explains:'Explosivité',explained:'Puissance',symmetryDiagnosticAllowed:false},
+  {explains:'Mobilité',explained:'Stabilisation',symmetryDiagnosticAllowed:true},
+  {explains:'Réactivité',explained:'Endurance',symmetryDiagnosticAllowed:true},
+  {explains:'Réactivité',explained:'Explosivité',symmetryDiagnosticAllowed:true}
+];
+// Matching EXCLUSIVEMENT sur le couple {explains,explained} — jamais sur dissociationId seul (même
+// principe que findClinicalHypothesisWhitelistEntry en V2.1 — deux relations distinctes peuvent
+// partager le même dissociationId).
+function findSymmetryDiagnosticAuthorization(explains,explained){
+  return CSM_V2_SYMMETRY_DIAGNOSTIC_AUTHORIZATION.filter(function(w){return w.explains===explains&&w.explained===explained;})[0]||null;
+}
+// Axe SYMMETRY DIAGNOSTIQUE d'une qualité — Mécanisme 1 exclusivement. Réutilise TEL QUEL (jamais
+// réécrite) csmV2SymmetryIndexForHyp (fonction verrouillée), qui parcourt déjà diagnosticEvidence/
+// confirmativeEvidence/explanatoryEvidence/segments[] et retourne CHAQUE symmetryEvidence déjà
+// calculé par le moteur HYP propriétaire — y compris le mécanisme spécifique de Mobilité (WBLT,
+// abs(D-G)<=1.5cm depuis 8edf2de, exposé via le même champ symmetryEvidence.status que lsiSt
+// ailleurs) : aucune uniformisation artificielle vers lsiSt, la fonction lit simplement le
+// `status` déjà produit par le moteur HYP concerné, quel que soit le seuil sous-jacent.
+// UNE QUALITÉ = UN SEUL ÉTAT SYMMETRY (mission §12) : 'deficient' dès qu'AU MOINS UNE preuve de
+// symétrie réellement calculée (status disponible, non 'non_determinable') est déficitaire —
+// jamais un comptage, jamais une preuve comptée deux fois, jamais une preuve "non déterminable"
+// interprétée comme un signal.
+function csmV2SymmetryDiagnosticAxis(hyp){
+  var symIndex=csmV2SymmetryIndexForHyp(hyp);
+  if(!symIndex.length)return'non_determinable';
+  var hasDeficient=symIndex.some(function(e){return e.symmetryEvidence&&e.symmetryEvidence.status==='deficient';});
+  if(hasDeficient)return'deficient';
+  var hasNormal=symIndex.some(function(e){return e.symmetryEvidence&&e.symmetryEvidence.status==='normal';});
+  if(hasNormal)return'normal';
+  return'non_determinable';
+}
+// Fusion ABSOLUTE + SYMMETRY — règle exacte verrouillée (mission CSM V2.2 §6, cas A-G) :
+//   A. absolute=deficient                                    -> deficient / "absolute"
+//   B. absolute=normal + symmetry=deficient (autorisée)      -> deficient / "symmetry"
+//   C. absolute=deficient + symmetry=deficient (autorisée)   -> deficient / "absolute_and_symmetry"
+//   D. absolute=non_determinable + symmetry=deficient (aut.) -> deficient / "symmetry"
+//   E. aucun axe déficitaire, absolute=normal                -> normal / "absolute"
+//   F. aucun axe déficitaire, absolute=non_determinable,
+//      symmetry=normal                                       -> non_determinable
+//   G. absolute=non_determinable + symmetry=non_determinable -> non_determinable
+// RÈGLE ABSOLUE : symmetry ne peut JAMAIS transformer non_determinable en normal — seule la
+// conversion vers deficient est activée (cf. cas F : symmetry=normal + absolute=non_determinable
+// reste non_determinable, jamais promu normal). `symmetryAllowed=false` (relation non autorisée,
+// ex. toute relation impliquant Explosivité) neutralise totalement l'axe symmetry : le résultat est
+// alors rigoureusement identique à csmV2AbsoluteAxis(hyp) seul — aucun comportement caché.
+function csmV2FusedDiagnosticAxis(hyp,symmetryAllowed){
+  var absoluteAxis=csmV2AbsoluteAxis(hyp);
+  var symAxis=symmetryAllowed?csmV2SymmetryDiagnosticAxis(hyp):'non_determinable';
+  var absDeficient=absoluteAxis==='deficient',symDeficient=symAxis==='deficient';
+  if(absDeficient&&symDeficient)return{state:'deficient',provenance:'absolute_and_symmetry'}; // cas C
+  if(absDeficient)return{state:'deficient',provenance:'absolute'}; // cas A
+  if(symDeficient)return{state:'deficient',provenance:'symmetry'}; // cas B / D
+  if(absoluteAxis==='normal')return{state:'normal',provenance:'absolute'}; // cas E
+  return{state:'non_determinable',provenance:null}; // cas F / G
+}
+// Dissociations FUSIONNÉES — Option B (mission CSM V2.2 §9) : STRICTEMENT PARALLÈLE à
+// computeCsmV2Dissociations (LOCKED, jamais modifiée, jamais appelée par cette fonction). Réutilise
+// HYP_QUALITY_RELATIONS comme référentiel structurel (lecture seule, jamais modifié) et
+// csmV2FusedDiagnosticAxis ci-dessus. Le côté `explains` d'une relation est TOUJOURS évalué avec
+// symmetryAllowed=false : la symétrie ne pouvant jamais prouver 'normal' (règle ci-dessus), lui
+// permettre la voie symmetry serait sans le moindre effet sur l'issue mais introduirait une lecture
+// implicite inutile de CSM_V2_SYMMETRY_DIAGNOSTIC_AUTHORIZATION côté "explains" — explicitement
+// évité pour rester lisible. Le côté `explained` est gouverné par CSM_V2_SYMMETRY_DIAGNOSTIC_
+// AUTHORIZATION pour CE couple {explains,explained} précis — jamais une activation globale par
+// qualité. Identification exclusivement par {explains,explained}, jamais par dissociationId seul
+// (deux relations distinctes peuvent le partager, cf. Force→Puissance et Force→Stabilisation).
+// N'écrase ni ne fusionne JAMAIS avec le tableau `dissociations` V2.1 — sortie strictement séparée,
+// à consommer indépendamment.
+function computeCsmV2FusedDissociations(qualities){
+  var out=[];
+  HYP_QUALITY_RELATIONS.forEach(function(rel){
+    var explainsHyp=qualities[rel.explains]&&qualities[rel.explains].hyp;
+    var explainedHyp=qualities[rel.explained]&&qualities[rel.explained].hyp;
+    var auth=findSymmetryDiagnosticAuthorization(rel.explains,rel.explained);
+    var symmetryAllowedForExplained=!!(auth&&auth.symmetryDiagnosticAllowed);
+    var explainsFused=csmV2FusedDiagnosticAxis(explainsHyp,false);
+    var explainedFused=csmV2FusedDiagnosticAxis(explainedHyp,symmetryAllowedForExplained);
+    if(explainsFused.state==='normal'&&explainedFused.state==='deficient'){
+      out.push({
+        dissociationId:rel.explains.toUpperCase()+'_PRESERVED_FUNCTIONAL_QUALITY_DEFICIENT',
+        explains:rel.explains,explained:rel.explained,via:rel.via,
+        explainsEvidence:{status:explainsHyp?explainsHyp.status:null,state:explainsHyp?explainsHyp.state:null},
+        explainedEvidence:{status:explainedHyp?explainedHyp.status:null,state:explainedHyp?explainedHyp.state:null},
+        explainedDeficitSource:explainedFused.provenance,
+        symmetryDiagnosticAuthorized:symmetryAllowedForExplained
+      });
+    }
   });
   return out;
 }
@@ -6998,10 +7224,173 @@ function computeCsmV2UnipodalFunctionalDeficit(qualities){
 // fusionnées. Branché dans computeMoteur() (res.clinicalSynthesisV2) depuis le commit 34aa0b2, et
 // exposé dans ExpertView (onglet "CSM V2") et dans le bloc technique de buildExpertReport() depuis
 // le commit 9978572.
-function computeCsmV2(functionScores){
+// ── CSM V2.2 — ÉTAPE K1 — PRODUCTION RAPIDE DE FORCE (RFD 100/200ms) ─────────────────────────────
+// Couche ADDITIVE PARALLÈLE : computeHypForceExplanatory (LOCKED) n'est PAS modifiée — elle
+// continue de retourner rfd100/rfd200 en {raw,status:null,classifiable:false}, inchangée. Cette
+// fonction lit DIRECTEMENT testData (déjà disponible à computeMoteur) sur les tests UNILATÉRAUX qui
+// exposent déjà rfd100/rfd200 en D/G dans le catalogue TESTS (HYP_FOR_SEGMENTS — 11 segments dont
+// soleus_iso/gastro_iso — + slimtp/sl_iso_push ; référentiels LOCKED, jamais modifiés, simplement
+// relus) et calcule une symmetryEvidence générique via bestVal/autoLSI/lsiSt (LOCKED, déjà
+// réutilisés partout ailleurs pour la symétrie — wblt/sldj/CMJ braking/etc.). AUCUNE norme/seuil
+// absolu créé : aucun seuil RFD100/200 n'existe dans index.html et aucun n'est inventé ici — seule
+// la bande LSI générique (autoLSI+lsiSt, non liée à une norme de population, donc jamais un "seuil
+// clinique inventé") est utilisée, exactement comme pour toute autre symmetryEvidence de ce fichier.
+var HYP_FOR_RFD_UNILATERAL_TESTS=HYP_FOR_SEGMENTS.map(function(s){return s.testKey;}).concat(['slimtp','sl_iso_push']);
+function computeCsmV2RfdSymmetryEvidence(testData){
+  var out={};
+  HYP_FOR_RFD_UNILATERAL_TESTS.forEach(function(testKey){
+    var data=(testData||{})[testKey];
+    if(!data||!data.active)return;
+    ['rfd100','rfd200'].forEach(function(kpi){
+      var vD=bestVal(((data.D||{}).trials||{})[kpi],testKpiDir(testKey,kpi));
+      var vG=bestVal(((data.G||{}).trials||{})[kpi],testKpiDir(testKey,kpi));
+      if(vD==null||vG==null)return;
+      var lsi=autoLSI(vD,vG);
+      out['productionRapideForce.'+testKey+'_'+kpi]={
+        available:true,rawD:vD,rawG:vG,lsi:lsi,
+        asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,
+        status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',
+        source:'lsiSt_generic_v1'
+      };
+    });
+  });
+  return out;
+}
+// ── CSM V2.2 — ÉTAPE K2 — FREINAGE EXCENTRIQUE UNIPODAL (Single Leg Jump = testKey 'slcmj') ──────
+// Couche ADDITIVE PARALLÈLE, même principe que K1 : computeHypAbsorption01 (LOCKED) n'est PAS
+// modifiée — elle continue de ne lire que `cmj` (bilatéral) via resolveCmjValues, inchangée. Le
+// catalogue TESTS (LOCKED, jamais modifié) expose déjà testKey='slcmj', label='Single Leg Jump',
+// bilateral:false, avec braking_rfd/braking_impulse/peak_braking_force en D/G — aucun de ces champs
+// n'est aujourd'hui lu par un moteur HYP. Même mécanisme générique que K1 (bestVal/autoLSI/lsiSt,
+// LOCKED) — AUCUNE norme/seuil absolu créé (aucun seuil braking_rfd/braking_impulse/peak_braking_
+// force pour slcmj n'existe dans index.html).
+var CSM_V2_SLJ_ECC_KPIS=['braking_rfd','braking_impulse','peak_braking_force'];
+function computeCsmV2SljEccentricSymmetryEvidence(testData){
+  var out={};
+  var data=(testData||{}).slcmj;
+  if(!data||!data.active)return out;
+  CSM_V2_SLJ_ECC_KPIS.forEach(function(kpi){
+    var vD=bestVal(((data.D||{}).trials||{})[kpi],testKpiDir('slcmj',kpi));
+    var vG=bestVal(((data.G||{}).trials||{})[kpi],testKpiDir('slcmj',kpi));
+    if(vD==null||vG==null)return;
+    var lsi=autoLSI(vD,vG);
+    out['freinageUnipodal.slcmj_'+kpi]={
+      available:true,rawD:vD,rawG:vG,lsi:lsi,
+      asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,
+      status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',
+      source:'lsiSt_generic_v1'
+    };
+  });
+  return out;
+}
+// ── CSM V2.2 — ÉTAPE K3 — RÉACTIVITÉ : CONVERGENCE SLDJ (RSI diagnostique + preuves secondaires) ──
+// Couche ADDITIVE PARALLÈLE : computeHypReactivity01 (LOCKED) n'est PAS modifiée — sldj_rsi (via
+// computeHypReactivitySldj) reste l'UNIQUE mécanisme diagnostique de Réactivité, son `state` n'est
+// jamais recalculé ici. Ajoute uniquement des symmetryEvidence SECONDAIRES (jamais diagnostiques)
+// pour height/contact_time/peak_prop_power — 3 des KPI SLDJ déjà présents dans le catalogue TESTS
+// (LOCKED) et déjà lus en brut par computeHypReactivityConfirmative (classifiable:false, aucun
+// seuil) — ici seule leur SYMÉTRIE (LSI générique, jamais un seuil absolu) est calculée, pour
+// alimenter la convergence multi-preuves (mission Étape K3/K6). "Positive Take-off Impulse" et
+// "Peak Take-off Acceleration" cités dans la mission K3 N'ONT PAS d'équivalent dans le catalogue
+// TESTS pour 'sldj' — non implémentés (gap signalé, aucune variable inventée pour les combler).
+var CSM_V2_SLDJ_SECONDARY_KPIS=['height','contact_time','peak_prop_power'];
+function computeCsmV2SldjSecondarySymmetryEvidence(testData){
+  var out={};
+  var data=(testData||{}).sldj;
+  if(!data||!data.active)return out;
+  CSM_V2_SLDJ_SECONDARY_KPIS.forEach(function(kpi){
+    var vD=bestVal(((data.D||{}).trials||{})[kpi],testKpiDir('sldj',kpi));
+    var vG=bestVal(((data.G||{}).trials||{})[kpi],testKpiDir('sldj',kpi));
+    if(vD==null||vG==null)return;
+    var lsi=autoLSI(vD,vG);
+    out['reactiviteSecondaire.sldj_'+kpi]={
+      available:true,rawD:vD,rawG:vG,lsi:lsi,
+      asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,
+      status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',
+      source:'lsiSt_generic_v1'
+    };
+  });
+  return out;
+}
+// ── CSM V2.2 — ÉTAPE K5 — Y-BALANCE ANTÉRIEUR / MOBILITÉ ────────────────────────────────────────
+// Couche ADDITIVE PARALLÈLE : aucun moteur HYP modifié. Le catalogue TESTS expose déjà ybt_ant en
+// D/G (LOCKED, jamais modifié) ; seul ybt_composite est explicitement exclu par HYP-STA-01 (note
+// HYP-STAB-01, "aucun rôle documenté") — ybt_ant lui-même n'a jamais été lu par aucun moteur, ni
+// exclu explicitement : gap non résolu, pas une décision clinique à contourner (contrairement à
+// sllt_*, cf. Étape K4 ci-dessous, volontairement NON implémentée pour cette raison précise).
+function computeCsmV2YbtSymmetryEvidence(testData){
+  var out={};
+  var data=(testData||{}).ybt;
+  if(!data||!data.active)return out;
+  var vD=bestVal(((data.D||{}).trials||{}).ant,testKpiDir('ybt','ant'));
+  var vG=bestVal(((data.G||{}).trials||{}).ant,testKpiDir('ybt','ant'));
+  if(vD==null||vG==null)return out;
+  var lsi=autoLSI(vD,vG);
+  out['mobiliteSecondaire.ybt_ant']={
+    available:true,rawD:vD,rawG:vG,lsi:lsi,
+    asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,
+    status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',
+    source:'lsiSt_generic_v1'
+  };
+  return out;
+}
+// ── CSM V2.2 — MISSION L12 (ex-K4) — RÉCEPTION UNIPODALE (sllt = Single Leg Land and Hold) ───────
+// Couche ADDITIVE PARALLÈLE, même principe strict que K1-K3/K5 : HYP-STA-01 (LOCKED) n'est PAS
+// modifiée — sllt_* reste explicitement exclu de son propre raisonnement diagnostique (note
+// HYP-STAB-01 : "sllt_* jamais lu, exclu, gel corroboré par réexamen"), décision qui concerne
+// UNIQUEMENT le calcul du `state`/niveau1 absolu de Stabilisation, jamais touchée ici. Mission L12 :
+// autorisation explicite d'exploiter sllt comme PREUVE ADDITIVE DE SYNTHÈSE (symmetryEvidence
+// LSI générique, jamais un seuil absolu), strictement séparée du diagnostic HYP-STA-01 — même
+// distinction déjà appliquée en K1 entre force maximale (diagnostic) et RFD (synthèse additive).
+var CSM_V2_SLLT_KPIS=['peak_landing_force','loading_rate'];
+function computeCsmV2SlltSymmetryEvidence(testData){
+  var out={};
+  var data=(testData||{}).sllt;
+  if(!data||!data.active)return out;
+  CSM_V2_SLLT_KPIS.forEach(function(kpi){
+    var vD=bestVal(((data.D||{}).trials||{})[kpi],testKpiDir('sllt',kpi));
+    var vG=bestVal(((data.G||{}).trials||{})[kpi],testKpiDir('sllt',kpi));
+    if(vD==null||vG==null)return;
+    var lsi=autoLSI(vD,vG);
+    out['receptionUnipodale.sllt_'+kpi]={
+      available:true,rawD:vD,rawG:vG,lsi:lsi,
+      asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,
+      status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',
+      source:'lsiSt_generic_v1'
+    };
+  });
+  return out;
+}
+// Association WBLT × Y-Balance antérieur (mission Étape K5) — jamais une nouvelle
+// CLINICAL_HYPOTHESIS/relation HYP_QUALITY_RELATIONS (référentiels LOCKED, non touchés) : une simple
+// phrase de synthèse, générée UNIQUEMENT si wblt_distance ET ybt_ant sont TOUS DEUX réellement
+// déficitaires pour Mobilité — jamais une causalité affirmée, wording fourni verbatim par le
+// praticien dans le texte de la mission Étape K5, jamais reformulé.
+function csmV2MobilityYbtAssociation(clinicalProfile){
+  var mob=clinicalProfile['Mobilité'];
+  var wbltDef=mob.keyFindings.some(function(k){return k.variable.indexOf('wblt_distance')!==-1;});
+  var ybtDef=mob.keyFindings.some(function(k){return k.variable.indexOf('ybt_ant')!==-1;});
+  if(wbltDef&&ybtDef){
+    return{supported:true,sentence:"La diminution de portée antérieure est cohérente avec la limitation de mobilité observée, sans permettre à elle seule d'attribuer cette différence exclusivement à la dorsiflexion."};
+  }
+  return{supported:false,sentence:null};
+}
+function computeCsmV2(functionScores,testData){
   var qualities=computeHypClinicalSynthesisQualities(functionScores);
   var absoluteEvidence={};
   var symmetryEvidence=computeCsmV2SymmetryEvidence(qualities);
+  // Mission CSM V2.2, Étape K1 (production rapide de force) : merge ADDITIF, jamais un recalcul de
+  // ce qui existe déjà. computeHypForceExplanatory (LOCKED) n'est PAS modifiée — voir
+  // computeCsmV2RfdSymmetryEvidence ci-dessous pour le détail de la justification.
+  symmetryEvidence['Force']=Object.assign({},symmetryEvidence['Force'],computeCsmV2RfdSymmetryEvidence(testData));
+  // Mission CSM V2.2, Étape K2 (freinage excentrique unipodal) : même principe additif.
+  symmetryEvidence['Absorption']=Object.assign({},symmetryEvidence['Absorption'],computeCsmV2SljEccentricSymmetryEvidence(testData));
+  // Mission CSM V2.2, Étape K3 (convergence SLDJ Réactivité) : même principe additif.
+  symmetryEvidence['Réactivité']=Object.assign({},symmetryEvidence['Réactivité'],computeCsmV2SldjSecondarySymmetryEvidence(testData));
+  // Mission CSM V2.2, Étape K5 (Y-Balance antérieur / Mobilité) : même principe additif.
+  symmetryEvidence['Mobilité']=Object.assign({},symmetryEvidence['Mobilité'],computeCsmV2YbtSymmetryEvidence(testData));
+  // Mission CSM V2.2, Étape L12 (ex-K4, réception unipodale sllt) : même principe additif.
+  symmetryEvidence['Stabilisation']=Object.assign({},symmetryEvidence['Stabilisation'],computeCsmV2SlltSymmetryEvidence(testData));
   var patterns=[];
 
   HYP_CSM_QUALITIES.forEach(function(q){
@@ -7024,6 +7413,21 @@ function computeCsmV2(functionScores){
   });
 
   var dissociations=computeCsmV2Dissociations(qualities);
+  // Mission CSM V2.2, Étape A : couche PARALLÈLE, indépendante, jamais fusionnée avec
+  // `dissociations` ci-dessus — computeCsmV2Dissociations() reste strictement inchangée et continue
+  // d'alimenter `dissociations` telle quelle. fusedDissociations ajoute l'axe ABSOLUTE+SYMMETRY
+  // (Mécanisme 1 uniquement, Mécanisme 2/computeAsymEngine hors périmètre) via
+  // csmV2FusedDiagnosticAxis, exposée séparément pour toute consommation directe (traçabilité,
+  // audit) sans jamais remplacer `dissociations`.
+  var fusedDissociations=computeCsmV2FusedDissociations(qualities);
+  var clinicalHypothesesV2=computeCsmV2ClinicalHypotheses(fusedDissociations,qualities);
+  var unipodalFunctionalDeficitV2=computeCsmV2UnipodalFunctionalDeficit(qualities);
+  // Mission CSM V2.2, Étape J : clinicalProfile est calculé ICI (dans computeCsmV2, avant le return)
+  // car il consomme absoluteEvidence/symmetryEvidence/fusedDissociations/unipodalFunctionalDeficitV2
+  // — toutes des variables locales déjà calculées ci-dessus, jamais recalculées par
+  // computeCsmV2ClinicalProfile lui-même (fonction pure de pure agrégation, aucun appel aux moteurs
+  // HYP, aucune lecture de testData/norms).
+  var clinicalProfileV2=computeCsmV2ClinicalProfile(absoluteEvidence,symmetryEvidence,fusedDissociations,unipodalFunctionalDeficitV2,qualities);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7033,34 +7437,459 @@ function computeCsmV2(functionScores){
     functionalRelations:HYP_QUALITY_RELATIONS,
     patterns:patterns,
     dissociations:dissociations,
-    // Niveau 5 (EVIDENCE/PATTERN/DISSOCIATION/RELATION/CLINICAL_HYPOTHESIS). Mission
-    // IMPLEMENTATION_CONTROLEE_CLINICAL_HYPOTHESES (post-audit H1-H12, 12/12 PASS en simulation
-    // avant codage) : computeCsmV2ClinicalHypotheses(dissociations,qualities) — signature verrouillée
-    // à 2 arguments — est une couche 100% nouvelle, postérieure à `dissociations`/`qualities` déjà
-    // calculés ci-dessus — ne recalcule rien, ne touche à aucune fonction verrouillée. Une hypothèse n'est produite que si (1) une dissociation
-    // réelle existe dans `dissociations`, (2) la paire {explains,explained} est explicitement
-    // whitelistée dans CLINICAL_HYPOTHESIS_WHITELIST avec allowed=true (référentiel indépendant de
-    // HYP_QUALITY_RELATIONS, jamais dérivé automatiquement), (3) le support réel de la qualité
-    // expliquée (lu depuis le moteur HYP propriétaire) atteint minSupport, (4) toutes les
-    // additionalConditions sont satisfaites, (5) le wording pré-validé existe, (6) il ne contient
+    fusedDissociations:fusedDissociations,
+    // Niveau 5 (EVIDENCE/PATTERN/DISSOCIATION/RELATION/CLINICAL_HYPOTHESIS). Mission CSM V2.2, Étape
+    // B (raccordement contrôlé, post-audit H23-H34) : computeCsmV2ClinicalHypotheses(
+    // fusedDissociations,qualities) itère désormais `fusedDissociations` (Étape A) au lieu de
+    // `dissociations` — `fusedDissociations` est un sur-ensemble prouvé de `dissociations` (l'axe
+    // `explains` y est toujours évalué en symmetryAllowed=false, identique à csmV2AbsoluteAxis
+    // seul ; l'axe `explained` y retombe exactement sur le comportement absolute-only dès que
+    // explainedDeficitSource==='absolute') — le comportement V2.1 historique (Force→Puissance,
+    // Mobilité→Stabilisation quand le déficit est démontré par l'absolute seul) reste inchangé,
+    // vérifié empiriquement. Une hypothèse n'est produite que si (1) une dissociation fusionnée
+    // réelle existe, (2) la paire {explains,explained} est whitelistée avec allowed=true, (3) si le
+    // déficit de la qualité expliquée provient UNIQUEMENT de la symétrie
+    // (explainedDeficitSource==='symmetry'), la relation porte explicitement symmetryRole===
+    // 'diagnostic_allowed' (jamais requis pour un déficit 'absolute'/'absolute_and_symmetry'), (4)
+    // le support réel de la qualité expliquée (lu depuis le moteur HYP propriétaire, JAMAIS promu ni
+    // inventé du seul fait que la source soit symmetry) atteint minSupport, (5) toutes les
+    // additionalConditions sont satisfaites, (6) le wording pré-validé existe, (7) il ne contient
     // aucun mot de la liste interdite. Aujourd'hui, seules Force→Puissance et Mobilité→Stabilisation
-    // sont allowed=true — les 6 autres relations de HYP_QUALITY_RELATIONS ne produisent jamais de
-    // CLINICAL_HYPOTHESIS. Ne jamais élargir la whitelist sans validation explicite du praticien.
-    clinicalHypotheses:computeCsmV2ClinicalHypotheses(dissociations,qualities),
+    // ont allowed=true ET un wording validé — les 6 autres relations (dont Force→Endurance,
+    // Force→Stabilisation, Réactivité→Endurance, déjà symmetryRole='diagnostic_allowed' par
+    // anticipation mais allowed=false, faute de wording praticien validé) ne produisent jamais de
+    // CLINICAL_HYPOTHESIS. Ne jamais élargir la whitelist ni inventer un wording sans validation
+    // explicite du praticien.
+    clinicalHypotheses:clinicalHypothesesV2,
     // Mission CSM V2.1, arbitrage A : convergence intra-qualité (Option 2), ≥2 mécanismes
     // indépendants déficitaires au sein de la MÊME qualité — jamais inter-qualités, jamais un
     // comptage naïf des entrées symmetryEvidence (cf. computeCsmV2UnipodalFunctionalDeficit).
-    unipodalFunctionalDeficit:computeCsmV2UnipodalFunctionalDeficit(qualities),
+    unipodalFunctionalDeficit:unipodalFunctionalDeficitV2,
+    // Mission CSM V2.2, Étape J : couche de synthèse PUREMENT DÉRIVÉE des champs ci-dessus (aucun
+    // recalcul de statut, aucune norme/seuil/valeur inventés) — cf. computeCsmV2ClinicalProfile /
+    // computeCsmV2ClinicalSynthesis.
+    clinicalProfile:clinicalProfileV2,
+    synthesis:computeCsmV2ClinicalSynthesis(clinicalProfileV2,clinicalHypothesesV2,unipodalFunctionalDeficitV2,fusedDissociations),
     limitations:[
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
       "L'état HYP 'suspectee' est traité comme non_determinable pour l'axe Absolute (composition de patterns uniquement) — ni assez confirmé pour 'normal', ni pour 'deficient' au sens objectivé de CSM V1.",
-      "clinicalHypotheses n'est peuplé que pour Force→Puissance et Mobilité→Stabilisation (CLINICAL_HYPOTHESIS_WHITELIST, mission IMPLEMENTATION_CONTROLEE_CLINICAL_HYPOTHESES) — reste [] pour toute autre relation et pour toute dissociation sans support suffisant."
+      "clinicalHypotheses est peuplé pour Force→Puissance, Mobilité→Stabilisation, Force→Explosivité, Puissance→Explosivité et Réactivité→Explosivité (CLINICAL_HYPOTHESIS_WHITELIST) — reste [] pour Force→Endurance/Force→Stabilisation/Réactivité→Endurance (allowed=false, wording jamais inventé) et pour Explosivité→Puissance (Explosivité ne peut jamais atteindre 'normal' côté explains).",
+      "buildExpertReport() (bloc CSM V2) lit fusedDissociations/clinicalHypotheses/unipodalFunctionalDeficit et, depuis Étape J, clinicalProfile/synthesis — mis à jour, plus de lecture exclusive de `dissociations` (Étape H/I/J).",
+      "synthesis.summary (Étape J) ne calcule jamais la contribution relative D/G (quel côté contribue le moins à un déficit donné) — nécessiterait de généraliser la lecture de sideStatus/direction KPI par KPI, non homogène selon les 8 moteurs HYP. Gap signalé, non résolu à cette étape."
     ]
   };
 }
 
-// ── MIGRATION PARTIELLE TFM → HYP/CSM (mission AUDIT_MIGRATION_TFM_HYP_CSM.md, décision B) ───────
+// ── CSM V2.2 — ÉTAPE J — COUCHE DE SYNTHÈSE CLINIQUE (clinicalProfile / synthesis) ───────────────
+// Couche PUREMENT DÉRIVÉE, appelée UNIQUEMENT depuis computeCsmV2() ci-dessus, sur des variables
+// déjà calculées (absoluteEvidence, symmetryEvidence, fusedDissociations, unipodalFunctionalDeficit,
+// clinicalHypotheses). N'appelle AUCUN moteur HYP, ne lit AUCUNE donnée brute/testData/norms,
+// n'invente AUCUNE valeur/seuil/norme, ne recalcule AUCUNE classification déjà tranchée par
+// csmV2AbsoluteAxis/csmV2SymmetryDiagnosticAxis/csmV2FusedDiagnosticAxis (fonctions LOCKED,
+// intouchées) — se contente d'agréger/prioriser des statuts déjà décidés. Mécanisme 2
+// (computeAsymEngine et dérivés) : jamais lu, jamais référencé ci-dessous.
+//
+// Sévérité d'une qualité — combine EXCLUSIVEMENT des champs déjà calculés :
+//   - absoluteEvidence[q].status/.state (hypStatusFromState, LOCKED, contrat HYP V1 commun)
+//   - symmetryEvidence[q] (par variable, déjà calculé par computeCsmV2SymmetryEvidence/
+//     csmV2SymmetryIndexForHyp, LOCKED — couvre diagnosticEvidence/confirmativeEvidence/
+//     explanatoryEvidence/segments, donc y compris les mécanismes explicatifs comme cmj_braking_rfd)
+//   - fusedDissociations[].explainedDeficitSource (pour les relations où q est `explained`, déjà
+//     calculé par computeCsmV2FusedDissociations, LOCKED)
+//   - unipodalFunctionalDeficit[q].state/.mechanismsCount (convergence intra-qualité, LOCKED,
+//     mission CSM V2.1 arbitrage A)
+// 'majeur' seulement si une preuve de convergence réelle existe (status absolu 'rouge', OU
+// convergence intra-qualité ≥2 mécanismes déjà objectivée, OU ≥2 entrées symmetryEvidence
+// déficitaires, OU un déficit absolute_and_symmetry) — jamais un seuil numérique inventé.
+// 'non_determinable' n'est JAMAIS transformé en 'preservee' (règle absolue, section 15 Étape J).
+function csmV2QualitySeverity(q,absoluteEvidence,symmetryEvidence,fusedDissociations,unipodalFunctionalDeficit,excludeVariablePrefixes){
+  var absQ=absoluteEvidence[q]||{};
+  var unipodalQ=unipodalFunctionalDeficit[q]||{mechanisms:[],mechanismsCount:0,state:'non_determinable'};
+  var symVarsQAll=symmetryEvidence[q]||{};
+  // Mission CSM V2.2, Étape K1 : pour Force, productionRapideForce.* (RFD100/200) est EXCLU du
+  // calcul de la sévérité globale — "le logiciel doit pouvoir distinguer force maximale de
+  // production rapide de force" (mission K1). Suivi séparément via csmV2ForceRapidDeficit.
+  var excl=excludeVariablePrefixes||[];
+  var symVarsQ={};
+  Object.keys(symVarsQAll).forEach(function(v){
+    if(excl.some(function(p){return v.indexOf(p)===0;}))return;
+    symVarsQ[v]=symVarsQAll[v];
+  });
+  var deficientSymEntries=Object.keys(symVarsQ).filter(function(v){return symVarsQ[v]&&symVarsQ[v].status==='deficient';}).map(function(v){return{variable:v,symmetryEvidence:symVarsQ[v]};});
+  var fusedAsExplained=fusedDissociations.filter(function(d){return d.explained===q;});
+  var symmetryDeficitEvidenced=deficientSymEntries.length>0||fusedAsExplained.some(function(d){return d.explainedDeficitSource==='symmetry'||d.explainedDeficitSource==='absolute_and_symmetry';});
+  var absoluteDeficient=absQ.status==='orange'||absQ.status==='rouge';
+  var evidencedDeficient=absoluteDeficient||symmetryDeficitEvidenced;
+  var out={quality:q,state:null,severity:null,priority:null,deficientSymmetryEntries:deficientSymEntries,fusedDeficitSources:fusedAsExplained.map(function(d){return{explains:d.explains,explainedDeficitSource:d.explainedDeficitSource};}),convergence:unipodalQ};
+  if(!evidencedDeficient&&absQ.state==='non_determinable'){out.state='non_determinable';return out;}
+  if(!evidencedDeficient&&absQ.state==='absente'){out.state='preservee';out.severity='preserved';out.priority='none';return out;}
+  if(!evidencedDeficient&&absQ.state==='suspectee'){out.state='suspectee';out.severity='modere';out.priority='moderate';return out;}
+  var majeur=absQ.status==='rouge'||unipodalQ.state==='convergence_observee'||deficientSymEntries.length>=2||fusedAsExplained.some(function(d){return d.explainedDeficitSource==='absolute_and_symmetry';});
+  out.state='deficitaire';
+  out.severity=majeur?'majeur':'modere';
+  out.priority=majeur?'high':'moderate';
+  return out;
+}
+// clinicalProfile — un objet PAR QUALITÉ (mission Étape J §3). "Contrôle unipodal" (§2) n'est
+// délibérément PAS ajouté ici comme 9e qualité indépendante : aucun axe absolute/symmetry propre
+// n'existe pour ce concept dans l'architecture verrouillée — il est réutilisé tel quel via
+// unipodalFunctionalDeficit (déjà une convergence PAR qualité) et exposé séparément dans `synthesis.
+// unipodalControl` (cf. computeCsmV2ClinicalSynthesis), jamais inventé comme nouvelle qualité.
+// Étape K1 : "production rapide de force" (RFD100/200) suivie comme un sous-signal DISTINCT de la
+// force maximale — jamais mélangée à la sévérité globale de Force (mission K1, exigence explicite :
+// "distinguer force maximale de production rapide de force"). majeur si >=2 entrées RFD
+// indépendantes déficitaires (même règle de convergence que partout ailleurs, aucun nouveau seuil).
+function csmV2ForceRapidDeficit(symmetryEvidenceForce){
+  var entries=Object.keys(symmetryEvidenceForce||{}).filter(function(v){return v.indexOf('productionRapideForce.')===0&&symmetryEvidenceForce[v].status==='deficient';})
+    .map(function(v){var se=symmetryEvidenceForce[v];return{variable:v,left:se.rawD,right:se.rawG,lsi:se.lsi,asymmetryPercent:se.asymmetryPercent,status:se.status,source:se.source};});
+  return{supported:entries.length>0,severity:entries.length>=2?'majeur':(entries.length===1?'modere':null),keyFindings:entries};
+}
+function computeCsmV2ClinicalProfile(absoluteEvidence,symmetryEvidence,fusedDissociations,unipodalFunctionalDeficit,qualities){
+  var profile={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var excludePrefixes=q==='Force'?['productionRapideForce.']:[];
+    var sev=csmV2QualitySeverity(q,absoluteEvidence,symmetryEvidence,fusedDissociations,unipodalFunctionalDeficit,excludePrefixes);
+    var hyp=qualities[q]&&qualities[q].hyp;
+    profile[q]={
+      quality:q,
+      state:sev.state,
+      status:absoluteEvidence[q]?absoluteEvidence[q].status:null,
+      severity:sev.severity,
+      priority:sev.priority,
+      // keyFindings (§3) : variable, left/right (rawD/rawG ou rawL/rawR selon le moteur d'origine,
+      // jamais uniformisés artificiellement), lsi, status, source — champs symmetryEvidence LOCKED,
+      // jamais recalculés.
+      keyFindings:sev.deficientSymmetryEntries.map(function(e){
+        var se=e.symmetryEvidence||{};
+        return{
+          variable:e.variable,
+          left:se.rawD!=null?se.rawD:(se.rawL!=null?se.rawL:null),
+          right:se.rawG!=null?se.rawG:(se.rawR!=null?se.rawR:null),
+          lsi:se.lsi,
+          asymmetryPercent:se.asymmetryPercent,
+          status:se.status,
+          source:se.source
+        };
+      }),
+      deficitSources:sev.fusedDeficitSources,
+      convergence:{state:sev.convergence.state,mechanismsCount:sev.convergence.mechanismsCount,mechanisms:sev.convergence.mechanisms},
+      support:hyp&&hyp.support?hyp.support:null,
+      hypId:hyp?hyp.hypId:null
+    };
+    if(q==='Force')profile[q].rapidForceDeficit=csmV2ForceRapidDeficit(symmetryEvidence['Force']);
+  });
+  return profile;
+}
+// Hiérarchisation (§4/§16 point 2) — trie les qualités déjà classées 'majeur'/'modere' par sévérité
+// puis, à sévérité égale, par nombre de mécanismes convergents déjà objectivés (unipodalFunctionalDeficit.
+// mechanismsCount, LOCKED) — AUCUN score de confiance inventé (§6, dernière règle), réutilise
+// uniquement un comptage déjà produit par une fonction verrouillée.
+function computeCsmV2PriorityDeficits(clinicalProfile){
+  var order={majeur:0,modere:1};
+  return HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].severity==='majeur'||clinicalProfile[q].severity==='modere';})
+    .sort(function(a,b){
+      var pa=clinicalProfile[a],pb=clinicalProfile[b];
+      if(order[pa.severity]!==order[pb.severity])return order[pa.severity]-order[pb.severity];
+      return (pb.convergence.mechanismsCount||0)-(pa.convergence.mechanismsCount||0);
+    })
+    .map(function(q,i){
+      var p=clinicalProfile[q];
+      return{rank:i+1,quality:q,state:p.state,severity:p.severity,priority:p.priority,keyFindings:p.keyFindings,deficitSources:p.deficitSources,convergence:p.convergence,support:p.support,hypId:p.hypId};
+    });
+}
+// Convergence multi-tests (§6) — réutilise EXCLUSIVEMENT keyFindings (symmetryEvidence déjà
+// déficitaire) et convergence (unipodalFunctionalDeficit, LOCKED) déjà présents dans clinicalProfile.
+// "convergent" au sens de cette fonction = unipodalFunctionalDeficit[q].state==='convergence_observee'
+// (≥2 mécanismes indépendants, seuil déjà verrouillé mission CSM V2.1 — jamais un nouveau seuil).
+function computeCsmV2ConvergingEvidence(clinicalProfile){
+  return HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].keyFindings.length>0;})
+    .map(function(q){
+      var p=clinicalProfile[q];
+      return{quality:q,evidenceCount:p.keyFindings.length,convergent:p.convergence.state==='convergence_observee',findings:p.keyFindings,mechanisms:p.convergence.mechanisms};
+    });
+}
+// Opposition force maximale préservée / qualités rapides déficitaires (§7) — condition purement
+// data-driven : Force preservée (severity==='preserved') ET au moins 2 des 3 qualités "rapides"
+// (Explosivité=production rapide de force, Absorption=freinage/décélération excentrique,
+// Réactivité) sont déficitaires. Ne génère la phrase QUE si ces conditions sont réellement réunies
+// sur ce bilan — jamais un texte par défaut.
+function csmV2MaxForceVsRapidOpposition(clinicalProfile){
+  var forceOk=clinicalProfile['Force'].severity==='preserved';
+  var rapidQualities=['Explosivité','Absorption','Réactivité'];
+  var rapidDeficient=rapidQualities.filter(function(q){return clinicalProfile[q].severity==='majeur'||clinicalProfile[q].severity==='modere';});
+  // Mission Étape K1 : le déficit de production rapide de force (RFD100/200, suivi séparément de la
+  // force maximale sur Force elle-même) compte aussi comme une preuve "qualité rapide déficitaire".
+  var rfd=clinicalProfile['Force'].rapidForceDeficit;
+  if(rfd&&rfd.supported)rapidDeficient=rapidDeficient.concat(['Production rapide de force']);
+  return{supported:forceOk&&rapidDeficient.length>=2,rapidDeficientQualities:rapidDeficient,forcePreserved:forceOk};
+}
+// clinicalSynthesis (§8) — exposé comme `synthesis` sur l'objet retourné par computeCsmV2() (le nom
+// `clinicalSynthesis` existe déjà au niveau racine de res pour la couche V1/HYP-CSM-01, jamais
+// réutilisé ici pour éviter toute confusion — contenu strictement conforme à la structure demandée
+// §8). summary : texte ASSEMBLÉ dynamiquement à partir de gabarits neutres + données réellement
+// classifiées (même principe déjà en vigueur pour computeHypClinicalSynthesisNarrative/
+// csmRelationshipNarrative en V1, LOCKED, jamais un texte clinique nouveau "inventé" au sens de la
+// règle §15 — aucune affirmation de causalité, vérifié par un scan CLINICAL_HYPOTHESIS_FORBIDDEN_
+// WORDING comme pour le wording des clinicalHypotheses). clinicalHypotheses n'est PAS recalculé ici —
+// simple passage de la référence déjà produite par computeCsmV2ClinicalHypotheses.
+// ── CSM V2.2 — ÉTAPE K8 — AXES DE PROGRESSION ────────────────────────────────────────────────────
+// Mapping DÉTERMINISTE, purement dérivé de clinicalProfile (jamais une recommandation inventée) —
+// vocabulaire des axes fourni verbatim par le praticien dans le texte de la mission Étape K8 (même
+// principe que tout wording clinique de ce fichier : jamais reformulé, jamais étendu). Un axe n'est
+// affiché QUE si la qualité correspondante est réellement en déficit (severity majeur/modere) —
+// jamais systématiquement, conformément à l'instruction explicite de la mission.
+// Mission L7 : les axes ne sont plus dans l'ordre de vérification interne des qualités, mais dans
+// l'ORDRE RÉEL DE PRIORITÉ CLINIQUE (priorityDeficits, déjà trié par sévérité puis convergence,
+// LOCKED depuis Étape J) — un axe apparaît à la position de la qualité déficitaire la plus
+// prioritaire qui le déclenche. Vocabulaire toujours fourni verbatim par le praticien (mission K8),
+// jamais reformulé ni étendu.
+var CSM_V2_AXIS_BY_QUALITY={
+  'Mobilité':['mobilité de cheville'],
+  'Force':['force spécifique'],
+  'Absorption':['travail excentrique'],
+  'Réactivité':['cycle étirement-raccourcissement'],
+  'Stabilisation':['réceptions','contrôle unipodal']
+};
+function computeCsmV2ProgressionAxes(clinicalProfile,priorityDeficits){
+  var axes=[];
+  function add(axis){if(axes.indexOf(axis)===-1)axes.push(axis);}
+  (priorityDeficits||[]).forEach(function(p){
+    (CSM_V2_AXIS_BY_QUALITY[p.quality]||[]).forEach(add);
+    if(p.quality==='Explosivité')add('production rapide de force');
+  });
+  // rapidForceDeficit (mission K1/L3) : Force elle-même peut rester severity='preserved' (force
+  // maximale) tout en portant un déficit RFD distinct — dans ce cas Force n'apparaît PAS dans
+  // priorityDeficits (n'est pas classée), donc cet axe est ajouté ici sans position de priorité
+  // précise plutôt que d'être silencieusement omis.
+  var rfdDeficient=clinicalProfile['Force'].rapidForceDeficit&&clinicalProfile['Force'].rapidForceDeficit.supported;
+  if(rfdDeficient)add('production rapide de force');
+  var reaDef=clinicalProfile['Réactivité'].severity==='majeur'||clinicalProfile['Réactivité'].severity==='modere';
+  var expDef=clinicalProfile['Explosivité'].severity==='majeur'||clinicalProfile['Explosivité'].severity==='modere';
+  if(reaDef&&expDef)add('progression pliométrique');
+  var anyUnipodalConvergence=HYP_CSM_QUALITIES.some(function(q){return clinicalProfile[q].convergence&&clinicalProfile[q].convergence.state==='convergence_observee';});
+  if(anyUnipodalConvergence)add('contrôle unipodal');
+  return axes;
+}
+// Mission L5 — phrases de convergence PAR QUALITÉ, générées UNIQUEMENT si ≥2 preuves symmetryEvidence
+// réellement déficitaires existent (jamais une preuve unique présentée comme une convergence).
+// Gabarit neutre, jamais causal — même principe de générateur de texte que csmRelationshipNarrative
+// (V1, LOCKED) : cite les preuves réelles (variable + LSI/asymétrie), n'invente rien.
+function computeCsmV2ConvergenceNarratives(clinicalProfile){
+  return HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].keyFindings.length>=2;})
+    .map(function(q){
+      var p=clinicalProfile[q];
+      var evidenceTxt=p.keyFindings.map(function(kf){return kf.variable+' (LSI='+(kf.lsi!=null?kf.lsi+'%':'—')+')';}).join(', ');
+      return{quality:q,evidenceCount:p.keyFindings.length,sentence:'Le déficit de '+q+' est associé à '+p.keyFindings.length+' preuves convergentes : '+evidenceTxt+'.'};
+    });
+}
+// Mission L6 — Relations cliniques : réutilise EXCLUSIVEMENT fusedDissociations (déjà calculé,
+// LOCKED depuis Étape A) et clinicalHypotheses (déjà calculé, LOCKED depuis Étape B) — AUCUNE
+// nouvelle relation créée, HYP_QUALITY_RELATIONS jamais modifié. Si une clinicalHypothesis validée
+// existe pour la paire, son wording technique (praticien) est utilisé tel quel. Sinon, un gabarit
+// neutre générique (même style que csmRelationshipNarrative V1) décrit le contraste préservé/
+// déficitaire sans jamais affirmer de causalité ("suggère", "n'est pas principalement expliqué
+// par") — jamais un wording clinique nouveau inventé au sens de la règle §15/sécurité clinique.
+function computeCsmV2ClinicalRelationsNarrative(fusedDissociations,clinicalHypotheses){
+  return fusedDissociations.map(function(d){
+    var ch=clinicalHypotheses.filter(function(h){return h.relation.explains===d.explains&&h.relation.explained===d.explained;})[0];
+    var sentence=ch?ch.wording.technique
+      :(d.explains+' apparaît relativement préservée, tandis que '+d.explained+' est déficitaire — ce contraste suggère que le déficit de '+d.explained+' n\'est pas principalement expliqué par une insuffisance de '+d.explains+'.');
+    return{explains:d.explains,explained:d.explained,relationId:d.explains+'→'+d.explained,hasValidatedWording:!!ch,explainedDeficitSource:d.explainedDeficitSource,sentence:sentence};
+  });
+}
+// Mission L8 — phrase procédurale neutre (jamais une recommandation thérapeutique spécifique non
+// validée), affichée uniquement si au moins un déficit est réellement objectivé.
+function csmV2ReassessmentRecommendation(priorityDeficits){
+  if(!priorityDeficits||!priorityDeficits.length)return null;
+  return 'Une réévaluation ciblée sur les priorités identifiées ci-dessus est recommandée pour objectiver l\'évolution.';
+}
+function computeCsmV2ClinicalSynthesis(clinicalProfile,clinicalHypotheses,unipodalFunctionalDeficit,fusedDissociations){
+  var priorityDeficits=computeCsmV2PriorityDeficits(clinicalProfile);
+  var preservedQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].severity==='preserved';});
+  var deficientQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].severity==='majeur'||clinicalProfile[q].severity==='modere';});
+  var nonDeterminableQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].state==='non_determinable';});
+  var keyFindings=computeCsmV2ConvergingEvidence(clinicalProfile);
+  var convergingEvidence=keyFindings.filter(function(e){return e.convergent;});
+  var opposition=csmV2MaxForceVsRapidOpposition(clinicalProfile);
+  var mobilityYbt=csmV2MobilityYbtAssociation(clinicalProfile);
+  var unipodalControl=HYP_CSM_QUALITIES.filter(function(q){return unipodalFunctionalDeficit[q]&&unipodalFunctionalDeficit[q].state==='convergence_observee';})
+    .map(function(q){return{quality:q,mechanismsCount:unipodalFunctionalDeficit[q].mechanismsCount,mechanisms:unipodalFunctionalDeficit[q].mechanisms};});
+  var progressionAxes=computeCsmV2ProgressionAxes(clinicalProfile,priorityDeficits);
+  var convergenceNarratives=computeCsmV2ConvergenceNarratives(clinicalProfile);
+  var clinicalRelations=computeCsmV2ClinicalRelationsNarrative(fusedDissociations||[],clinicalHypotheses);
+  var reassessmentRecommendation=csmV2ReassessmentRecommendation(priorityDeficits);
+  var summaryParts=[];
+  summaryParts.push(preservedQualities.length?('Qualités préservées : '+preservedQualities.join(', ')+'.'):'Aucune qualité n\'est actuellement objectivée comme préservée.');
+  summaryParts.push(deficientQualities.length?('Déficits objectivés pour : '+deficientQualities.map(function(q){return q+' ('+clinicalProfile[q].severity+')';}).join(', ')+'.'):'Aucun déficit n\'est actuellement objectivé.');
+  if(opposition.supported){
+    summaryParts.push('La force maximale apparaît relativement préservée, tandis que les déficits deviennent nettement plus importants pour les qualités sollicitant une production ou une gestion rapide de la force ('+opposition.rapidDeficientQualities.join(', ')+').');
+  }
+  if(mobilityYbt.supported){
+    summaryParts.push(mobilityYbt.sentence);
+  }
+  // Mission L5 : phrases de convergence par qualité (≥2 preuves), intégrées à l'analyse
+  // transversale — jamais une preuve unique présentée comme une convergence.
+  convergenceNarratives.forEach(function(n){summaryParts.push(n.sentence);});
+  if(priorityDeficits.length){
+    summaryParts.push('Les principaux déficits concernent, par ordre de priorité : '+priorityDeficits.map(function(p){return p.rank+'. '+p.quality;}).join(', ')+'.');
+  }
+  if(nonDeterminableQualities.length){
+    summaryParts.push('Non déterminable avec les données actuellement disponibles pour : '+nonDeterminableQualities.join(', ')+' — non déterminable n\'équivaut jamais à normal.');
+  }
+  var summary=summaryParts.join(' ');
+  var forbiddenFoundInSummary=(CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING||[]).filter(function(w){return summary.toLowerCase().indexOf(String(w).toLowerCase())>=0;});
+  return{
+    globalProfile:clinicalProfile,
+    preservedQualities:preservedQualities,
+    deficientQualities:deficientQualities,
+    nonDeterminableQualities:nonDeterminableQualities,
+    priorityDeficits:priorityDeficits,
+    keyFindings:keyFindings,
+    convergingEvidence:convergingEvidence,
+    unipodalControl:unipodalControl,
+    maxForceVsRapidOpposition:opposition,
+    mobilityYbtAssociation:mobilityYbt,
+    progressionAxes:progressionAxes,
+    convergenceNarratives:convergenceNarratives,
+    clinicalRelations:clinicalRelations,
+    reassessmentRecommendation:reassessmentRecommendation,
+    clinicalHypotheses:clinicalHypotheses,
+    summary:summary,
+    summaryForbiddenWordingCheck:{passed:forbiddenFoundInSummary.length===0,found:forbiddenFoundInSummary},
+    limitations:[
+      "Synthèse dérivée exclusivement de clinicalProfile/clinicalHypotheses/unipodalFunctionalDeficit/fusedDissociations (déjà calculés par computeCsmV2()) — aucune norme, aucun seuil, aucune valeur inventés ici.",
+      "La contribution relative D/G (quel côté contribue le moins à un déficit donné) n'est pas calculée — gap signalé (cf. limitations de computeCsmV2), non résolu à cette étape.",
+      "unipodalControl n'est pas une qualité indépendante — réutilise unipodalFunctionalDeficit (convergence intra-qualité déjà verrouillée, mission CSM V2.1 arbitrage A) pour chaque qualité où l'état est 'convergence_observee'.",
+      "clinicalRelations (mission L6) réutilise exclusivement fusedDissociations/clinicalHypotheses déjà calculés — aucune nouvelle relation HYP_QUALITY_RELATIONS créée ; le wording générique (relations sans clinicalHypothesis validée) utilise un gabarit neutre non causal, jamais un texte clinique spécifique inventé."
+    ]
+  };
+}
+
+// ── CSM V2.2 — MISSION M — COUCHE DE PRÉSENTATION (formatage pur, AUCUN calcul clinique) ────────
+// Toutes les fonctions ci-dessous ne font que FORMATER des données déjà calculées par computeCsmV2()
+// pour la lecture humaine (mission M14 : supprimer le jargon technique du rapport clinique
+// standard). Aucune ne lit testData/norms, aucune ne décide d'un statut — pur mapping/formatage,
+// réutilisant exclusivement des référentiels déjà LOCKED (TBK/TESTS pour les libellés KPI).
+
+// M1/M2 — libellés d'affichage des qualités (jamais un renommage de HYP_CSM_QUALITIES lui-même,
+// qui reste la clé interne partout — uniquement une couche de présentation).
+var CSM_V2_QUALITY_DISPLAY_LABEL={Force:'Force maximale',Puissance:'Propulsion'};
+function csmV2QualityDisplayLabel(q){return CSM_V2_QUALITY_DISPLAY_LABEL[q]||q;}
+// M2 — regroupement par niveau de capacité (FORCE / VITESSE DE FORCE / PROPULSION / ABSORPTION /
+// RÉACTIVITÉ / STABILISATION), pour rendre visuellement explicite que force maximale ≠ production
+// rapide de force ≠ capacité réactive (mission M2, exigence explicite). Explosivité est rattachée à
+// "VITESSE DE FORCE" car son seul mécanisme réellement exploitable (cmj_braking_rfd) concerne la
+// vitesse d'expression de force au CMJ, pas une capacité indépendante supplémentaire — regroupement
+// de PRÉSENTATION uniquement, la qualité Explosivité elle-même n'est ni renommée ni fusionnée.
+var CSM_V2_CAPACITY_GROUPS=[
+  {label:'FORCE',qualities:['Force']},
+  {label:'VITESSE DE FORCE',qualities:['Explosivité'],includesForceRapid:true},
+  {label:'PROPULSION',qualities:['Puissance']},
+  {label:'ABSORPTION',qualities:['Absorption']},
+  {label:'RÉACTIVITÉ',qualities:['Réactivité']},
+  {label:'STABILISATION',qualities:['Stabilisation']},
+  {label:'AUTRES',qualities:['Mobilité','Endurance']}
+];
+
+// M14 — résolution d'un libellé KPI lisible à partir d'un chemin de variable interne
+// (diagnosticEvidence.wblt_distance, productionRapideForce.soleus_iso_rfd100, etc.) — réutilise
+// EXCLUSIVEMENT le catalogue TBK/TESTS (déjà LOCKED, labels praticien déjà validés). Recherche le
+// testKey le plus long qui préfixe le nom résiduel (gère les testKey composés comme
+// 'iso_belt_squat'), puis le label du KPI dans TBK[testKey].kpis. Repli : chaîne humanisée (espaces,
+// majuscule), jamais un plantage, jamais une donnée inventée — juste une mise en forme.
+// Cas particuliers non décomposables par le motif générique testKey_kpiKey (chemins LOCKED des
+// moteurs HYP dont le nommage interne ne porte pas le testKey en préfixe) — traduction manuelle
+// minimale, réutilise toujours TBK['cmj'] pour le label réel du test source.
+var CSM_V2_KPI_LABEL_OVERRIDES={
+  'braking_rfd':'CMJ — Braking RFD (freinage excentrique)',
+  'force_zero_vel':'CMJ — Force à vitesse nulle'
+};
+var CSM_V2_KPI_LABEL_CACHE={};
+function csmV2FriendlyKpiLabel(variablePath){
+  if(!variablePath)return variablePath;
+  if(CSM_V2_KPI_LABEL_CACHE[variablePath])return CSM_V2_KPI_LABEL_CACHE[variablePath];
+  var segMatch=variablePath.match(/^segments\[(\d+)\]\.(\w+)$/);
+  var stripped=variablePath
+    .replace(/^diagnosticEvidence\./,'')
+    .replace(/^confirmativeEvidence\./,'')
+    .replace(/^explanatoryEvidence\.[a-zA-Z]+\./,'')
+    .replace(/^segments\[\d+\]\./,'')
+    .replace(/^productionRapideForce\./,'')
+    .replace(/^freinageUnipodal\./,'')
+    .replace(/^reactiviteSecondaire\./,'')
+    .replace(/^mobiliteSecondaire\./,'')
+    .replace(/^receptionUnipodale\./,'');
+  var out;
+  if(CSM_V2_KPI_LABEL_OVERRIDES[stripped]){
+    out=CSM_V2_KPI_LABEL_OVERRIDES[stripped];
+  }else if(segMatch&&HYP_FOR_SEGMENTS[+segMatch[1]]){
+    var seg=HYP_FOR_SEGMENTS[+segMatch[1]];
+    out=seg.group+' — '+(segMatch[2]==='n'?'Force absolue (N)':'Peak Force (N/kg)');
+  }else{
+    // Motif imbriqué "testKey.kpis.kpiKey" (ex. sls.kpis.ttf) — retombe sur testKey_kpiKey.
+    var nested=stripped.match(/^(\w+)\.kpis\.(\w+)$/);
+    if(nested)stripped=nested[1]+'_'+nested[2];
+    var testKeys=Object.keys(TBK).filter(function(k){return stripped.indexOf(k+'_')===0;}).sort(function(a,b){return b.length-a.length;});
+    if(testKeys.length){
+      var tk=testKeys[0],kpiKey=stripped.slice(tk.length+1),test=TBK[tk];
+      var kpi=(test.kpis||[]).filter(function(k){return k.key===kpiKey;})[0];
+      out=kpi?(test.label+' — '+kpi.label):(test.label+' — '+kpiKey.replace(/_/g,' '));
+    }else{
+      out=stripped.replace(/[._]/g,' ').replace(/^\w/,function(c){return c.toUpperCase();});
+    }
+  }
+  CSM_V2_KPI_LABEL_CACHE[variablePath]=out;
+  return out;
+}
+// M14 — traduction de explainedDeficitSource en phrase clinique lisible (jamais "source:symmetry").
+function csmV2FriendlySourceLabel(source){
+  if(source==='symmetry')return'une asymétrie mesurée (LSI)';
+  if(source==='absolute')return'un seuil normatif';
+  if(source==='absolute_and_symmetry')return'un seuil normatif et une asymétrie mesurée';
+  return'une source non déterminée';
+}
+// M14 — traduction du niveau de support en phrase lisible (jamais "support:null").
+function csmV2FriendlySupportLabel(level){return level!=null?level:'non déterminé';}
+// M5 — barre de visualisation LSI (texte/CSS pur, aucune nouvelle règle de classification : reprend
+// tel quel le LSI/asymétrie déjà calculé). Retourne un HTML minimal (deux barres D/G en %), jamais
+// affiché si lsi est null (M12 : jamais un null/undefined silencieux — cf. appelant).
+function csmV2LsiBarHtml(lsi,statusColor){
+  var pct=lsi!=null?Math.max(0,Math.min(100,lsi)):0;
+  var col=statusColor||'#94A3B8';
+  return '<div style="display:flex;align-items:center;gap:6px;margin:2px 0"><div style="flex:1;height:7px;background:#EEF3F6;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+col+'"></div></div><span style="font-size:7.5pt;color:#666;min-width:32px;text-align:right">'+(lsi!=null?lsi+'%':'—')+'</span></div>';
+}
+// M3/M4 — table KPI générique par qualité : TOUTES les variables réellement disponibles
+// (available:true), pas seulement celles utilisées par une clinicalHypothesis. Déficitaires
+// d'abord (lecture prioritaire), jamais un filtre qui masquerait une variable normale.
+function csmV2KpiTableRows(symmetryEvidenceForQuality){
+  return Object.keys(symmetryEvidenceForQuality||{})
+    .filter(function(v){return symmetryEvidenceForQuality[v]&&symmetryEvidenceForQuality[v].available;})
+    .map(function(v){
+      var se=symmetryEvidenceForQuality[v];
+      return{variable:v,label:csmV2FriendlyKpiLabel(v),
+        left:se.rawD!=null?se.rawD:(se.rawL!=null?se.rawL:null),
+        right:se.rawG!=null?se.rawG:(se.rawR!=null?se.rawR:null),
+        lsi:se.lsi,asymmetryPercent:se.asymmetryPercent,status:se.status,source:se.source};
+    })
+    .sort(function(a,b){var order={deficient:0,normal:1,non_determinable:2};return (order[a.status]||3)-(order[b.status]||3);});
+}
+function csmV2KpiStatusColor(status){return status==='deficient'?'#EF4444':(status==='normal'?'#22C55E':'#94A3B8');}
+// M12 — jamais "undefined"/"null" affiché tel quel ; jamais une donnée manquante interprétée comme
+// "normal". Utilisé partout où une valeur peut être absente dans le rendu Mission M.
+function csmV2SafeValue(v,unit){
+  if(v==null)return'Non déterminable — donnée insuffisante';
+  return String(v)+(unit||'');
+}
+// M9 — "Objectif" par axe de progression : UNIQUEMENT lorsque le praticien a fourni un texte
+// verbatim (mission M9, un seul exemple donné explicitement : Réactivité). Pour tout autre axe,
+// aucun texte n'est inventé — seul "Pourquoi ?" (données réelles) est affiché, jamais une
+// prescription ou un objectif thérapeutique non validé.
+var CSM_V2_AXIS_OBJECTIVE={
+  'cycle étirement-raccourcissement':"Restaurer la capacité à absorber puis restituer rapidement la charge."
+};
+
+
 // Objectif : pour toute qualité dotée d'un moteur HYP actif, le statut affichable comme DIAGNOSTIC
 // reste TOUJOURS fSc[qualité].status (jamais recalculé, jamais un repli TFM qui pourrait le
 // contredire — même principe que la mission de normalisation, étendu ici aux deux DERNIERS
@@ -7714,7 +8543,7 @@ function computeMoteur(testData,questData,normPop,normAge,normSelections){
   // computeMoteur(), à partir de fSc déjà entièrement construit. Fonction pure, lecture seule ;
   // n'appelle, ne réinvoque et ne modifie aucun des 8 moteurs HYP ni computeHypClinicalSynthesis01
   // (V1) lui-même — les deux couches restent indépendantes, jamais fusionnées.
-  var clinicalSynthesisV2=computeCsmV2(fSc);
+  var clinicalSynthesisV2=computeCsmV2(fSc,testData);
   return{functionScores:fSc,systemScores:sysSc,testStatuses:tSt,priorities:priorities,rtpStatus:rtpStatus,qualityScores:qualityScores,capaciteScores:capaciteScores,clinicalSynthesis:clinicalSynthesis,clinicalSynthesisV2:clinicalSynthesisV2};
 }
 
@@ -7910,9 +8739,13 @@ function TrialIn(props){
 }
 
 // ── RADAR ─────────────────────────────────────────────────────────────────────
+// Mission CSM V2.2, Mission M7 : `keys` optionnel (défaut FUNCTIONS, comportement V1 inchangé pour
+// tout appelant existant — aucun appelant actuel ne passe `keys`, aucune régression possible).
+// Permet de connecter le radar à clinicalProfile (qualités CSM V2) sans dupliquer le composant.
 function RadarChart(props){
   var fn=props.functionScores;var size=props.size||240;var ref=useRef(null);
-  var fns=FUNCTIONS.filter(function(f){return fn[f];});
+  var keys=props.keys||FUNCTIONS;
+  var fns=keys.filter(function(f){return fn[f];});
   useEffect(function(){
     var c=ref.current;if(!c||fns.length<3)return;
     var dpr=window.devicePixelRatio||1;c.width=size*dpr;c.height=size*dpr;c.style.width=size+'px';c.style.height=size+'px';
@@ -8847,8 +9680,126 @@ function buildExpertReport(athlete,bilan,res){
   // (HYP-CSM-01 / V1) ci-dessus.
   if(res.clinicalSynthesisV2){
     var csmV2Rep=res.clinicalSynthesisV2;
-    html+='<div class="print-section-title" style="margin-top:12px">CSM V2 — Absolute × Symmetry × Functional Dissociation (bloc de test)</div>';
-    html+='<p style="margin:0 0 8px;font-size:8pt;color:#888;font-style:italic">Bloc technique de vérification, non destiné à une lecture clinique finale.</p>';
+    var csmV2Syn=csmV2Rep.synthesis;
+    var CSM_V2_SEVERITY_EMOJI={majeur:'🔴',modere:'🟠',preserved:'🟢'};
+    // ── Mission CSM V2.2, Étape L — NIVEAU 1 : synthèse clinique visuelle ───────────────────────
+    // Lit EXCLUSIVEMENT csmV2Rep.clinicalProfile / csmV2Rep.synthesis / csmV2Rep.clinicalHypotheses
+    // (déjà calculés par computeCsmV2()/computeMoteur() — AUCUN recalcul clinique dans le renderer,
+    // AUCUNE nouvelle norme/seuil/valeur). Ordre imposé par la mission L §8 : PROFIL GLOBAL,
+    // PRINCIPAUX DÉFICITS, CAPACITÉS PRÉSERVÉES, ANALYSE TRANSVERSALE, RELATIONS CLINIQUES,
+    // HYPOTHÈSES CLINIQUES (détail des relations), AXES DE PROGRESSION, RÉÉVALUATION RECOMMANDÉE.
+    // `via` n'est jamais affiché. support.level jamais inventé — 'non déterminé' si null.
+    html+='<div class="print-section-title" style="margin-top:12px">Profil fonctionnel CSM V2 — synthèse clinique</div>';
+    // Mission M9/M10 — table de correspondance axe → qualité(s) déclenchante(s), pour construire
+    // "Pourquoi ?" à partir des preuves déjà calculées (clinicalProfile[q].keyFindings /
+    // rapidForceDeficit.keyFindings) — aucune nouvelle donnée, uniquement une re-lecture.
+    var csmV2AxisQualityMap={
+      'mobilité de cheville':['Mobilité'],'force spécifique':['Force'],
+      'production rapide de force':['Force','Explosivité'],'travail excentrique':['Absorption'],
+      'cycle étirement-raccourcissement':['Réactivité'],'progression pliométrique':['Réactivité','Explosivité'],
+      'réceptions':['Stabilisation'],'contrôle unipodal':['Stabilisation']
+    };
+    function csmV2KfLine(kf){
+      return csmV2FriendlyKpiLabel(kf.variable)+((kf.left!=null||kf.right!=null)?' — D='+csmV2SafeValue(kf.left)+', G='+csmV2SafeValue(kf.right):'')
+        +(kf.lsi!=null?csmV2LsiBarHtml(kf.lsi,csmV2KpiStatusColor(kf.status)):'');
+    }
+    // M1/M2 — Profil global regroupé par niveau de capacité (FORCE / VITESSE DE FORCE / PROPULSION /
+    // ABSORPTION / RÉACTIVITÉ / STABILISATION / AUTRES) — rend explicite que force maximale ≠
+    // production rapide de force ≠ capacité réactive (mission M2). Libellés M1 (Force maximale,
+    // Propulsion) via csmV2QualityDisplayLabel — HYP_CSM_QUALITIES lui-même n'est jamais renommé.
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Profil global</div>';
+    CSM_V2_CAPACITY_GROUPS.forEach(function(group){
+      html+='<div style="font-size:6.8pt;font-weight:700;color:#94A3B8;letter-spacing:0.06em;margin:6px 0 2px">'+group.label+'</div>';
+      group.qualities.forEach(function(q){
+        var pq=csmV2Rep.clinicalProfile[q];
+        var emojiQ=CSM_V2_SEVERITY_EMOJI[pq.severity]||'⚪';
+        html+='<p style="margin:0 0 2px;font-size:8.5pt;color:#333">'+emojiQ+' <strong>'+csmV2QualityDisplayLabel(q)+'</strong> — état : '+(pq.state||'non_determinable')+(pq.priority&&pq.priority!=='none'?' · priorité '+pq.priority:'')+(pq.keyFindings.length?' · '+pq.keyFindings.length+' preuve(s) convergente(s)':'')+'</p>';
+        pq.keyFindings.forEach(function(kf){html+='<p style="margin:0 0 2px 16px;font-size:8pt;color:#555">'+csmV2KfLine(kf)+'</p>';});
+        pq.deficitSources.forEach(function(s){
+          html+='<p style="margin:0 0 4px 16px;font-size:8pt;color:#888;font-style:italic">Déficit de '+csmV2QualityDisplayLabel(q)+' — preuve associée à la relation '+csmV2QualityDisplayLabel(s.explains)+' → '+csmV2QualityDisplayLabel(q)+', fondée sur '+csmV2FriendlySourceLabel(s.explainedDeficitSource)+'.</p>';
+        });
+        // M2/L3 — production rapide de force (RFD) : signal distinct de la force maximale.
+        if(q==='Force'&&pq.rapidForceDeficit&&pq.rapidForceDeficit.supported){
+          html+='<p style="margin:2px 0 2px 16px;font-size:8pt;color:#B45309;font-weight:600">⚡ Production rapide de force ('+pq.rapidForceDeficit.severity+') — distincte de la force maximale ci-dessus :</p>';
+          pq.rapidForceDeficit.keyFindings.forEach(function(kf){html+='<p style="margin:0 0 2px 28px;font-size:8pt;color:#555">'+csmV2KfLine(kf)+'</p>';});
+        }
+      });
+    });
+    // M1/M10 — Principaux déficits : bloc riche par déficit avec KPI/D-G/LSI (barre visuelle M5),
+    // tests concernés et "Pourquoi ?" — jamais les tags techniques bruts (statut=/source=, mission M14).
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Principaux déficits</div>';
+    if(csmV2Syn.priorityDeficits.length){
+      csmV2Syn.priorityDeficits.slice(0,5).forEach(function(p){
+        html+='<p style="margin:8px 0 2px;font-size:9pt;color:#333;font-weight:700">'+p.rank+'. '+(CSM_V2_SEVERITY_EMOJI[p.severity]||'⚪')+' '+csmV2QualityDisplayLabel(p.quality)+' — déficit '+p.severity+(p.convergence.state==='convergence_observee'?' (convergence '+p.convergence.mechanismsCount+' mécanismes)':'')+'</p>';
+        p.keyFindings.forEach(function(kf){html+='<p style="margin:0 0 2px 16px;font-size:8pt;color:#555">• '+csmV2KfLine(kf)+'</p>';});
+        if(!p.keyFindings.length)html+='<p style="margin:0 0 2px 16px;font-size:8pt;color:#888;font-style:italic">Déficit objectivé par seuil normatif (aucune preuve d\'asymétrie associée).</p>';
+      });
+    }else{
+      html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucun déficit prioritaire identifié pour ce bilan.</p>';
+    }
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Capacités préservées</div>';
+    html+='<p style="margin:0 0 8px;font-size:8.5pt;color:#333">'+(csmV2Syn.preservedQualities.length?csmV2Syn.preservedQualities.map(csmV2QualityDisplayLabel).join(', '):'Aucune qualité n\'est actuellement objectivée comme préservée.')+'</p>';
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Analyse transversale</div>';
+    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333;line-height:1.6">'+csmV2Syn.summary+'</p>';
+    // L6 — Relations cliniques : réutilise fusedDissociations/clinicalHypotheses (jamais de nouvelle
+    // relation HYP_QUALITY_RELATIONS créée). Une ligne par relation réellement observée comme
+    // dissociation (explains préservée × explained déficitaire).
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Relations cliniques ('+csmV2Syn.clinicalRelations.length+')</div>';
+    if(csmV2Syn.clinicalRelations.length){
+      csmV2Syn.clinicalRelations.forEach(function(r){
+        html+='<p style="margin:0 0 6px;font-size:8.5pt;color:#333;padding-left:8px;border-left:2px solid #2A9D8F"><strong>'+csmV2QualityDisplayLabel(r.explains)+' → '+csmV2QualityDisplayLabel(r.explained)+'</strong> — '+r.sentence+'</p>';
+      });
+    }else{
+      html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucune relation clinique (dissociation) identifiée pour ce bilan.</p>';
+    }
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Hypothèses cliniques ('+csmV2Rep.clinicalHypotheses.length+')</div>';
+    if(csmV2Rep.clinicalHypotheses.length){
+      csmV2Rep.clinicalHypotheses.forEach(function(ch){
+        // M14 — jamais "source:symmetry"/"support:null" bruts dans le rapport clinique standard.
+        html+='<p style="margin:6px 0 2px;font-size:8.5pt;color:#333">'+csmV2QualityDisplayLabel(ch.relation.explains)+' préservée, '+csmV2QualityDisplayLabel(ch.relation.explained)+' déficitaire — fondé sur '+csmV2FriendlySourceLabel(ch.explainedDeficitSource)+', niveau de preuve : '+csmV2FriendlySupportLabel(ch.support.level)+'</p>';
+        html+='<p style="margin:0 0 2px 8px;font-size:8pt;color:#555">Technique — '+ch.wording.technique+'</p>';
+        html+='<p style="margin:0 0 2px 8px;font-size:8pt;color:#555;font-style:italic">Kiné — '+ch.wording.kine+'</p>';
+        html+='<p style="margin:0 0 4px 8px;font-size:8pt;color:#555">Patient — '+ch.wording.patient+'</p>';
+      });
+    }else{
+      html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucune clinicalHypothesis générée pour ce bilan.</p>';
+    }
+    // M9 — Axes de progression : "Priorité N", "Pourquoi ?" (preuves réelles), "Objectif" seulement
+    // quand un texte praticien validé existe pour cet axe précis (mission M9 : jamais de
+    // prescription inventée).
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Axes de progression</div>';
+    if(csmV2Syn.progressionAxes.length){
+      csmV2Syn.progressionAxes.forEach(function(a,i){
+        html+='<p style="margin:8px 0 2px;font-size:8.5pt;color:#333;font-weight:700">Priorité '+(i+1)+' — '+a+'</p>';
+        var triggeringQ=csmV2AxisQualityMap[a]||[];
+        var whyFindings=[];
+        triggeringQ.forEach(function(q){
+          var pq=csmV2Rep.clinicalProfile[q];
+          if(pq.severity==='majeur'||pq.severity==='modere')whyFindings=whyFindings.concat(pq.keyFindings);
+          if(q==='Force'&&pq.rapidForceDeficit&&pq.rapidForceDeficit.supported)whyFindings=whyFindings.concat(pq.rapidForceDeficit.keyFindings);
+        });
+        if(whyFindings.length){
+          html+='<p style="margin:0 0 2px 16px;font-size:8pt;color:#555"><em>Pourquoi ?</em> '+whyFindings.slice(0,3).map(function(kf){return csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' (LSI '+kf.lsi+'%)':'');}).join(', ')+'.</p>';
+        }
+        if(CSM_V2_AXIS_OBJECTIVE[a]){
+          html+='<p style="margin:0 0 4px 16px;font-size:8pt;color:#555"><em>Objectif</em> — '+CSM_V2_AXIS_OBJECTIVE[a]+'</p>';
+        }
+      });
+    }else{
+      html+='<p style="margin:0 0 8px;font-size:8.5pt;color:#888;font-style:italic">Aucun axe de progression identifiable avec les déficits actuellement objectivés.</p>';
+    }
+    // L8 — Réévaluation recommandée : phrase procédurale neutre, affichée uniquement s'il existe
+    // un déficit prioritaire réel.
+    if(csmV2Syn.reassessmentRecommendation){
+      html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Réévaluation recommandée</div>';
+      html+='<p style="margin:0 0 12px;font-size:8.5pt;color:#333;font-style:italic">'+csmV2Syn.reassessmentRecommendation+'</p>';
+    }
+
+    // ── NIVEAU 2 : données détaillées CSM V2 (Dashboard complet) — mission Étape J §11 : jamais
+    // supprimé, chaque conclusion du Niveau 1 ci-dessus reste reliable aux données brutes ci-dessous
+    // (patterns, dissociations V2.1 avec `via` documentaire, unipodalFunctionalDeficit par qualité).
+    html+='<div class="print-section-title" style="margin-top:14px">CSM V2 — Détails techniques (Niveau 2 — Dashboard complet)</div>';
+    html+='<p style="margin:0 0 8px;font-size:8pt;color:#888;font-style:italic">Données brutes de traçabilité — non destinées à une lecture clinique directe, support de la synthèse ci-dessus.</p>';
     if(csmV2Rep.patterns.length){
       html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Patterns Absolute × Symmetry ('+csmV2Rep.patterns.length+')</div>';
       csmV2Rep.patterns.forEach(function(p){
@@ -8865,7 +9816,38 @@ function buildExpertReport(athlete,bilan,res){
     }else{
       html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucune dissociation fonctionnelle générée pour ce bilan.</p>';
     }
-    html+='<p style="margin:4px 0 0;font-size:8pt;color:#888;font-style:italic">UNIPODAL_FUNCTIONAL_DEFICIT : '+csmV2Rep.unipodalFunctionalDeficit.state+' — '+csmV2Rep.unipodalFunctionalDeficit.reason+'</p>';
+    // Clinical Hypotheses détaillées (dissociationId inclus) : déjà affichées ci-dessus dans le
+    // bloc Niveau 1 "Hypothèses cliniques" (mission Étape J) — non dupliquées ici, seul le
+    // dissociationId supplémentaire (traçabilité) justifie ce rappel minimal.
+    if(csmV2Rep.clinicalHypotheses.length){
+      html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">Clinical Hypotheses — dissociationId (traçabilité)</div>';
+      csmV2Rep.clinicalHypotheses.forEach(function(ch){
+        html+='<p style="margin:0 0 2px;font-size:8pt;color:#555;font-family:monospace">'+ch.relationId+' — '+ch.dissociation.dissociationId+'</p>';
+      });
+    }
+    // UNIPODAL_FUNCTIONAL_DEFICIT (mission CSM V2.2, Étape I, point 1) : computeCsmV2UnipodalFunctionalDeficit
+    // retourne un objet indexé PAR QUALITÉ ({Mobilité:{state,reason,...}, Réactivité:{...}, ...}) —
+    // jamais un {state,reason} plat au niveau racine. Correction de rendu uniquement, aucune logique
+    // clinique modifiée (même lecture directe de la structure réelle déjà calculée).
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">Unipodal Functional Deficit</div>';
+    HYP_CSM_QUALITIES.forEach(function(q){
+      var uq=csmV2Rep.unipodalFunctionalDeficit[q]||{};
+      html+='<p style="margin:0 0 2px;font-size:8pt;color:#888;font-style:italic">'+q+' : '+uq.state+' — '+uq.reason+'</p>';
+    });
+    // M3/M4 — Tableau KPI générique par qualité : TOUTES les variables réellement disponibles
+    // (pas seulement celles utilisées par une clinicalHypothesis), avec D/G/LSI/asymétrie/statut/
+    // source — mission M3/M4. Réutilise csmV2KpiTableRows (formatage pur, aucun recalcul).
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Tableau KPI détaillé par qualité</div>';
+    HYP_CSM_QUALITIES.forEach(function(q){
+      var rows=csmV2KpiTableRows(csmV2Rep.symmetryEvidence[q]);
+      if(!rows.length)return;
+      html+='<div style="font-size:8pt;font-weight:700;color:#333;margin:6px 0 2px">'+csmV2QualityDisplayLabel(q)+'</div>';
+      html+='<table style="width:100%;border-collapse:collapse;margin-bottom:6px"><thead><tr style="font-size:7pt;color:#94A3B8;text-transform:uppercase;text-align:left"><th style="padding:2px 4px">KPI</th><th style="padding:2px 4px">Gauche</th><th style="padding:2px 4px">Droite</th><th style="padding:2px 4px">LSI</th><th style="padding:2px 4px">Statut</th></tr></thead><tbody>';
+      rows.forEach(function(r){
+        html+='<tr style="font-size:7.5pt;color:#333;border-top:1px solid #EEF3F6"><td style="padding:2px 4px">'+r.label+'</td><td style="padding:2px 4px">'+csmV2SafeValue(r.right)+'</td><td style="padding:2px 4px">'+csmV2SafeValue(r.left)+'</td><td style="padding:2px 4px">'+(r.lsi!=null?r.lsi+'%':'—')+'</td><td style="padding:2px 4px;color:'+csmV2KpiStatusColor(r.status)+'">'+(r.status==='deficient'?'Déficitaire':r.status==='normal'?'Normal':'Non déterminable')+'</td></tr>';
+      });
+      html+='</tbody></table>';
+    });
   }
   // KPI page
   html+='<div class="print-page print-page-expert">';
@@ -10763,6 +11745,63 @@ function ExpertView(props){
         h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.muted,fontSize:11,fontStyle:'italic'}},'Outil d\'audit technique — lecture brute de res.clinicalSynthesisV2 ('+csmV2.csmV2Id+' v'+csmV2.version+'). Non destiné à une lecture clinique finale.')
         ),
+        // Synthèse clinique (mission CSM V2.2, Étape J) : lit exclusivement csmV2.clinicalProfile/
+        // csmV2.synthesis — même objet, même référence que buildExpertReport (aucun recalcul, aucune
+        // divergence possible entre PDF et ExpertView, mission Étape J §9/§12/§13).
+        // Mission M7 — Radar : connecte RadarChart (composant existant, jamais utilisé jusqu'ici) à
+        // clinicalProfile. Réutilise TEL QUEL la transformation status->rayon déjà existante dans
+        // RadarChart (sv={vert:1,jaune:0.67,orange:0.33,rouge:0.1}) — AUCUN score sur 100 inventé.
+        // severity->vert/jaune/orange/rouge est un simple mapping d'affichage (majeur=rouge,
+        // modere=orange, preserved=vert) ; une qualité non_determinable/suspectee n'a AUCUNE entrée
+        // -> RadarChart l'exclut naturellement (jamais tracée comme "normale").
+        (function(){
+          var radarScores={};
+          qKeys.forEach(function(q){
+            var pq=csmV2.clinicalProfile[q];
+            var st=pq.severity==='majeur'?'rouge':pq.severity==='modere'?'orange':pq.severity==='preserved'?'vert':null;
+            if(st)radarScores[q]={status:st};
+          });
+          return h(Card,{pad:14,style:{display:'flex',flexDirection:'column',alignItems:'center'}},
+            h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8,alignSelf:'flex-start'}},'Profil fonctionnel (radar)'),
+            h(RadarChart,{functionScores:radarScores,keys:qKeys,size:220})
+          );
+        })(),
+        (function(){
+          var CSM_V2_SEV_EMOJI={majeur:'🔴',modere:'🟠',preserved:'🟢'};
+          var syn=csmV2.synthesis;
+          return h(Card,{pad:14},
+            h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Synthèse clinique'),
+            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Profil global'),
+            h('div',{style:{display:'flex',flexDirection:'column',gap:4,marginBottom:10}},qKeys.map(function(q){
+              var pq=csmV2.clinicalProfile[q];
+              return h('div',{key:q,style:{fontSize:11.5,color:C.text}},
+                (CSM_V2_SEV_EMOJI[pq.severity]||'⚪')+' '+q+' — '+fmt(pq.state)+(pq.priority&&pq.priority!=='none'?' · priorité '+pq.priority:'')+(pq.keyFindings.length?' · '+pq.keyFindings.length+' preuve(s)':'')
+              );
+            })),
+            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Principaux déficits'),
+            syn.priorityDeficits.length===0
+              ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:10}},'Aucun déficit prioritaire identifié.')
+              :h('div',{style:{display:'flex',flexDirection:'column',gap:6,marginBottom:10}},syn.priorityDeficits.map(function(p){
+                  return h('div',{key:p.quality,style:{fontSize:11.5,color:C.text}},
+                    h('div',null,p.rank+'. '+(CSM_V2_SEV_EMOJI[p.severity]||'⚪')+' '+p.quality+' ('+p.severity+')'),
+                    h('div',{style:{paddingLeft:14,color:C.muted,fontSize:10.5}},p.keyFindings.map(function(kf){return kf.variable+' LSI='+fmt(kf.lsi)+'%';}).join(' · '))
+                  );
+                })),
+            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Capacités préservées'),
+            h('div',{style:{fontSize:12,color:C.text,marginBottom:10}},syn.preservedQualities.length?syn.preservedQualities.join(', '):'Aucune.'),
+            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Analyse transversale'),
+            h('div',{style:{fontSize:12,color:C.text,lineHeight:1.6,marginBottom:10}},syn.summary),
+            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Relations cliniques ('+syn.clinicalRelations.length+')'),
+            syn.clinicalRelations.length===0
+              ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:10}},'Aucune.')
+              :h('div',{style:{display:'flex',flexDirection:'column',gap:6,marginBottom:10}},syn.clinicalRelations.map(function(r){return h('div',{key:r.relationId,style:{fontSize:11.5,color:C.text,paddingLeft:8,borderLeft:'2px solid '+C.teal}},h('strong',null,r.relationId),' — '+r.sentence);})),
+            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Axes de progression'),
+            syn.progressionAxes.length===0
+              ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:syn.reassessmentRecommendation?10:0}},'Aucun axe identifiable avec les déficits actuellement objectivés.')
+              :h('div',{style:{display:'flex',flexDirection:'column',gap:2,marginBottom:syn.reassessmentRecommendation?10:0}},syn.progressionAxes.map(function(a,i){return h('div',{key:a,style:{fontSize:11.5,color:C.text}},'Priorité '+(i+1)+' — '+a);})),
+            syn.reassessmentRecommendation&&h('div',{style:{fontSize:11,color:C.muted,fontStyle:'italic'}},syn.reassessmentRecommendation)
+          );
+        })(),
         h(Card,{pad:14},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Absolute Evidence'),
           h('div',{style:{display:'flex',flexDirection:'column',gap:4}},qKeys.map(function(q){
@@ -10823,7 +11862,20 @@ function ExpertView(props){
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Clinical Hypotheses ('+csmV2.clinicalHypotheses.length+')'),
           csmV2.clinicalHypotheses.length===0
             ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune hypothèse clinique retenue — aucune règle de génération automatique n\'a été validée à ce stade.')
-            :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csmV2.clinicalHypotheses.map(function(ch,i){return h('div',{key:i,style:{fontSize:10.5,fontFamily:'monospace',color:C.text,lineHeight:1.7,borderLeft:'2px solid '+C.teal,paddingLeft:8}},JSON.stringify(ch));}))
+            // Rendu structuré (mission CSM V2.2, Étape I, point 9 : ExpertView doit consommer le même
+            // objet clinicalHypotheses que buildExpertReport, avec une lisibilité équivalente — plus
+            // de JSON.stringify brut). `via` jamais affiché (absent de la structure clinicalHypothesis
+            // elle-même, cf. Étape F/H). support.level jamais inventé : 'non déterminé' si null.
+            :h('div',{style:{display:'flex',flexDirection:'column',gap:10}},csmV2.clinicalHypotheses.map(function(ch,i){
+                var supportTxtCv=ch.support.level!=null?ch.support.level:'non déterminé';
+                return h('div',{key:i,style:{fontSize:11,color:C.text,lineHeight:1.6,borderLeft:'2px solid '+C.teal,paddingLeft:8}},
+                  h('div',{style:{fontWeight:700}},ch.relation.explains+' ('+fmt(ch.evidence.explains.state)+') → '+ch.relation.explained+' ('+fmt(ch.evidence.explained.state)+')'),
+                  h('div',{style:{color:C.muted,fontFamily:'monospace',fontSize:10.5}},ch.dissociation.dissociationId+' · source='+fmt(ch.explainedDeficitSource)+' · support='+supportTxtCv),
+                  h('div',{style:{marginTop:4}},h('span',{style:{fontWeight:600}},'Technique — '),ch.wording.technique),
+                  h('div',{style:{color:C.muted,fontStyle:'italic',marginTop:2}},h('span',{style:{fontWeight:600}},'Kiné — '),ch.wording.kine),
+                  h('div',{style:{color:C.muted,marginTop:2}},h('span',{style:{fontWeight:600}},'Patient — '),ch.wording.patient)
+                );
+              }))
         ),
         h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Unipodal Functional Deficit'),
