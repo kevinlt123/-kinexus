@@ -6782,29 +6782,98 @@ var CSM_V2_ABS_SYM_PATTERNS={
   'deficient|deficient':'ABSOLUTE_DEFICIENT_ASYMMETRY_DEFICIENT'
 };
 
-// Dissociation fonctionnelle Force préservée + qualité cible déficitaire — réutilise EXCLUSIVEMENT
-// les relations {explains:'Force',...} déjà présentes dans HYP_QUALITY_RELATIONS (Puissance/
-// Explosivité/Endurance/Stabilisation — 4 relations, vérifié par filtre direct sur le tableau
-// existant, jamais une liste recopiée à la main). Force→Réactivité et Force→Absorption ne sont pas
-// dans HYP_QUALITY_RELATIONS aujourd'hui : elles n'apparaissent donc jamais ici, sans code
-// d'exclusion spécifique — simple conséquence de l'absence dans la source. Contrairement à
+// Dissociation fonctionnelle [qualité qui explique] préservée + [qualité expliquée] déficitaire —
+// réutilise TOUTES les relations de HYP_QUALITY_RELATIONS (8 relations, aucune ajoutée, aucune
+// modifiée), pas seulement celles où Force est "explains" (extension validée, mission CSM V2.1,
+// arbitrage C — Puissance→Explosivité, Explosivité→Puissance, Mobilité→Stabilisation,
+// Réactivité→Endurance s'ajoutent aux 4 relations Force déjà couvertes). Contrairement à
 // computeHypClinicalSynthesisRelationships (CSM V1, qui exige les DEUX qualités objectivées),
-// cette dissociation autorise explicitement préservé+déficitaire (mission §7, IMPORTANT).
+// cette dissociation autorise explicitement préservé(normal)+déficitaire — JAMAIS l'inverse
+// (deficient+normal ne produit aucune dissociation, arbitrage C, IMPORTANT). dissociationId
+// construit dynamiquement à partir de rel.explains.toUpperCase() : identique bit à bit à
+// 'FORCE_PRESERVED_FUNCTIONAL_QUALITY_DEFICIENT' pour les 4 relations Force (aucune régression),
+// et cohérent pour les 4 nouvelles (PUISSANCE_/EXPLOSIVITÉ_/MOBILITÉ_/
+// RÉACTIVITÉ_PRESERVED_FUNCTIONAL_QUALITY_DEFICIENT). Force→Réactivité et Force→Absorption
+// n'existent toujours pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces
+// paires, simple conséquence de leur absence dans la source, jamais une exclusion codée en dur.
 function computeCsmV2Dissociations(qualities){
   var out=[];
-  HYP_QUALITY_RELATIONS.filter(function(r){return r.explains==='Force';}).forEach(function(rel){
+  HYP_QUALITY_RELATIONS.forEach(function(rel){
     var explainsHyp=qualities[rel.explains]&&qualities[rel.explains].hyp;
     var explainedHyp=qualities[rel.explained]&&qualities[rel.explained].hyp;
     var explainsAxis=csmV2AbsoluteAxis(explainsHyp);
     var explainedAxis=csmV2AbsoluteAxis(explainedHyp);
     if(explainsAxis==='normal'&&explainedAxis==='deficient'){
       out.push({
-        dissociationId:'FORCE_PRESERVED_FUNCTIONAL_QUALITY_DEFICIENT',
+        dissociationId:rel.explains.toUpperCase()+'_PRESERVED_FUNCTIONAL_QUALITY_DEFICIENT',
         explains:rel.explains,explained:rel.explained,via:rel.via,
         explainsEvidence:{status:explainsHyp?explainsHyp.status:null,state:explainsHyp?explainsHyp.state:null},
         explainedEvidence:{status:explainedHyp?explainedHyp.status:null,state:explainedHyp?explainedHyp.state:null}
       });
     }
+  });
+  return out;
+}
+
+// UNIPODAL_FUNCTIONAL_DEFICIT — Option 2 (mission CSM V2.1, arbitrage A) : convergence
+// INTRA-qualité uniquement, jamais inter-qualités, jamais un simple comptage naïf des entrées
+// symmetryEvidence. "Mécanisme indépendant" est restreint à `diagnosticEvidence` (jamais
+// `confirmativeEvidence`/`explanatoryEvidence` — jamais une deuxième preuve indépendante, contrat
+// HYP V1 commun déjà établi partout ailleurs) plus `segments[]` (Force, Niveau 2). Une clé de
+// premier niveau de `diagnosticEvidence` qui expose plusieurs KPI imbriqués (ex.
+// diagnosticEvidence.sls.kpis.{ttf,cop_path,...}, 7 KPI, vérifié empiriquement qu'un LSI déficitaire
+// peut y apparaître même absolument non_determinable) compte pour UN SEUL mécanisme — exactement
+// la structure DÉJÀ VALIDÉE par chaque moteur HYP pour sa propre convergence absolue
+// (HYP_END_DIAG_KEYS, proofKeys Stabilisation qui traite 'sls' comme un seul des 6 mécanismes,
+// etc.) — jamais réinventée ici, simplement relue via les clés de premier niveau déjà présentes.
+// `segments[]` est groupé par `segments[i].testKey` (champ déjà produit par HYP-FOR-01, aucun
+// parsing de `variableId`, aucune table variableId→test créée — conforme à l'arbitrage D).
+// Réutilise csmV2CollectSymmetryEvidence tel quel (jamais modifié), uniquement pour parcourir le
+// sous-arbre d'une clé diagnostique ou d'un segment déjà identifié.
+function csmV2UnipodalDeficientMechanisms(hyp){
+  var byMechanism={};
+  if(hyp){
+    var diag=hyp.diagnosticEvidence||{};
+    Object.keys(diag).forEach(function(topKey){
+      var found=[];
+      csmV2CollectSymmetryEvidence(diag[topKey],topKey,0,found);
+      found.forEach(function(f){
+        if(f.symmetryEvidence&&f.symmetryEvidence.status==='deficient'){
+          var mech='diagnosticEvidence.'+topKey;
+          (byMechanism[mech]=byMechanism[mech]||[]).push({variable:'diagnosticEvidence.'+f.variable,symmetryEvidence:f.symmetryEvidence});
+        }
+      });
+    });
+    if(Array.isArray(hyp.segments)){
+      hyp.segments.forEach(function(seg,i){
+        if(!seg||!seg.testKey)return;
+        var found=[];
+        csmV2CollectSymmetryEvidence(seg,'segments['+i+']',0,found);
+        found.forEach(function(f){
+          if(f.symmetryEvidence&&f.symmetryEvidence.status==='deficient'){
+            var mech='segment:'+seg.testKey;
+            (byMechanism[mech]=byMechanism[mech]||[]).push({variable:f.variable,symmetryEvidence:f.symmetryEvidence});
+          }
+        });
+      });
+    }
+  }
+  return Object.keys(byMechanism).map(function(mech){return{mechanism:mech,entries:byMechanism[mech]};});
+}
+var UNIPODAL_MIN_INDEPENDENT_MECHANISMS=2; // Option 2, arbitrage Kevin (mission CSM V2.1) — jamais 1 seule variable, jamais un seuil inter-qualités.
+function computeCsmV2UnipodalFunctionalDeficit(qualities){
+  var out={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var mechanisms=csmV2UnipodalDeficientMechanisms(qualities[q]&&qualities[q].hyp);
+    var converged=mechanisms.length>=UNIPODAL_MIN_INDEPENDENT_MECHANISMS;
+    out[q]={
+      state:converged?'convergence_observee':'non_determinable',
+      mechanismsCount:mechanisms.length,
+      mechanisms:mechanisms,
+      reason:converged
+        ?mechanisms.length+" mécanismes indépendants déficitaires objectivés au sein de "+q+" ("+mechanisms.map(function(m){return m.mechanism;}).join(', ')+") — seuil de convergence intra-qualité atteint (mission CSM V2.1, arbitrage A)."
+        :"Moins de "+UNIPODAL_MIN_INDEPENDENT_MECHANISMS+" mécanismes indépendants déficitaires objectivés au sein de "+q+" ("+mechanisms.length+" trouvé(s)) — seuil de convergence intra-qualité non atteint (mission CSM V2.1, arbitrage A). Jamais interprété comme normal."
+    };
   });
   return out;
 }
@@ -6857,16 +6926,14 @@ function computeCsmV2(functionScores){
     // clinique explicite validée par le praticien, (4) un libellé exact validé — aucune de ces
     // conditions n'est aujourd'hui codée. Ne jamais peupler ce tableau sans validation explicite.
     clinicalHypotheses:[],
-    // Mission §9 : aucun seuil de convergence inter-variable/inter-qualité n'a été validé — ce
-    // pattern reste explicitement non généré, jamais déduit d'un simple LSI déficitaire isolé.
-    unipodalFunctionalDeficit:{
-      state:'non_determinable',
-      reason:"Aucun seuil de convergence inter-variable/inter-qualité validé par le praticien (mission CSM V2 §9) — non généré, quel que soit le nombre de symmetryEvidence.status='deficient' observés."
-    },
+    // Mission CSM V2.1, arbitrage A : convergence intra-qualité (Option 2), ≥2 mécanismes
+    // indépendants déficitaires au sein de la MÊME qualité — jamais inter-qualités, jamais un
+    // comptage naïf des entrées symmetryEvidence (cf. computeCsmV2UnipodalFunctionalDeficit).
+    unipodalFunctionalDeficit:computeCsmV2UnipodalFunctionalDeficit(qualities),
     limitations:[
+      "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
       "L'état HYP 'suspectee' est traité comme non_determinable pour l'axe Absolute (composition de patterns uniquement) — ni assez confirmé pour 'normal', ni pour 'deficient' au sens objectivé de CSM V1.",
-      "UNIPODAL_FUNCTIONAL_DEFICIT n'est jamais généré à ce stade — voir unipodalFunctionalDeficit.reason.",
       "clinicalHypotheses reste toujours vide ([]) — aucune règle de génération automatique d'hypothèse clinique n'a été validée à ce stade (mission spécification CSM V2 §12)."
     ]
   };
@@ -10638,9 +10705,14 @@ function ExpertView(props){
             :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csmV2.clinicalHypotheses.map(function(ch,i){return h('div',{key:i,style:{fontSize:10.5,fontFamily:'monospace',color:C.text,lineHeight:1.7,borderLeft:'2px solid '+C.teal,paddingLeft:8}},JSON.stringify(ch));}))
         ),
         h(Card,{pad:14,style:{background:C.surface}},
-          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:6}},'Unipodal Functional Deficit'),
-          h('div',{style:{fontSize:12,color:C.muted,fontFamily:'monospace'}},'state='+fmt(csmV2.unipodalFunctionalDeficit.state)),
-          h('div',{style:{fontSize:11,color:C.muted,fontStyle:'italic',marginTop:4}},csmV2.unipodalFunctionalDeficit.reason)
+          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Unipodal Functional Deficit'),
+          h('div',{style:{display:'flex',flexDirection:'column',gap:6}},qKeys.map(function(q){
+            var u=(csmV2.unipodalFunctionalDeficit&&csmV2.unipodalFunctionalDeficit[q])||{};
+            return h('div',{key:q,style:{fontSize:10.5,fontFamily:'monospace',color:C.text,lineHeight:1.7,borderLeft:'2px solid '+C.border,paddingLeft:8}},
+              h('div',{style:{fontWeight:700}},q+' — state='+fmt(u.state)+' · mechanismsCount='+fmt(u.mechanismsCount)),
+              h('div',{style:{color:C.muted,fontStyle:'italic'}},u.reason)
+            );
+          }))
         ),
         csmV2.limitations&&csmV2.limitations.length>0&&h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limitations'),
