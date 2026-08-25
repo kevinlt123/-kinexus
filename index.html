@@ -8067,7 +8067,60 @@ function csmV2ReportTransversaleProfiles(clinicalProfile,mobilityYbt,symmetryEvi
   if(cmjEntry&&cmjEntry.status!=='deficient'&&sljEntries.some(function(k){return k.status==='deficient';})){
     profiles.push({id:'F',sentence:"La performance bilatérale (CMJ) apparaît relativement correcte alors que les tests unilatéraux (Single Leg Jump) révèlent une asymétrie marquée — la performance bilatérale peut donc masquer une asymétrie unilatérale réelle."});
   }
+  // Mission P, point 2 — Profil G : propulsion relativement préservée + freinage nettement déficitaire
+  // ("propulsion > freinage"), symétrique au profil B (qui compare à la force maximale).
+  if(clinicalProfile['Puissance'].severity==='preserved'&&clinicalProfile['Absorption'].severity==='majeur'){
+    profiles.push({id:'G',sentence:"La propulsion apparaît relativement préservée, alors que la capacité de freinage/absorption est nettement plus déficitaire — profil dissocié entre la propulsion et le freinage."});
+  }
   return profiles;
+}
+// Mission P, point 4 — synthèse transversale "de tête" : combine l'opposition force/qualités
+// rapides déjà calculée (maxForceVsRapidOpposition, mission J/K1) avec la détection CER (profil C)
+// et le caractère unipodal (profil E) en UN SEUL paragraphe de synthèse, généré UNIQUEMENT si
+// l'opposition est déjà supportée par les données (jamais un texte par défaut). Ne recalcule rien :
+// relit uniquement des champs déjà déterminés ailleurs.
+function csmV2ReportGrandeSynthese(clinicalProfile,synthesis){
+  var opposition=synthesis.maxForceVsRapidOpposition;
+  if(!opposition||!opposition.supported)return null;
+  var rapidLabels=[];
+  if(clinicalProfile['Force'].rapidForceDeficit&&clinicalProfile['Force'].rapidForceDeficit.supported)rapidLabels.push('une production rapide de force');
+  if(clinicalProfile['Absorption'].severity==='majeur'||clinicalProfile['Absorption'].severity==='modere')rapidLabels.push('un freinage excentrique');
+  var reaDef=clinicalProfile['Réactivité'].severity==='majeur'||clinicalProfile['Réactivité'].severity==='modere';
+  var absDef=clinicalProfile['Absorption'].severity==='majeur'||clinicalProfile['Absorption'].severity==='modere';
+  if(reaDef&&absDef)rapidLabels.push('une restitution rapide du cycle étirement-raccourcissement');
+  if(!rapidLabels.length)return null;
+  var parts=["La force maximale apparaît relativement préservée.",
+    "Les déficits deviennent en revanche nettement plus importants lorsque la tâche impose "+csmV2JoinList(rapidLabels)+"."];
+  var unipodalQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].keyFindings&&clinicalProfile[q].keyFindings.length>0;});
+  if(unipodalQualities.length>=3)parts.push("Ce profil est particulièrement marqué lors des tâches unipodales.");
+  return parts.join(' ');
+}
+// Mission P, point 3 — hiérarchisation en 4 paliers (majeur/secondaire/à surveiller/préservées),
+// dérivée EXCLUSIVEMENT de champs déjà calculés par clinicalProfile — jamais un nouveau seuil :
+// 'majeur' reprend severity==='majeur' tel quel (LOCKED depuis Étape J) ; 'à surveiller' isole le
+// cas déjà distinct state==='suspectee' (évidence absolue partielle, jamais confirmée) OU un
+// déficit 'modere' sans la moindre preuve directe (keyFindings/deficitSources vides — déficit porté
+// uniquement par un statut absolu 'orange' isolé) ; 'secondaire' couvre le reste des 'modere' avec
+// au moins une preuve réelle. Une qualité non_determinable n'est classée dans AUCUN palier (jamais
+// assimilée à un déficit ni à une préservation).
+function csmV2DeficitTier(pq){
+  if(pq.severity==='preserved')return'preservee';
+  if(pq.state==='non_determinable')return null;
+  if(pq.severity==='majeur')return'majeur';
+  if(pq.state==='suspectee')return'a_surveiller';
+  if((pq.keyFindings&&pq.keyFindings.length>0)||(pq.deficitSources&&pq.deficitSources.length>0))return'secondaire';
+  return'a_surveiller';
+}
+function csmV2ReportHierarchy(clinicalProfile){
+  var buckets={majeur:[],secondaire:[],a_surveiller:[],preservees:[]};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var pq=clinicalProfile[q];
+    var tier=csmV2DeficitTier(pq);
+    if(!tier)return;
+    var key=tier==='preservee'?'preservees':tier;
+    buckets[key].push({quality:q,state:pq.state,keyFindings:pq.keyFindings,rapidForceDeficit:pq.rapidForceDeficit||null});
+  });
+  return buckets;
 }
 // §12 — Capacités préservées.
 function csmV2ReportPreservedSection(synthesis,symmetryEvidence){
@@ -8079,18 +8132,34 @@ function csmV2ReportPreservedSection(synthesis,symmetryEvidence){
   });
   return{id:'preservees',title:'Capacités préservées',text:text,evidence:evidence};
 }
-// §13 — Conclusion clinique.
-function csmV2ReportConclusionSection(synthesis){
+// §5 (Mission P) — noms de capacité au génitif ("de X"), réutilisés UNIQUEMENT pour la conclusion et
+// jamais comme un nouveau libellé de qualité (HYP_CSM_QUALITIES/csmV2QualityDisplayLabel restent la
+// seule référence structurelle). Purement lexical — aucune donnée nouvelle.
+var CSM_V2_CAPACITY_NOUN={Force:'force maximale',Puissance:'propulsion',Absorption:'freinage excentrique',Réactivité:'réactivité',Stabilisation:'contrôle unipodal',Mobilité:'mobilité',Explosivité:'vitesse de force',Endurance:'endurance musculaire'};
+// §13 — Conclusion clinique. Mission P, point 5 : nomme explicitement TOUTES les capacités
+// prédominantes en déficit (majeur+secondaire, cf. csmV2DeficitTier), pas seulement la première
+// priorité — reste conditionné à des données réelles (jamais de liste par défaut).
+function csmV2ReportConclusionSection(synthesis,clinicalProfile){
   if(!synthesis.priorityDeficits.length&&!synthesis.preservedQualities.length)return{id:'conclusion',title:'Conclusion clinique',text:null,evidence:[]};
   var parts=[];
-  if(synthesis.preservedQualities.length&&synthesis.maxForceVsRapidOpposition.forcePreserved){
-    parts.push("Le bilan objective une récupération relativement satisfaisante de la force maximale,");
-  }else if(synthesis.preservedQualities.length){
-    parts.push("Le bilan objective une préservation partielle de certaines capacités ("+csmV2JoinList(synthesis.preservedQualities.map(csmV2QualityDisplayLabel))+"),");
+  // Mission P §5 : la conclusion nomme les déficits "prédominants" — restreint au palier 'majeur'
+  // (cf. csmV2DeficitTier) + la production rapide de force si distinctement objectivée, jamais
+  // l'intégralité des 8 qualités (le détail exhaustif reste dans "Principaux déficits"/hierarchy).
+  var deficitNames=[];
+  if(clinicalProfile['Force'].rapidForceDeficit&&clinicalProfile['Force'].rapidForceDeficit.supported)deficitNames.push('production rapide de force');
+  synthesis.priorityDeficits.forEach(function(p){
+    if(p.severity==='majeur'){
+      var noun=CSM_V2_CAPACITY_NOUN[p.quality]||p.quality.toLowerCase();
+      if(deficitNames.indexOf(noun)===-1)deficitNames.push(noun);
+    }
+  });
+  if(deficitNames.length){
+    parts.push("Le bilan objective un déficit fonctionnel résiduel prédominant sur les capacités de "+csmV2JoinList(deficitNames)+".");
   }
-  if(synthesis.priorityDeficits.length){
-    var top=synthesis.priorityDeficits[0];
-    parts.push("associée à des déficits persistants principalement observés au niveau de "+csmV2QualityDisplayLabel(top.quality)+(synthesis.priorityDeficits.length>1?" et des qualités apparentées":"")+".");
+  if(synthesis.preservedQualities.length&&synthesis.maxForceVsRapidOpposition.forcePreserved){
+    parts.push((parts.length?"Ceci malgré une":"Le bilan objective une")+" récupération relativement satisfaisante de la force maximale.");
+  }else if(synthesis.preservedQualities.length){
+    parts.push((parts.length?"Certaines capacités restent toutefois préservées :":"Le bilan objective une préservation partielle de certaines capacités :")+" "+csmV2JoinList(synthesis.preservedQualities.map(csmV2QualityDisplayLabel))+".");
   }
   if(synthesis.maxForceVsRapidOpposition.supported){
     parts.push("Ces déficits deviennent plus marqués lorsque les tâches imposent une gestion rapide, excentrique, réactive ou unipodale de la charge.");
@@ -8137,10 +8206,18 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
   sections.push(csmV2ReportReactiviteSection(clinicalProfile,symmetryEvidence));
   sections.push(csmV2ReportStabilisationSection(clinicalProfile));
   var profiles=csmV2ReportTransversaleProfiles(clinicalProfile,synthesis.mobilityYbtAssociation,symmetryEvidence);
-  sections.push({id:'transversale',title:'Analyse transversale',text:profiles.length?profiles.map(function(p){return p.sentence;}).join(' '):null,profiles:profiles,evidence:[]});
-  sections.push({id:'principaux_deficits',title:'Principaux déficits',items:synthesis.priorityDeficits.slice(0,5),evidence:[]});
+  var grandeSynthese=csmV2ReportGrandeSynthese(clinicalProfile,synthesis);
+  // Quand la synthèse "de tête" existe, A/B/C/E deviennent redondants (ils répètent RFD/freinage/
+  // CER/caractère unipodal déjà couverts par grandeSynthese) — exclus du texte joint pour rester
+  // concis (mission P §4), mais TOUJOURS conservés dans `profiles` (traçabilité Niveau 2 intacte,
+  // mission P §7). D (association Mobilité/Y-Balance), F (masquage bilatéral) et G (propulsion vs
+  // freinage) apportent une information distincte, toujours incluses.
+  var redundantIds=grandeSynthese?['A','B','C','E']:[];
+  var transversaleParts=(grandeSynthese?[grandeSynthese]:[]).concat(profiles.filter(function(p){return redundantIds.indexOf(p.id)===-1;}).map(function(p){return p.sentence;}));
+  sections.push({id:'transversale',title:'Analyse transversale',text:transversaleParts.length?transversaleParts.join(' '):null,summary:grandeSynthese,profiles:profiles,evidence:[]});
+  sections.push({id:'principaux_deficits',title:'Principaux déficits',items:synthesis.priorityDeficits.slice(0,5),hierarchy:csmV2ReportHierarchy(clinicalProfile),evidence:[]});
   sections.push(csmV2ReportPreservedSection(synthesis,symmetryEvidence));
-  sections.push(csmV2ReportConclusionSection(synthesis));
+  sections.push(csmV2ReportConclusionSection(synthesis,clinicalProfile));
   sections.push(csmV2ReportAxesSection(synthesis,clinicalProfile));
   sections.push({id:'reevaluation',title:'Réévaluation',text:synthesis.reassessmentRecommendation,evidence:[]});
   var allText=sections.map(function(s){return s.text||'';}).join(' ');
@@ -9966,6 +10043,17 @@ function buildExpertReport(athlete,bilan,res){
             html+='<p style="margin:5px 0 0;font-size:8.5pt;color:#333;font-weight:700">'+p.rank+'. '+csmV2QualityDisplayLabel(p.quality)+' — déficit '+p.severity+'</p>';
             (p.keyFindings||[]).slice(0,3).forEach(function(kf){html+='<p style="margin:0 0 0 14px;font-size:8pt;color:#555">'+csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' — LSI '+kf.lsi+'%':'')+'</p>';});
           });
+          // Mission P §3 — hiérarchisation en paliers (majeur/secondaire/à surveiller), dérivée de
+          // csmV2ReportHierarchy (déjà calculée) — jamais un simple classement rouge/orange plat.
+          if(s.hierarchy){
+            var tierLabel={majeur:'Déficit majeur',secondaire:'Déficit secondaire',a_surveiller:'À surveiller'};
+            ['majeur','secondaire','a_surveiller'].forEach(function(tier){
+              var entries=s.hierarchy[tier];
+              if(!entries||!entries.length)return;
+              html+='<p style="margin:6px 0 1px;font-size:8pt;color:#5B7A8C;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">'+tierLabel[tier]+'</p>';
+              html+='<p style="margin:0 0 2px;font-size:8.5pt;color:#333">'+entries.map(function(e){return csmV2QualityDisplayLabel(e.quality);}).join(', ')+'</p>';
+            });
+          }
           return;
         }
         if(s.id==='axes'){
@@ -12062,7 +12150,17 @@ function ExpertView(props){
                   s.items.map(function(p){return h('div',{key:p.quality,style:{fontSize:11.5,color:C.text,marginBottom:2}},
                     h('div',{style:{fontWeight:700}},p.rank+'. '+fmt(csmV2QualityDisplayLabel(p.quality))+' — déficit '+p.severity),
                     h('div',{style:{paddingLeft:12,color:C.muted,fontSize:10.5}},(p.keyFindings||[]).slice(0,3).map(function(kf){return fmt(csmV2FriendlyKpiLabel(kf.variable))+(kf.lsi!=null?' — LSI '+kf.lsi+'%':'');}).join(' · '))
-                  );})
+                  );}),
+                  // Mission P §3 — paliers (majeur/secondaire/à surveiller).
+                  s.hierarchy?['majeur','secondaire','a_surveiller'].map(function(tier){
+                    var entries=s.hierarchy[tier];
+                    if(!entries||!entries.length)return null;
+                    var tierLabel={majeur:'Déficit majeur',secondaire:'Déficit secondaire',a_surveiller:'À surveiller'}[tier];
+                    return h('div',{key:tier,style:{marginTop:4}},
+                      h('div',{style:{color:C.muted,fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:'0.04em'}},tierLabel),
+                      h('div',{style:{fontSize:11,color:C.text}},entries.map(function(e){return fmt(csmV2QualityDisplayLabel(e.quality));}).join(', '))
+                    );
+                  }):null
                 );
               }
               if(s.id==='axes'){
