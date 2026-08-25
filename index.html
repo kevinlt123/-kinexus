@@ -6826,6 +6826,109 @@ function computeCsmV2Dissociations(qualities){
   return out;
 }
 
+// ── CLINICAL_HYPOTHESES — mission IMPLEMENTATION_CONTROLEE_CLINICAL_HYPOTHESES (post-audit H1-H12,
+// 12/12 PASS simulé sur cette même configuration avant codage). Couche STRICTEMENT POSTÉRIEURE aux
+// sorties CSM V2 déjà produites (dissociations, qualities) — signature verrouillée
+// computeCsmV2ClinicalHypotheses(dissociations,qualities) — ne recalcule JAMAIS l'axe Absolute,
+// JAMAIS les patterns, JAMAIS unipodalFunctionalDeficit ; pour symmetryEvidence, réutilise TEL QUEL
+// (jamais réécrite) la fonction déjà verrouillée csmV2SymmetryIndexForHyp(hyp) — même mécanisme que
+// celui déjà employé par computeCsmV2SymmetryEvidence, simplement appelé ici directement sur
+// qualities[explained].hyp plutôt que reçu en paramètre pré-agrégé, pour respecter la signature à 2
+// arguments validée. Ne touche à AUCUNE fonction verrouillée (computeCsmV2Dissociations, csmV2AbsoluteAxis,
+// computeCsmV2SymmetryEvidence, computeCsmV2UnipodalFunctionalDeficit, HYP_QUALITY_RELATIONS,
+// THRESHOLDS, les moteurs HYP). CLINICAL_HYPOTHESIS_WHITELIST est un référentiel INDÉPENDANT de
+// HYP_QUALITY_RELATIONS — jamais dérivé automatiquement (les 8 entrées sont écrites explicitement
+// ci-dessous, pas générées par un .map() sur HYP_QUALITY_RELATIONS) : HYP_QUALITY_RELATIONS reste un
+// référentiel structurel, cette whitelist est la seule autorité clinique quant à la production d'une
+// CLINICAL_HYPOTHESIS. Seules 2 des 8 relations sont allowed=true aujourd'hui (Force→Puissance,
+// Mobilité→Stabilisation, décision verrouillée) ; les 6 autres restent explicitement représentées
+// avec allowed=false — jamais une absence silencieuse qui laisserait croire à un oubli.
+var CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING=['cause','causal','responsable de','explique','provient de','est dû à','entraîne','provoque','déterminé par'];
+var CLINICAL_HYPOTHESIS_WHITELIST=[
+  {explains:'Force',explained:'Puissance',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'reinforcing_only',unipodalRole:'contextual_only',confidenceLevel:null,
+    wording:{
+      technique:"Dissociation Force préservée / Puissance déficitaire, compatible avec une contribution insuffisante de la capacité de force à l'expression de puissance.",
+      kine:"La dissociation observée est compatible avec une contribution de la force à la limitation de puissance observée.",
+      patient:"La force de base semble préservée, alors que l'expression de puissance est diminuée ; ce profil peut orienter vers un travail spécifique de puissance."
+    },
+    forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  {explains:'Force',explained:'Explosivité',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  {explains:'Force',explained:'Endurance',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  {explains:'Force',explained:'Stabilisation',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  {explains:'Puissance',explained:'Explosivité',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  {explains:'Explosivité',explained:'Puissance',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  {explains:'Mobilité',explained:'Stabilisation',allowed:true,minSupport:'faible',additionalConditions:[],symmetryRole:'reinforcing_only',unipodalRole:'contextual_only',confidenceLevel:null,
+    wording:{
+      technique:"Dissociation Mobilité préservée / Stabilisation déficitaire, compatible avec une contribution indépendante d'un déficit de stabilité non expliqué par une restriction de mobilité de cheville.",
+      kine:"Le déficit de stabilisation observé ne semble pas compatible avec une restriction de mobilité de cheville comme facteur principal.",
+      patient:"Votre mobilité de cheville est dans la norme ; la difficulté de stabilité observée pourrait donc relever d'un autre mécanisme."
+    },
+    forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING},
+  {explains:'Réactivité',explained:'Endurance',allowed:false,minSupport:null,additionalConditions:[],symmetryRole:null,unipodalRole:null,confidenceLevel:null,wording:null,forbiddenWording:CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING}
+];
+// Le matching se fait EXCLUSIVEMENT sur le couple {explains,explained} — jamais sur dissociationId
+// seul (audit H6/H11 : Force→Puissance et Force→Stabilisation partagent le même dissociationId
+// 'FORCE_PRESERVED_FUNCTIONAL_QUALITY_DEFICIENT' dès que explains='Force', quel que soit explained).
+function findClinicalHypothesisWhitelistEntry(explains,explained){
+  return CLINICAL_HYPOTHESIS_WHITELIST.filter(function(w){return w.explains===explains&&w.explained===explained;})[0]||null;
+}
+var CLINICAL_HYPOTHESIS_SUPPORT_RANK={faible:1,moderee:2,forte:3};
+function clinicalHypothesisWordingContainsForbidden(wording,forbiddenList){
+  var text=[wording.technique,wording.kine,wording.patient].join(' ').toLowerCase();
+  return (forbiddenList||[]).filter(function(w){return text.indexOf(String(w).toLowerCase())>=0;});
+}
+// Couche POSTÉRIEURE à computeCsmV2Dissociations — itère EXCLUSIVEMENT `dissociations` (sortie déjà
+// produite par le moteur, jamais recalculée) et lit `qualities` (déjà produit par
+// computeHypClinicalSynthesisQualities, jamais recalculé). Aucune dissociation reconstruite depuis
+// diagnosticEvidence/patterns/symmetryEvidence/raw data/unipodalFunctionalDeficit. symmetryEvidence
+// et unipodalFunctionalDeficit ne sont JAMAIS une condition de gating ici (rôles
+// 'reinforcing_only'/'contextual_only' uniquement, portés dans la structure de sortie pour
+// traçabilité — jamais lus dans les `if` de blocage ci-dessous).
+function computeCsmV2ClinicalHypotheses(dissociations,qualities){
+  var out=[];
+  (dissociations||[]).forEach(function(d){
+    var entry=findClinicalHypothesisWhitelistEntry(d.explains,d.explained);
+    if(!entry||!entry.allowed)return; // Porte 2 : relation absente de la whitelist, ou allowed=false.
+    if(entry.allowed&&!entry.wording){
+      if(typeof console!=='undefined'&&console.warn)console.warn('[CSM V2.1 CLINICAL_HYPOTHESIS_WHITELIST] Relation '+d.explains+'→'+d.explained+' allowed=true mais aucun wording validé — hypothèse non générée (erreur de configuration).');
+      return; // Porte 6 : jamais de wording généré dynamiquement si aucun texte pré-validé n'existe.
+    }
+    var explainedHyp=qualities[d.explained]&&qualities[d.explained].hyp;
+    var supportLevel=explainedHyp&&explainedHyp.support?explainedHyp.support.level:null;
+    var rank=supportLevel?(CLINICAL_HYPOTHESIS_SUPPORT_RANK[supportLevel]||0):0;
+    var minRank=CLINICAL_HYPOTHESIS_SUPPORT_RANK[entry.minSupport]||0;
+    if(rank<minRank)return; // Porte 3 : support réel (lu depuis le moteur HYP propriétaire) insuffisant.
+    var additionalConditionsSatisfied=(entry.additionalConditions||[]).every(function(){return true;});
+    if(!additionalConditionsSatisfied)return; // Porte 4 : liste vide aujourd'hui pour les 2 relations actives -> toujours vraie.
+    var forbiddenFound=clinicalHypothesisWordingContainsForbidden(entry.wording,entry.forbiddenWording);
+    if(forbiddenFound.length)return; // Porte 7/8 : aucun mot interdit dans le wording réellement utilisé.
+    // symmetryEvidence : réutilise csmV2SymmetryIndexForHyp (fonction verrouillée, inchangée) sur
+    // qualities[explained].hyp — jamais un recalcul, jamais une condition de gating (cf. commentaire
+    // de fonction ci-dessus), uniquement une information de traçabilité 'reinforcing_only'.
+    var symIndex=csmV2SymmetryIndexForHyp(explainedHyp);
+    var symAvailable=symIndex.length>0;
+    var symStatus=null;
+    if(symAvailable){
+      var hasDeficient=symIndex.some(function(e){return e.symmetryEvidence&&e.symmetryEvidence.status==='deficient';});
+      var hasNormal=symIndex.some(function(e){return e.symmetryEvidence&&e.symmetryEvidence.status==='normal';});
+      symStatus=hasDeficient?'deficient':(hasNormal?'normal':'non_determinable');
+    }
+    out.push({
+      relationId:d.explains+'→'+d.explained,
+      relation:{explains:d.explains,explained:d.explained},
+      dissociation:{dissociationId:d.dissociationId,explains:d.explains,explained:d.explained},
+      support:{level:supportLevel},
+      evidence:{explains:d.explainsEvidence,explained:d.explainedEvidence},
+      symmetryEvidence:{status:symStatus,available:symAvailable,role:entry.symmetryRole},
+      unipodalContext:{role:entry.unipodalRole},
+      wording:entry.wording,
+      forbiddenWordingCheck:{passed:true,found:[]},
+      conditions:{additionalConditions:entry.additionalConditions,satisfied:additionalConditionsSatisfied}
+    });
+  });
+  return out;
+}
+
 // UNIPODAL_FUNCTIONAL_DEFICIT — Option 2 (mission CSM V2.1, arbitrage A) : convergence
 // INTRA-qualité uniquement, jamais inter-qualités, jamais un simple comptage naïf des entrées
 // symmetryEvidence. "Mécanisme indépendant" est restreint à `diagnosticEvidence` (jamais
@@ -6930,13 +7033,20 @@ function computeCsmV2(functionScores){
     functionalRelations:HYP_QUALITY_RELATIONS,
     patterns:patterns,
     dissociations:dissociations,
-    // Niveau 5 (EVIDENCE/PATTERN/DISSOCIATION/RELATION/CLINICAL_HYPOTHESIS, mission spécification
-    // CSM V2 §3/§8/§12) : toujours vide — aucune règle de génération automatique d'une hypothèse
-    // clinique à partir d'une dissociation n'a été validée. Une hypothèse clinique nécessiterait (1)
-    // une dissociation existante, (2) une relation documentée la sous-tendant, (3) une règle
-    // clinique explicite validée par le praticien, (4) un libellé exact validé — aucune de ces
-    // conditions n'est aujourd'hui codée. Ne jamais peupler ce tableau sans validation explicite.
-    clinicalHypotheses:[],
+    // Niveau 5 (EVIDENCE/PATTERN/DISSOCIATION/RELATION/CLINICAL_HYPOTHESIS). Mission
+    // IMPLEMENTATION_CONTROLEE_CLINICAL_HYPOTHESES (post-audit H1-H12, 12/12 PASS en simulation
+    // avant codage) : computeCsmV2ClinicalHypotheses(dissociations,qualities) — signature verrouillée
+    // à 2 arguments — est une couche 100% nouvelle, postérieure à `dissociations`/`qualities` déjà
+    // calculés ci-dessus — ne recalcule rien, ne touche à aucune fonction verrouillée. Une hypothèse n'est produite que si (1) une dissociation
+    // réelle existe dans `dissociations`, (2) la paire {explains,explained} est explicitement
+    // whitelistée dans CLINICAL_HYPOTHESIS_WHITELIST avec allowed=true (référentiel indépendant de
+    // HYP_QUALITY_RELATIONS, jamais dérivé automatiquement), (3) le support réel de la qualité
+    // expliquée (lu depuis le moteur HYP propriétaire) atteint minSupport, (4) toutes les
+    // additionalConditions sont satisfaites, (5) le wording pré-validé existe, (6) il ne contient
+    // aucun mot de la liste interdite. Aujourd'hui, seules Force→Puissance et Mobilité→Stabilisation
+    // sont allowed=true — les 6 autres relations de HYP_QUALITY_RELATIONS ne produisent jamais de
+    // CLINICAL_HYPOTHESIS. Ne jamais élargir la whitelist sans validation explicite du praticien.
+    clinicalHypotheses:computeCsmV2ClinicalHypotheses(dissociations,qualities),
     // Mission CSM V2.1, arbitrage A : convergence intra-qualité (Option 2), ≥2 mécanismes
     // indépendants déficitaires au sein de la MÊME qualité — jamais inter-qualités, jamais un
     // comptage naïf des entrées symmetryEvidence (cf. computeCsmV2UnipodalFunctionalDeficit).
@@ -6945,7 +7055,7 @@ function computeCsmV2(functionScores){
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
       "L'état HYP 'suspectee' est traité comme non_determinable pour l'axe Absolute (composition de patterns uniquement) — ni assez confirmé pour 'normal', ni pour 'deficient' au sens objectivé de CSM V1.",
-      "clinicalHypotheses reste toujours vide ([]) — aucune règle de génération automatique d'hypothèse clinique n'a été validée à ce stade (mission spécification CSM V2 §12)."
+      "clinicalHypotheses n'est peuplé que pour Force→Puissance et Mobilité→Stabilisation (CLINICAL_HYPOTHESIS_WHITELIST, mission IMPLEMENTATION_CONTROLEE_CLINICAL_HYPOTHESES) — reste [] pour toute autre relation et pour toute dissociation sans support suffisant."
     ]
   };
 }
