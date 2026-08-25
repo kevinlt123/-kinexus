@@ -5552,14 +5552,25 @@ function computeHypReactivity01(testData,normPop,normAge,normSelections){
 // calcul dans index.html — exposés comme non calculés, jamais supprimés du raisonnement.
 function computeHypMobilityWblt(testData,pop,age){
   var data=(testData||{}).wblt;
-  if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'lsiSt_generic_v1'}};
+  if(!data||!data.active)return{status:'indisponible',lsi:null,rawD:null,rawG:null,category:null,sideStatus:{D:null,G:null},symmetryEvidence:{available:false,rawD:null,rawG:null,lsi:null,asymmetryPercent:null,status:'non_determinable',source:'wblt_symmetry_diffcm_1.5'}};
   var vD=bestVal(((data.D||{}).trials||{}).distance,testKpiDir('wblt','distance'));
   var vG=bestVal(((data.G||{}).trials||{}).distance,testKpiDir('wblt','distance'));
   var sD=vD!=null?applyThr('wblt_distance',vD,pop,age):null;
   var sG=vG!=null?applyThr('wblt_distance',vG,pop,age):null;
   var lsi=data.lsiAuto!=null?data.lsiAuto:autoLSI(vD,vG);
   var sides=[sD,sG].filter(Boolean);
-  var symmetryEvidence={available:(vD!=null&&vG!=null),rawD:vD,rawG:vG,lsi:lsi,asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',source:'lsiSt_generic_v1'};
+  // Règle de symétrie WBLT spécifique (décision clinique Kevin, mission CSM V2.1 "correction WBLT") :
+  // la SYMMETRY du WBLT est classée sur la différence inter-membre ABSOLUE en cm (jamais le ratio
+  // LSI générique) — une faible valeur absolue bilatérale et symétrique (ex. 6/6cm) n'est jamais une
+  // asymétrie, et une différence de 4cm reste déficitaire même si les deux valeurs absolues sont
+  // dans la norme (ex. 10/14cm). Seuil 1.5cm strictement local à cette fonction — jamais généralisé
+  // à un autre test, jamais un nouveau seuil `lsiSt`/`autoLSI` modifié (ces deux fonctions restent
+  // inchangées et continuent de servir toutes les autres qualités/variables). rawD/rawG/lsi/
+  // asymmetryPercent restent calculés exactement comme avant (aucune sortie supprimée, `lsi` reste
+  // disponible en lecture) — seul `status` change de mécanisme. `source` mis à jour car `lsiSt()`
+  // n'est plus le mécanisme réel derrière ce statut (laisser 'lsiSt_generic_v1' serait trompeur).
+  var wbltDiffCm=(vD!=null&&vG!=null)?Math.round(Math.abs(vD-vG)*100)/100:null;
+  var symmetryEvidence={available:(vD!=null&&vG!=null),rawD:vD,rawG:vG,lsi:lsi,asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,status:wbltDiffCm!=null?(wbltDiffCm<=1.5?'normal':'deficient'):'non_determinable',source:'wblt_symmetry_diffcm_1.5'};
   if(!sides.length)return{status:'indisponible',lsi:lsi,rawD:vD,rawG:vG,category:null,sideStatus:{D:sD,G:sG},symmetryEvidence:symmetryEvidence};
   var rank={rouge:0,orange:1,jaune:2,vert:3};
   var worst=sides.reduce(function(a,b){return rank[b]<rank[a]?b:a;});
