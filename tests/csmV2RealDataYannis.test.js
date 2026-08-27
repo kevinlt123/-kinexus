@@ -78,7 +78,10 @@ const REAL_DATA = {
   // ecc_peak_vel = "RSI-modified"/"Countermovement Depth"/"Eccentric Peak Velocity", réels,
   // catalogués (TESTS cmj kpis), déjà lus par explanatoryEvidence Absorption (capaciteExcentrique/
   // strategie) et Explosivité (biomecanique) — jusqu'ici jamais alimentés.
-  cmj: { active: true, trials: { peak_power: [46.1], ecc_decel_rfd_L: [3508], ecc_decel_rfd_R: [3508 * 0.46], rsi_mod: [0.34], depth: [-36.1], ecc_peak_vel: [-0.82] } },
+  // Mission X : height = "Jump Height (Imp-Mom) [cm]" = 30.0, réel, seuil THRESHOLDS.cmj_height
+  // universel (aucune population requise) — déjà lu par HYP-PUI-01 comme confirmative gelée
+  // (jamais une 2e preuve diagnostique, cf. limitations HYP-PUI-01), jusqu'ici jamais alimenté.
+  cmj: { active: true, trials: { peak_power: [46.1], ecc_decel_rfd_L: [3508], ecc_decel_rfd_R: [3508 * 0.46], rsi_mod: [0.34], depth: [-36.1], ecc_peak_vel: [-0.82], height: [30.0] } },
   // SLJ (Single Leg Jump) → slcmj — peak_power = "Peak Power / BM [W/kg]" D:26.6/G:29.6, réel,
   // lu par HYP-PUI-01 (computeHypPowerSlcmj) : aucun seuil propre (sideStatus reste null, cf.
   // limitations HYP-PUI-01) mais alimente le symmetryEvidence LSI générique déjà exploité par la
@@ -112,6 +115,16 @@ test('Profil global : 8 qualités présentes avec la sévérité attendue sur do
     assert.ok(csm.clinicalProfile[q], 'qualité manquante : ' + q);
     assert.strictEqual(String(csm.clinicalProfile[q].severity), expected[q], q + ' : sévérité attendue ' + expected[q] + ', obtenu ' + csm.clinicalProfile[q].severity);
   });
+});
+
+test('Mission X — cmj.height réel (30.0cm) alimente la confirmative HYP-PUI-01 (jaune, jamais 2e preuve diagnostique)', () => {
+  const res = computeMoteur(REAL_DATA, {}, null, 25, NORM_SEL);
+  const conf = res.functionScores['Puissance'].hypPui01.confirmativeEvidence.cmj_height;
+  assert.strictEqual(conf.raw, 30);
+  assert.strictEqual(conf.status, 'jaune');
+  assert.strictEqual(conf.countsAsDiagnostic, false);
+  // Puissance : évidence purement additive/traçabilité, la sévérité reste inchangée (modere).
+  assert.strictEqual(res.clinicalSynthesisV2.clinicalProfile['Puissance'].severity, 'modere');
 });
 
 test('Mission V — slcmj.peak_power réel débloque une classification réelle de Puissance (LSI 89.9%)', () => {
