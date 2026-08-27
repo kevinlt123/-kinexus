@@ -8192,6 +8192,192 @@ function csmV2ReportAxesSection(synthesis,clinicalProfile){
   });
   return{id:'axes',title:'Axes de progression',items:items};
 }
+// Mission Q, objectif 2 — Repères anatomiques. Mapping quality→zone donné explicitement par le
+// praticien (mission Q) ; chaque zone n'est retenue QUE si un KPI réellement mesuré, nommé par ce
+// test précis (wblt=cheville, soleus_iso/gastro_iso=mollet, etc.), est présent dans symmetryEvidence
+// pour cette qualité — jamais une localisation par défaut. Volontairement séparé de MM_SYSTEM_ORDER/
+// systemScores/BodyMap (modèle par-muscle isocinétique, distinct) pour ne pas mélanger deux modèles
+// cliniques différents : reste une lecture additive de symmetryEvidence/clinicalProfile déjà calculés.
+var CSM_V2_BODY_ZONE_RULES=[
+  {quality:'Mobilité',prefix:'wblt',zone:'Cheville'},
+  {quality:'Absorption',prefix:'slcmj',zone:'Chaîne MI (freinage)'},
+  {quality:'Absorption',prefix:'braking_rfd',zone:'Chaîne MI (freinage)'},
+  {quality:'Réactivité',prefix:'sldj',zone:'Pied / Cheville'},
+  {quality:'Réactivité',prefix:'dj_rsi',zone:'Pied / Cheville'},
+  {quality:'Stabilisation',prefix:'landing_uni',zone:'Cheville / Genou / Hanche'},
+  {quality:'Stabilisation',prefix:'sllt',zone:'Cheville / Genou / Hanche'}
+];
+// Force — groupes musculaires isolés (Soléaire/Gastrocnémien) : réutilise TEL QUEL le catalogue
+// segmentaire LOCKED HYP_FOR_SEGMENTS (CLI201/CLI202) pour le libellé du groupe — jamais un nouveau
+// nom inventé. La force isométrique brute de ces tests est stockée sous des clés génériques
+// segments[i].n (index HYP_FOR_SEGMENTS), pas sous un nom contenant "soleus_iso"/"gastro_iso" — seule
+// la RFD (productionRapideForce.<testKey>_rfd100/200) porte le nom du test en clair ; on vérifie donc
+// les deux, avec repli sur la RFD quand la force isométrique seule n'a pas été mesurée.
+var CSM_V2_FORCE_ZONE_TESTKEYS=['soleus_iso','gastro_iso'];
+function computeCsmV2BodyZones(clinicalProfile,symmetryEvidence){
+  var seen={},zones=[];
+  function addZone(quality,zone,entry){
+    var pq=clinicalProfile[quality];
+    if(!pq||pq.state==='non_determinable'||!entry)return;
+    var key=quality+'|'+zone;
+    if(seen[key])return;
+    seen[key]=true;
+    zones.push({quality:quality,zone:zone,severity:pq.severity,variable:entry.variable,status:entry.status});
+  }
+  CSM_V2_BODY_ZONE_RULES.forEach(function(rule){
+    addZone(rule.quality,rule.zone,csmV2FindEvidenceEntry(symmetryEvidence[rule.quality],rule.prefix));
+  });
+  CSM_V2_FORCE_ZONE_TESTKEYS.forEach(function(testKey){
+    var idx=HYP_FOR_SEGMENTS.map(function(d){return d.testKey;}).indexOf(testKey);
+    if(idx<0)return;
+    var entry=csmV2FindEvidenceEntry(symmetryEvidence['Force'],'segments['+idx+'].n')
+      ||csmV2FindEvidenceEntry(symmetryEvidence['Force'],testKey);
+    addZone('Force',HYP_FOR_SEGMENTS[idx].group,entry);
+  });
+  return zones;
+}
+// Mission Q, objectif 1 — rendu visuel hiérarchisé du compte rendu clinique (blocs par qualité, KPI,
+// LSI/D-G, preuves convergentes, conclusion immédiatement lisible). Ces fonctions ne recalculent
+// RIEN : elles reformattent uniquement des champs déjà présents sur clinicalReport.sections/
+// clinicalProfile/bodyZones. Une seule implémentation, réutilisée à l'identique par buildExpertReport
+// (PDF) et ExpertView via csmV2ClinicalReportBodyHtml (mission Q, "PDF = ExpertView, aucun recalcul
+// spécifique au renderer" — cf. mission P point 8).
+var CSM_V2_QUALITY_SECTION_IDS=['mobilite','force_maximale','production_rapide','propulsion','absorption','reactivite','stabilisation'];
+var CSM_V2_REPORT_SECTION_QUALITY={mobilite:'Mobilité',force_maximale:'Force',production_rapide:'Force',propulsion:'Puissance',absorption:'Absorption',reactivite:'Réactivité',stabilisation:'Stabilisation'};
+function csmV2SeverityColor(severity){
+  return severity==='majeur'?C.rouge:severity==='modere'?C.orange:severity==='preserved'?C.vert:'#94A3B8';
+}
+function csmV2ReportSectionSeverity(sectionId,clinicalProfile){
+  if(sectionId==='production_rapide'){
+    var rfd=clinicalProfile['Force'].rapidForceDeficit;
+    return rfd&&rfd.supported?rfd.severity:null;
+  }
+  var q=CSM_V2_REPORT_SECTION_QUALITY[sectionId];
+  return q?clinicalProfile[q].severity:null;
+}
+function csmV2BodyZoneChipsHtml(zones){
+  if(!zones||!zones.length)return'';
+  return '<div style="display:flex;flex-wrap:wrap;gap:5px">'+zones.map(function(z){
+    var col=csmV2SeverityColor(z.severity);
+    return '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;background:'+col+'1A;border:1px solid '+col+'55;font-size:7.5pt;font-weight:600;color:#132B3A">'
+      +'<span style="width:6px;height:6px;border-radius:50%;background:'+col+';display:inline-block"></span>📍 '+z.zone+'</span>';
+  }).join('')+'</div>';
+}
+function csmV2ReportEvidenceRowsHtml(evidence){
+  if(!evidence||!evidence.length)return'';
+  return evidence.map(function(e){
+    var lab=e.label||csmV2FriendlyKpiLabel(e.variable);
+    var dg=(e.left!=null||e.right!=null)?' — D='+csmV2SafeValue(e.left)+', G='+csmV2SafeValue(e.right):'';
+    return '<div style="margin:3px 0"><div style="font-size:8pt;color:#555">'+lab+dg+'</div>'+(e.lsi!=null?csmV2LsiBarHtml(e.lsi,csmV2KpiStatusColor(e.status)):'')+'</div>';
+  }).join('');
+}
+function csmV2ReportSectionCardHtml(s,clinicalProfile,bodyZones){
+  var severity=csmV2ReportSectionSeverity(s.id,clinicalProfile);
+  var col=csmV2SeverityColor(severity);
+  var zoneQuality=s.id==='production_rapide'?null:CSM_V2_REPORT_SECTION_QUALITY[s.id];
+  var zones=(bodyZones||[]).filter(function(z){return z.quality===zoneQuality;});
+  return '<div style="border:1px solid '+col+'40;background:'+col+'0D;border-left:4px solid '+col+';border-radius:8px;padding:10px 12px;margin:8px 0">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'
+    +'<div style="font-size:9.5pt;font-weight:700;color:#132B3A">'+s.title+'</div>'
+    +(zones.length?csmV2BodyZoneChipsHtml(zones):'')
+    +'</div>'
+    +'<p style="margin:4px 0 4px;font-size:9pt;color:#333;line-height:1.5">'+s.text+'</p>'
+    +csmV2ReportEvidenceRowsHtml(s.evidence)
+    +'</div>';
+}
+function csmV2ReportConclusionCalloutHtml(s){
+  if(!s||!s.text)return'';
+  return '<div style="border:2px solid '+C.petrol+';background:'+C.petrol+'0D;border-radius:10px;padding:12px 14px;margin:10px 0">'
+    +'<div style="font-size:8pt;font-weight:700;color:'+C.petrol+';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">'+s.title+'</div>'
+    +'<p style="margin:0;font-size:10.5pt;color:'+C.text+';line-height:1.6;font-weight:600">'+s.text+'</p>'
+    +'</div>';
+}
+function csmV2ReportPreservedCardHtml(s){
+  if(!s||!s.text)return'';
+  return '<div style="border-left:4px solid '+C.vert+';background:'+C.vert+'0D;border-radius:8px;padding:8px 12px;margin:8px 0">'
+    +'<div style="font-size:8pt;font-weight:700;color:'+C.vert+';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+s.title+'</div>'
+    +'<p style="margin:0;font-size:9pt;color:#333">'+s.text+'</p>'
+    +'</div>';
+}
+function csmV2ReportTransversaleHtml(s){
+  if(!s||(!s.text&&!s.summary))return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">'+s.title+'</div>';
+  if(s.summary)out+='<p style="margin:0 0 6px;font-size:9.5pt;color:'+C.text+';font-weight:600;line-height:1.55">'+s.summary+'</p>';
+  var rest=(s.profiles||[]).filter(function(p){return s.summary?['A','B','C','E'].indexOf(p.id)===-1:true;});
+  if(rest.length)out+='<ul style="margin:0;padding-left:16px">'+rest.map(function(p){return '<li style="font-size:8.5pt;color:#333;margin:2px 0">'+p.sentence+'</li>';}).join('')+'</ul>';
+  out+='</div>';
+  return out;
+}
+function csmV2ReportHierarchyHtml(s){
+  if(!s)return'';
+  var tierMeta={majeur:{label:'Déficit majeur',color:C.rouge},secondaire:{label:'Déficit secondaire',color:C.orange},a_surveiller:{label:'À surveiller',color:'#94A3B8'}};
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">'+s.title+'</div>';
+  var any=false;
+  ['majeur','secondaire','a_surveiller'].forEach(function(tier){
+    var entries=(s.hierarchy||{})[tier];
+    if(!entries||!entries.length)return;
+    any=true;
+    var meta=tierMeta[tier];
+    out+='<div style="margin:6px 0 2px"><span style="display:inline-block;padding:2px 8px;border-radius:12px;background:'+meta.color+'1A;color:'+meta.color+';font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">'+meta.label+'</span></div>';
+    entries.forEach(function(e){
+      var kf=(e.keyFindings&&e.keyFindings[0])||null;
+      out+='<div style="margin:0 0 3px 4px;font-size:8.5pt;color:#333"><strong>'+csmV2QualityDisplayLabel(e.quality)+'</strong>'+(kf?' — '+csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' (LSI '+kf.lsi+'%)':''):'')+'</div>';
+    });
+  });
+  if(!any)out+='<p style="margin:0;font-size:8.5pt;color:#888">Aucun déficit prioritaire identifié pour ce bilan.</p>';
+  out+='</div>';
+  return out;
+}
+function csmV2ReportAxesHtml(s){
+  if(!s||!s.items||!s.items.length)return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">'+s.title+'</div>';
+  s.items.forEach(function(it){
+    out+='<div style="margin:6px 0 2px;font-size:8.5pt;color:#333;font-weight:700">Priorité '+it.rank+' — '+it.axis+'</div>';
+    if(it.why.length)out+='<div style="margin:0 0 0 12px;font-size:8pt;color:#555"><em>Pourquoi ?</em> '+it.why.map(function(kf){return csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' (LSI '+kf.lsi+'%)':'');}).join(', ')+'.</div>';
+    if(it.objective)out+='<div style="margin:0 0 4px 12px;font-size:8pt;color:#555"><em>Objectif</em> — '+it.objective+'</div>';
+  });
+  out+='</div>';
+  return out;
+}
+function csmV2ReportRelationsHtml(relations){
+  if(!relations||!relations.length)return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Relations cliniques ('+relations.length+')</div>';
+  relations.forEach(function(r){
+    out+='<p style="margin:0 0 5px;font-size:8.5pt;color:#333;padding-left:8px;border-left:2px solid '+C.teal+'"><strong>'+csmV2QualityDisplayLabel(r.explains)+' → '+csmV2QualityDisplayLabel(r.explained)+'</strong> — '+r.sentence+'</p>';
+  });
+  out+='</div>';
+  return out;
+}
+// Assemblage unique du corps du compte rendu clinique — SEULE implémentation, consommée à
+// l'identique par buildExpertReport (PDF) et ExpertView (mission Q, objectif 1 point 8).
+function csmV2ClinicalReportBodyHtml(csmV2Rep){
+  if(!csmV2Rep||!csmV2Rep.clinicalReport)return'';
+  var crO=csmV2Rep.clinicalReport,cp=csmV2Rep.clinicalProfile;
+  var byId={};crO.sections.forEach(function(s){byId[s.id]=s;});
+  var html='';
+  if(byId.objet&&byId.objet.text)html+='<p style="margin:0 0 4px;font-size:9pt;color:#555;font-style:italic">'+byId.objet.text+'</p>';
+  if(crO.bodyZones&&crO.bodyZones.length){
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:6px 0 3px">Repères anatomiques</div>';
+    html+='<div style="margin:0 0 8px">'+csmV2BodyZoneChipsHtml(crO.bodyZones)+'</div>';
+  }
+  if(byId.synthese&&byId.synthese.text)html+=csmV2ReportConclusionCalloutHtml({title:'Synthèse clinique',text:byId.synthese.text});
+  CSM_V2_QUALITY_SECTION_IDS.forEach(function(id){
+    var s=byId[id];
+    if(s&&s.text)html+=csmV2ReportSectionCardHtml(s,cp,crO.bodyZones);
+  });
+  html+=csmV2ReportTransversaleHtml(byId.transversale);
+  if(csmV2Rep.synthesis&&csmV2Rep.synthesis.clinicalRelations)html+=csmV2ReportRelationsHtml(csmV2Rep.synthesis.clinicalRelations);
+  html+=csmV2ReportHierarchyHtml(byId.principaux_deficits);
+  html+=csmV2ReportPreservedCardHtml(byId.preservees);
+  html+=csmV2ReportConclusionCalloutHtml(byId.conclusion);
+  html+=csmV2ReportAxesHtml(byId.axes);
+  if(byId.reevaluation&&byId.reevaluation.text)html+='<p style="margin:8px 0 0;font-size:8.5pt;color:#333;font-style:italic">'+byId.reevaluation.title+' — '+byId.reevaluation.text+'</p>';
+  return html;
+}
 // §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
 // synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
 function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence){
@@ -8225,6 +8411,7 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
   return{
     reportId:'CSM-V2-CLINICAL-REPORT',
     sections:sections,
+    bodyZones:computeCsmV2BodyZones(clinicalProfile,symmetryEvidence),
     forbiddenWordingCheck:{passed:forbiddenFound.length===0,found:forbiddenFound},
     limitations:[
       "computeCsmV2ClinicalReport (mission O) ne recalcule aucune norme/LSI/statut — pure assemblage de texte à partir de clinicalProfile/synthesis/symmetryEvidence déjà calculés par computeCsmV2().",
@@ -10017,86 +10204,33 @@ function buildExpertReport(athlete,bilan,res){
     }
     html+='<p style="margin:8px 0 0;font-size:8pt;color:#888;font-style:italic">'+csmSafeText(csmExp.narrative.limites)+'</p>';
   }
-  // CSM V2 — bloc de TEST additif (mission implémentation CSM V2, câblage). Lit exclusivement
-  // res.clinicalSynthesisV2, déjà calculé une seule fois par computeMoteur() — aucun recalcul.
-  // Volontairement une présentation BRUTE (structure de données, pas une phrase narrative
-  // clinique) : sert à vérifier visuellement le câblage et les données réellement produites, pas
-  // un rendu final destiné au praticien. Ne remplace ni ne modifie le bloc "Synthèse clinique"
-  // (HYP-CSM-01 / V1) ci-dessus.
+  // CSM V2 — Compte rendu clinique (mission Q, objectif 1 : vraie hiérarchie visuelle, blocs par
+  // qualité, KPI/LSI/D-G, preuves convergentes, conclusion immédiatement lisible). Lit EXCLUSIVEMENT
+  // res.clinicalSynthesisV2.clinicalReport (déjà calculé par computeCsmV2ClinicalReport() dans
+  // computeCsmV2() — AUCUN recalcul ici). csmV2ClinicalReportBodyHtml est la SEULE implémentation de
+  // ce rendu, réutilisée à l'identique par ExpertView (mission Q, "PDF = ExpertView", aucune
+  // divergence possible).
   if(res.clinicalSynthesisV2){
     var csmV2Rep=res.clinicalSynthesisV2;
     var csmV2Syn=csmV2Rep.synthesis;
     var CSM_V2_SEVERITY_EMOJI={majeur:'🔴',modere:'🟠',preserved:'🟢'};
-    // ── Mission O — COMPTE RENDU D'ÉVALUATION FONCTIONNELLE ─────────────────────────────────────
-    // Lit EXCLUSIVEMENT csmV2Rep.clinicalReport (déjà calculé par computeCsmV2ClinicalReport() dans
-    // computeCsmV2() — AUCUN recalcul ici, simple rendu section par section). Une section dont
-    // `text` est null (données insuffisantes) n'est jamais affichée avec un texte de repli inventé —
-    // elle est simplement omise. Même objet consommé par ExpertView (mission O §17).
     if(csmV2Rep.clinicalReport){
-      var crO=csmV2Rep.clinicalReport;
-      html+='<div class="print-section-title" style="margin-top:14px">Compte rendu d\'évaluation fonctionnelle</div>';
-      crO.sections.forEach(function(s){
-        if(s.id==='principaux_deficits'){
-          if(!s.items.length)return;
-          html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">'+s.title+'</div>';
-          s.items.forEach(function(p){
-            html+='<p style="margin:5px 0 0;font-size:8.5pt;color:#333;font-weight:700">'+p.rank+'. '+csmV2QualityDisplayLabel(p.quality)+' — déficit '+p.severity+'</p>';
-            (p.keyFindings||[]).slice(0,3).forEach(function(kf){html+='<p style="margin:0 0 0 14px;font-size:8pt;color:#555">'+csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' — LSI '+kf.lsi+'%':'')+'</p>';});
-          });
-          // Mission P §3 — hiérarchisation en paliers (majeur/secondaire/à surveiller), dérivée de
-          // csmV2ReportHierarchy (déjà calculée) — jamais un simple classement rouge/orange plat.
-          if(s.hierarchy){
-            var tierLabel={majeur:'Déficit majeur',secondaire:'Déficit secondaire',a_surveiller:'À surveiller'};
-            ['majeur','secondaire','a_surveiller'].forEach(function(tier){
-              var entries=s.hierarchy[tier];
-              if(!entries||!entries.length)return;
-              html+='<p style="margin:6px 0 1px;font-size:8pt;color:#5B7A8C;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">'+tierLabel[tier]+'</p>';
-              html+='<p style="margin:0 0 2px;font-size:8.5pt;color:#333">'+entries.map(function(e){return csmV2QualityDisplayLabel(e.quality);}).join(', ')+'</p>';
-            });
-          }
-          return;
-        }
-        if(s.id==='axes'){
-          if(!s.items.length)return;
-          html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">'+s.title+'</div>';
-          s.items.forEach(function(it){
-            html+='<p style="margin:6px 0 0;font-size:8.5pt;color:#333;font-weight:700">Priorité '+it.rank+' — '+it.axis+'</p>';
-            if(it.why.length)html+='<p style="margin:0 0 0 14px;font-size:8pt;color:#555"><em>Pourquoi ?</em> '+it.why.map(function(kf){return csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' (LSI '+kf.lsi+'%)':'');}).join(', ')+'.</p>';
-            if(it.objective)html+='<p style="margin:0 0 4px 14px;font-size:8pt;color:#555"><em>Objectif</em> — '+it.objective+'</p>';
-          });
-          return;
-        }
-        if(!s.text)return;
-        html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">'+s.title+'</div>';
-        html+='<p style="margin:0 0 4px;font-size:9pt;color:#333;line-height:1.55">'+s.text+'</p>';
-      });
+      html+='<div class="print-section-title" style="margin-top:14px">Compte rendu clinique</div>';
+      html+=csmV2ClinicalReportBodyHtml(csmV2Rep);
     }
-    // ── Mission CSM V2.2, Étape L — NIVEAU 1 : synthèse clinique visuelle ───────────────────────
-    // Lit EXCLUSIVEMENT csmV2Rep.clinicalProfile / csmV2Rep.synthesis / csmV2Rep.clinicalHypotheses
-    // (déjà calculés par computeCsmV2()/computeMoteur() — AUCUN recalcul clinique dans le renderer,
-    // AUCUNE nouvelle norme/seuil/valeur). Ordre imposé par la mission L §8 : PROFIL GLOBAL,
-    // PRINCIPAUX DÉFICITS, CAPACITÉS PRÉSERVÉES, ANALYSE TRANSVERSALE, RELATIONS CLINIQUES,
-    // HYPOTHÈSES CLINIQUES (détail des relations), AXES DE PROGRESSION, RÉÉVALUATION RECOMMANDÉE.
-    // `via` n'est jamais affiché. support.level jamais inventé — 'non déterminé' si null.
-    html+='<div class="print-section-title" style="margin-top:12px">Profil fonctionnel CSM V2 — synthèse clinique</div>';
-    // Mission M9/M10 — table de correspondance axe → qualité(s) déclenchante(s), pour construire
-    // "Pourquoi ?" à partir des preuves déjà calculées (clinicalProfile[q].keyFindings /
-    // rapidForceDeficit.keyFindings) — aucune nouvelle donnée, uniquement une re-lecture.
-    var csmV2AxisQualityMap={
-      'mobilité de cheville':['Mobilité'],'force spécifique':['Force'],
-      'production rapide de force':['Force','Explosivité'],'travail excentrique':['Absorption'],
-      'cycle étirement-raccourcissement':['Réactivité'],'progression pliométrique':['Réactivité','Explosivité'],
-      'réceptions':['Stabilisation'],'contrôle unipodal':['Stabilisation']
-    };
+
+    // ── NIVEAU 2 : données détaillées CSM V2 (Dashboard complet) — mission Étape J §11 : jamais
+    // supprimé, chaque conclusion du Niveau 1 ci-dessus reste reliable aux données brutes ci-dessous
+    // (patterns, dissociations V2.1 avec `via` documentaire, unipodalFunctionalDeficit par qualité).
+    html+='<div class="print-section-title" style="margin-top:14px">CSM V2 — Détails techniques (Niveau 2 — Dashboard complet)</div>';
+    html+='<p style="margin:0 0 8px;font-size:8pt;color:#888;font-style:italic">Données brutes de traçabilité — non destinées à une lecture clinique directe, support de la synthèse ci-dessus.</p>';
+    // M1/M2 — Profil global : LES 8 qualités, y compris non_determinable/suspectee (jamais omises
+    // ici, contrairement au compte rendu clinique ci-dessus qui n'affiche que les qualités évaluées).
     function csmV2KfLine(kf){
       return csmV2FriendlyKpiLabel(kf.variable)+((kf.left!=null||kf.right!=null)?' — D='+csmV2SafeValue(kf.left)+', G='+csmV2SafeValue(kf.right):'')
         +(kf.lsi!=null?csmV2LsiBarHtml(kf.lsi,csmV2KpiStatusColor(kf.status)):'');
     }
-    // M1/M2 — Profil global regroupé par niveau de capacité (FORCE / VITESSE DE FORCE / PROPULSION /
-    // ABSORPTION / RÉACTIVITÉ / STABILISATION / AUTRES) — rend explicite que force maximale ≠
-    // production rapide de force ≠ capacité réactive (mission M2). Libellés M1 (Force maximale,
-    // Propulsion) via csmV2QualityDisplayLabel — HYP_CSM_QUALITIES lui-même n'est jamais renommé.
-    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Profil global</div>';
+    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">Profil global (8 qualités)</div>';
     CSM_V2_CAPACITY_GROUPS.forEach(function(group){
       html+='<div style="font-size:6.8pt;font-weight:700;color:#94A3B8;letter-spacing:0.06em;margin:6px 0 2px">'+group.label+'</div>';
       group.qualities.forEach(function(q){
@@ -10107,44 +10241,18 @@ function buildExpertReport(athlete,bilan,res){
         pq.deficitSources.forEach(function(s){
           html+='<p style="margin:0 0 4px 16px;font-size:8pt;color:#888;font-style:italic">Déficit de '+csmV2QualityDisplayLabel(q)+' — preuve associée à la relation '+csmV2QualityDisplayLabel(s.explains)+' → '+csmV2QualityDisplayLabel(q)+', fondée sur '+csmV2FriendlySourceLabel(s.explainedDeficitSource)+'.</p>';
         });
-        // M2/L3 — production rapide de force (RFD) : signal distinct de la force maximale.
         if(q==='Force'&&pq.rapidForceDeficit&&pq.rapidForceDeficit.supported){
           html+='<p style="margin:2px 0 2px 16px;font-size:8pt;color:#B45309;font-weight:600">⚡ Production rapide de force ('+pq.rapidForceDeficit.severity+') — distincte de la force maximale ci-dessus :</p>';
           pq.rapidForceDeficit.keyFindings.forEach(function(kf){html+='<p style="margin:0 0 2px 28px;font-size:8pt;color:#555">'+csmV2KfLine(kf)+'</p>';});
         }
       });
     });
-    // M1/M10 — Principaux déficits : bloc riche par déficit avec KPI/D-G/LSI (barre visuelle M5),
-    // tests concernés et "Pourquoi ?" — jamais les tags techniques bruts (statut=/source=, mission M14).
-    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Principaux déficits</div>';
-    if(csmV2Syn.priorityDeficits.length){
-      csmV2Syn.priorityDeficits.slice(0,5).forEach(function(p){
-        html+='<p style="margin:8px 0 2px;font-size:9pt;color:#333;font-weight:700">'+p.rank+'. '+(CSM_V2_SEVERITY_EMOJI[p.severity]||'⚪')+' '+csmV2QualityDisplayLabel(p.quality)+' — déficit '+p.severity+(p.convergence.state==='convergence_observee'?' (convergence '+p.convergence.mechanismsCount+' mécanismes)':'')+'</p>';
-        p.keyFindings.forEach(function(kf){html+='<p style="margin:0 0 2px 16px;font-size:8pt;color:#555">• '+csmV2KfLine(kf)+'</p>';});
-        if(!p.keyFindings.length)html+='<p style="margin:0 0 2px 16px;font-size:8pt;color:#888;font-style:italic">Déficit objectivé par seuil normatif (aucune preuve d\'asymétrie associée).</p>';
-      });
-    }else{
-      html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucun déficit prioritaire identifié pour ce bilan.</p>';
-    }
-    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Capacités préservées</div>';
-    html+='<p style="margin:0 0 8px;font-size:8.5pt;color:#333">'+(csmV2Syn.preservedQualities.length?csmV2Syn.preservedQualities.map(csmV2QualityDisplayLabel).join(', '):'Aucune qualité n\'est actuellement objectivée comme préservée.')+'</p>';
-    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Analyse transversale</div>';
-    html+='<p style="margin:0 0 8px;font-size:9.5pt;color:#333;line-height:1.6">'+csmV2Syn.summary+'</p>';
-    // L6 — Relations cliniques : réutilise fusedDissociations/clinicalHypotheses (jamais de nouvelle
-    // relation HYP_QUALITY_RELATIONS créée). Une ligne par relation réellement observée comme
-    // dissociation (explains préservée × explained déficitaire).
-    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Relations cliniques ('+csmV2Syn.clinicalRelations.length+')</div>';
-    if(csmV2Syn.clinicalRelations.length){
-      csmV2Syn.clinicalRelations.forEach(function(r){
-        html+='<p style="margin:0 0 6px;font-size:8.5pt;color:#333;padding-left:8px;border-left:2px solid #2A9D8F"><strong>'+csmV2QualityDisplayLabel(r.explains)+' → '+csmV2QualityDisplayLabel(r.explained)+'</strong> — '+r.sentence+'</p>';
-      });
-    }else{
-      html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucune relation clinique (dissociation) identifiée pour ce bilan.</p>';
-    }
+    // Hypothèses cliniques — détail complet des 3 formulations (technique/kiné/patient) par relation
+    // retenue ; le rapport clinique ci-dessus n'affiche qu'une phrase de synthèse par relation
+    // (Relations cliniques), le détail par destinataire reste ici en Niveau 2.
     html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Hypothèses cliniques ('+csmV2Rep.clinicalHypotheses.length+')</div>';
     if(csmV2Rep.clinicalHypotheses.length){
       csmV2Rep.clinicalHypotheses.forEach(function(ch){
-        // M14 — jamais "source:symmetry"/"support:null" bruts dans le rapport clinique standard.
         html+='<p style="margin:6px 0 2px;font-size:8.5pt;color:#333">'+csmV2QualityDisplayLabel(ch.relation.explains)+' préservée, '+csmV2QualityDisplayLabel(ch.relation.explained)+' déficitaire — fondé sur '+csmV2FriendlySourceLabel(ch.explainedDeficitSource)+', niveau de preuve : '+csmV2FriendlySupportLabel(ch.support.level)+'</p>';
         html+='<p style="margin:0 0 2px 8px;font-size:8pt;color:#555">Technique — '+ch.wording.technique+'</p>';
         html+='<p style="margin:0 0 2px 8px;font-size:8pt;color:#555;font-style:italic">Kiné — '+ch.wording.kine+'</p>';
@@ -10153,42 +10261,6 @@ function buildExpertReport(athlete,bilan,res){
     }else{
       html+='<p style="margin:0 0 8px;font-size:9pt;color:#888">Aucune clinicalHypothesis générée pour ce bilan.</p>';
     }
-    // M9 — Axes de progression : "Priorité N", "Pourquoi ?" (preuves réelles), "Objectif" seulement
-    // quand un texte praticien validé existe pour cet axe précis (mission M9 : jamais de
-    // prescription inventée).
-    html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Axes de progression</div>';
-    if(csmV2Syn.progressionAxes.length){
-      csmV2Syn.progressionAxes.forEach(function(a,i){
-        html+='<p style="margin:8px 0 2px;font-size:8.5pt;color:#333;font-weight:700">Priorité '+(i+1)+' — '+a+'</p>';
-        var triggeringQ=csmV2AxisQualityMap[a]||[];
-        var whyFindings=[];
-        triggeringQ.forEach(function(q){
-          var pq=csmV2Rep.clinicalProfile[q];
-          if(pq.severity==='majeur'||pq.severity==='modere')whyFindings=whyFindings.concat(pq.keyFindings);
-          if(q==='Force'&&pq.rapidForceDeficit&&pq.rapidForceDeficit.supported)whyFindings=whyFindings.concat(pq.rapidForceDeficit.keyFindings);
-        });
-        if(whyFindings.length){
-          html+='<p style="margin:0 0 2px 16px;font-size:8pt;color:#555"><em>Pourquoi ?</em> '+whyFindings.slice(0,3).map(function(kf){return csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' (LSI '+kf.lsi+'%)':'');}).join(', ')+'.</p>';
-        }
-        if(CSM_V2_AXIS_OBJECTIVE[a]){
-          html+='<p style="margin:0 0 4px 16px;font-size:8pt;color:#555"><em>Objectif</em> — '+CSM_V2_AXIS_OBJECTIVE[a]+'</p>';
-        }
-      });
-    }else{
-      html+='<p style="margin:0 0 8px;font-size:8.5pt;color:#888;font-style:italic">Aucun axe de progression identifiable avec les déficits actuellement objectivés.</p>';
-    }
-    // L8 — Réévaluation recommandée : phrase procédurale neutre, affichée uniquement s'il existe
-    // un déficit prioritaire réel.
-    if(csmV2Syn.reassessmentRecommendation){
-      html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:10px 0 4px">Réévaluation recommandée</div>';
-      html+='<p style="margin:0 0 12px;font-size:8.5pt;color:#333;font-style:italic">'+csmV2Syn.reassessmentRecommendation+'</p>';
-    }
-
-    // ── NIVEAU 2 : données détaillées CSM V2 (Dashboard complet) — mission Étape J §11 : jamais
-    // supprimé, chaque conclusion du Niveau 1 ci-dessus reste reliable aux données brutes ci-dessous
-    // (patterns, dissociations V2.1 avec `via` documentaire, unipodalFunctionalDeficit par qualité).
-    html+='<div class="print-section-title" style="margin-top:14px">CSM V2 — Détails techniques (Niveau 2 — Dashboard complet)</div>';
-    html+='<p style="margin:0 0 8px;font-size:8pt;color:#888;font-style:italic">Données brutes de traçabilité — non destinées à une lecture clinique directe, support de la synthèse ci-dessus.</p>';
     if(csmV2Rep.patterns.length){
       html+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Patterns Absolute × Symmetry ('+csmV2Rep.patterns.length+')</div>';
       csmV2Rep.patterns.forEach(function(p){
@@ -12120,71 +12192,22 @@ function ExpertView(props){
         )
       );
     })(),
-    // CSM V2 — outil d'audit technique (mission exposition ExpertView). Lit exclusivement
-    // res.clinicalSynthesisV2, déjà calculé une seule fois par computeMoteur() — aucun recalcul,
-    // aucune nouvelle règle clinique, ne modifie ni ne remplace l'onglet "Synthèse clinique"
-    // (HYP-CSM-01 / V1) ci-dessus. Présentation volontairement brute/exhaustive (pas encore une
-    // interface clinique finale) : rien n'est masqué au motif que la valeur est non_determinable.
+    // CSM V2 — Compte rendu clinique (mission Q, objectif 1). Lit EXCLUSIVEMENT
+    // res.clinicalSynthesisV2.clinicalReport, déjà calculé une seule fois par computeMoteur() —
+    // aucun recalcul, aucune nouvelle règle clinique. csmV2ClinicalReportBodyHtml est la SEULE
+    // implémentation de ce rendu, partagée à l'identique avec buildExpertReport (PDF) : aucune
+    // divergence possible entre les deux (mission Q, "PDF = ExpertView").
     tab==='csmv2'&&(function(){
       var csmV2=res.clinicalSynthesisV2;
       if(!csmV2)return h('div',{style:{color:C.muted,fontSize:13}},'CSM V2 non disponible.');
       var qKeys=HYP_CSM_QUALITIES;
       var fmt=function(v){return v==null?'—':String(v);};
       return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
-        h(Card,{pad:14,style:{background:C.surface}},
-          h('div',{style:{color:C.muted,fontSize:11,fontStyle:'italic'}},'Outil d\'audit technique — lecture brute de res.clinicalSynthesisV2 ('+csmV2.csmV2Id+' v'+csmV2.version+'). Non destiné à une lecture clinique finale.')
+        csmV2.clinicalReport&&h(Card,{pad:16},
+          h('div',{style:{color:C.petrol,fontWeight:800,fontSize:14,marginBottom:2}},'Compte rendu clinique'),
+          h('div',{style:{color:C.muted,fontSize:10,marginBottom:10}},csmV2.csmV2Id+' · v'+csmV2.version),
+          h('div',{dangerouslySetInnerHTML:{__html:csmV2ClinicalReportBodyHtml(csmV2)}})
         ),
-        // Mission O — Compte rendu d'évaluation fonctionnelle : lit EXCLUSIVEMENT csmV2.clinicalReport
-        // (même objet, même référence que buildExpertReport — aucun recalcul, mission O §17). Une
-        // section sans texte (données insuffisantes) est omise, jamais un texte de repli inventé.
-        (function(){
-          var crO=csmV2.clinicalReport;
-          if(!crO)return null;
-          return h(Card,{pad:14},
-            h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Compte rendu d\'évaluation fonctionnelle'),
-            h('div',{style:{display:'flex',flexDirection:'column',gap:8}},crO.sections.map(function(s){
-              if(s.id==='principaux_deficits'){
-                if(!s.items.length)return null;
-                return h('div',{key:s.id},
-                  h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:2,textTransform:'uppercase',letterSpacing:'0.04em'}},s.title),
-                  s.items.map(function(p){return h('div',{key:p.quality,style:{fontSize:11.5,color:C.text,marginBottom:2}},
-                    h('div',{style:{fontWeight:700}},p.rank+'. '+fmt(csmV2QualityDisplayLabel(p.quality))+' — déficit '+p.severity),
-                    h('div',{style:{paddingLeft:12,color:C.muted,fontSize:10.5}},(p.keyFindings||[]).slice(0,3).map(function(kf){return fmt(csmV2FriendlyKpiLabel(kf.variable))+(kf.lsi!=null?' — LSI '+kf.lsi+'%':'');}).join(' · '))
-                  );}),
-                  // Mission P §3 — paliers (majeur/secondaire/à surveiller).
-                  s.hierarchy?['majeur','secondaire','a_surveiller'].map(function(tier){
-                    var entries=s.hierarchy[tier];
-                    if(!entries||!entries.length)return null;
-                    var tierLabel={majeur:'Déficit majeur',secondaire:'Déficit secondaire',a_surveiller:'À surveiller'}[tier];
-                    return h('div',{key:tier,style:{marginTop:4}},
-                      h('div',{style:{color:C.muted,fontWeight:700,fontSize:10,textTransform:'uppercase',letterSpacing:'0.04em'}},tierLabel),
-                      h('div',{style:{fontSize:11,color:C.text}},entries.map(function(e){return fmt(csmV2QualityDisplayLabel(e.quality));}).join(', '))
-                    );
-                  }):null
-                );
-              }
-              if(s.id==='axes'){
-                if(!s.items.length)return null;
-                return h('div',{key:s.id},
-                  h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:2,textTransform:'uppercase',letterSpacing:'0.04em'}},s.title),
-                  s.items.map(function(it){return h('div',{key:it.axis,style:{fontSize:11.5,color:C.text,marginBottom:2}},
-                    h('div',{style:{fontWeight:700}},'Priorité '+it.rank+' — '+it.axis),
-                    it.why.length?h('div',{style:{paddingLeft:12,color:C.muted,fontSize:10.5}},'Pourquoi ? '+it.why.map(function(kf){return fmt(csmV2FriendlyKpiLabel(kf.variable));}).join(', ')):null,
-                    it.objective?h('div',{style:{paddingLeft:12,color:C.muted,fontSize:10.5,fontStyle:'italic'}},'Objectif — '+it.objective):null
-                  );})
-                );
-              }
-              if(!s.text)return null;
-              return h('div',{key:s.id},
-                h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:2,textTransform:'uppercase',letterSpacing:'0.04em'}},s.title),
-                h('div',{style:{fontSize:12,color:C.text,lineHeight:1.55}},s.text)
-              );
-            }))
-          );
-        })(),
-        // Synthèse clinique (mission CSM V2.2, Étape J) : lit exclusivement csmV2.clinicalProfile/
-        // csmV2.synthesis — même objet, même référence que buildExpertReport (aucun recalcul, aucune
-        // divergence possible entre PDF et ExpertView, mission Étape J §9/§12/§13).
         // Mission M7 — Radar : connecte RadarChart (composant existant, jamais utilisé jusqu'ici) à
         // clinicalProfile. Réutilise TEL QUEL la transformation status->rayon déjà existante dans
         // RadarChart (sv={vert:1,jaune:0.67,orange:0.33,rouge:0.1}) — AUCUN score sur 100 inventé.
@@ -12203,42 +12226,13 @@ function ExpertView(props){
             h(RadarChart,{functionScores:radarScores,keys:qKeys,size:220})
           );
         })(),
-        (function(){
-          var CSM_V2_SEV_EMOJI={majeur:'🔴',modere:'🟠',preserved:'🟢'};
-          var syn=csmV2.synthesis;
-          return h(Card,{pad:14},
-            h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Synthèse clinique'),
-            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Profil global'),
-            h('div',{style:{display:'flex',flexDirection:'column',gap:4,marginBottom:10}},qKeys.map(function(q){
-              var pq=csmV2.clinicalProfile[q];
-              return h('div',{key:q,style:{fontSize:11.5,color:C.text}},
-                (CSM_V2_SEV_EMOJI[pq.severity]||'⚪')+' '+q+' — '+fmt(pq.state)+(pq.priority&&pq.priority!=='none'?' · priorité '+pq.priority:'')+(pq.keyFindings.length?' · '+pq.keyFindings.length+' preuve(s)':'')
-              );
-            })),
-            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Principaux déficits'),
-            syn.priorityDeficits.length===0
-              ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:10}},'Aucun déficit prioritaire identifié.')
-              :h('div',{style:{display:'flex',flexDirection:'column',gap:6,marginBottom:10}},syn.priorityDeficits.map(function(p){
-                  return h('div',{key:p.quality,style:{fontSize:11.5,color:C.text}},
-                    h('div',null,p.rank+'. '+(CSM_V2_SEV_EMOJI[p.severity]||'⚪')+' '+p.quality+' ('+p.severity+')'),
-                    h('div',{style:{paddingLeft:14,color:C.muted,fontSize:10.5}},p.keyFindings.map(function(kf){return kf.variable+' LSI='+fmt(kf.lsi)+'%';}).join(' · '))
-                  );
-                })),
-            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Capacités préservées'),
-            h('div',{style:{fontSize:12,color:C.text,marginBottom:10}},syn.preservedQualities.length?syn.preservedQualities.join(', '):'Aucune.'),
-            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Analyse transversale'),
-            h('div',{style:{fontSize:12,color:C.text,lineHeight:1.6,marginBottom:10}},syn.summary),
-            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Relations cliniques ('+syn.clinicalRelations.length+')'),
-            syn.clinicalRelations.length===0
-              ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:10}},'Aucune.')
-              :h('div',{style:{display:'flex',flexDirection:'column',gap:6,marginBottom:10}},syn.clinicalRelations.map(function(r){return h('div',{key:r.relationId,style:{fontSize:11.5,color:C.text,paddingLeft:8,borderLeft:'2px solid '+C.teal}},h('strong',null,r.relationId),' — '+r.sentence);})),
-            h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:4,textTransform:'uppercase',letterSpacing:'0.04em'}},'Axes de progression'),
-            syn.progressionAxes.length===0
-              ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:syn.reassessmentRecommendation?10:0}},'Aucun axe identifiable avec les déficits actuellement objectivés.')
-              :h('div',{style:{display:'flex',flexDirection:'column',gap:2,marginBottom:syn.reassessmentRecommendation?10:0}},syn.progressionAxes.map(function(a,i){return h('div',{key:a,style:{fontSize:11.5,color:C.text}},'Priorité '+(i+1)+' — '+a);})),
-            syn.reassessmentRecommendation&&h('div',{style:{fontSize:11,color:C.muted,fontStyle:'italic'}},syn.reassessmentRecommendation)
-          );
-        })(),
+        // Mission Q — détails techniques (debug CSM V2) : contenu déplacé sous un panneau replié
+        // (jamais supprimé, cf. mission Q objectif 1) — le "Synthèse clinique" plat ci-avant est
+        // retiré ici car intégralement redondant avec le compte rendu clinique ci-dessus (mêmes
+        // champs : profil global, principaux déficits, capacités préservées, analyse transversale,
+        // relations cliniques, axes), désormais présenté avec une vraie hiérarchie visuelle.
+        h('details',null,
+          h('summary',{style:{cursor:'pointer',color:C.muted,fontSize:11,fontWeight:700,padding:'6px 2px'}},'Détails techniques (debug CSM V2)'),
         h(Card,{pad:14},
           h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Absolute Evidence'),
           h('div',{style:{display:'flex',flexDirection:'column',gap:4}},qKeys.map(function(q){
@@ -12327,6 +12321,7 @@ function ExpertView(props){
         csmV2.limitations&&csmV2.limitations.length>0&&h(Card,{pad:14,style:{background:C.surface}},
           h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limitations'),
           h('ul',{style:{margin:0,paddingLeft:16,color:C.muted,fontSize:11,lineHeight:1.6}},csmV2.limitations.map(function(l,i){return h('li',{key:i},l);}))
+        )
         )
       );
     })(),
