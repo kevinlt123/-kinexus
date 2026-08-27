@@ -8378,6 +8378,96 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
   if(byId.reevaluation&&byId.reevaluation.text)html+='<p style="margin:8px 0 0;font-size:8.5pt;color:#333;font-style:italic">'+byId.reevaluation.title+' — '+byId.reevaluation.text+'</p>';
   return html;
 }
+// Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
+// déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
+// aucun D/G brut, aucun "explainedDeficitSource", etc.) — jamais un recalcul, jamais une nouvelle
+// conclusion clinique. Une qualité "à surveiller"/non_determinable n'est jamais présentée comme
+// préservée ni comme déficitaire au patient : elle est simplement omise du récit (prudence clinique),
+// jamais un texte de repli inventé. Consommé uniquement par buildSportifReport (le PDF athlète).
+var CSM_V2_AXIS_PATIENT_LABEL={
+  'mobilité de cheville':'la souplesse de votre cheville',
+  'force spécifique':'le renforcement musculaire ciblé',
+  'production rapide de force':'la rapidité avec laquelle vos muscles produisent de la force',
+  'travail excentrique':'le contrôle du mouvement lors des phases de freinage',
+  'cycle étirement-raccourcissement':'la capacité à absorber puis relancer rapidement un mouvement',
+  'progression pliométrique':'les exercices de saut progressifs',
+  'réceptions':'la qualité de vos réceptions au sol',
+  'contrôle unipodal':'l\'équilibre et le contrôle sur une seule jambe'
+};
+// csmV2WeakerSideLabel renvoie 'droit'/'gauche' (accord avec "le côté droit"), mais la formulation
+// patient ("diminuée à ___") appelle la forme adverbiale ("à droite"/"à gauche") — simple accord
+// grammatical, aucune nouvelle donnée.
+function csmV2PatientSideAdverb(side){return side==='droit'?'droite':side;}
+// Accord grammatical (purement lexical, aucune nouvelle donnée) : CSM_V2_CAPACITY_NOUN contient deux
+// noms masculins ("freinage excentrique", "contrôle unipodal") parmi des noms féminins — l'adjectif
+// doit s'accorder en conséquence.
+var CSM_V2_CAPACITY_NOUN_MASCULINE={Absorption:true,Stabilisation:true};
+function csmV2PatientQualityLine(quality,clinicalProfile){
+  var pq=clinicalProfile[quality];
+  var tier=csmV2DeficitTier(pq);
+  var noun=CSM_V2_CAPACITY_NOUN[quality]||quality.toLowerCase();
+  var masc=!!CSM_V2_CAPACITY_NOUN_MASCULINE[quality];
+  if(tier==='preservee')return{tier:tier,text:'Votre '+noun+' est bien récupéré'+(masc?'':'e')+'.'};
+  if(tier==='majeur'||tier==='secondaire'){
+    var kf=(pq.keyFindings&&pq.keyFindings[0])||null;
+    var side=kf?csmV2PatientSideAdverb(csmV2WeakerSideLabel(kf)):null;
+    return{tier:tier,text:'Votre '+noun+' reste '+(tier==='majeur'?'nettement ':'')+'diminué'+(masc?'':'e')+(side?' à '+side:'')+'.'};
+  }
+  return null;
+}
+function csmV2PatientForceLine(clinicalProfile){
+  var pq=clinicalProfile['Force'];
+  var rfd=pq.rapidForceDeficit;
+  var maxTier=csmV2DeficitTier(pq);
+  var maxPreserved=maxTier==='preservee';
+  if(rfd&&rfd.supported){
+    var kf=(rfd.keyFindings&&rfd.keyFindings[0])||null;
+    var side=kf?csmV2PatientSideAdverb(csmV2WeakerSideLabel(kf)):null;
+    var rfdTier=rfd.severity==='majeur'?'majeur':'secondaire';
+    if(maxPreserved)return{tier:rfdTier,text:'Votre force maximale est bien récupérée, mais votre capacité à produire rapidement de la force reste diminuée'+(side?' à '+side:'')+'.'};
+    return{tier:rfdTier,text:'Votre capacité à produire rapidement de la force reste diminuée'+(side?' à '+side:'')+'.'};
+  }
+  return csmV2PatientQualityLine('Force',clinicalProfile);
+}
+function csmV2PatientQualityLines(clinicalProfile){
+  var lines=[];
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var line=q==='Force'?csmV2PatientForceLine(clinicalProfile):csmV2PatientQualityLine(q,clinicalProfile);
+    if(line)lines.push({quality:q,tier:line.tier,text:line.text});
+  });
+  return lines;
+}
+// "Ce que cela signifie" — reformule les MÊMES qualités du palier 'majeur' déjà utilisées par
+// csmV2ReportConclusionSection, et réutilise le même booléen déjà calculé (maxForceVsRapidOpposition.
+// supported) pour la seconde phrase — jamais un nouveau jugement clinique.
+function csmV2PatientMeaning(hierarchy,synthesis){
+  var majeurNouns=(hierarchy.majeur||[]).map(function(e){return CSM_V2_CAPACITY_NOUN[e.quality]||e.quality.toLowerCase();});
+  if(!majeurNouns.length)return null;
+  var parts=['Cela signifie que certaines capacités sont bien revenues à la normale, tandis que d\'autres ont encore besoin de progresser, en particulier '+csmV2JoinList(majeurNouns)+'.'];
+  if(synthesis.maxForceVsRapidOpposition&&synthesis.maxForceVsRapidOpposition.supported){
+    parts.push('Ces difficultés se manifestent surtout lorsque le mouvement doit être rapide, freiné brusquement, ou réalisé sur une seule jambe.');
+  }
+  return parts.join(' ');
+}
+// "Ce qu'on va travailler" — reprend synthesis.progressionAxes tel quel (même ordre, même contenu),
+// uniquement reformulé en langage courant via CSM_V2_AXIS_PATIENT_LABEL (purement lexical).
+function csmV2PatientAxesLines(progressionAxes){
+  return(progressionAxes||[]).map(function(axis,i){return{rank:i+1,text:CSM_V2_AXIS_PATIENT_LABEL[axis]||axis};});
+}
+// "Comment on va suivre l'évolution" — même condition que synthesis.reassessmentRecommendation
+// (présence d'un déficit prioritaire réel), reformulée sans le "ci-dessus" clinique.
+function csmV2PatientFollowUp(reassessmentRecommendation){
+  return reassessmentRecommendation?'Un nouveau bilan sera réalisé pour suivre votre progression sur ces points.':null;
+}
+function csmV2PatientNarrative(clinicalProfile,synthesis){
+  var hierarchy=csmV2ReportHierarchy(clinicalProfile);
+  return{
+    findings:csmV2PatientQualityLines(clinicalProfile),
+    meaning:csmV2PatientMeaning(hierarchy,synthesis),
+    axes:csmV2PatientAxesLines(synthesis.progressionAxes),
+    followUp:csmV2PatientFollowUp(synthesis.reassessmentRecommendation)
+  };
+}
 // §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
 // synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
 function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence){
@@ -9395,7 +9485,11 @@ function buildSportifReport(athlete,bilan,res){
   // détail que kinexus_rapport_pdf.html (référence UX officielle). N'apparaît que si un CMJ actif
   // existe pour ce bilan ; le nombre total de pages devient donc dynamique (2 ou 3), jamais figé.
   var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),age,fSc):null;
-  var totalPages=mouvementAnalysis?3:2;
+  // Mission Q, objectif 3 — page patient CSM V2 (langage courant), n'apparaît que si le bilan produit
+  // au moins une conclusion présentable (findings non vide) — jamais une page vide.
+  var csmV2Patient=res.clinicalSynthesisV2?csmV2PatientNarrative(res.clinicalSynthesisV2.clinicalProfile,res.clinicalSynthesisV2.synthesis):null;
+  var csmV2PatientHasContent=!!(csmV2Patient&&csmV2Patient.findings.length);
+  var totalPages=(mouvementAnalysis?1:0)+(csmV2PatientHasContent?1:0)+2;
 
   var colMap={vert:'#22c55e',jaune:'#FACC15',orange:'#f97316',rouge:'#ef4444'};
   var bgMap={vert:'#d1fae5',jaune:'#FEF9C3',orange:'#ffedd5',rouge:'#fee2e2'};
@@ -10103,6 +10197,52 @@ function buildSportifReport(athlete,bilan,res){
 
     html+=footerHTML(3,false);
     html+='</div>'; // end print-page 3
+  }
+
+  // ══════════════════════════════ PAGE PATIENT — VOTRE BILAN EN QUELQUES MOTS ══════════════════════
+  // Mission Q, objectif 3 : reformulation en langage courant des MÊMES conclusions déjà calculées par
+  // computeCsmV2() (csmV2PatientNarrative, cf. plus haut) — aucun recalcul, aucun LSI/D-G brut,
+  // aucun "explainedDeficitSource" affiché. Structure imposée : ce que le bilan montre -> ce que cela
+  // signifie -> ce qu'on va travailler -> comment on va suivre l'évolution.
+  if(csmV2PatientHasContent){
+    var cvp=csmV2Patient;
+    var patientTierCol={majeur:C.rouge,secondaire:C.orange,preservee:C.teal};
+    html+='<div class="print-page" style="background:#EEF2F5;padding:26px 30px;box-sizing:border-box">';
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">'
+      +'<div style="font-weight:900;font-size:13pt;color:#132B3A;letter-spacing:-0.02em">KINEXUS</div>'
+      +'<span style="background:#0A1E2D;color:#fff;font-size:8pt;font-weight:700;padding:4px 12px;border-radius:14px">PAGE '+totalPages+'/'+totalPages+'</span>'
+      +'</div>';
+    html+='<div style="margin-bottom:8px"><div style="font-weight:900;font-size:20pt;color:#132B3A;letter-spacing:-0.02em">VOTRE BILAN EN QUELQUES MOTS</div><div style="font-size:9pt;color:#2A9D8F;font-weight:700;letter-spacing:0.1em;margin-top:3px">CE QU\'IL FAUT RETENIR</div></div>';
+
+    html+=panel(
+      '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:13px">Ce que le bilan montre</div>'
+      +cvp.findings.map(function(f){
+        return '<div style="display:flex;align-items:flex-start;gap:9px;font-size:10.5pt;padding:8px 0;border-bottom:1px dashed #E7ECF1;color:#132B3A;line-height:1.5"><span style="width:8px;height:8px;border-radius:50%;background:'+(patientTierCol[f.tier]||'#94A3B8')+';flex-shrink:0;margin-top:5px"></span><span>'+f.text+'</span></div>';
+      }).join('')
+    );
+
+    if(cvp.meaning){
+      html+='<div style="margin-top:16px">'+panel(
+        '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Ce que cela signifie</div>'
+        +'<div style="font-size:10.5pt;color:#334155;line-height:1.6">'+cvp.meaning+'</div>'
+      )+'</div>';
+    }
+
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">';
+    html+=panel(
+      '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:13px">Ce qu\'on va travailler</div>'
+      +(cvp.axes.length?cvp.axes.map(function(a){
+          return '<div style="display:flex;align-items:center;gap:9px;font-size:9.5pt;padding:6px 0;color:#132B3A"><span style="width:20px;height:20px;border-radius:50%;background:'+C.teal+';color:#fff;font-weight:800;font-size:9pt;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+a.rank+'</span>'+a.text+'</div>';
+        }).join(''):'<div style="font-size:9pt;color:#94A3B8;font-style:italic">Aucun axe de travail prioritaire identifié sur ce bilan.</div>')
+    );
+    html+=panel(
+      '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:13px">Comment on va suivre l\'évolution</div>'
+      +'<div style="font-size:9.5pt;color:#334155;line-height:1.55">'+(cvp.followUp||'La suite du suivi sera précisée avec votre kinésithérapeute.')+'</div>'
+    );
+    html+='</div>';
+
+    html+=footerHTML(totalPages,false);
+    html+='</div>'; // end print-page patient
   }
 
   return html;
