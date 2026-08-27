@@ -7459,6 +7459,12 @@ function computeCsmV2(functionScores,testData){
   var csmV2GlobalCausalV2=computeCsmV2GlobalCausalReasoning(clinicalCausalReasoningV2,clinicalProfileV2);
   clinicalCausalReasoningV2.globalReasoning=csmV2GlobalCausalV2;
   clinicalCausalReasoningV2.globalNarrative=csmV2GlobalCausalV2.narrative;
+  // Mission Y (synthèse du profil fonctionnel) — couche de SYNTHÈSE au-dessus de tout ce qui
+  // précède (clinicalProfile/clinicalCausalReasoning/clinicalFunctionalChains/clinicalBridgeEvidence
+  // /functionScores) — aucun recalcul, cf. computeCsmV2FunctionalProfilePatterns/
+  // computeCsmV2GlobalFunctionalSynthesis ci-dessus.
+  var clinicalFunctionalProfilePatternsV2=computeCsmV2FunctionalProfilePatterns(clinicalProfileV2,clinicalCausalReasoningV2,clinicalFunctionalChainsV2,clinicalBridgeEvidenceV2,functionScores);
+  var globalFunctionalSynthesisV2=computeCsmV2GlobalFunctionalSynthesis(clinicalProfileV2,clinicalCausalReasoningV2,clinicalFunctionalProfilePatternsV2,synthesisV2.progressionAxes);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7523,11 +7529,16 @@ function computeCsmV2(functionScores,testData){
     // Mission X (raisonnement causal) — graphe CAUSE -> MÉCANISME -> CONSÉQUENCE, couche additive
     // PURE au-dessus de clinicalMechanisticReasoningV2 — cf. computeCsmV2CausalReasoning ci-dessus.
     clinicalCausalReasoning:clinicalCausalReasoningV2,
+    // Mission Y (synthèse du profil fonctionnel) — patterns fonctionnels + synthèse globale, couche
+    // de SYNTHÈSE PURE au-dessus de tout ce qui précède — cf. computeCsmV2FunctionalProfilePatterns/
+    // computeCsmV2GlobalFunctionalSynthesis ci-dessus.
+    clinicalFunctionalProfilePatterns:clinicalFunctionalProfilePatternsV2,
+    globalFunctionalSynthesis:globalFunctionalSynthesisV2,
     // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
     // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
     // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
     // l'identique par buildExpertReport() et ExpertView (mission O §17).
-    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2,clinicalMechanisticReasoningV2,clinicalCausalReasoningV2),
+    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2,clinicalMechanisticReasoningV2,clinicalCausalReasoningV2,globalFunctionalSynthesisV2),
     limitations:[
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
@@ -8523,7 +8534,7 @@ function csmV2ChainSentence(c){
 }
 function csmV2ReportOrganisationFonctionnelleSection(clinicalFunctionalChains){
   var chains2=(clinicalFunctionalChains||[]).filter(function(c){return c.chain.length===2;});
-  if(!chains2.length)return{id:'organisation_fonctionnelle',title:'Organisation fonctionnelle du profil',text:null,chains:[],evidence:[]};
+  if(!chains2.length)return{id:'organisation_fonctionnelle',title:'Chaînes fonctionnelles détectées',text:null,chains:[],evidence:[]};
   var sentences=chains2.map(csmV2ChainSentence);
   var evidence=[];
   chains2.forEach(function(c){
@@ -8531,7 +8542,7 @@ function csmV2ReportOrganisationFonctionnelleSection(clinicalFunctionalChains){
       evidence.push({variable:c.evidence[0].variableA,left:c.evidence[0].left,right:c.evidence[0].right,lsi:c.evidence[0].lsi,status:null,source:'bridge'});
     }
   });
-  return{id:'organisation_fonctionnelle',title:'Organisation fonctionnelle du profil',text:sentences.join(' '),chains:chains2,evidence:evidence};
+  return{id:'organisation_fonctionnelle',title:'Chaînes fonctionnelles détectées',text:sentences.join(' '),chains:chains2,evidence:evidence};
 }
 function csmV2ReportOrganisationFonctionnelleHtml(s){
   if(!s||!s.text)return'';
@@ -8575,6 +8586,39 @@ function csmV2BridgeChipsHtml(bridges,quality){
 }
 // Assemblage unique du corps du compte rendu clinique — SEULE implémentation, consommée à
 // l'identique par buildExpertReport (PDF) et ExpertView (mission Q, objectif 1 point 8).
+// Mission Y (synthèse du profil fonctionnel), §17 — "Organisation fonctionnelle du profil" :
+// patterns dominants (🔴) / secondaires (🟠) + questions encore ouvertes, déjà calculés
+// (computeCsmV2FunctionalProfilePatterns) — aucun recalcul, absente si aucun pattern détecté.
+function csmV2PatternCardHtml(p,i,dominant){
+  var col=dominant?C.rouge:C.orange;
+  return'<div style="border-left:3px solid '+col+';padding:4px 0 4px 10px;margin:6px 0">'
+    +'<div style="font-size:8.5pt;font-weight:700;color:#132B3A">'+(i+1)+'. '+p.title+'</div>'
+    +'<div style="font-size:8pt;color:#555;margin-top:2px">→ Qualités concernées : '+p.qualities.map(csmV2QualityDisplayLabel).join(', ')+'</div>'
+    +(p.relations.length?'<div style="font-size:8pt;color:#555">→ Relations supportées : '+p.relations.join(' ')+'</div>':'')
+    +(p.narrative?'<p style="margin:3px 0 0;font-size:8.5pt;color:#333;line-height:1.5">'+p.narrative+'</p>':'')
+    +'</div>';
+}
+function csmV2ReportPatternsHtml(s){
+  if(!s||(!s.dominantPatterns||!s.dominantPatterns.length)&&(!s.secondaryPatterns||!s.secondaryPatterns.length))return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">'+s.title+'</div>';
+  if(s.dominantPatterns&&s.dominantPatterns.length){
+    out+='<div style="font-size:7.5pt;font-weight:700;color:'+C.rouge+';text-transform:uppercase;letter-spacing:0.04em;margin:4px 0">🔴 Patterns dominants</div>';
+    out+=s.dominantPatterns.map(function(p,i){return csmV2PatternCardHtml(p,i,true);}).join('');
+  }
+  if(s.secondaryPatterns&&s.secondaryPatterns.length){
+    out+='<div style="font-size:7.5pt;font-weight:700;color:'+C.orange+';text-transform:uppercase;letter-spacing:0.04em;margin:8px 0 4px">🟠 Patterns secondaires</div>';
+    out+=s.secondaryPatterns.map(function(p,i){return csmV2PatternCardHtml(p,i,false);}).join('');
+  }
+  if(s.unresolvedQuestions&&s.unresolvedQuestions.length){
+    out+='<div style="margin-top:8px;padding-top:8px;border-top:1px dashed '+C.border+'">'
+      +'<div style="font-size:7.5pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">Questions encore ouvertes</div>'
+      +s.unresolvedQuestions.map(function(u){return'<p style="margin:0 0 4px;font-size:8pt;color:#555;font-style:italic">'+u.question+'</p>';}).join('')
+      +'</div>';
+  }
+  out+='</div>';
+  return out;
+}
 function csmV2ClinicalReportBodyHtml(csmV2Rep){
   if(!csmV2Rep||!csmV2Rep.clinicalReport)return'';
   var crO=csmV2Rep.clinicalReport,cp=csmV2Rep.clinicalProfile;
@@ -8586,6 +8630,9 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
     html+='<div style="margin:0 0 8px">'+csmV2BodyZoneChipsHtml(crO.bodyZones)+'</div>';
   }
   if(byId.synthese&&byId.synthese.text)html+=csmV2ReportConclusionCalloutHtml({title:'Synthèse clinique',text:byId.synthese.text});
+  // Mission Y (synthèse du profil fonctionnel), §17 — patterns dominants/secondaires, AVANT les
+  // cartes détaillées par qualité.
+  html+=csmV2ReportPatternsHtml(byId.organisation_fonctionnelle_du_profil);
   // Mission S, objectif S10 — ordre d'interface imposé : profil global -> TOP DÉFICITS HIÉRARCHISÉS
   // -> carte par qualité (état/données/pourquoi/relations/conclusion, déjà intégré par carte depuis
   // Mission Q) -> analyse transversale -> conclusion -> axes -> réévaluation. Principaux déficits
@@ -9137,6 +9184,244 @@ function computeCsmV2GlobalCausalReasoning(clinicalCausalReasoning,clinicalProfi
   };
 }
 
+// ══════════════════ MISSION Y — SYNTHÈSE DU PROFIL FONCTIONNEL ═════════════════════════════════
+// computeCsmV2FunctionalProfilePatterns() : couche additive PURE au-dessus de clinicalProfile/
+// clinicalCausalReasoning/clinicalFunctionalChains/clinicalBridgeEvidence/functionScores déjà
+// calculés. Aucune norme/LSI/preuve/relation recalculée — chaque pattern n'est produit QUE si ses
+// conditions sont réellement réunies ; jamais un pattern par défaut, jamais un mécanisme précis
+// (raideur, compensation, étiologie) inventé au-delà de ce que les variables mesurent réellement.
+var CSM_V2_RANK={rouge:0,orange:1,jaune:2,vert:3};
+
+// Pattern A — Force maximale préservée / production rapide de force déficitaire (rapidForceDeficit
+// déjà calculé — jamais recalculé ici).
+function csmV2PatternForceRfd(clinicalProfile){
+  var force=clinicalProfile['Force'];
+  var rfd=force&&force.rapidForceDeficit;
+  if(!(force&&force.severity==='preserved'&&rfd&&rfd.supported))return null;
+  var evidence=rfd.keyFindings||[];
+  return{
+    patternKey:'force_max_vs_rfd',title:'Force maximale préservée, production rapide de force déficitaire',
+    type:'dissociation_intra_qualite',supportLevel:rfd.severity==='majeur'?'strong':'moderate',
+    qualities:['Force'],evidence:evidence,relations:[],mechanisms:['Capacité de production de force maximale.'],consequences:[],
+    priorityScore:0,
+    narrative:"La force maximale apparaît relativement préservée, tandis que les limitations deviennent plus importantes lorsque la production de force doit être réalisée rapidement (RFD 0-100/200ms), objectivée par "+evidence.map(function(e){return csmV2FriendlyKpiLabel(e.variable);}).join(', ')+'.'
+  };
+}
+// Pattern B — freinage/absorption : convergence réelle (≥2 mesures) de preuves de freinage
+// excentrique déjà objectivées pour Absorption — jamais 1 seule mesure isolée, jamais un mécanisme
+// de "stratégie"/"raideur" au-delà des variables mesurées.
+function csmV2PatternAbsorption(clinicalCausalReasoning){
+  var qr=clinicalCausalReasoning.qualityReasoning['Absorption'];
+  if(!qr||qr.state!=='deficitaire'||!qr.directEvidence.length)return null;
+  var evidence=qr.directEvidence[0].evidence||[];
+  if(evidence.length<2)return null;
+  return{
+    patternKey:'freinage_absorption',title:'Limitation du freinage / de l\'absorption excentrique',
+    type:'convergence_intra_qualite',supportLevel:'strong',
+    qualities:['Absorption'],evidence:evidence,relations:[],mechanisms:qr.mechanisms,consequences:qr.consequences,
+    priorityScore:0,
+    narrative:"Plusieurs mesures de freinage/absorption convergent vers un même déficit ("+evidence.map(function(e){return csmV2FriendlyKpiLabel(e.variable);}).join(', ')+"), compatible avec une limitation de la capacité à freiner et absorber la charge."
+  };
+}
+// Pattern C — restitution rapide / réactivité (Réactivité et/ou Explosivité/Puissance
+// déficitaires, preuves propres réellement présentes) — jamais un mécanisme de "raideur" précis
+// non mesuré.
+function csmV2PatternReactivite(clinicalCausalReasoning){
+  var involved=['Réactivité','Explosivité','Puissance'].filter(function(q){
+    var qr=clinicalCausalReasoning.qualityReasoning[q];return qr&&qr.state==='deficitaire'&&qr.directEvidence.length;
+  });
+  if(!involved.length)return null;
+  var evidence=[],mechanisms=[];
+  involved.forEach(function(q){
+    var qr=clinicalCausalReasoning.qualityReasoning[q];
+    (qr.directEvidence[0].evidence||[]).forEach(function(e){evidence.push(e);});
+    qr.mechanisms.forEach(function(m){if(mechanisms.indexOf(m)===-1)mechanisms.push(m);});
+  });
+  return{
+    patternKey:'restitution_rapide',title:'Restitution rapide du cycle étirement-raccourcissement altérée',
+    type:'convergence_inter_qualite',supportLevel:involved.length>=2?'strong':'moderate',
+    qualities:involved,evidence:evidence,relations:[],mechanisms:mechanisms,consequences:[],
+    priorityScore:0,
+    narrative:"La capacité à restituer rapidement une force après une phase de freinage apparaît altérée ("+csmV2JoinList(involved.map(csmV2QualityDisplayLabel))+"), objectivée par "+evidence.map(function(e){return csmV2FriendlyKpiLabel(e.variable);}).join(', ')+" — sans qu'un mécanisme de raideur précis puisse être démontré avec les données disponibles."
+  };
+}
+// Pattern D — bilatéral vs unipodal : compare, au sein d'une MÊME qualité, un test bilatéral et un
+// test unilatéral déjà classifiés par le moteur HYP propriétaire (jamais une comparaison inventée,
+// jamais une jambe ni une "compensation" attribuée automatiquement). N'active que pour les paires
+// où l'architecture existante fournit réellement les deux classifications au sein du même moteur —
+// aujourd'hui, seule Réactivité (dj_rsi bilatéral / sldj_rsi unipodal, tous deux dans
+// HYP-REA-01.diagnostic) réunit cette condition ; Force (iso_belt_squat vs segments) et Puissance
+// (cmj_peak_power vs slcmj_peak_power) n'ont pas de paire propre classifiée des deux côtés sur ce
+// bilan (cmj_peak_power reste `indisponible`, segments Force non déficitaires) — jamais forcé.
+var CSM_V2_BILATERAL_VS_UNIPODAL_PAIRS=[
+  {quality:'Réactivité',bilateralKey:'dj_rsi',unipodalKey:'sldj_rsi',label:'RSI (réactivité)'}
+];
+function csmV2PatternBilateralUnipodal(functionScores){
+  var found=[];
+  CSM_V2_BILATERAL_VS_UNIPODAL_PAIRS.forEach(function(pair){
+    var fsc=functionScores[pair.quality];var hyp=fsc&&fsc[HYP_CSM_HYP_KEY[pair.quality]];
+    if(!hyp||!hyp.diagnostic)return;
+    var bi=hyp.diagnostic[pair.bilateralKey],uni=hyp.diagnostic[pair.unipodalKey];
+    if(!bi||!uni||bi.category==null||uni.category==null)return;
+    if(CSM_V2_RANK[uni.category]<CSM_V2_RANK[bi.category])found.push({quality:pair.quality,label:pair.label,bilateral:bi,unipodal:uni});
+  });
+  if(!found.length)return null;
+  var evidence=found.map(function(f){return{variable:f.label+' (bilatéral)',status:f.bilateral.category,raw:f.bilateral.raw};})
+    .concat(found.map(function(f){return{variable:f.label+' (unilatéral)',status:f.unipodal.category,lsi:f.unipodal.lsi,asymmetryPercent:f.unipodal.symmetryEvidence?f.unipodal.symmetryEvidence.asymmetryPercent:null};}));
+  return{
+    patternKey:'bilateral_vs_unipodal',title:'Limitation plus marquée lors des tâches unipodales',
+    type:'comparaison_bilateral_unipodal',supportLevel:found.length>=2?'strong':'moderate',
+    qualities:found.map(function(f){return f.quality;}),evidence:evidence,relations:[],mechanisms:[],consequences:[],
+    priorityScore:0,
+    narrative:found.map(function(f){
+      return"Pour "+csmV2QualityDisplayLabel(f.quality).toLowerCase()+", "+f.label+" reste relativement préservé en bilatéral (catégorie "+f.bilateral.category+"), alors que la version unipodale est nettement plus déficitaire (catégorie "+f.unipodal.category+(f.unipodal.symmetryEvidence?', asymétrie '+f.unipodal.symmetryEvidence.asymmetryPercent+'%':'')+') — sans qu\'une jambe précise ni une compensation puisse être attribuée automatiquement.';
+    }).join(' ')
+  };
+}
+// Pattern E — Mobilité -> Stabilisation : relation validée et/ou bridge (WBLT), jamais l'un
+// présenté comme l'autre.
+function csmV2PatternMobiliteStabilisation(clinicalCausalReasoning){
+  var qr=clinicalCausalReasoning.qualityReasoning['Stabilisation'];
+  if(!qr||qr.state!=='deficitaire')return null;
+  var rel=qr.crossQualityFactors.filter(function(f){return f.from==='Mobilité';})[0];
+  var bridge=qr.bridges.filter(function(f){return f.from==='Mobilité'||f.to==='Mobilité';})[0];
+  if(!rel&&!bridge)return null;
+  var evidence=(rel?rel.evidence:[]).concat(bridge?bridge.evidence:[]);
+  var parts=[];
+  if(rel)parts.push("Une relation fonctionnelle déjà validée relie la Mobilité à la Stabilisation ("+rel.wording+")");
+  if(bridge)parts.push("Les deux qualités partagent également une mesure commune (WBLT), ce qui renforce une association fonctionnelle réelle, sans établir de lien de causalité démontré.");
+  return{
+    patternKey:'mobilite_stabilisation',title:'Mobilité / Stabilisation',
+    type:'relation_et_bridge',supportLevel:(rel&&bridge)?'strong':'moderate',
+    qualities:['Mobilité','Stabilisation'],evidence:evidence,relations:rel?[rel.wording]:[],mechanisms:qr.mechanisms,consequences:[],
+    priorityScore:0,narrative:parts.join(' ')
+  };
+}
+// Pattern F — Force -> qualités fonctionnelles, UNIQUEMENT lorsque chaque relation est réellement
+// activée (consequences déjà calculées par computeCsmV2CausalReasoning) — jamais Force présentée
+// comme cause simplement parce qu'elle est préservée.
+function csmV2PatternForceFunctional(clinicalCausalReasoning){
+  var forceQr=clinicalCausalReasoning.qualityReasoning['Force'];
+  if(!forceQr||!forceQr.consequences.length)return null;
+  var relCons=forceQr.consequences.filter(function(c){return c.type==='cross_quality';});
+  if(!relCons.length)return null;
+  return{
+    patternKey:'force_qualites_fonctionnelles',title:'Force → qualités fonctionnelles',
+    type:'relations_validees',supportLevel:relCons.length>=2?'strong':'moderate',
+    qualities:['Force'].concat(relCons.map(function(c){return c.quality;})),evidence:[],
+    relations:relCons.map(function(c){return c.wording||c.relationship;}),
+    mechanisms:['Capacité de production de force maximale.'],consequences:relCons,
+    priorityScore:0,
+    narrative:"La Force entretient une relation clinique déjà validée avec "+csmV2JoinList(relCons.map(function(c){return csmV2QualityDisplayLabel(c.quality);}))+" — "+relCons.map(function(c){return c.wording;}).join(' ')
+  };
+}
+// Pattern G — Absorption <-> Explosivité via le bridge CMJ braking RFD déjà démontré — jamais
+// présenté comme causalité.
+function csmV2PatternAbsorptionExplosiviteBridge(clinicalBridgeEvidence){
+  var b=(clinicalBridgeEvidence||[]).filter(function(x){return(x.qualityA==='Absorption'&&x.qualityB==='Explosivité')||(x.qualityA==='Explosivité'&&x.qualityB==='Absorption');})[0];
+  if(!b)return null;
+  return{
+    patternKey:'absorption_explosivite_bridge',title:'Absorption ↔ Explosivité (variable pont commune)',
+    type:'bridge',supportLevel:'moderate',qualities:['Absorption','Explosivité'],
+    evidence:[{variable:b.variableA,left:b.left,right:b.right,lsi:b.lsi,status:b.status}],
+    relations:[],mechanisms:[],consequences:[],priorityScore:0,
+    narrative:"Absorption et Explosivité partagent une même mesure de freinage excentrique (CMJ Braking RFD, LSI "+b.lsi+"%), ce qui relie mécaniquement ces deux profils sans que les qualités elles-mêmes soient reliées par une relation causale démontrée."
+  };
+}
+// Pattern H — organisation générale du profil : n'active QUE si au moins 4 des 5 conditions listées
+// par la mission sont réellement réunies (jamais 1-2 signaux isolés) ; aucune étiologie (LCA,
+// entorse, chirurgie...) n'est jamais ajoutée — absente des données, jamais inventée.
+function csmV2PatternProfileOrganisation(clinicalProfile){
+  var conditions=[
+    !!(clinicalProfile['Force']&&clinicalProfile['Force'].severity==='preserved'),
+    !!(clinicalProfile['Force']&&clinicalProfile['Force'].rapidForceDeficit&&clinicalProfile['Force'].rapidForceDeficit.supported),
+    !!(clinicalProfile['Absorption']&&clinicalProfile['Absorption'].severity&&clinicalProfile['Absorption'].severity!=='preserved'),
+    !!(clinicalProfile['Réactivité']&&clinicalProfile['Réactivité'].severity&&clinicalProfile['Réactivité'].severity!=='preserved'),
+    !!(clinicalProfile['Stabilisation']&&clinicalProfile['Stabilisation'].severity&&clinicalProfile['Stabilisation'].severity!=='preserved')
+  ];
+  var metCount=conditions.filter(Boolean).length;
+  if(metCount<4)return null;
+  return{
+    patternKey:'organisation_profil',title:'Organisation générale du profil',
+    type:'synthese_globale',supportLevel:metCount===5?'strong':'moderate',
+    qualities:['Force','Absorption','Réactivité','Stabilisation'],evidence:[],relations:[],mechanisms:[],consequences:[],
+    priorityScore:0,
+    narrative:"Le profil montre une meilleure préservation des capacités de force maximale que des qualités sollicitées lors de tâches rapides, excentriques, réactives ou unipodales."
+  };
+}
+
+// Hiérarchisation déterministe (§11) : nombre de qualités + nombre de preuves + niveau de support +
+// nombre de relations validées + sévérité des qualités concernées — jamais une intuition clinique.
+var CSM_V2_PATTERN_SUPPORT_SCORE={strong:3,moderate:2,weak:1,none:0};
+function csmV2PatternPriorityScore(p,clinicalProfile){
+  var severityScore=0;
+  p.qualities.forEach(function(q){
+    var sev=clinicalProfile[q]&&clinicalProfile[q].severity;
+    severityScore+=sev==='majeur'?3:(sev==='modere'?2:(sev==='preserved'?0:1));
+  });
+  return p.qualities.length*10+p.evidence.length*3+(CSM_V2_PATTERN_SUPPORT_SCORE[p.supportLevel]||0)*5+p.relations.length*4+severityScore;
+}
+function computeCsmV2FunctionalProfilePatterns(clinicalProfile,clinicalCausalReasoning,clinicalFunctionalChains,clinicalBridgeEvidence,functionScores){
+  var detected=[
+    csmV2PatternForceRfd(clinicalProfile),
+    csmV2PatternAbsorption(clinicalCausalReasoning),
+    csmV2PatternReactivite(clinicalCausalReasoning),
+    csmV2PatternBilateralUnipodal(functionScores),
+    csmV2PatternMobiliteStabilisation(clinicalCausalReasoning),
+    csmV2PatternForceFunctional(clinicalCausalReasoning),
+    csmV2PatternAbsorptionExplosiviteBridge(clinicalBridgeEvidence),
+    csmV2PatternProfileOrganisation(clinicalProfile)
+  ].filter(Boolean);
+  // §12 — déduplication : deux patterns couvrant EXACTEMENT le même ensemble de qualités sont
+  // fusionnés en ne gardant que celui au meilleur score, jamais une même conclusion répétée.
+  var byKey={};
+  detected.forEach(function(p){
+    p.priorityScore=csmV2PatternPriorityScore(p,clinicalProfile);
+    var key=p.qualities.slice().sort().join('|');
+    if(!byKey[key]||byKey[key].priorityScore<p.priorityScore)byKey[key]=p;
+  });
+  var patterns=Object.keys(byKey).map(function(k){return byKey[k];}).sort(function(a,b){return b.priorityScore-a.priorityScore;});
+  return{patterns:patterns,dominantPatterns:patterns.slice(0,3),secondaryPatterns:patterns.slice(3)};
+}
+
+// computeCsmV2GlobalFunctionalSynthesis() — couche de synthèse finale, consomme exclusivement
+// clinicalProfile/clinicalCausalReasoning/functionalProfilePatterns/synthesis.progressionAxes déjà
+// calculés. Les axes de progression réutilisent CSM_V2_AXIS_QUALITY_MAP (LOCKED, Mission Q) —
+// jamais un nouvel axe inventé, jamais un axe déclaré pour une qualité que le pattern ne couvre pas.
+function csmV2ProgressionAxesForPattern(pattern,progressionAxes){
+  return(progressionAxes||[]).filter(function(axis){
+    return(CSM_V2_AXIS_QUALITY_MAP[axis]||[]).some(function(q){return pattern.qualities.indexOf(q)!==-1;});
+  });
+}
+function computeCsmV2GlobalFunctionalSynthesis(clinicalProfile,clinicalCausalReasoning,functionalProfilePatterns,progressionAxes){
+  var preserved=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q]&&clinicalProfile[q].severity==='preserved';});
+  var dominantDeficits=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q]&&clinicalProfile[q].severity==='majeur';});
+  var moderateDeficits=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q]&&clinicalProfile[q].severity==='modere';});
+  var unresolvedQuestions=clinicalCausalReasoning.unresolvedQuestions||[];
+  var progressionPriorities=functionalProfilePatterns.dominantPatterns.map(function(p){
+    return{patternKey:p.patternKey,qualities:p.qualities,axes:csmV2ProgressionAxesForPattern(p,progressionAxes)};
+  }).filter(function(pp){return pp.axes.length;});
+
+  var parts=[];
+  if(preserved.length)parts.push("Ce qui est préservé : "+csmV2JoinList(preserved.map(csmV2QualityDisplayLabel))+'.');
+  if(dominantDeficits.length)parts.push("Les principales limitations concernent : "+csmV2JoinList(dominantDeficits.map(csmV2QualityDisplayLabel))+(moderateDeficits.length?', avec un déficit modéré pour '+csmV2JoinList(moderateDeficits.map(csmV2QualityDisplayLabel)):'')+'.');
+  if(functionalProfilePatterns.dominantPatterns.length)parts.push("Les déficits deviennent plus marqués dans les contraintes suivantes : "+functionalProfilePatterns.dominantPatterns.map(function(p){return p.title;}).join(' ; ')+'.');
+  var validated=functionalProfilePatterns.patterns.filter(function(p){return p.relations.length||p.type==='bridge';});
+  if(validated.length)parts.push("Liens fonctionnels réellement supportés : "+validated.map(function(p){return p.title;}).join(' ; ')+'.');
+  if(unresolvedQuestions.length)parts.push("Reste inexpliqué : "+unresolvedQuestions.map(function(u){return csmV2QualityDisplayLabel(u.quality);}).join(', ')+'.');
+
+  return{
+    dominantPatterns:functionalProfilePatterns.dominantPatterns,
+    secondaryPatterns:functionalProfilePatterns.secondaryPatterns,
+    preservedCapacities:preserved,
+    dominantDeficits:dominantDeficits,
+    functionalOrganisation:functionalProfilePatterns.dominantPatterns.map(function(p){return{patternKey:p.patternKey,title:p.title,qualities:p.qualities};}),
+    unresolvedQuestions:unresolvedQuestions,
+    progressionPriorities:progressionPriorities,
+    narrative:parts.length?parts.join(' '):null
+  };
+}
+
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
 // déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
 // aucun D/G brut, aucun "explainedDeficitSource", etc.) — jamais un recalcul, jamais une nouvelle
@@ -9229,10 +9514,24 @@ function csmV2PatientNarrative(clinicalProfile,synthesis){
 }
 // §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
 // synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
-function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains,clinicalMechanisticReasoning,clinicalCausalReasoning){
+function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains,clinicalMechanisticReasoning,clinicalCausalReasoning,globalFunctionalSynthesis){
   var sections=[];
   sections.push(csmV2ReportObjetSection(clinicalProfile));
   sections.push({id:'synthese',title:'Synthèse clinique',text:synthesis.summary,evidence:synthesis.keyFindings});
+  // Mission Y (synthèse du profil fonctionnel), §17 — "Organisation fonctionnelle du profil" :
+  // patterns dominants/secondaires déjà détectés (computeCsmV2FunctionalProfilePatterns), placée
+  // AVANT les cartes détaillées par qualité — jamais un texte recalculé ici, absente (text=null) si
+  // aucun pattern n'est détecté sur ce bilan.
+  if(globalFunctionalSynthesis){
+    sections.push({
+      id:'organisation_fonctionnelle_du_profil',title:'Organisation fonctionnelle du profil',
+      text:globalFunctionalSynthesis.narrative,
+      dominantPatterns:globalFunctionalSynthesis.dominantPatterns,
+      secondaryPatterns:globalFunctionalSynthesis.secondaryPatterns,
+      unresolvedQuestions:globalFunctionalSynthesis.unresolvedQuestions,
+      evidence:[]
+    });
+  }
   sections.push(csmV2ReportMobiliteSection(clinicalProfile,symmetryEvidence));
   sections.push(csmV2ReportForceMaximaleSection(clinicalProfile,symmetryEvidence));
   sections.push(csmV2ReportRfdSection(clinicalProfile));
