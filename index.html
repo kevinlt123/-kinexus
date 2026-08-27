@@ -7432,6 +7432,11 @@ function computeCsmV2(functionScores,testData){
   // Mission Q — moteur de raisonnement explicatif : couche additive PURE, consomme exclusivement
   // clinicalProfileV2/clinicalHypothesesV2 déjà calculés ci-dessus (cf. computeCsmV2ClinicalExplanations).
   var clinicalExplanationsV2=computeCsmV2ClinicalExplanations(clinicalProfileV2,clinicalHypothesesV2);
+  // Mission S — raisonnement opérationnel : reformate clinicalExplanationsV2 (aucun recalcul, cf.
+  // computeCsmV2ClinicalReasoning) + cartographie par qualité (S1) + graphe explicatif (S6).
+  var clinicalReasoningV2=computeCsmV2ClinicalReasoning(clinicalExplanationsV2);
+  var clinicalQualityMapV2=computeCsmV2QualityMap(clinicalProfileV2,absoluteEvidence,symmetryEvidence,clinicalReasoningV2);
+  var clinicalReasoningGraphV2=computeCsmV2ClinicalReasoningGraph();
 
   return{
     csmV2Id:'CSM-V2',
@@ -7477,6 +7482,13 @@ function computeCsmV2(functionScores,testData){
     // Mission Q — pour chaque qualité : pourquoi est-elle déficitaire (ou pourquoi aucune explication
     // suffisamment documentée n'a été retenue) ? cf. computeCsmV2ClinicalExplanations ci-dessus.
     clinicalExplanations:clinicalExplanationsV2,
+    // Mission S — raisonnement opérationnel (S1/S3/S6) : même contenu que clinicalExplanations,
+    // reformaté sous les noms de champs demandés (directEvidence/explanatoryEvidence/
+    // crossQualityEvidence/convergingEvidence/reasoningNarrative), plus la cartographie par qualité
+    // et le graphe explicatif — aucun recalcul, cf. computeCsmV2ClinicalReasoning ci-dessus.
+    clinicalReasoning:clinicalReasoningV2,
+    clinicalQualityMap:clinicalQualityMapV2,
+    clinicalReasoningGraph:clinicalReasoningGraphV2,
     // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
     // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
     // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
@@ -8078,6 +8090,17 @@ function csmV2ReportTransversaleProfiles(clinicalProfile,mobilityYbt,symmetryEvi
   if(clinicalProfile['Puissance'].severity==='preserved'&&clinicalProfile['Absorption'].severity==='majeur'){
     profiles.push({id:'G',sentence:"La propulsion apparaît relativement préservée, alors que la capacité de freinage/absorption est nettement plus déficitaire — profil dissocié entre la propulsion et le freinage."});
   }
+  // Mission S, objectif S5.E — déficit bilatéral (CMJ) plus modéré que le déficit unilatéral (Single
+  // Leg Jump) : comparaison RELATIVE des LSI déjà calculés (aucun nouveau seuil absolu inventé — la
+  // comparaison porte sur deux LSI déjà classifiés déficitaires, jamais sur une valeur brute). Wording
+  // imposé par la mission : "contribution relative moindre" / "asymétrie de contribution", jamais
+  // "compensation" (non validé comme fait démontré par un moteur LOCKED).
+  if(cmjEntry&&cmjEntry.status==='deficient'&&cmjEntry.lsi!=null){
+    var worseSlj=sljEntries.filter(function(k){return k.status==='deficient'&&k.lsi!=null&&k.lsi<cmjEntry.lsi;});
+    if(worseSlj.length){
+      profiles.push({id:'H',sentence:"Le déficit bilatéral (CMJ) apparaît plus modéré que celui observé lors des tâches unilatérales (Single Leg Jump), ce qui traduit une asymétrie de contribution entre les deux membres selon le contexte de la tâche."});
+    }
+  }
   return profiles;
 }
 // Mission P, point 4 — synthèse transversale "de tête" : combine l'opposition force/qualités
@@ -8409,13 +8432,18 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
     html+='<div style="margin:0 0 8px">'+csmV2BodyZoneChipsHtml(crO.bodyZones)+'</div>';
   }
   if(byId.synthese&&byId.synthese.text)html+=csmV2ReportConclusionCalloutHtml({title:'Synthèse clinique',text:byId.synthese.text});
+  // Mission S, objectif S10 — ordre d'interface imposé : profil global -> TOP DÉFICITS HIÉRARCHISÉS
+  // -> carte par qualité (état/données/pourquoi/relations/conclusion, déjà intégré par carte depuis
+  // Mission Q) -> analyse transversale -> conclusion -> axes -> réévaluation. Principaux déficits
+  // déplacé AVANT les cartes par qualité (avant Mission S, il suivait l'analyse transversale) — pure
+  // réorganisation de présentation, aucune donnée nouvelle, aucun recalcul.
+  html+=csmV2ReportHierarchyHtml(byId.principaux_deficits);
   CSM_V2_QUALITY_SECTION_IDS.forEach(function(id){
     var s=byId[id];
     if(s&&s.text)html+=csmV2ReportSectionCardHtml(s,cp,crO.bodyZones);
   });
   html+=csmV2ReportTransversaleHtml(byId.transversale);
   if(csmV2Rep.synthesis&&csmV2Rep.synthesis.clinicalRelations)html+=csmV2ReportRelationsHtml(csmV2Rep.synthesis.clinicalRelations);
-  html+=csmV2ReportHierarchyHtml(byId.principaux_deficits);
   html+=csmV2ReportPreservedCardHtml(byId.preservees);
   html+=csmV2ReportConclusionCalloutHtml(byId.conclusion);
   html+=csmV2ReportAxesHtml(byId.axes);
@@ -8538,6 +8566,73 @@ function computeCsmV2ClinicalExplanations(clinicalProfile,clinicalHypotheses){
   var explanations={};
   HYP_CSM_QUALITIES.forEach(function(q){explanations[q]=csmV2ClinicalExplanationForQuality(q,clinicalProfile,clinicalHypotheses);});
   return explanations;
+}
+
+// ══════════════════════════ MISSION S — RAISONNEMENT CLINIQUE OPÉRATIONNEL ═══════════════════════
+// computeCsmV2ClinicalReasoning() réutilise EXCLUSIVEMENT computeCsmV2ClinicalExplanations() (Mission
+// Q) et son enrichissement factors[]/evidenceBasis (Mission R), déjà calculés — AUCUNE nouvelle
+// classification, AUCUN nouveau seuil, AUCUNE nouvelle relation. Reformate le MÊME résultat sous les
+// noms de champs demandés par la mission S (§S3), pour donner un point d'entrée nommé conforme à la
+// demande sans faire vivre deux moteurs de classification parallèles (risque de divergence si l'un
+// des deux était modifié sans l'autre). directEvidence n'est renseigné QUE si own.length===1 (une
+// seule preuve = déficit direct, §S2 Niveau 1) ; avec >=2 preuves propres, elles vivent uniquement
+// dans explanatoryEvidence/convergingEvidence — jamais dupliquées à tort en "direct".
+function csmV2ClinicalReasoningForQuality(quality,explanation){
+  var factors=explanation.factors||[];
+  var ownFactor=factors.filter(function(f){return f.type==='own';})[0]||null;
+  var own=ownFactor?ownFactor.evidence:[];
+  var crossFactors=factors.filter(function(f){return f.type==='cross';});
+  return{
+    quality:quality,
+    state:explanation.deficitState,
+    supportLevel:explanation.supportLevel,
+    directEvidence:own.length===1?own[0]:null,
+    explanatoryEvidence:own,
+    crossQualityEvidence:crossFactors.map(function(f){return{explains:f.sourceQuality,explained:quality,supportLevel:f.supportLevel,wording:f.wording};}),
+    convergingEvidence:(own.length+crossFactors.length)>=2?factors:[],
+    evidenceBasis:explanation.evidenceBasis,
+    unexplainedReason:explanation.explanationStatus==='not_determined'?"Aucun facteur explicatif suffisamment documenté n'a été identifié dans les données disponibles.":null,
+    reasoningNarrative:explanation.narrative
+  };
+}
+function computeCsmV2ClinicalReasoning(clinicalExplanations){
+  var reasoning={};
+  HYP_CSM_QUALITIES.forEach(function(q){reasoning[q]=csmV2ClinicalReasoningForQuality(q,clinicalExplanations[q]);});
+  return reasoning;
+}
+// S1 — cartographie opérationnelle : agrège quality/state/severity/absoluteEvidence/symmetryEvidence
+// (déjà calculés par computeCsmV2()) avec ownExplanatoryEvidence/crossQualityExplanations/
+// convergingEvidence/unexplainedReason (déjà calculés par computeCsmV2ClinicalReasoning ci-dessus) —
+// pure agrégation de lecture, aucune nouvelle preuve créée.
+function computeCsmV2QualityMap(clinicalProfile,absoluteEvidence,symmetryEvidence,clinicalReasoning){
+  var map={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var r=clinicalReasoning[q];
+    map[q]={
+      quality:q,
+      state:clinicalProfile[q].state,
+      severity:clinicalProfile[q].severity,
+      absoluteEvidence:absoluteEvidence[q]||null,
+      symmetryEvidence:symmetryEvidence[q]||{},
+      ownExplanatoryEvidence:r.explanatoryEvidence,
+      crossQualityExplanations:r.crossQualityEvidence,
+      convergingEvidence:r.convergingEvidence,
+      unexplainedReason:r.unexplainedReason
+    };
+  });
+  return map;
+}
+// S6 — graphe explicatif : nodes = 8 qualités (HYP_CSM_QUALITIES, LOCKED), edges = relations
+// RÉELLEMENT autorisées (CLINICAL_HYPOTHESIS_WHITELIST filtrée allowed===true — jamais
+// HYP_QUALITY_RELATIONS seul, qui contient aussi Explosivité→Puissance, non autorisée). Direction
+// explicite explains->explained, jamais inversée — structure purement dérivée d'un référentiel déjà
+// LOCKED, aucune nouvelle relation créée par cette mission (cf. audit Mission R : le graphe était déjà
+// complet, cf. rapport Mission R section A/C).
+function computeCsmV2ClinicalReasoningGraph(){
+  var edges=CLINICAL_HYPOTHESIS_WHITELIST.filter(function(w){return w.allowed;}).map(function(w){
+    return{explains:w.explains,explained:w.explained,direction:w.explains+'→'+w.explained,minSupport:w.minSupport};
+  });
+  return{nodes:HYP_CSM_QUALITIES.slice(),edges:edges};
 }
 
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
