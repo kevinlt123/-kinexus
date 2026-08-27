@@ -7452,6 +7452,13 @@ function computeCsmV2(functionScores,testData){
   // réutilisant exclusivement ce qui est déjà calculé ci-dessus (clinicalReasoningV2, bridgeEvidence,
   // functionalChains, symmetryEvidence) — cf. computeCsmV2MechanisticReasoning.
   var clinicalMechanisticReasoningV2=computeCsmV2MechanisticReasoning(clinicalReasoningV2,symmetryEvidence,clinicalBridgeEvidenceV2,clinicalFunctionalChainsV2);
+  // Mission X (raisonnement causal) — couche additive PURE au-dessus de clinicalMechanisticReasoningV2
+  // : graphe CAUSE -> MÉCANISME -> CONSÉQUENCE, aucun recalcul de norme/LSI/preuve/relation — cf.
+  // computeCsmV2CausalReasoning/computeCsmV2GlobalCausalReasoning ci-dessus.
+  var clinicalCausalReasoningV2=computeCsmV2CausalReasoning(clinicalProfileV2,clinicalMechanisticReasoningV2,clinicalFunctionalChainsV2);
+  var csmV2GlobalCausalV2=computeCsmV2GlobalCausalReasoning(clinicalCausalReasoningV2,clinicalProfileV2);
+  clinicalCausalReasoningV2.globalReasoning=csmV2GlobalCausalV2;
+  clinicalCausalReasoningV2.globalNarrative=csmV2GlobalCausalV2.narrative;
 
   return{
     csmV2Id:'CSM-V2',
@@ -7513,11 +7520,14 @@ function computeCsmV2(functionScores,testData){
     // classification) avec mechanism/mechanisms/explanatoryFactors/convergence/missingEvidence — cf.
     // computeCsmV2MechanisticReasoning ci-dessus.
     clinicalMechanisticReasoning:clinicalMechanisticReasoningV2,
+    // Mission X (raisonnement causal) — graphe CAUSE -> MÉCANISME -> CONSÉQUENCE, couche additive
+    // PURE au-dessus de clinicalMechanisticReasoningV2 — cf. computeCsmV2CausalReasoning ci-dessus.
+    clinicalCausalReasoning:clinicalCausalReasoningV2,
     // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
     // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
     // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
     // l'identique par buildExpertReport() et ExpertView (mission O §17).
-    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2,clinicalMechanisticReasoningV2),
+    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2,clinicalMechanisticReasoningV2,clinicalCausalReasoningV2),
     limitations:[
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
@@ -8369,6 +8379,33 @@ function csmV2ReportWhyHtml(explanation,col,mechanism){
   }
   return'';
 }
+// Mission X (raisonnement causal), §14 point 3/4 — hiérarchisation principal/contributif/associé et
+// conséquences observées ailleurs dans le bilan. Points 1/2/5 (déficit/facteurs explicatifs/
+// indéterminé) restent couverts par csmV2ReportWhyHtml ci-dessus — jamais dupliqué ici, uniquement
+// l'information NOUVELLE (rang + conséquences), directement lue depuis s.causal déjà calculé par
+// computeCsmV2CausalReasoning — aucun recalcul.
+var CSM_V2_CAUSAL_RANK_LABEL={principal:'Facteur principal',contributif:'Facteur contributif',associe:'Facteur associé'};
+function csmV2ReportCausalHtml(causal){
+  if(!causal)return'';
+  var rows=(causal.reasoningChain||[]).filter(function(r){return CSM_V2_CAUSAL_RANK_LABEL[r.rank];});
+  var consequences=causal.consequences||[];
+  if(!rows.length&&!consequences.length)return'';
+  var out='';
+  if(rows.length){
+    out+='<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'
+      +rows.map(function(r){
+        var who=r.quality&&r.quality!==causal.quality?' — '+csmV2QualityDisplayLabel(r.quality):'';
+        return'<span style="display:inline-block;padding:1px 7px;border-radius:10px;background:#F0F4F7;font-size:7pt;font-weight:700;color:#5B7A8C">'+CSM_V2_CAUSAL_RANK_LABEL[r.rank]+who+'</span>';
+      }).join('')
+      +'</div>';
+  }
+  if(consequences.length){
+    var qs=consequences.map(function(c){return csmV2QualityDisplayLabel(c.quality);});
+    qs=qs.filter(function(v,i){return qs.indexOf(v)===i;}); // dédoublonnage d'affichage uniquement
+    out+='<div style="margin-top:4px;font-size:8pt;color:#555"><em>Conséquences observées ailleurs dans le bilan :</em> '+qs.join(', ')+'.</div>';
+  }
+  return out;
+}
 function csmV2ReportSectionCardHtml(s,clinicalProfile,bodyZones){
   var severity=csmV2ReportSectionSeverity(s.id,clinicalProfile);
   var col=csmV2SeverityColor(severity);
@@ -8382,6 +8419,7 @@ function csmV2ReportSectionCardHtml(s,clinicalProfile,bodyZones){
     +'<p style="margin:4px 0 4px;font-size:9pt;color:#333;line-height:1.5">'+s.text+'</p>'
     +csmV2ReportEvidenceRowsHtml(s.evidence)
     +csmV2ReportWhyHtml(s.explanation,col,s.mechanism)
+    +csmV2ReportCausalHtml(s.causal)
     +(s.bridges&&zoneQuality?csmV2BridgeChipsHtml(s.bridges,zoneQuality):'')
     +'</div>';
 }
@@ -8508,6 +8546,24 @@ function csmV2ReportOrganisationFonctionnelleHtml(s){
   out+='</div>';
   return out;
 }
+// Mission X (raisonnement causal), §14 — section globale "Raisonnement clinique transversal" :
+// narrative + questions non résolues déjà construites (computeCsmV2GlobalCausalReasoning /
+// computeCsmV2CausalReasoning) — aucun recalcul, aucun texte de repli inventé (absente si
+// s.text est null).
+function csmV2ReportCausalTransversalHtml(s){
+  if(!s||!s.text)return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">'+s.title+'</div>'
+    +'<p style="margin:0;font-size:8.5pt;color:#333;line-height:1.6">'+s.text+'</p>';
+  if(s.unresolvedQuestions&&s.unresolvedQuestions.length){
+    out+='<div style="margin-top:8px;padding-top:8px;border-top:1px dashed '+C.border+'">'
+      +'<div style="font-size:7.5pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px">Questions cliniques non résolues</div>'
+      +s.unresolvedQuestions.map(function(u){return'<p style="margin:0 0 4px;font-size:8pt;color:#555;font-style:italic">'+u.question+'</p>';}).join('')
+      +'</div>';
+  }
+  out+='</div>';
+  return out;
+}
 // Mission T, T12 — chips "🔗 Pont avec [qualité]" par carte de qualité, réutilise
 // csmV2BodyZoneChipsHtml comme référence de style (pastille + libellé), jamais recalculé.
 function csmV2BridgeChipsHtml(bridges,quality){
@@ -8542,6 +8598,7 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
   });
   html+=csmV2ReportTransversaleHtml(byId.transversale);
   html+=csmV2ReportOrganisationFonctionnelleHtml(byId.organisation_fonctionnelle);
+  html+=csmV2ReportCausalTransversalHtml(byId.raisonnement_causal_transversal);
   if(csmV2Rep.synthesis&&csmV2Rep.synthesis.clinicalRelations)html+=csmV2ReportRelationsHtml(csmV2Rep.synthesis.clinicalRelations);
   html+=csmV2ReportPreservedCardHtml(byId.preservees);
   html+=csmV2ReportConclusionCalloutHtml(byId.conclusion);
@@ -8921,6 +8978,165 @@ function computeCsmV2MechanisticReasoning(clinicalReasoning,symmetryEvidence,cli
   return out;
 }
 
+// ══════════════════ MISSION X (raisonnement causal) — computeCsmV2CausalReasoning ══════════════
+// Couche additive PURE au-dessus de clinicalMechanisticReasoning (Mission U). Ne recalcule AUCUNE
+// norme, AUCUN LSI, AUCUNE preuve HYP, AUCUNE relation clinique — relit et RÉORGANISE exclusivement
+// les champs déjà produits (explanatoryFactors typés direct/associated/convergent/cross_quality/
+// bridge/functional_chain, déjà attribués par csmV2ExplanatoryFactorsForQuality) en un graphe de
+// raisonnement CAUSE -> MÉCANISME -> CONSÉQUENCE exploitable par le rapport.
+//
+// Vocabulaire imposé par la mission : "confidence" n'est jamais un score numérique inventé — il est
+// dérivé de façon déterministe du type de facteur déjà attribué par le moteur explicatif existant
+// (Mission Q/U), jamais d'une nouvelle intuition clinique.
+function csmV2CausalLinkConfidence(factorType){
+  if(factorType==='direct'||factorType==='convergent')return'high';
+  if(factorType==='cross_quality')return'moderate';
+  if(factorType==='bridge'||factorType==='associated'||factorType==='functional_chain')return'low';
+  return'none';
+}
+// Hiérarchisation déterministe (§6 mission) : PRINCIPAL = preuve propre (own evidence, directe ou
+// convergente) ; CONTRIBUTIF = relation qualité->qualité déjà validée (cross_quality) ou chaîne
+// fonctionnelle à ≥3 maillons déjà vérifiée ; ASSOCIÉ = bridge (mesure commune, jamais causal en soi)
+// ou signal propre isolé (associated, 1 seul élément) ; jamais fondée sur une intuition clinique —
+// uniquement sur le type déjà attribué par csmV2ExplanatoryFactorsForQuality.
+function csmV2CausalRank(factorType){
+  if(factorType==='direct'||factorType==='convergent')return'principal';
+  if(factorType==='cross_quality'||factorType==='functional_chain')return'contributif';
+  if(factorType==='bridge'||factorType==='associated')return'associe';
+  return'indetermine';
+}
+function csmV2CausalLinkFromFactor(quality,factor){
+  return{
+    from:factor.quality||quality,to:quality,type:String(factor.type||'').toUpperCase(),
+    support:factor.support,evidence:factor.evidence||[],
+    confidence:csmV2CausalLinkConfidence(factor.type),wording:factor.wording||null
+  };
+}
+// Question clinique déterministe (§11) — pure reformulation en question de missingEvidence déjà
+// calculé (csmV2MissingEvidenceForQuality), jamais une nouvelle variable citée.
+function csmV2CausalUnresolvedQuestion(quality,missingEvidence){
+  if(!missingEvidence||!missingEvidence.length)return null;
+  var labels=missingEvidence.map(function(m){return m.label;});
+  return"Le déficit de "+csmV2QualityDisplayLabel(quality)+" est-il pleinement expliqué par les facteurs déjà objectivés dans ce bilan, ou comporte-t-il également une composante non mesurée ici ("+labels.join(', ')+") ?";
+}
+function computeCsmV2CausalReasoning(clinicalProfile,clinicalMechanisticReasoning,clinicalFunctionalChains){
+  var qualityReasoning={},causalChains=[],consequenceChains=[],majorDrivers=[],contributingFactors=[],unresolvedQuestions=[];
+
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var prof=clinicalProfile[q]||{};
+    var mr=clinicalMechanisticReasoning[q]||{};
+    var factors=mr.explanatoryFactors||[];
+    var deficient=mr.state==='deficitaire';
+
+    var directEvidence=factors.filter(function(f){return f.type==='direct'||f.type==='convergent';});
+    var contributing=factors.filter(function(f){return f.type==='cross_quality';});
+    var bridges=factors.filter(function(f){return f.type==='bridge';});
+
+    // Conséquences (FORWARD, §5/§12) : qualités déficitaires AILLEURS dont un facteur cross_quality/
+    // bridge pointe explicitement vers CETTE qualité comme source — relit uniquement les facteurs déjà
+    // produits pour les AUTRES qualités (Mission U), jamais un maillon supplémentaire ajouté.
+    var consequences=[];
+    HYP_CSM_QUALITIES.forEach(function(other){
+      if(other===q)return;
+      ((clinicalMechanisticReasoning[other]||{}).explanatoryFactors||[]).forEach(function(f){
+        if(f.quality===q&&(f.type==='cross_quality'||f.type==='bridge')){
+          consequences.push({quality:other,type:f.type,relationship:f.relationship,wording:f.wording,evidence:f.evidence||[]});
+        }
+      });
+    });
+
+    var missingEvidence=mr.missingEvidence||[];
+    var unresolvedQuestion=deficient?csmV2CausalUnresolvedQuestion(q,missingEvidence):null;
+    if(unresolvedQuestion)unresolvedQuestions.push({quality:q,question:unresolvedQuestion,missingEvidence:missingEvidence});
+
+    // supportLevel déjà calculé par Mission Q/S (none/associated/direct/convergent) — relabelage
+    // déterministe vers le vocabulaire causal imposé (none/weak/moderate/strong), aucun recalcul.
+    var causalSupport={none:'none',associated:'weak',direct:'moderate',convergent:'strong'}[mr.supportLevel]||'none';
+    // 'explained' exige une relation qualité->qualité RÉELLEMENT VALIDÉE (cross_quality) — un bridge
+    // seul (mesure commune) ne suffit jamais à déclarer une explication complète (§8 mission :
+    // "convergence... sans permettre à elle seule d'établir une relation causale directe"), il reste
+    // 'partially_explained' même s'il existe, exactement comme une qualité n'ayant que sa propre
+    // preuve (own evidence) sans aucun facteur externe.
+    var explanationStatus=null;
+    if(deficient){
+      if(mr.unexplainedReason)explanationStatus='not_determined';
+      else if(contributing.length)explanationStatus='explained';
+      else explanationStatus='partially_explained';
+    }
+
+    var reasoningChain=factors.map(function(f){
+      return{rank:csmV2CausalRank(f.type),type:f.type,quality:f.quality,relationship:f.relationship,wording:f.wording,evidence:f.evidence||[],confidence:csmV2CausalLinkConfidence(f.type)};
+    });
+    if(deficient&&mr.unexplainedReason){
+      reasoningChain.push({rank:'indetermine',type:null,quality:null,relationship:null,wording:mr.unexplainedReason,evidence:[],confidence:'none'});
+    }
+
+    qualityReasoning[q]={
+      quality:q,state:mr.state||null,severity:prof.severity!==undefined?prof.severity:null,
+      directEvidence:directEvidence.map(function(f){return csmV2CausalLinkFromFactor(q,f);}),
+      explanatoryEvidence:mr.explanatoryEvidence||[],
+      contributingFactors:contributing.map(function(f){return csmV2CausalLinkFromFactor(q,f);}),
+      crossQualityFactors:contributing.map(function(f){return csmV2CausalLinkFromFactor(q,f);}),
+      bridges:bridges.map(function(f){return csmV2CausalLinkFromFactor(q,f);}),
+      mechanisms:mr.mechanism?[mr.mechanism]:[],
+      probableCauses:contributing.map(function(f){return{quality:f.quality,relationship:f.relationship,wording:f.wording,rank:'contributif',confidence:csmV2CausalLinkConfidence(f.type)};}),
+      consequences:consequences,
+      causalSupport:causalSupport,
+      explanationStatus:explanationStatus,
+      missingEvidence:missingEvidence,
+      unresolvedQuestion:unresolvedQuestion,
+      reasoningChain:reasoningChain,
+      narrative:mr.reasoningNarrative||null
+    };
+
+    if(reasoningChain.some(function(r){return r.rank==='principal';}))majorDrivers.push({quality:q,rank:'principal'});
+    contributing.forEach(function(f){contributingFactors.push({quality:q,source:f.quality,relationship:f.relationship,confidence:csmV2CausalLinkConfidence(f.type)});});
+  });
+
+  // Chaînes causales/conséquences : relit exclusivement clinicalFunctionalChains déjà produit
+  // (Mission T) — jamais un maillon ajouté. causalChains = toutes les chaînes déjà vérifiées ;
+  // consequenceChains = le sous-ensemble à maillon 'relation' (qualité->qualité déjà validée), vu
+  // depuis le côté aval (la qualité 'explained' comme conséquence observée du côté 'explains').
+  (clinicalFunctionalChains||[]).forEach(function(c){
+    var relationEdges=c.edges.filter(function(e){return e.type==='relation';});
+    var bridgeEdges=c.edges.filter(function(e){return e.type==='bridge';});
+    var narrative=relationEdges.length?relationEdges.map(function(e){return csmV2QualityDisplayLabel(e.explains)+' → '+csmV2QualityDisplayLabel(e.explained);}).join(' → '):
+      (bridgeEdges.length?c.chain.map(csmV2QualityDisplayLabel).join(' ↔ ')+' (variable pont commune)':null);
+    var entry={nodes:c.chain,edges:c.edges,supportLevel:c.supportLevel,evidence:c.evidence,narrative:narrative};
+    causalChains.push(entry);
+    if(relationEdges.length)consequenceChains.push(Object.assign({},entry,{causeQuality:relationEdges[0].explains,consequenceQuality:relationEdges[relationEdges.length-1].explained}));
+  });
+
+  return{
+    qualityReasoning:qualityReasoning,causalChains:causalChains,consequenceChains:consequenceChains,
+    majorDrivers:majorDrivers,contributingFactors:contributingFactors,unresolvedQuestions:unresolvedQuestions,
+    globalNarrative:null // rempli par computeCsmV2GlobalCausalReasoning (§12 mission), jamais ici.
+  };
+}
+// §12 mission — grandes chaînes du bilan. Ne fabrique JAMAIS un maillon manquant : un chemin à 3+
+// qualités n'est présenté QUE si clinicalFunctionalChains contient réellement une chaîne de cette
+// longueur (chain.length>=3, chaque maillon déjà individuellement vérifié par Mission T). Si aucune
+// n'existe, le dit explicitement plutôt que d'assembler artificiellement deux chaînes à 2 maillons.
+function computeCsmV2GlobalCausalReasoning(clinicalCausalReasoning,clinicalProfile){
+  var longChains=(clinicalCausalReasoning.causalChains||[]).filter(function(c){return c.nodes.length>=3;});
+  var pairChains=(clinicalCausalReasoning.causalChains||[]).filter(function(c){return c.nodes.length===2;});
+  var parts=[];
+  var forceRfd=clinicalProfile['Force']&&clinicalProfile['Force'].rapidForceDeficit;
+  if(forceRfd&&forceRfd.supported&&clinicalProfile['Force'].severity==='preserved'){
+    parts.push("La force maximale apparaît relativement préservée, tandis que la production rapide de force reste altérée — cette dissociation constitue le point de départ de plusieurs facteurs contributifs identifiés ci-dessous pour les qualités disposant d'une relation clinique validée avec la Force.");
+  }
+  if(longChains.length){
+    longChains.forEach(function(c){parts.push(c.narrative);});
+  }else if(pairChains.length){
+    parts.push("Aucune chaîne à 3 qualités ou plus n'est aujourd'hui suffisamment supportée par les données de ce bilan (chaque maillon supplémentaire nécessiterait une relation validée non encore objectivée) — seules des relations à 2 qualités sont actuellement démontrées : "+pairChains.map(function(c){return c.narrative;}).join(' · ')+'.');
+  }
+  return{
+    narrative:parts.length?parts.join(' '):null,
+    longChains:longChains,
+    pairChains:pairChains
+  };
+}
+
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
 // déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
 // aucun D/G brut, aucun "explainedDeficitSource", etc.) — jamais un recalcul, jamais une nouvelle
@@ -9013,7 +9229,7 @@ function csmV2PatientNarrative(clinicalProfile,synthesis){
 }
 // §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
 // synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
-function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains,clinicalMechanisticReasoning){
+function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains,clinicalMechanisticReasoning,clinicalCausalReasoning){
   var sections=[];
   sections.push(csmV2ReportObjetSection(clinicalProfile));
   sections.push({id:'synthese',title:'Synthèse clinique',text:synthesis.summary,evidence:synthesis.keyFindings});
@@ -9059,6 +9275,17 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
       if(clinicalMechanisticReasoning[q].missingEvidence&&clinicalMechanisticReasoning[q].missingEvidence.length)s.missingEvidence=clinicalMechanisticReasoning[q].missingEvidence;
     });
   }
+  // Mission X (raisonnement causal) — attache le raisonnement causal déjà calculé (§14 : "1. Déficit
+  // objectivé, 2. Facteur(s) explicatif(s)" restent déjà couverts par s.explanation/s.mechanism
+  // ci-dessus ; ce qui est nouveau ici est la hiérarchisation principal/contributif/associé et les
+  // conséquences observées ailleurs dans le bilan) — jamais recalculé, simple passage de référence.
+  if(clinicalCausalReasoning&&clinicalCausalReasoning.qualityReasoning){
+    sections.forEach(function(s){
+      if(s.id==='production_rapide')return;
+      var q=CSM_V2_REPORT_SECTION_QUALITY[s.id];
+      if(q&&clinicalCausalReasoning.qualityReasoning[q])s.causal=clinicalCausalReasoning.qualityReasoning[q];
+    });
+  }
   var profiles=csmV2ReportTransversaleProfiles(clinicalProfile,synthesis.mobilityYbtAssociation,symmetryEvidence);
   var grandeSynthese=csmV2ReportGrandeSynthese(clinicalProfile,synthesis);
   // Quand la synthèse "de tête" existe, A/B/C/E deviennent redondants (ils répètent RFD/freinage/
@@ -9073,6 +9300,12 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
   // chaînes fonctionnelles RÉELLEMENT détectées (clinicalFunctionalChains, déjà vérifiées maillon par
   // maillon) — jamais un texte fixe, jamais une chaîne recalculée ici.
   sections.push(csmV2ReportOrganisationFonctionnelleSection(clinicalFunctionalChains));
+  // Mission X (raisonnement causal), §14 — section globale "Raisonnement clinique transversal" :
+  // narrative déjà construite par computeCsmV2GlobalCausalReasoning (jamais un texte recalculé ici),
+  // absente (text=null) si aucun élément suffisamment supporté n'existe pour ce bilan.
+  if(clinicalCausalReasoning&&clinicalCausalReasoning.globalNarrative){
+    sections.push({id:'raisonnement_causal_transversal',title:'Raisonnement clinique transversal',text:clinicalCausalReasoning.globalNarrative,evidence:[],unresolvedQuestions:clinicalCausalReasoning.unresolvedQuestions||[]});
+  }
   sections.push({id:'principaux_deficits',title:'Principaux déficits',items:synthesis.priorityDeficits.slice(0,5),hierarchy:csmV2ReportHierarchy(clinicalProfile),evidence:[]});
   sections.push(csmV2ReportPreservedSection(synthesis,symmetryEvidence));
   sections.push(csmV2ReportConclusionSection(synthesis,clinicalProfile));
@@ -9091,7 +9324,10 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
     sections.push({id:'variables_manquantes',title:'Variables utiles non disponibles',items:missingItems,text:null,evidence:[]});
   }
   var allText=sections.map(function(s){return s.text||'';}).join(' ')
-    +' '+sections.map(function(s){return(s.explanation&&s.explanation.narrative)||'';}).join(' ');
+    +' '+sections.map(function(s){return(s.explanation&&s.explanation.narrative)||'';}).join(' ')
+    // Mission X (raisonnement causal) — inclut le texte nouvellement généré (unresolvedQuestions,
+    // narrative des chaînes) dans le même filtre de sécurité, jamais un texte non contrôlé.
+    +' '+sections.map(function(s){return((s.unresolvedQuestions||[]).map(function(u){return u.question;}).join(' '));}).join(' ');
   var forbiddenFound=(CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING||[]).filter(function(w){return allText.toLowerCase().indexOf(String(w).toLowerCase())>=0;});
   return{
     reportId:'CSM-V2-CLINICAL-REPORT',
