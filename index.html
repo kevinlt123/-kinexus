@@ -5857,8 +5857,13 @@ function computeHypPower01(testData,normPop,normAge,normSelections){
 // INVENTAIRE_COMPLET_VARIABLES_NORMEES.md) :
 //   iso_belt_squat_n/nkg : NORMS large (13 pop. sport + 2 générales pour _n).
 //   sl_iso_push_n : NORMS étroite (3 pop. football) ; sl_iso_push_nkg : THRESHOLDS (repli universel).
-//   imtp_n/nkg, slimtp_n/nkg : AUCUN seuil, ni NORMS ni THRESHOLDS -> jamais classifiables
-//     aujourd'hui, malgré un poids TFM=3 (le plus élevé) — poids jamais interprété comme un seuil.
+//   imtp_n/nkg : NORMS_V2 réel (`NORMS_V2_TEST_VARS.imtp`, ex. source S008 "General Population"),
+//     classifiable dès qu'un sélecteur {population_vald,sexe,age_band,source_id} est fourni via
+//     normSelections.imtp — correction Mission W (le commentaire précédent affirmait "aucun seuil",
+//     périmé depuis l'import NORMS_V2, jamais mis à jour ; vérifié empiriquement, aucun comportement
+//     changé ici). slimtp_n/nkg (unilatéral) : toujours AUCUN seuil, ni NORMS_V2 ni THRESHOLDS ->
+//     jamais classifiable aujourd'hui, malgré un poids TFM=3 (le plus élevé) — poids jamais
+//     interprété comme un seuil.
 //   Niveau 2 segmentaire (15 tests, `CLI200`-`211`) : couverture variable par groupe, voir
 //     computeHypForceSegments ci-dessous et IMPLEMENTATION_HYP_FOR01.md pour le détail complet.
 //   RFD/TTPF (tous tests, diagnostiques et segmentaires) : AUCUN seuil, sur aucune variable.
@@ -6025,7 +6030,7 @@ function computeHypForce01(testData,normPop,normAge,normSelections){
     },
     segments:segments,
     limitations:[
-      "imtp_n/slimtp_n : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiables aujourd'hui, malgré un poids TFM=3.",
+      "imtp_n : NORMS_V2 réel, classifiable dès qu'un sélecteur normSelections.imtp est fourni (aucune donnée Yannis à ce jour). slimtp_n : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiable aujourd'hui, malgré un poids TFM=3.",
       "RFD/TTPF (tous tests, diagnostiques et segmentaires) : aucun seuil -> valeur brute uniquement, jamais génératrices.",
       "Aucune population NORMS réelle ne couvre à la fois iso_belt_squat_n et sl_iso_push_n simultanément.",
       "Groupes segmentaires sans aucune norme (df_iso/inv_iso/ev_iso/sh_iso_3030/sh_iso_6060) : 'non_classifiable', jamais 'normal'."
