@@ -7436,7 +7436,12 @@ function computeCsmV2(functionScores,testData){
   // computeCsmV2ClinicalReasoning) + cartographie par qualité (S1) + graphe explicatif (S6).
   var clinicalReasoningV2=computeCsmV2ClinicalReasoning(clinicalExplanationsV2);
   var clinicalQualityMapV2=computeCsmV2QualityMap(clinicalProfileV2,absoluteEvidence,symmetryEvidence,clinicalReasoningV2);
-  var clinicalReasoningGraphV2=computeCsmV2ClinicalReasoningGraph();
+  // Mission T — raisonnement transversal : variables pont (T1/T2) déjà vérifiées empiriquement contre
+  // le code (jamais une supposition), graphe étendu Type A + Type B (T6), chaînes fonctionnelles
+  // longueur 2-4 (T7), chaque maillon individuellement vérifié pour CE bilan avant tout chaînage.
+  var clinicalBridgeEvidenceV2=computeCsmV2BridgeEvidence(symmetryEvidence);
+  var clinicalReasoningGraphV2=computeCsmV2ClinicalReasoningGraph(symmetryEvidence);
+  var clinicalFunctionalChainsV2=computeCsmV2FunctionalChains(clinicalProfileV2,clinicalHypothesesV2,clinicalBridgeEvidenceV2);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7489,11 +7494,16 @@ function computeCsmV2(functionScores,testData){
     clinicalReasoning:clinicalReasoningV2,
     clinicalQualityMap:clinicalQualityMapV2,
     clinicalReasoningGraph:clinicalReasoningGraphV2,
+    // Mission T — variables pont (T1/T2, jamais une relation clinique) et chaînes fonctionnelles
+    // (T7, longueur 2-4, chaque maillon vérifié individuellement) — cf. computeCsmV2BridgeEvidence/
+    // computeCsmV2FunctionalChains ci-dessus.
+    clinicalBridgeEvidence:clinicalBridgeEvidenceV2,
+    clinicalFunctionalChains:clinicalFunctionalChainsV2,
     // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
     // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
     // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
     // l'identique par buildExpertReport() et ExpertView (mission O §17).
-    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2),
+    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2),
     limitations:[
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
@@ -8350,6 +8360,7 @@ function csmV2ReportSectionCardHtml(s,clinicalProfile,bodyZones){
     +'<p style="margin:4px 0 4px;font-size:9pt;color:#333;line-height:1.5">'+s.text+'</p>'
     +csmV2ReportEvidenceRowsHtml(s.evidence)
     +csmV2ReportWhyHtml(s.explanation,col)
+    +(s.bridges&&zoneQuality?csmV2BridgeChipsHtml(s.bridges,zoneQuality):'')
     +'</div>';
 }
 function csmV2ReportConclusionCalloutHtml(s){
@@ -8419,6 +8430,53 @@ function csmV2ReportRelationsHtml(relations){
   out+='</div>';
   return out;
 }
+// Mission T, T9/T13 — "Organisation fonctionnelle du profil" : construit une section à partir des
+// chaînes fonctionnelles RÉELLEMENT détectées (longueur 2 uniquement pour la lisibilité Niveau 1 —
+// les chaînes plus longues restent disponibles dans clinicalFunctionalChains pour le Niveau 2/audit).
+// Chaque phrase distingue explicitement relation clinique (Type A) et variable pont (Type B) — jamais
+// mélangées (T8). Aucune chaîne -> section absente (text=null), jamais un texte de repli inventé.
+function csmV2ChainSentence(c){
+  var labels=c.chain.map(csmV2QualityDisplayLabel);
+  if(c.edges[0].type==='bridge'){
+    var ev=c.evidence[0];
+    return csmV2JoinList(labels)+' partagent une même mesure ('+csmV2FriendlyKpiLabel(ev.variableA)+', LSI '+ev.lsi+'%), ce qui relie mécaniquement ces deux déficits sans que les qualités elles-mêmes soient reliées par un rapport direct démontré.';
+  }
+  return labels[0]+' → '+labels[1]+' : relation clinique déjà validée, réellement observée sur ce bilan.';
+}
+function csmV2ReportOrganisationFonctionnelleSection(clinicalFunctionalChains){
+  var chains2=(clinicalFunctionalChains||[]).filter(function(c){return c.chain.length===2;});
+  if(!chains2.length)return{id:'organisation_fonctionnelle',title:'Organisation fonctionnelle du profil',text:null,chains:[],evidence:[]};
+  var sentences=chains2.map(csmV2ChainSentence);
+  var evidence=[];
+  chains2.forEach(function(c){
+    if(c.edges[0].type==='bridge'){
+      evidence.push({variable:c.evidence[0].variableA,left:c.evidence[0].left,right:c.evidence[0].right,lsi:c.evidence[0].lsi,status:null,source:'bridge'});
+    }
+  });
+  return{id:'organisation_fonctionnelle',title:'Organisation fonctionnelle du profil',text:sentences.join(' '),chains:chains2,evidence:evidence};
+}
+function csmV2ReportOrganisationFonctionnelleHtml(s){
+  if(!s||!s.text)return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">'+s.title+'</div>';
+  s.chains.forEach(function(c){
+    var col=c.edges[0].type==='bridge'?C.teal:'#94A3B8';
+    out+='<p style="margin:0 0 6px;font-size:8.5pt;color:#333;padding-left:8px;border-left:2px solid '+col+'">'
+      +'<span style="font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:'+col+'">'+(c.edges[0].type==='bridge'?'Variable pont':'Relation clinique')+'</span><br>'
+      +csmV2ChainSentence(c)+'</p>';
+  });
+  out+='</div>';
+  return out;
+}
+// Mission T, T12 — chips "🔗 Pont avec [qualité]" par carte de qualité, réutilise
+// csmV2BodyZoneChipsHtml comme référence de style (pastille + libellé), jamais recalculé.
+function csmV2BridgeChipsHtml(bridges,quality){
+  if(!bridges||!bridges.length)return'';
+  return'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">'+bridges.map(function(c){
+    var other=c.chain[0]===quality?c.chain[1]:c.chain[0];
+    return'<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;background:'+C.teal+'1A;border:1px solid '+C.teal+'55;font-size:7.5pt;font-weight:600;color:#132B3A">🔗 Pont avec '+csmV2QualityDisplayLabel(other)+'</span>';
+  }).join('')+'</div>';
+}
 // Assemblage unique du corps du compte rendu clinique — SEULE implémentation, consommée à
 // l'identique par buildExpertReport (PDF) et ExpertView (mission Q, objectif 1 point 8).
 function csmV2ClinicalReportBodyHtml(csmV2Rep){
@@ -8443,6 +8501,7 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
     if(s&&s.text)html+=csmV2ReportSectionCardHtml(s,cp,crO.bodyZones);
   });
   html+=csmV2ReportTransversaleHtml(byId.transversale);
+  html+=csmV2ReportOrganisationFonctionnelleHtml(byId.organisation_fonctionnelle);
   if(csmV2Rep.synthesis&&csmV2Rep.synthesis.clinicalRelations)html+=csmV2ReportRelationsHtml(csmV2Rep.synthesis.clinicalRelations);
   html+=csmV2ReportPreservedCardHtml(byId.preservees);
   html+=csmV2ReportConclusionCalloutHtml(byId.conclusion);
@@ -8526,7 +8585,18 @@ function csmV2ClinicalExplanationForQuality(quality,clinicalProfile,clinicalHypo
       explanatoryVariables:[],relations:[],convergence:{count:0,level:'none'},supportLevel:'none',
       weakerSide:null,narrative:null,evidence:[],factors:[],evidenceBasis:null};
   }
-  var own=(pq.keyFindings||[]).slice();
+  // Mission T, T5 — priorise les entrées 'diagnosticEvidence.*' (mécanisme diagnostique du moteur HYP
+  // propre à la qualité, ex. sldj_rsi pour HYP-REA-01) avant les entrées secondaires/descriptives
+  // (ex. reactiviteSecondaire.sldj_height/contact_time) dans "own" — jamais l'inverse par simple
+  // ordre d'insertion d'objet. Un KPI secondaire ne devient donc jamais, par accident d'ordre, LA
+  // preuve citée en premier ("objectivé par") à la place du mécanisme diagnostique réel quand celui-ci
+  // est également déficitaire. Tri stable, aucune donnée réordonnée n'est exclue ni ajoutée.
+  var own=(pq.keyFindings||[]).slice().map(function(kf,i){return{kf:kf,i:i};})
+    .sort(function(a,b){
+      var da=a.kf.variable.indexOf('diagnosticEvidence.')===0?0:1;
+      var db=b.kf.variable.indexOf('diagnosticEvidence.')===0?0:1;
+      return da!==db?da-db:a.i-b.i;
+    }).map(function(x){return x.kf;});
   // Direction stricte (mission Q §7) : uniquement les relations où CETTE qualité est "explained" —
   // jamais l'inverse (relation.explains===quality n'est jamais lu ici).
   var crossHyps=(clinicalHypotheses||[]).filter(function(ch){return ch.relation.explained===quality;});
@@ -8628,11 +8698,110 @@ function computeCsmV2QualityMap(clinicalProfile,absoluteEvidence,symmetryEvidenc
 // explicite explains->explained, jamais inversée — structure purement dérivée d'un référentiel déjà
 // LOCKED, aucune nouvelle relation créée par cette mission (cf. audit Mission R : le graphe était déjà
 // complet, cf. rapport Mission R section A/C).
-function computeCsmV2ClinicalReasoningGraph(){
+//
+// ═══════════════════════════ MISSION T — RAISONNEMENT TRANSVERSAL ══════════════════════════════
+// T1/T2 — csmV2BridgeEvidence : audit du code (pas une supposition biomécanique) confirmant qu'une
+// MÊME mesure brute est exposée sous deux noms de variable distincts par deux moteurs HYP différents.
+// Vérifié empiriquement (comparaison de signature rawD/rawG identiques dans le même bilan) sur ces 4
+// paires de qualités précisément :
+//  - Mobilité/Stabilisation : wblt_distance (HYP-STA-01 référence explicitement
+//    explanatoryEvidence.mobiliteCheville.wblt_distance — déjà exploité depuis Étape K5/O).
+//  - Absorption/Explosivité : cmj_braking_rfd (CMJ_ECC_DECEL_RFD) — nomenclature confirmée par le
+//    praticien (mission CSM V2.2 Explosivité, cf. commentaire du code sur computeHypExplosivityCmjKpi).
+//  - Force/Endurance : HYP-END-01 référence explanatoryEvidence.forceSegmentaire.<test>_n et
+//    explanatoryEvidence.cinetique.<test>_rfd100 pour les segments déjà suivis par Force.
+//  - Force/Stabilisation : HYP-STA-01 référence explanatoryEvidence.forceStabilisateurs.hip_ext_rfd100/200.
+// Scan volontairement restreint à ces 4 paires déjà confirmées comme partageant une source de mesure
+// réelle — jamais un scan aveugle sur les 28 combinaisons possibles (risque de faux positif par
+// coïncidence numérique hors contexte). Un "pont" n'est retenu QUE si les deux variables sont
+// RÉELLEMENT disponibles avec des valeurs D/G identiques dans CE bilan précis — jamais une supposition.
+// Une variable pont n'est PAS une relation clinique (§T2, IMPORTANT) : elle signale une convergence
+// mécanique (même mesure), jamais une causalité entre les deux qualités.
+var CSM_V2_BRIDGE_QUALITY_PAIRS=[['Mobilité','Stabilisation'],['Absorption','Explosivité'],['Force','Endurance'],['Force','Stabilisation']];
+function csmV2RawPair(e){
+  return[e.rawD!=null?e.rawD:e.rawL,e.rawG!=null?e.rawG:e.rawR];
+}
+function computeCsmV2BridgeEvidence(symmetryEvidence){
+  var bridges=[];
+  CSM_V2_BRIDGE_QUALITY_PAIRS.forEach(function(pair){
+    var qA=pair[0],qB=pair[1];
+    var seA=symmetryEvidence[qA]||{},seB=symmetryEvidence[qB]||{};
+    Object.keys(seA).forEach(function(vA){
+      if(!seA[vA]||!seA[vA].available)return;
+      var pA=csmV2RawPair(seA[vA]);
+      if(pA[0]==null||pA[1]==null)return;
+      Object.keys(seB).forEach(function(vB){
+        if(!seB[vB]||!seB[vB].available)return;
+        var pB=csmV2RawPair(seB[vB]);
+        if(pB[0]==null||pB[1]==null)return;
+        if(pA[0]===pB[0]&&pA[1]===pB[1]){
+          bridges.push({qualityA:qA,variableA:vA,qualityB:qB,variableB:vB,left:pA[0],right:pA[1],lsi:seA[vA].lsi,status:seA[vA].status});
+        }
+      });
+    });
+  });
+  return bridges;
+}
+// T6 — graphe étendu : Type A (quality->quality, relation clinique déjà validée) + Type B
+// (quality->variable->quality, variable pont réellement détectée dans CE bilan quand symmetryEvidence
+// est fourni). Sans symmetryEvidence, bridgeEdges reste [] (structure purement relationnelle, comme
+// avant Mission T — aucune régression de la forme retournée par S6).
+function computeCsmV2ClinicalReasoningGraph(symmetryEvidence){
   var edges=CLINICAL_HYPOTHESIS_WHITELIST.filter(function(w){return w.allowed;}).map(function(w){
     return{explains:w.explains,explained:w.explained,direction:w.explains+'→'+w.explained,minSupport:w.minSupport};
   });
-  return{nodes:HYP_CSM_QUALITIES.slice(),edges:edges};
+  var bridgeEdges=symmetryEvidence?computeCsmV2BridgeEvidence(symmetryEvidence).map(function(b){
+    return{explains:b.qualityA,explained:b.qualityB,direction:b.qualityA+'→['+b.variableA+'/'+b.variableB+']→'+b.qualityB,bridgeVariable:{a:b.variableA,b:b.variableB},lsi:b.lsi,status:b.status};
+  }):[];
+  return{nodes:HYP_CSM_QUALITIES.slice(),edges:edges,bridgeEdges:bridgeEdges};
+}
+// T7 — computeCsmV2FunctionalChains() : chaînes de longueur 2 à 4, construites UNIQUEMENT à partir
+// d'edges déjà individuellement vérifiées pour CE bilan (jamais un maillon supposé) : une relation
+// (Type A) n'est retenue que si une clinicalHypothesis réelle existe pour ce couple explains/explained
+// (dissociation confirmée) ; un pont (Type B) n'est retenu que si LES DEUX qualités sont réellement
+// déficitaires (majeur/modere) dans ce bilan. Chaînage : edge1.explained===edge2.explains (le nœud
+// intermédiaire doit réellement relier les deux edges), jamais un raccourci arbitraire.
+function csmV2ChainEdgeSupported(edge,clinicalProfile,clinicalHypotheses){
+  if(edge.type==='relation'){
+    return(clinicalHypotheses||[]).some(function(ch){return ch.relation.explains===edge.explains&&ch.relation.explained===edge.explained;});
+  }
+  var pqA=clinicalProfile[edge.explains],pqB=clinicalProfile[edge.explained];
+  function deficient(pq){return pq&&(pq.severity==='majeur'||pq.severity==='modere');}
+  return deficient(pqA)&&deficient(pqB);
+}
+function computeCsmV2FunctionalChains(clinicalProfile,clinicalHypotheses,bridgeEvidence){
+  var relationEdges=CLINICAL_HYPOTHESIS_WHITELIST.filter(function(w){return w.allowed;}).map(function(w){
+    return{type:'relation',explains:w.explains,explained:w.explained,evidence:{minSupport:w.minSupport}};
+  });
+  var bridgeEdges=(bridgeEvidence||[]).map(function(b){
+    return{type:'bridge',explains:b.qualityA,explained:b.qualityB,evidence:{variableA:b.variableA,variableB:b.variableB,left:b.left,right:b.right,lsi:b.lsi}};
+  });
+  var allEdges=relationEdges.concat(bridgeEdges);
+  var supported=allEdges.filter(function(e){return csmV2ChainEdgeSupported(e,clinicalProfile,clinicalHypotheses);});
+  var chains=[];
+  function pushChain(edgesSeq){
+    var nodes=[edgesSeq[0].explains];
+    edgesSeq.forEach(function(e){nodes.push(e.explained);});
+    if(new Set(nodes).size!==nodes.length)return; // jamais un nœud répété (cycle), jamais un maillon dupliqué
+    chains.push({
+      chain:nodes,
+      edges:edgesSeq.map(function(e){return{type:e.type,explains:e.explains,explained:e.explained};}),
+      evidence:edgesSeq.map(function(e){return e.evidence;}),
+      supportLevel:edgesSeq.some(function(e){return e.type==='bridge';})?'convergent':'associated'
+    });
+  }
+  supported.forEach(function(e1){
+    pushChain([e1]); // longueur 2
+    supported.forEach(function(e2){
+      if(e1.explained!==e2.explains)return;
+      pushChain([e1,e2]); // longueur 3
+      supported.forEach(function(e3){
+        if(e2.explained!==e3.explains)return;
+        pushChain([e1,e2,e3]); // longueur 4
+      });
+    });
+  });
+  return chains;
 }
 
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
@@ -8727,7 +8896,7 @@ function csmV2PatientNarrative(clinicalProfile,synthesis){
 }
 // §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
 // synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
-function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations){
+function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains){
   var sections=[];
   sections.push(csmV2ReportObjetSection(clinicalProfile));
   sections.push({id:'synthese',title:'Synthèse clinique',text:synthesis.summary,evidence:synthesis.keyFindings});
@@ -8750,6 +8919,18 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
       if(q&&clinicalExplanations[q])s.explanation=clinicalExplanations[q];
     });
   }
+  // Mission T, T12 — attache les variables pont (clinicalBridgeEvidence, déjà calculées) concernant
+  // cette qualité à sa section — jamais recalculé ici.
+  if(clinicalFunctionalChains){
+    var bridgesFlat=clinicalFunctionalChains.filter(function(c){return c.edges.length===1&&c.edges[0].type==='bridge';});
+    sections.forEach(function(s){
+      if(s.id==='production_rapide')return;
+      var q=CSM_V2_REPORT_SECTION_QUALITY[s.id];
+      if(!q)return;
+      var bridges=bridgesFlat.filter(function(c){return c.chain.indexOf(q)!==-1;});
+      if(bridges.length)s.bridges=bridges;
+    });
+  }
   var profiles=csmV2ReportTransversaleProfiles(clinicalProfile,synthesis.mobilityYbtAssociation,symmetryEvidence);
   var grandeSynthese=csmV2ReportGrandeSynthese(clinicalProfile,synthesis);
   // Quand la synthèse "de tête" existe, A/B/C/E deviennent redondants (ils répètent RFD/freinage/
@@ -8760,6 +8941,10 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
   var redundantIds=grandeSynthese?['A','B','C','E']:[];
   var transversaleParts=(grandeSynthese?[grandeSynthese]:[]).concat(profiles.filter(function(p){return redundantIds.indexOf(p.id)===-1;}).map(function(p){return p.sentence;}));
   sections.push({id:'transversale',title:'Analyse transversale',text:transversaleParts.length?transversaleParts.join(' '):null,summary:grandeSynthese,profiles:profiles,evidence:[]});
+  // Mission T, T13 — "Organisation fonctionnelle du profil" : construite dynamiquement à partir des
+  // chaînes fonctionnelles RÉELLEMENT détectées (clinicalFunctionalChains, déjà vérifiées maillon par
+  // maillon) — jamais un texte fixe, jamais une chaîne recalculée ici.
+  sections.push(csmV2ReportOrganisationFonctionnelleSection(clinicalFunctionalChains));
   sections.push({id:'principaux_deficits',title:'Principaux déficits',items:synthesis.priorityDeficits.slice(0,5),hierarchy:csmV2ReportHierarchy(clinicalProfile),evidence:[]});
   sections.push(csmV2ReportPreservedSection(synthesis,symmetryEvidence));
   sections.push(csmV2ReportConclusionSection(synthesis,clinicalProfile));
