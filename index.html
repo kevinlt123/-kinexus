@@ -7429,6 +7429,9 @@ function computeCsmV2(functionScores,testData){
   // HYP, aucune lecture de testData/norms).
   var clinicalProfileV2=computeCsmV2ClinicalProfile(absoluteEvidence,symmetryEvidence,fusedDissociations,unipodalFunctionalDeficitV2,qualities);
   var synthesisV2=computeCsmV2ClinicalSynthesis(clinicalProfileV2,clinicalHypothesesV2,unipodalFunctionalDeficitV2,fusedDissociations);
+  // Mission Q — moteur de raisonnement explicatif : couche additive PURE, consomme exclusivement
+  // clinicalProfileV2/clinicalHypothesesV2 déjà calculés ci-dessus (cf. computeCsmV2ClinicalExplanations).
+  var clinicalExplanationsV2=computeCsmV2ClinicalExplanations(clinicalProfileV2,clinicalHypothesesV2);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7471,11 +7474,14 @@ function computeCsmV2(functionScores,testData){
     // computeCsmV2ClinicalSynthesis.
     clinicalProfile:clinicalProfileV2,
     synthesis:synthesisV2,
+    // Mission Q — pour chaque qualité : pourquoi est-elle déficitaire (ou pourquoi aucune explication
+    // suffisamment documentée n'a été retenue) ? cf. computeCsmV2ClinicalExplanations ci-dessus.
+    clinicalExplanations:clinicalExplanationsV2,
     // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
     // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
     // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
     // l'identique par buildExpertReport() et ExpertView (mission O §17).
-    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence),
+    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2),
     limitations:[
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
@@ -8271,6 +8277,27 @@ function csmV2ReportEvidenceRowsHtml(evidence){
     return '<div style="margin:3px 0"><div style="font-size:8pt;color:#555">'+lab+dg+'</div>'+(e.lsi!=null?csmV2LsiBarHtml(e.lsi,csmV2KpiStatusColor(e.status)):'')+'</div>';
   }).join('');
 }
+// Mission Q — bloc "Pourquoi ?" : narrative déjà construite par computeCsmV2ClinicalExplanations
+// (rien recalculé ici), affichée uniquement quand une explication est réellement supportée ; sinon
+// le texte fixe prévu par la mission ("aucun facteur explicatif suffisamment documenté") s'affiche
+// UNIQUEMENT si l'explication a été explicitement évaluée comme non déterminée pour une qualité
+// déficitaire (jamais pour une qualité préservée/non_determinable, où "Pourquoi ?" ne concerne pas).
+function csmV2ReportWhyHtml(explanation,col){
+  if(!explanation)return'';
+  if(explanation.narrative){
+    return'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed '+col+'40">'
+      +'<div style="font-size:7.5pt;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Pourquoi ?</div>'
+      +'<p style="margin:0;font-size:8.5pt;color:#333;line-height:1.5">'+explanation.narrative+'</p>'
+      +'</div>';
+  }
+  if(explanation.explanationStatus==='not_determined'){
+    return'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed '+col+'40">'
+      +'<div style="font-size:7.5pt;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Pourquoi ?</div>'
+      +'<p style="margin:0;font-size:8.5pt;color:#888;font-style:italic">Aucun facteur explicatif suffisamment documenté n\'a été identifié dans les données disponibles.</p>'
+      +'</div>';
+  }
+  return'';
+}
 function csmV2ReportSectionCardHtml(s,clinicalProfile,bodyZones){
   var severity=csmV2ReportSectionSeverity(s.id,clinicalProfile);
   var col=csmV2SeverityColor(severity);
@@ -8283,6 +8310,7 @@ function csmV2ReportSectionCardHtml(s,clinicalProfile,bodyZones){
     +'</div>'
     +'<p style="margin:4px 0 4px;font-size:9pt;color:#333;line-height:1.5">'+s.text+'</p>'
     +csmV2ReportEvidenceRowsHtml(s.evidence)
+    +csmV2ReportWhyHtml(s.explanation,col)
     +'</div>';
 }
 function csmV2ReportConclusionCalloutHtml(s){
@@ -8378,6 +8406,95 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
   if(byId.reevaluation&&byId.reevaluation.text)html+='<p style="margin:8px 0 0;font-size:8.5pt;color:#333;font-style:italic">'+byId.reevaluation.title+' — '+byId.reevaluation.text+'</p>';
   return html;
 }
+
+// ══════════════════════════════ MISSION Q — MOTEUR DE RAISONNEMENT EXPLICATIF ═══════════════════
+// computeCsmV2ClinicalExplanations() : couche additive PURE. Répond à "pourquoi cette qualité est-
+// elle déficitaire ?" en réutilisant EXCLUSIVEMENT : clinicalProfile[q].keyFindings (symmetryEvidence
+// déjà déficitaire, propre à la qualité — LOCKED, calculé par csmV2QualitySeverity) et
+// clinicalHypotheses (relations DÉJÀ validées : dissociation fusionnée réelle + paire whitelistée +
+// wording pré-validé — cf. computeCsmV2ClinicalHypotheses). AUCUN nouveau seuil, AUCUNE nouvelle
+// relation, AUCUNE localisation anatomique inventée. En particulier : Force→Réactivité et
+// Force→Absorption n'existent PAS dans HYP_QUALITY_RELATIONS (cf. limitations de computeCsmV2()) —
+// ce moteur ne les invente donc pas davantage ; "production rapide de force" ne peut apparaître comme
+// facteur explicatif QUE pour les qualités où une relation documentée existe réellement
+// (Force→Puissance/Explosivité/Endurance/Stabilisation), jamais pour Réactivité/Absorption.
+//
+// Niveaux de support (mission Q §5), dérivés du NOMBRE d'éléments indépendants déjà comptés par le
+// moteur LOCKED (jamais un nouveau jugement clinique) :
+//   0 élément  -> 'none'       (aucun facteur explicatif suffisamment documenté)
+//   1 élément propre à la qualité (own)         -> 'direct'
+//   1 élément croisé uniquement (clinicalHypothesis, jamais l'inverse explains<->explained) -> 'associated'
+//   >=2 éléments (own+own ou own+cross)          -> 'convergent'
+// 'direct'/'convergent' ne sont JAMAIS présentés comme une causalité — le wording réutilisé
+// (clinicalHypothesis.wording, déjà passé au filtre CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING) reste la
+// seule source de formulation croisée.
+function csmV2ExplanationSupportLevel(ownCount,crossCount){
+  var total=ownCount+crossCount;
+  if(total===0)return'none';
+  if(total===1)return ownCount===1?'direct':'associated';
+  return'convergent';
+}
+function csmV2ExplanationNarrative(quality,pq,own,crossHyps,supportLevel){
+  if(supportLevel==='none')return null;
+  var label=csmV2QualityDisplayLabel(quality).toLowerCase();
+  var parts=['Le déficit de '+label+' est '+(pq.severity==='majeur'?'majeur':'modéré')+'.'];
+  if(own.length){
+    parts.push('Il est objectivé par '+csmV2FriendlyKpiLabel(own[0].variable)+(own[0].lsi!=null?' (LSI '+own[0].lsi+'%)':'')+'.');
+    own.slice(1).forEach(function(kf){
+      parts.push(csmV2FriendlyKpiLabel(kf.variable)+' est également '+(kf.status==='deficient'?'déficitaire':'asymétrique')+(kf.lsi!=null?' (LSI '+kf.lsi+'%)':'')+'.');
+    });
+  }
+  crossHyps.forEach(function(ch){
+    if(ch.wording&&ch.wording.technique)parts.push(ch.wording.technique);
+  });
+  parts.push(supportLevel==='convergent'
+    ?'Plusieurs éléments convergent vers ce déficit, sans qu\'un lien direct puisse être établi à eux seuls.'
+    :'Ce lien est interprété comme une association fonctionnelle, sans qu\'un rapport direct puisse être établi à lui seul.');
+  return parts.join(' ');
+}
+function csmV2ClinicalExplanationForQuality(quality,clinicalProfile,clinicalHypotheses){
+  var pq=clinicalProfile[quality];
+  var deficient=pq.severity==='majeur'||pq.severity==='modere';
+  if(!deficient){
+    return{quality:quality,deficitState:pq.state,supported:false,
+      explanationStatus:pq.severity==='preserved'?'not_applicable':'not_determined',
+      explanatoryVariables:[],relations:[],convergence:{count:0,level:'none'},supportLevel:'none',
+      weakerSide:null,narrative:null,evidence:[]};
+  }
+  var own=(pq.keyFindings||[]).slice();
+  // Direction stricte (mission Q §7) : uniquement les relations où CETTE qualité est "explained" —
+  // jamais l'inverse (relation.explains===quality n'est jamais lu ici).
+  var crossHyps=(clinicalHypotheses||[]).filter(function(ch){return ch.relation.explained===quality;});
+  var supportLevel=csmV2ExplanationSupportLevel(own.length,crossHyps.length);
+  var supported=supportLevel!=='none';
+  var weakerSide=own[0]?csmV2WeakerSideLabel(own[0]):null;
+  var explanatoryVariables=own.map(function(kf){
+    return{variable:kf.variable,role:'own',left:kf.left,right:kf.right,lsi:kf.lsi,status:kf.status,source:kf.source};
+  }).concat(crossHyps.map(function(ch){
+    return{variable:null,role:'cross-quality',fromQuality:ch.relation.explains,status:'preserved',source:ch.explainedDeficitSource};
+  }));
+  var relations=crossHyps.map(function(ch){
+    return{explains:ch.relation.explains,explained:ch.relation.explained,supportLevel:ch.support?ch.support.level:null};
+  });
+  var evidence=own.concat(crossHyps.map(function(ch){
+    return{variable:ch.relation.explains+'→'+ch.relation.explained,left:null,right:null,lsi:null,status:'relation',source:'clinicalHypothesis'};
+  }));
+  return{
+    quality:quality,deficitState:pq.state,supported:supported,
+    explanationStatus:supported?(supportLevel==='convergent'?'convergent':'documented'):'not_determined',
+    explanatoryVariables:explanatoryVariables,relations:relations,
+    convergence:{count:own.length+crossHyps.length,level:supportLevel},supportLevel:supportLevel,
+    weakerSide:weakerSide,
+    narrative:csmV2ExplanationNarrative(quality,pq,own,crossHyps,supportLevel),
+    evidence:evidence
+  };
+}
+function computeCsmV2ClinicalExplanations(clinicalProfile,clinicalHypotheses){
+  var explanations={};
+  HYP_CSM_QUALITIES.forEach(function(q){explanations[q]=csmV2ClinicalExplanationForQuality(q,clinicalProfile,clinicalHypotheses);});
+  return explanations;
+}
+
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
 // déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
 // aucun D/G brut, aucun "explainedDeficitSource", etc.) — jamais un recalcul, jamais une nouvelle
@@ -8470,7 +8587,7 @@ function csmV2PatientNarrative(clinicalProfile,synthesis){
 }
 // §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
 // synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
-function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence){
+function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations){
   var sections=[];
   sections.push(csmV2ReportObjetSection(clinicalProfile));
   sections.push({id:'synthese',title:'Synthèse clinique',text:synthesis.summary,evidence:synthesis.keyFindings});
@@ -8481,6 +8598,18 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
   sections.push(csmV2ReportAbsorptionSection(clinicalProfile,synthesis.convergenceNarratives));
   sections.push(csmV2ReportReactiviteSection(clinicalProfile,symmetryEvidence));
   sections.push(csmV2ReportStabilisationSection(clinicalProfile));
+  // Mission Q — attache "Pourquoi ?" (clinicalExplanations, déjà calculé) à chaque section de qualité
+  // concernée — jamais recalculé ici, simple passage de référence par quality.
+  if(clinicalExplanations){
+    sections.forEach(function(s){
+      // production_rapide (RFD) est un sous-signal de Force, distinct de la sévérité de Force elle-
+      // même (clinicalProfile['Force'].severity l'exclut explicitement) — clinicalExplanations ne le
+      // couvre pas : jamais attacher l'explication de Force à cette section (mauvaise qualité).
+      if(s.id==='production_rapide')return;
+      var q=CSM_V2_REPORT_SECTION_QUALITY[s.id];
+      if(q&&clinicalExplanations[q])s.explanation=clinicalExplanations[q];
+    });
+  }
   var profiles=csmV2ReportTransversaleProfiles(clinicalProfile,synthesis.mobilityYbtAssociation,symmetryEvidence);
   var grandeSynthese=csmV2ReportGrandeSynthese(clinicalProfile,synthesis);
   // Quand la synthèse "de tête" existe, A/B/C/E deviennent redondants (ils répètent RFD/freinage/
@@ -8496,7 +8625,8 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
   sections.push(csmV2ReportConclusionSection(synthesis,clinicalProfile));
   sections.push(csmV2ReportAxesSection(synthesis,clinicalProfile));
   sections.push({id:'reevaluation',title:'Réévaluation',text:synthesis.reassessmentRecommendation,evidence:[]});
-  var allText=sections.map(function(s){return s.text||'';}).join(' ');
+  var allText=sections.map(function(s){return s.text||'';}).join(' ')
+    +' '+sections.map(function(s){return(s.explanation&&s.explanation.narrative)||'';}).join(' ');
   var forbiddenFound=(CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING||[]).filter(function(w){return allText.toLowerCase().indexOf(String(w).toLowerCase())>=0;});
   return{
     reportId:'CSM-V2-CLINICAL-REPORT',
