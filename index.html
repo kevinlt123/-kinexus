@@ -7442,6 +7442,11 @@ function computeCsmV2(functionScores,testData){
   var clinicalBridgeEvidenceV2=computeCsmV2BridgeEvidence(symmetryEvidence);
   var clinicalReasoningGraphV2=computeCsmV2ClinicalReasoningGraph(symmetryEvidence);
   var clinicalFunctionalChainsV2=computeCsmV2FunctionalChains(clinicalProfileV2,clinicalHypothesesV2,clinicalBridgeEvidenceV2);
+  // Mission U — raisonnement mécanistique : ENRICHIT clinicalReasoningV2 (jamais une deuxième
+  // classification concurrente) avec mechanism/mechanisms/explanatoryFactors/missingEvidence, en
+  // réutilisant exclusivement ce qui est déjà calculé ci-dessus (clinicalReasoningV2, bridgeEvidence,
+  // functionalChains, symmetryEvidence) — cf. computeCsmV2MechanisticReasoning.
+  var clinicalMechanisticReasoningV2=computeCsmV2MechanisticReasoning(clinicalReasoningV2,symmetryEvidence,clinicalBridgeEvidenceV2,clinicalFunctionalChainsV2);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7499,11 +7504,15 @@ function computeCsmV2(functionScores,testData){
     // computeCsmV2FunctionalChains ci-dessus.
     clinicalBridgeEvidence:clinicalBridgeEvidenceV2,
     clinicalFunctionalChains:clinicalFunctionalChainsV2,
+    // Mission U — raisonnement mécanistique : ENRICHIT clinicalReasoning (jamais une deuxième
+    // classification) avec mechanism/mechanisms/explanatoryFactors/convergence/missingEvidence — cf.
+    // computeCsmV2MechanisticReasoning ci-dessus.
+    clinicalMechanisticReasoning:clinicalMechanisticReasoningV2,
     // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
     // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
     // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
     // l'identique par buildExpertReport() et ExpertView (mission O §17).
-    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2),
+    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2,clinicalMechanisticReasoningV2),
     limitations:[
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
@@ -8330,11 +8339,18 @@ function csmV2ReportWhyFactorsHtml(factors){
     return'<li style="font-size:8pt;color:#555;margin:2px 0"><strong>'+csmV2QualityDisplayLabel(f.sourceQuality)+'</strong> — '+(f.wording||'relation documentée')+'</li>';
   }).join('')+'</ol>';
 }
-function csmV2ReportWhyHtml(explanation,col){
+// Mission U, §3 — ligne "Mécanisme :" affichée en tête du bloc "Pourquoi ?" quand une étiquette
+// existe pour cette qualité (CSM_V2_QUALITY_MECHANISM) — purement lexicale, jamais une donnée.
+function csmV2ReportMechanismLineHtml(mechanism){
+  if(!mechanism)return'';
+  return'<p style="margin:0 0 3px;font-size:8pt;color:#5B7A8C;font-style:italic">Mécanisme — '+mechanism+'</p>';
+}
+function csmV2ReportWhyHtml(explanation,col,mechanism){
   if(!explanation)return'';
   if(explanation.narrative){
     return'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed '+col+'40">'
       +'<div style="font-size:7.5pt;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Pourquoi ?</div>'
+      +csmV2ReportMechanismLineHtml(mechanism)
       +'<p style="margin:0;font-size:8.5pt;color:#333;line-height:1.5">'+explanation.narrative+'</p>'
       +csmV2ReportWhyFactorsHtml(explanation.factors)
       +'</div>';
@@ -8342,7 +8358,8 @@ function csmV2ReportWhyHtml(explanation,col){
   if(explanation.explanationStatus==='not_determined'){
     return'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed '+col+'40">'
       +'<div style="font-size:7.5pt;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Pourquoi ?</div>'
-      +'<p style="margin:0;font-size:8.5pt;color:#888;font-style:italic">Aucun facteur explicatif suffisamment documenté n\'a été identifié dans les données disponibles.</p>'
+      +csmV2ReportMechanismLineHtml(mechanism)
+      +'<p style="margin:0;font-size:8.5pt;color:#888;font-style:italic">Les données disponibles objectivent le déficit mais ne permettent pas d\'identifier avec suffisamment de certitude un facteur explicatif principal.</p>'
       +'</div>';
   }
   return'';
@@ -8359,7 +8376,7 @@ function csmV2ReportSectionCardHtml(s,clinicalProfile,bodyZones){
     +'</div>'
     +'<p style="margin:4px 0 4px;font-size:9pt;color:#333;line-height:1.5">'+s.text+'</p>'
     +csmV2ReportEvidenceRowsHtml(s.evidence)
-    +csmV2ReportWhyHtml(s.explanation,col)
+    +csmV2ReportWhyHtml(s.explanation,col,s.mechanism)
     +(s.bridges&&zoneQuality?csmV2BridgeChipsHtml(s.bridges,zoneQuality):'')
     +'</div>';
 }
@@ -8416,6 +8433,24 @@ function csmV2ReportAxesHtml(s){
     out+='<div style="margin:6px 0 2px;font-size:8.5pt;color:#333;font-weight:700">Priorité '+it.rank+' — '+it.axis+'</div>';
     if(it.why.length)out+='<div style="margin:0 0 0 12px;font-size:8pt;color:#555"><em>Pourquoi ?</em> '+it.why.map(function(kf){return csmV2FriendlyKpiLabel(kf.variable)+(kf.lsi!=null?' (LSI '+kf.lsi+'%)':'');}).join(', ')+'.</div>';
     if(it.objective)out+='<div style="margin:0 0 4px 12px;font-size:8pt;color:#555"><em>Objectif</em> — '+it.objective+'</div>';
+  });
+  out+='</div>';
+  return out;
+}
+// Mission U, §18/§19 — "Variables utiles non disponibles" : liste, par qualité, les variables déjà
+// prévues par l'architecture (déjà nommées/déjà classifiables) mais non renseignées dans ce bilan —
+// jamais une variable inventée (cf. csmV2MissingEvidenceForQuality). Style Niveau 2 (technique, en
+// retrait), jamais mêlé au Niveau 1 clinique.
+function csmV2ReportMissingEvidenceHtml(s){
+  if(!s||!s.items||!s.items.length)return'';
+  var byQuality={};
+  s.items.forEach(function(it){(byQuality[it.quality]=byQuality[it.quality]||[]).push(it);});
+  var out='<div style="border:1px dashed '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:'+C.surface+'">'
+    +'<div style="font-size:8pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+s.title+'</div>'
+    +'<p style="margin:0 0 6px;font-size:7.5pt;color:#94A3B8;font-style:italic">Niveau 2 — préparation des prochains exports Dashboard, jamais une donnée manquante interprétée comme normale.</p>';
+  Object.keys(byQuality).forEach(function(q){
+    out+='<div style="font-size:7.5pt;font-weight:700;color:#5B7A8C;margin:6px 0 2px">'+csmV2QualityDisplayLabel(q)+'</div>';
+    out+='<div style="font-size:7.5pt;color:#888;line-height:1.6">'+byQuality[q].map(function(it){return it.label;}).join(' · ')+'</div>';
   });
   out+='</div>';
   return out;
@@ -8507,6 +8542,7 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
   html+=csmV2ReportConclusionCalloutHtml(byId.conclusion);
   html+=csmV2ReportAxesHtml(byId.axes);
   if(byId.reevaluation&&byId.reevaluation.text)html+='<p style="margin:8px 0 0;font-size:8.5pt;color:#333;font-style:italic">'+byId.reevaluation.title+' — '+byId.reevaluation.text+'</p>';
+  html+=csmV2ReportMissingEvidenceHtml(byId.variables_manquantes);
   return html;
 }
 
@@ -8661,7 +8697,7 @@ function csmV2ClinicalReasoningForQuality(quality,explanation){
     crossQualityEvidence:crossFactors.map(function(f){return{explains:f.sourceQuality,explained:quality,supportLevel:f.supportLevel,wording:f.wording};}),
     convergingEvidence:(own.length+crossFactors.length)>=2?factors:[],
     evidenceBasis:explanation.evidenceBasis,
-    unexplainedReason:explanation.explanationStatus==='not_determined'?"Aucun facteur explicatif suffisamment documenté n'a été identifié dans les données disponibles.":null,
+    unexplainedReason:explanation.explanationStatus==='not_determined'?"Les données disponibles objectivent le déficit mais ne permettent pas d'identifier avec suffisamment de certitude un facteur explicatif principal.":null,
     reasoningNarrative:explanation.narrative
   };
 }
@@ -8804,6 +8840,82 @@ function computeCsmV2FunctionalChains(clinicalProfile,clinicalHypotheses,bridgeE
   return chains;
 }
 
+// ═════════════════════════ MISSION U — RAISONNEMENT MÉCANISTIQUE ══════════════════════════════
+// §3 — "Mécanisme" : PURE ÉTIQUETTE LEXICALE décrivant la capacité fonctionnelle que la qualité
+// mesure réellement — jamais une nouvelle classification, jamais une nouvelle donnée. Reprend
+// littéralement les formulations données par le praticien (mission U §3) ; aucune entrée n'est
+// inventée pour une qualité non listée (Explosivité/Endurance/Puissance quand non couvertes par la
+// liste du praticien restent sans "mécanisme" affiché, jamais une formulation inventée pour combler).
+var CSM_V2_QUALITY_MECHANISM={
+  Force:'Capacité de production de force maximale.',
+  Puissance:'Capacité à produire une impulsion / puissance propulsive.',
+  Absorption:'Capacité à freiner / absorber la charge.',
+  'Réactivité':'Utilisation rapide du cycle étirement-raccourcissement.',
+  Stabilisation:'Capacité à contrôler et stabiliser la charge après réception.',
+  'Mobilité':'Amplitude disponible en charge.'
+};
+var CSM_V2_RAPID_FORCE_MECHANISM='Capacité à développer rapidement la force.';
+function csmV2QualityMechanism(quality){return CSM_V2_QUALITY_MECHANISM[quality]||null;}
+// §18/§19 — Variables manquantes : réutilise EXCLUSIVEMENT les emplacements DÉJÀ existants dans
+// symmetryEvidence[quality] (available===false) — c'est-à-dire des variables déjà câblées par un
+// moteur HYP LOCKED pour cette qualité (nom, unité, mécanisme de calcul LSI déjà définis), mais dont
+// aucune valeur n'a été fournie dans CE bilan. Jamais un nom de variable inventé : si un slot
+// n'existe pas déjà structurellement pour cette qualité, il n'apparaît jamais ici (§19, vérification
+// stricte avant tout ajout).
+function csmV2MissingEvidenceForQuality(quality,symmetryEvidence){
+  var se=symmetryEvidence[quality]||{};
+  return Object.keys(se).filter(function(v){return se[v]&&se[v].available===false;}).map(function(v){
+    return{
+      quality:quality,
+      mechanism:csmV2QualityMechanism(quality),
+      variable:v,
+      label:csmV2FriendlyKpiLabel(v),
+      reason:"Variable déjà prévue par l'architecture pour "+csmV2QualityDisplayLabel(quality)+", mais non disponible dans ce bilan (test non réalisé ou KPI non renseigné)."
+    };
+  });
+}
+// §5/§7/§15 — Enrichit clinicalReasoning (Mission S, INCHANGÉ champ par champ — non-régression totale
+// des tests Q/R/S/T) avec : mechanism, mechanisms[] (§15), explanatoryFactors[] (§4/§7, chaque facteur
+// typé selon le vocabulaire imposé : direct/associated/convergent/cross_quality/bridge/
+// functional_chain — jamais un niveau supérieur inventé simplement parce que plusieurs phrases
+// existent), convergence (§15), missingEvidence[] (§18). Ne recalcule JAMAIS supportLevel/narrative/
+// explanatoryEvidence/crossQualityEvidence existants — pure lecture augmentée.
+function csmV2ExplanatoryFactorsForQuality(quality,r,clinicalBridgeEvidence,clinicalFunctionalChains){
+  var factors=[];
+  if(r.explanatoryEvidence&&r.explanatoryEvidence.length){
+    var ownType=r.explanatoryEvidence.length>=2?'convergent':
+      (r.explanatoryEvidence[0].variable.indexOf('diagnosticEvidence.')===0?'direct':'associated');
+    factors.push({type:ownType,quality:quality,mechanism:csmV2QualityMechanism(quality),evidence:r.explanatoryEvidence,support:ownType,relationship:null,wording:null});
+  }
+  (r.crossQualityEvidence||[]).forEach(function(c){
+    factors.push({type:'cross_quality',quality:c.explains,mechanism:csmV2QualityMechanism(c.explains),evidence:[],support:'cross_quality',relationship:c.explains+'→'+c.explained,wording:c.wording});
+  });
+  (clinicalBridgeEvidence||[]).filter(function(b){return b.qualityA===quality||b.qualityB===quality;}).forEach(function(b){
+    var other=b.qualityA===quality?b.qualityB:b.qualityA;
+    factors.push({type:'bridge',quality:other,mechanism:csmV2QualityMechanism(other),
+      evidence:[{variable:b.variableA,left:b.left,right:b.right,lsi:b.lsi,status:b.status}],
+      support:'bridge',relationship:quality+'↔'+other,wording:null});
+  });
+  (clinicalFunctionalChains||[]).filter(function(c){return c.chain.length>=3&&c.chain.indexOf(quality)!==-1;}).forEach(function(c){
+    factors.push({type:'functional_chain',quality:null,mechanism:null,evidence:c.evidence,support:'functional_chain',relationship:c.chain.join('→'),wording:null});
+  });
+  return factors;
+}
+function computeCsmV2MechanisticReasoning(clinicalReasoning,symmetryEvidence,clinicalBridgeEvidence,clinicalFunctionalChains){
+  var out={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var r=Object.assign({},clinicalReasoning[q]);
+    r.mechanism=csmV2QualityMechanism(q);
+    r.explanatoryFactors=r.state==='deficitaire'?csmV2ExplanatoryFactorsForQuality(q,r,clinicalBridgeEvidence,clinicalFunctionalChains):[];
+    r.mechanisms=r.mechanism?[{mechanism:r.mechanism,status:r.state,evidence:r.explanatoryEvidence||[],support:r.supportLevel,
+      confidence:r.supportLevel==='convergent'?'élevée':(r.supportLevel==='direct'?'modérée':(r.supportLevel==='none'?'non déterminée':'limitée'))}]:[];
+    r.convergence=(r.explanatoryEvidence&&r.explanatoryEvidence.length>=2)?{factors:r.explanatoryEvidence,evidence:r.explanatoryEvidence,support:'convergent'}:null;
+    r.missingEvidence=r.state==='deficitaire'?csmV2MissingEvidenceForQuality(q,symmetryEvidence):[];
+    out[q]=r;
+  });
+  return out;
+}
+
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
 // déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
 // aucun D/G brut, aucun "explainedDeficitSource", etc.) — jamais un recalcul, jamais une nouvelle
@@ -8896,7 +9008,7 @@ function csmV2PatientNarrative(clinicalProfile,synthesis){
 }
 // §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
 // synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
-function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains){
+function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains,clinicalMechanisticReasoning){
   var sections=[];
   sections.push(csmV2ReportObjetSection(clinicalProfile));
   sections.push({id:'synthese',title:'Synthèse clinique',text:synthesis.summary,evidence:synthesis.keyFindings});
@@ -8931,6 +9043,17 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
       if(bridges.length)s.bridges=bridges;
     });
   }
+  // Mission U — attache mécanisme (§3, pure étiquette lexicale) et variables manquantes (§18, déjà
+  // calculées) à chaque section de qualité — jamais recalculé ici.
+  if(clinicalMechanisticReasoning){
+    sections.forEach(function(s){
+      if(s.id==='production_rapide')return;
+      var q=CSM_V2_REPORT_SECTION_QUALITY[s.id];
+      if(!q||!clinicalMechanisticReasoning[q])return;
+      s.mechanism=clinicalMechanisticReasoning[q].mechanism;
+      if(clinicalMechanisticReasoning[q].missingEvidence&&clinicalMechanisticReasoning[q].missingEvidence.length)s.missingEvidence=clinicalMechanisticReasoning[q].missingEvidence;
+    });
+  }
   var profiles=csmV2ReportTransversaleProfiles(clinicalProfile,synthesis.mobilityYbtAssociation,symmetryEvidence);
   var grandeSynthese=csmV2ReportGrandeSynthese(clinicalProfile,synthesis);
   // Quand la synthèse "de tête" existe, A/B/C/E deviennent redondants (ils répètent RFD/freinage/
@@ -8950,6 +9073,18 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
   sections.push(csmV2ReportConclusionSection(synthesis,clinicalProfile));
   sections.push(csmV2ReportAxesSection(synthesis,clinicalProfile));
   sections.push({id:'reevaluation',title:'Réévaluation',text:synthesis.reassessmentRecommendation,evidence:[]});
+  // Mission U, §18/§19 — "Variables utiles non disponibles" : agrège missingEvidence déjà calculé par
+  // quality (clinicalMechanisticReasoning) — jamais un nom de variable inventé, uniquement des slots
+  // déjà présents dans l'architecture (available===false) pour une qualité déjà déficitaire dans ce
+  // bilan.
+  if(clinicalMechanisticReasoning){
+    var missingItems=[];
+    HYP_CSM_QUALITIES.forEach(function(q){
+      var mr=clinicalMechanisticReasoning[q];
+      if(mr&&mr.missingEvidence&&mr.missingEvidence.length)missingItems=missingItems.concat(mr.missingEvidence);
+    });
+    sections.push({id:'variables_manquantes',title:'Variables utiles non disponibles',items:missingItems,text:null,evidence:[]});
+  }
   var allText=sections.map(function(s){return s.text||'';}).join(' ')
     +' '+sections.map(function(s){return(s.explanation&&s.explanation.narrative)||'';}).join(' ');
   var forbiddenFound=(CLINICAL_HYPOTHESIS_FORBIDDEN_WORDING||[]).filter(function(w){return allText.toLowerCase().indexOf(String(w).toLowerCase())>=0;});
