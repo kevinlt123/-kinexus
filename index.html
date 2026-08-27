@@ -8282,12 +8282,28 @@ function csmV2ReportEvidenceRowsHtml(evidence){
 // le texte fixe prévu par la mission ("aucun facteur explicatif suffisamment documenté") s'affiche
 // UNIQUEMENT si l'explication a été explicitement évaluée comme non déterminée pour une qualité
 // déficitaire (jamais pour une qualité préservée/non_determinable, où "Pourquoi ?" ne concerne pas).
+// Mission R, objectif R7 — liste numérotée des facteurs explicatifs (own + une entrée par relation
+// croisée), affichée UNIQUEMENT quand au moins 2 facteurs distincts existent (convergence réelle,
+// jamais une liste à un seul élément qui répéterait simplement la narrative). Chaque facteur "cross"
+// cite le wording déjà validé (jamais reformulé) ; le facteur "own" cite les KPI propres déjà listés
+// dans la narrative, avec leur LSI (objectif R10 : preuve d'asymétrie, jamais un seuil inventé).
+function csmV2ReportWhyFactorsHtml(factors){
+  if(!factors||factors.length<2)return'';
+  return'<ol style="margin:4px 0 0;padding-left:16px">'+factors.map(function(f){
+    if(f.type==='own'){
+      return'<li style="font-size:8pt;color:#555;margin:2px 0">Preuves propres — '
+        +f.evidence.map(function(e){return csmV2FriendlyKpiLabel(e.variable)+(e.lsi!=null?' (LSI '+e.lsi+'%)':'');}).join(', ')+'</li>';
+    }
+    return'<li style="font-size:8pt;color:#555;margin:2px 0"><strong>'+csmV2QualityDisplayLabel(f.sourceQuality)+'</strong> — '+(f.wording||'relation documentée')+'</li>';
+  }).join('')+'</ol>';
+}
 function csmV2ReportWhyHtml(explanation,col){
   if(!explanation)return'';
   if(explanation.narrative){
     return'<div style="margin-top:6px;padding-top:6px;border-top:1px dashed '+col+'40">'
       +'<div style="font-size:7.5pt;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Pourquoi ?</div>'
       +'<p style="margin:0;font-size:8.5pt;color:#333;line-height:1.5">'+explanation.narrative+'</p>'
+      +csmV2ReportWhyFactorsHtml(explanation.factors)
       +'</div>';
   }
   if(explanation.explanationStatus==='not_determined'){
@@ -8452,6 +8468,27 @@ function csmV2ExplanationNarrative(quality,pq,own,crossHyps,supportLevel){
     :'Ce lien est interprété comme une association fonctionnelle, sans qu\'un rapport direct puisse être établi à lui seul.');
   return parts.join(' ');
 }
+// Mission R, objectif R7 — regroupe explanatoryVariables/relations (déjà calculés) PAR FACTEUR
+// explicatif (les preuves propres à la qualité forment un seul facteur "own" ; chaque relation
+// croisée déjà validée forme son propre facteur "cross") — pure réorganisation de présentation,
+// aucune nouvelle donnée, permet un rendu "1. ... 2. ..." fidèle à la hiérarchie variable->qualité->
+// facteur (mission R, objectif R4) sans jamais aplatir preuves propres et relations croisées en une
+// seule liste indifférenciée.
+function csmV2ExplanationFactors(own,crossHyps){
+  var factors=[];
+  if(own.length){
+    factors.push({type:'own',sourceQuality:null,evidence:own.map(function(kf){
+      return{variable:kf.variable,left:kf.left,right:kf.right,lsi:kf.lsi,status:kf.status,source:kf.source};
+    })});
+  }
+  crossHyps.forEach(function(ch){
+    factors.push({type:'cross',sourceQuality:ch.relation.explains,
+      relation:{explains:ch.relation.explains,explained:ch.relation.explained},
+      supportLevel:ch.support?ch.support.level:null,
+      wording:ch.wording?ch.wording.technique:null});
+  });
+  return factors;
+}
 function csmV2ClinicalExplanationForQuality(quality,clinicalProfile,clinicalHypotheses){
   var pq=clinicalProfile[quality];
   var deficient=pq.severity==='majeur'||pq.severity==='modere';
@@ -8459,7 +8496,7 @@ function csmV2ClinicalExplanationForQuality(quality,clinicalProfile,clinicalHypo
     return{quality:quality,deficitState:pq.state,supported:false,
       explanationStatus:pq.severity==='preserved'?'not_applicable':'not_determined',
       explanatoryVariables:[],relations:[],convergence:{count:0,level:'none'},supportLevel:'none',
-      weakerSide:null,narrative:null,evidence:[]};
+      weakerSide:null,narrative:null,evidence:[],factors:[],evidenceBasis:null};
   }
   var own=(pq.keyFindings||[]).slice();
   // Direction stricte (mission Q §7) : uniquement les relations où CETTE qualité est "explained" —
@@ -8486,7 +8523,15 @@ function csmV2ClinicalExplanationForQuality(quality,clinicalProfile,clinicalHypo
     convergence:{count:own.length+crossHyps.length,level:supportLevel},supportLevel:supportLevel,
     weakerSide:weakerSide,
     narrative:csmV2ExplanationNarrative(quality,pq,own,crossHyps,supportLevel),
-    evidence:evidence
+    evidence:evidence,
+    // Mission R, objectif R7 : facteurs explicatifs regroupés (own + un par relation croisée),
+    // jamais une liste aplatie — préserve la hiérarchie variable -> qualité -> facteur (objectif R4).
+    factors:csmV2ExplanationFactors(own,crossHyps),
+    // Mission R, objectif R10 : distingue un déficit établi UNIQUEMENT par preuve d'asymétrie propre
+    // (own.length>0, déjà des entrées symmetryEvidence déficitaires) d'un déficit établi par seuil
+    // normatif absolu seul (own.length===0, aucune entrée de symétrie déficitaire propre à la
+    // qualité) — dérivé exclusivement de `own`, déjà calculé, aucune nouvelle règle.
+    evidenceBasis:own.length>0?'symmetry':'absolute_only'
   };
 }
 function computeCsmV2ClinicalExplanations(clinicalProfile,clinicalHypotheses){
