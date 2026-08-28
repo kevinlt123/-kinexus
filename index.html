@@ -7474,6 +7474,16 @@ function computeCsmV2(functionScores,testData){
   var clinicalNextQuestionsV2=computeCsmV2ClinicalNextQuestions(clinicalCausalReasoningV2,missingEvidencePriorityV2);
   var reasoningToActionV2=computeCsmV2ReasoningToAction(clinicalProfileV2,clinicalCausalReasoningV2,synthesisV2.progressionAxes);
   var actionableClinicalSynthesisV2=computeCsmV2ActionableClinicalSynthesis(clinicalProfileV2,clinicalCausalReasoningV2,clinicalReasoningPathsV2,clinicalFunctionalProfilePatternsV2);
+  // Mission AA (variable -> qualité -> mécanisme -> conséquence) — couche additive PURE, granularité
+  // variable, au-dessus de tout ce qui précède — cf. computeCsmV2VariableQualityGraph et suivantes
+  // ci-dessus.
+  var variableQualityGraphV2=computeCsmV2VariableQualityGraph(clinicalProfileV2,clinicalCausalReasoningV2,clinicalBridgeEvidenceV2,clinicalFunctionalChainsV2);
+  var variableRelationsV2=computeCsmV2VariableRelations(clinicalBridgeEvidenceV2);
+  var evidenceChainsV2=computeCsmV2EvidenceChains(clinicalCausalReasoningV2,clinicalFunctionalChainsV2);
+  evidenceChainsV2.forEach(function(ec){ec.tier=csmV2ChainTier(ec);});
+  var variableConsequencesV2=computeCsmV2VariableConsequences(clinicalCausalReasoningV2);
+  var clinicalNodesV2=computeCsmV2ClinicalNodes(variableQualityGraphV2);
+  var variableLevelSynthesisV2=computeCsmV2VariableLevelSynthesis(clinicalProfileV2,variableQualityGraphV2,evidenceChainsV2,clinicalNodesV2,variableConsequencesV2);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7551,11 +7561,20 @@ function computeCsmV2(functionScores,testData){
     clinicalNextQuestions:clinicalNextQuestionsV2,
     reasoningToAction:reasoningToActionV2,
     actionableClinicalSynthesis:actionableClinicalSynthesisV2,
+    // Mission AA (variable -> qualité -> mécanisme -> conséquence) — graphe explicite au niveau
+    // variable, relations variable->variable (bridges), chaînes de preuves, nœuds cliniques, synthèse
+    // niveau variable — couche additive PURE au-dessus de tout ce qui précède.
+    variableQualityGraph:variableQualityGraphV2,
+    variableRelations:variableRelationsV2,
+    evidenceChains:evidenceChainsV2,
+    variableConsequences:variableConsequencesV2,
+    clinicalNodes:clinicalNodesV2,
+    variableLevelSynthesis:variableLevelSynthesisV2,
     // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
     // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
     // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
     // l'identique par buildExpertReport() et ExpertView (mission O §17).
-    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2,clinicalMechanisticReasoningV2,clinicalCausalReasoningV2,globalFunctionalSynthesisV2,clinicalReasoningPathsV2),
+    clinicalReport:computeCsmV2ClinicalReport(clinicalProfileV2,synthesisV2,absoluteEvidence,symmetryEvidence,clinicalExplanationsV2,clinicalFunctionalChainsV2,clinicalMechanisticReasoningV2,clinicalCausalReasoningV2,globalFunctionalSynthesisV2,clinicalReasoningPathsV2,variableLevelSynthesisV2),
     limitations:[
       "UNIPODAL_FUNCTIONAL_DEFICIT (Option 2, mission CSM V2.1 arbitrage A) : restreint aux mécanismes de diagnosticEvidence (jamais confirmativeEvidence/explanatoryEvidence) et aux segments Force — jamais inter-qualités, jamais un comptage naïf. Reste non_determinable pour toute qualité n'atteignant pas 2 mécanismes indépendants déficitaires.",
       "Force→Réactivité et Force→Absorption n'existent pas dans HYP_QUALITY_RELATIONS — aucune dissociation générée pour ces paires (ajouter une relation serait une nouvelle décision clinique, non prise ici).",
@@ -8626,6 +8645,28 @@ function csmV2ReportDeficitToPrioritiesHtml(s){
   out+='</div>';
   return out;
 }
+// Mission AA (variable -> qualité -> mécanisme -> conséquence), §14 — "Logique fonctionnelle du
+// profil" : 5 sous-parties déjà calculées, lisibles pour un kiné/médecin (les evidence[]/IDs
+// techniques restent réservés au niveau debug) — jamais un texte recalculé ici.
+function csmV2ReportFunctionalLogicHtml(s){
+  if(!s)return'';
+  var groups=[
+    ['1. Points d\'appui',s.pointsAppui],
+    ['2. Limitations principales',s.limitationsPrincipales],
+    ['3. Relations entre domaines',s.relationsEntreDomaines],
+    ['4. Chaînes fonctionnelles',s.chainesFonctionnelles],
+    ['5. Points encore indéterminés',s.pointsIndetermines]
+  ].filter(function(g){return g[1]&&g[1].length;});
+  if(!groups.length)return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">'+s.title+'</div>';
+  groups.forEach(function(g){
+    out+='<div style="margin:6px 0 2px;font-size:8pt;font-weight:700;color:#132B3A">'+g[0]+'</div>'
+      +'<div style="font-size:8pt;color:#333;line-height:1.5">'+g[1].join(' · ')+'</div>';
+  });
+  out+='</div>';
+  return out;
+}
 // Mission T, T12 — chips "🔗 Pont avec [qualité]" par carte de qualité, réutilise
 // csmV2BodyZoneChipsHtml comme référence de style (pastille + libellé), jamais recalculé.
 function csmV2BridgeChipsHtml(bridges,quality){
@@ -8697,6 +8738,7 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
   html+=csmV2ReportTransversaleHtml(byId.transversale);
   html+=csmV2ReportOrganisationFonctionnelleHtml(byId.organisation_fonctionnelle);
   html+=csmV2ReportCausalTransversalHtml(byId.raisonnement_causal_transversal);
+  html+=csmV2ReportFunctionalLogicHtml(byId.logique_fonctionnelle_profil);
   html+=csmV2ReportDeficitToPrioritiesHtml(byId.deficit_vers_priorites);
   if(csmV2Rep.synthesis&&csmV2Rep.synthesis.clinicalRelations)html+=csmV2ReportRelationsHtml(csmV2Rep.synthesis.clinicalRelations);
   html+=csmV2ReportPreservedCardHtml(byId.preservees);
@@ -9708,6 +9750,227 @@ function computeCsmV2ActionableClinicalSynthesis(clinicalProfile,clinicalCausalR
   };
 }
 
+// ══════════════════ MISSION AA — VARIABLE → QUALITÉ → MÉCANISME → CONSÉQUENCE ══════════════════
+// Couche additive PURE, granularité VARIABLE, au-dessus de clinicalCausalReasoning (Mission X) /
+// clinicalBridgeEvidence (Mission T) / clinicalFunctionalChains (Mission T) / CSM_V2_AXIS_QUALITY_MAP
+// (LOCKED). Aucune norme/LSI/preuve/relation recalculée — les evidence[] déjà produits par chaque
+// moteur HYP (via csmV2ExplanatoryFactorsForQuality, Mission U) sont DÉJÀ au niveau variable (champ
+// `variable`, rawD/rawG sous left/right, lsi, status, source) : cette mission les EXPOSE
+// explicitement comme un graphe, elle ne les recalcule jamais.
+//
+// §5 — portée volontairement restreinte : la seule source RÉELLE de relation variable->variable
+// directe dans le code est le bridge (même mesure brute lue par deux moteurs HYP différents,
+// clinicalBridgeEvidence, Mission T) — aucun moteur HYP n'expose de table variable->variable
+// explicite au-delà de cela. Le chemin "variable A -> qualité A -> relation validée -> qualité B ->
+// variable B" (§9, plusieurs maillons) est traité séparément par computeCsmV2EvidenceChains, jamais
+// confondu avec une relation directe variable->variable inexistante.
+
+// §4 — rôle d'une variable (jamais recalculé, dérivé uniquement du chemin déjà utilisé partout
+// ailleurs dans le code depuis Mission U : diagnosticEvidence.* = preuve directe/diagnostique,
+// confirmativeEvidence.* = confirmative, tout le reste (explanatoryEvidence.*, xxxSecondaire.*,
+// xxxUnipodal.*, segments[]) = explicative).
+function csmV2VariableRole(variablePath){
+  if(variablePath.indexOf('diagnosticEvidence.')===0)return'DIRECT';
+  if(variablePath.indexOf('confirmativeEvidence.')===0)return'CONFIRMATIVE';
+  return'EXPLANATORY';
+}
+// §3 — le rôle d'une variable ne change JAMAIS parce qu'elle est disponible ou que plusieurs preuves
+// convergent : `type` reste toujours DIRECT/CONFIRMATIVE/EXPLANATORY (fidèle à son chemin réel) ;
+// `partOfConvergence` est un simple indicateur additionnel (≥2 preuves propres réunies pour cette
+// qualité, déjà déterminé par Mission Q), jamais une réécriture du rôle de la variable elle-même.
+function csmV2VariableEvidenceEdge(quality,ev,convergent){
+  return{
+    source:'var:'+ev.variable,target:'quality:'+quality,
+    type:csmV2VariableRole(ev.variable),
+    support:ev.status==='deficient'?'deficient':(ev.status||'normal'),
+    evidence:[ev],
+    confidence:csmV2VariableRole(ev.variable)==='DIRECT'?'high':'moderate',
+    partOfConvergence:!!convergent
+  };
+}
+// §2 — computeCsmV2VariableQualityGraph() : graphe explicite {nodes,edges} au niveau variable.
+// NODES : variable (une entrée par variable réellement présente dans les evidence[] déjà calculés),
+// quality (8 qualités HYP_CSM_QUALITIES), mechanism (un par qualité déficitaire, lexique déjà
+// verrouillé Mission U — csmV2QualityMechanism). "Conséquence fonctionnelle" (§2) n'est PAS un
+// type de nœud séparé : Kinexus ne modélise aucune entité "conséquence" distincte des qualités
+// elles-mêmes — une conséquence est représentée par une arête CONSEQUENCE vers le nœud qualité
+// concerné (choix documenté ici, jamais une entité inventée pour combler le vocabulaire demandé).
+function computeCsmV2VariableQualityGraph(clinicalProfile,clinicalCausalReasoning,clinicalBridgeEvidence,clinicalFunctionalChains){
+  var nodes={},edges=[];
+  function addNode(id,node){if(!nodes[id])nodes[id]=node;}
+
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var prof=clinicalProfile[q]||{};
+    addNode('quality:'+q,{id:'quality:'+q,type:'quality',label:csmV2QualityDisplayLabel(q),state:prof.state||null,severity:prof.severity!==undefined?prof.severity:null});
+    var qr=clinicalCausalReasoning.qualityReasoning[q];
+    if(!qr)return;
+    var mechanism=csmV2QualityMechanism(q);
+    if(mechanism&&qr.state==='deficitaire'){
+      addNode('mechanism:'+q,{id:'mechanism:'+q,type:'mechanism',label:mechanism,quality:q});
+      edges.push({source:'quality:'+q,target:'mechanism:'+q,type:'EXPLANATORY',support:'mechanism_label',evidence:[],confidence:'moderate'});
+    }
+    // variable -> qualité (DIRECT/CONFIRMATIVE/EXPLANATORY, éventuellement CONVERGENT si ≥2 preuves
+    // propres réunies pour cette qualité — jamais recalculé, reflète directement supportLevel déjà
+    // déterminé par Mission Q).
+    var ownConvergent=(qr.directEvidence[0]&&qr.directEvidence[0].evidence&&qr.directEvidence[0].evidence.length>=2);
+    (qr.directEvidence[0]?qr.directEvidence[0].evidence:[]).forEach(function(ev){
+      addNode('var:'+ev.variable,{id:'var:'+ev.variable,type:'variable',label:csmV2FriendlyKpiLabel(ev.variable)});
+      edges.push(csmV2VariableEvidenceEdge(q,ev,ownConvergent));
+    });
+    // qualité -> qualité (CROSS_QUALITY, relation déjà validée)
+    qr.contributingFactors.forEach(function(f){
+      edges.push({source:'quality:'+f.from,target:'quality:'+q,type:'CROSS_QUALITY',support:'validated_relation',evidence:[],confidence:f.confidence,wording:f.wording});
+    });
+    // qualité -> conséquence (qualité aval, déjà calculée Mission X — jamais une nouvelle relation)
+    qr.consequences.forEach(function(c){
+      edges.push({source:'quality:'+q,target:'quality:'+c.quality,type:'CONSEQUENCE',support:c.type,evidence:c.evidence||[],confidence:c.type==='cross_quality'?'moderate':'low',wording:c.wording});
+    });
+  });
+  // variable <-> variable (BRIDGE uniquement — seule source réelle, cf. note ci-dessus).
+  (clinicalBridgeEvidence||[]).forEach(function(b){
+    addNode('var:'+b.variableA,{id:'var:'+b.variableA,type:'variable',label:csmV2FriendlyKpiLabel(b.variableA)});
+    addNode('var:'+b.variableB,{id:'var:'+b.variableB,type:'variable',label:csmV2FriendlyKpiLabel(b.variableB)});
+    edges.push({source:'var:'+b.variableA,target:'var:'+b.variableB,type:'BRIDGE',support:'shared_raw_measurement',evidence:[{variable:b.variableA,left:b.left,right:b.right,lsi:b.lsi,status:b.status}],confidence:'low'});
+  });
+  // qualité -> qualité (FUNCTIONAL_CHAIN, longueur >=3 uniquement — les longueurs 2 sont déjà
+  // couvertes par CROSS_QUALITY/BRIDGE ci-dessus, jamais dupliquées).
+  (clinicalFunctionalChains||[]).filter(function(c){return c.chain.length>=3;}).forEach(function(c){
+    for(var i=0;i<c.chain.length-1;i++){
+      edges.push({source:'quality:'+c.chain[i],target:'quality:'+c.chain[i+1],type:'FUNCTIONAL_CHAIN',support:c.supportLevel,evidence:c.evidence||[],confidence:c.supportLevel==='convergent'?'moderate':'low'});
+    }
+  });
+  return{nodes:Object.keys(nodes).map(function(k){return nodes[k];}),edges:edges};
+}
+
+// §5 — computeCsmV2VariableRelations() : relations variable->variable RÉELLEMENT démontrées
+// (bridges uniquement, cf. note de portée ci-dessus). Toute autre paire de variables n'est jamais
+// retournée comme relation — son absence EST le "relationStatus=not_supported" demandé (rien à
+// afficher plutôt qu'un statut négatif par paire, ce qui obligerait à énumérer artificiellement
+// toutes les paires possibles).
+function computeCsmV2VariableRelations(clinicalBridgeEvidence){
+  return(clinicalBridgeEvidence||[]).map(function(b){
+    return{
+      variableA:b.variableA,variableB:b.variableB,qualityA:b.qualityA,qualityB:b.qualityB,
+      relationStatus:'supported_bridge',
+      evidence:{left:b.left,right:b.right,lsi:b.lsi,status:b.status},
+      wording:csmV2QualityDisplayLabel(b.qualityA)+' et '+csmV2QualityDisplayLabel(b.qualityB)+' partagent une même mesure ('+csmV2FriendlyKpiLabel(b.variableA)+'), sans que cela établisse une relation causale entre les deux variables.'
+    };
+  });
+}
+
+// §9 — computeCsmV2EvidenceChains() : VARIABLE -> QUALITÉ -> RELATION -> QUALITÉ -> VARIABLE.
+// Repart de clinicalFunctionalChains à 2 maillons (déjà vérifiés, Mission T) et tente d'attacher,
+// à chaque extrémité, la variable propre de la qualité de départ/d'arrivée. Si la qualité d'arrivée
+// n'a PAS de preuve propre exploitable (directEvidence vide), le dernier maillon est marqué
+// unsupportedLinks — la chaîne n'est jamais complétée artificiellement.
+function computeCsmV2EvidenceChains(clinicalCausalReasoning,clinicalFunctionalChains){
+  var qualityReasoning=clinicalCausalReasoning.qualityReasoning;
+  return(clinicalFunctionalChains||[]).filter(function(c){return c.chain.length===2;}).map(function(c){
+    var from=c.chain[0],to=c.chain[1];
+    var fromQr=qualityReasoning[from],toQr=qualityReasoning[to];
+    var fromEvidence=(fromQr&&fromQr.directEvidence[0]&&fromQr.directEvidence[0].evidence)||[];
+    var toEvidence=(toQr&&toQr.directEvidence[0]&&toQr.directEvidence[0].evidence)||[];
+    var unsupportedLinks=[];
+    if(!fromEvidence.length)unsupportedLinks.push('variable('+from+') : aucune preuve propre exploitable');
+    if(!toEvidence.length)unsupportedLinks.push('variable('+to+') : aucune preuve propre exploitable');
+    var edgeType=c.edges[0].type==='bridge'?'BRIDGE':'CROSS_QUALITY';
+    var supportLevel=unsupportedLinks.length?'non_supportee':(c.supportLevel||'associated');
+    var strongestEvidence=fromEvidence.concat(toEvidence).sort(function(a,b){return(a.lsi||100)-(b.lsi||100);})[0]||null;
+    return{
+      chain:[fromEvidence[0]?fromEvidence[0].variable:null,'quality:'+from,edgeType,'quality:'+to,toEvidence[0]?toEvidence[0].variable:null],
+      qualities:[from,to],
+      edgeType:edgeType,
+      supportLevel:supportLevel,
+      strongestEvidence:strongestEvidence,
+      unsupportedLinks:unsupportedLinks
+    };
+  });
+}
+
+// §10 — hiérarchisation déterministe des chaînes (evidence chains + causalChains déjà calculées) :
+// DIRECTE (own evidence forte des deux côtés + relation validée), CONVERGENTE (≥2 preuves
+// indépendantes d'un côté au moins), ASSOCIÉE (relation validée mais preuve partielle), BRIDGE
+// (mesure commune uniquement), HYPOTHÈSE (relation validée mais aucune des deux qualités n'a de
+// preuve propre exploitable), NON_SUPPORTEE (unsupportedLinks non vide).
+function csmV2ChainTier(ec){
+  if(ec.unsupportedLinks.length)return'NON_SUPPORTEE';
+  if(ec.edgeType==='BRIDGE')return'BRIDGE';
+  var fromStrong=ec.strongestEvidence&&ec.strongestEvidence.lsi!=null&&ec.strongestEvidence.lsi<50;
+  if(ec.supportLevel==='convergent'&&fromStrong)return'DIRECTE';
+  if(ec.supportLevel==='convergent')return'CONVERGENTE';
+  if(ec.supportLevel==='associated')return'ASSOCIÉE';
+  return'HYPOTHÈSE';
+}
+
+// §11 — computeCsmV2VariableConsequences() : réutilise qualityReasoning[q].consequences déjà
+// calculé (Mission X) et attache le mécanisme déjà validé (jamais une conséquence fonctionnelle
+// inventée à partir d'une seule variable) — le second maillon (qualité déficitaire -> limitation
+// fonctionnelle) provient exclusivement de csmV2QualityMechanism, jamais d'un texte nouveau.
+function computeCsmV2VariableConsequences(clinicalCausalReasoning){
+  var qualityReasoning=clinicalCausalReasoning.qualityReasoning;
+  var out=[];
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var qr=qualityReasoning[q];
+    if(!qr||qr.state!=='deficitaire')return;
+    var ownEvidence=(qr.directEvidence[0]&&qr.directEvidence[0].evidence)||[];
+    if(!ownEvidence.length)return;
+    var mechanism=csmV2QualityMechanism(q);
+    out.push({
+      quality:q,
+      variables:ownEvidence.map(function(e){return e.variable;}),
+      mechanism:mechanism,
+      consequences:qr.consequences.map(function(c){return c.quality;}).filter(function(v,i,a){return a.indexOf(v)===i;}),
+      narrative:mechanism?csmV2QualityDisplayLabel(q)+' déficitaire, objectivé par '+ownEvidence.map(function(e){return csmV2FriendlyKpiLabel(e.variable);}).join(', ')+', converge vers une limitation liée à : '+mechanism.replace(/\.$/,'')+'.':null
+    });
+  });
+  return out;
+}
+
+// §12 — computeCsmV2ClinicalNodes() : identifie les qualités/variables apparaissant dans ≥2 arêtes
+// du graphe déjà construit (degré), jamais une causalité — wording strictement non causal
+// ("élément central du profil" / "élément partagé"), sauf si une relation causale était déjà
+// explicitement établie ailleurs (elle ne l'est jamais dans cette architecture — aucune exception
+// aujourd'hui, documenté honnêtement).
+function computeCsmV2ClinicalNodes(graph){
+  var degree={};
+  graph.edges.forEach(function(e){degree[e.source]=(degree[e.source]||0)+1;degree[e.target]=(degree[e.target]||0)+1;});
+  return graph.nodes.filter(function(n){return(degree[n.id]||0)>=2;}).map(function(n){
+    return{
+      id:n.id,type:n.type,label:n.label,degree:degree[n.id],
+      wording:n.type==='quality'?n.label+' est un élément central du profil (relié à plusieurs qualités/variables), sans que cela en fasse une cause principale.':n.label+' est un élément partagé par plusieurs domaines fonctionnels (bridge), sans établir de causalité.'
+    };
+  }).sort(function(a,b){return b.degree-a.degree;});
+}
+
+// §13 — computeCsmV2VariableLevelSynthesis() : répond aux 5 questions au niveau variable, construite
+// dynamiquement (jamais un paragraphe générique) à partir du graphe/chaînes/nœuds déjà calculés.
+function computeCsmV2VariableLevelSynthesis(clinicalProfile,graph,evidenceChains,clinicalNodes,variableConsequences){
+  var objectifyingVars=graph.edges.filter(function(e){return e.type==='DIRECT'||e.type==='CONVERGENT';}).map(function(e){return graph.nodes.filter(function(n){return n.id===e.source;})[0];}).filter(Boolean);
+  var sharedVars=graph.edges.filter(function(e){return e.type==='BRIDGE';}).reduce(function(acc,e){acc.push(e.source,e.target);return acc;},[]);
+  var sharedVarLabels=Array.from(new Set(Array.from(new Set(sharedVars)).map(function(id){var n=graph.nodes.filter(function(x){return x.id===id;})[0];return n?n.label:id;})));
+  var linkedQualities=graph.edges.filter(function(e){return e.type==='CROSS_QUALITY';}).map(function(e){return e.source.replace('quality:','')+' → '+e.target.replace('quality:','');});
+  var supportedChains=evidenceChains.filter(function(c){return!c.unsupportedLinks.length;});
+  var unresolved=evidenceChains.filter(function(c){return c.unsupportedLinks.length;});
+
+  var parts=[];
+  if(objectifyingVars.length)parts.push("Variables objectivant les déficits : "+Array.from(new Set(objectifyingVars.map(function(v){return v.label;}))).join(', ')+'.');
+  if(sharedVarLabels.length)parts.push("Variables partagées entre plusieurs qualités : "+sharedVarLabels.join(', ')+'.');
+  if(linkedQualities.length)parts.push("Qualités reliées par une relation déjà validée : "+linkedQualities.join(' ; ')+'.');
+  if(supportedChains.length)parts.push("Chaînes fonctionnelles supportées : "+supportedChains.map(function(c){return csmV2QualityDisplayLabel(c.qualities[0])+' → '+csmV2QualityDisplayLabel(c.qualities[1])+' ('+c.tier+')';}).join(' ; ')+'.');
+  if(unresolved.length)parts.push("Éléments encore indéterminés : "+unresolved.map(function(c){return csmV2QualityDisplayLabel(c.qualities[0])+'/'+csmV2QualityDisplayLabel(c.qualities[1])+' ('+c.unsupportedLinks.join('; ')+')';}).join(' ; ')+'.');
+
+  return{
+    objectifyingVariables:Array.from(new Set(objectifyingVars.map(function(v){return v.label;}))),
+    sharedVariables:sharedVarLabels,
+    linkedQualities:linkedQualities,
+    supportedChains:supportedChains,
+    unresolvedChains:unresolved,
+    nodalElements:clinicalNodes,
+    variableConsequences:variableConsequences,
+    narrative:parts.length?parts.join(' '):null
+  };
+}
+
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
 // déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
 // aucun D/G brut, aucun "explainedDeficitSource", etc.) — jamais un recalcul, jamais une nouvelle
@@ -9800,7 +10063,7 @@ function csmV2PatientNarrative(clinicalProfile,synthesis){
 }
 // §11/§15 — Principaux déficits (réutilise synthesis.priorityDeficits) / Réévaluation (réutilise
 // synthesis.reassessmentRecommendation) — AUCUN recalcul, simple passage de référence.
-function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains,clinicalMechanisticReasoning,clinicalCausalReasoning,globalFunctionalSynthesis,clinicalReasoningPaths){
+function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,symmetryEvidence,clinicalExplanations,clinicalFunctionalChains,clinicalMechanisticReasoning,clinicalCausalReasoning,globalFunctionalSynthesis,clinicalReasoningPaths,variableLevelSynthesis){
   var sections=[];
   sections.push(csmV2ReportObjetSection(clinicalProfile));
   sections.push({id:'synthese',title:'Synthèse clinique',text:synthesis.summary,evidence:synthesis.keyFindings});
@@ -9900,6 +10163,28 @@ function computeCsmV2ClinicalReport(clinicalProfile,synthesis,absoluteEvidence,s
   // absente (text=null) si aucun élément suffisamment supporté n'existe pour ce bilan.
   if(clinicalCausalReasoning&&clinicalCausalReasoning.globalNarrative){
     sections.push({id:'raisonnement_causal_transversal',title:'Raisonnement clinique transversal',text:clinicalCausalReasoning.globalNarrative,evidence:[],unresolvedQuestions:clinicalCausalReasoning.unresolvedQuestions||[]});
+  }
+  // Mission AA (variable -> qualité -> mécanisme -> conséquence), §14 — "Logique fonctionnelle du
+  // profil" : 5 sous-parties déjà calculées (computeCsmV2VariableLevelSynthesis), jamais un texte
+  // recalculé ici. Maximum 5 chaînes affichées (§14 : "3-5 chaînes réellement pertinentes"), les
+  // NON_SUPPORTEE restent réservées au debug (jamais présentées comme démontrées).
+  if(variableLevelSynthesis){
+    var preservedQ=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q]&&clinicalProfile[q].severity==='preserved';});
+    var deficientQ=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q]&&(clinicalProfile[q].severity==='majeur'||clinicalProfile[q].severity==='modere');});
+    var displayedChains=variableLevelSynthesis.supportedChains.slice(0,5);
+    sections.push({
+      id:'logique_fonctionnelle_profil',title:'Logique fonctionnelle du profil',evidence:[],
+      pointsAppui:preservedQ.map(csmV2QualityDisplayLabel),
+      limitationsPrincipales:deficientQ.map(function(q){
+        var ownEv=(clinicalCausalReasoning.qualityReasoning[q].directEvidence[0]&&clinicalCausalReasoning.qualityReasoning[q].directEvidence[0].evidence)||[];
+        var labels=ownEv.map(function(e){return csmV2FriendlyKpiLabel(e.variable);});
+        return csmV2QualityDisplayLabel(q)+(labels.length?' ('+labels.join(', ')+')':'');
+      }),
+      relationsEntreDomaines:variableLevelSynthesis.linkedQualities,
+      chainesFonctionnelles:displayedChains.map(function(c){return csmV2QualityDisplayLabel(c.qualities[0])+' → '+csmV2QualityDisplayLabel(c.qualities[1])+' ('+c.tier+')';}),
+      pointsIndetermines:variableLevelSynthesis.unresolvedChains.map(function(c){return csmV2QualityDisplayLabel(c.qualities[0])+'/'+csmV2QualityDisplayLabel(c.qualities[1]);}),
+      text:variableLevelSynthesis.narrative
+    });
   }
   // Mission Z (raisonnement clinique actionnable), §12 — "Du déficit aux priorités" : une entrée par
   // qualité déficitaire dont le reasoningPath comporte au moins la preuve ET une action (priorité/
