@@ -638,7 +638,11 @@ test('AC-GOV — HYP_QUALITY_RELATIONS/WHITELIST/THRESHOLDS/NORMS_V2/CSM_V2_AXIS
   assert.strictEqual(THRESHOLDS.wblt_distance.vert, 12);
   assert.strictEqual(NORMS_V2.cmj_peak_power !== undefined, true);
   assert.strictEqual(Object.keys(CSM_V2_AXIS_QUALITY_MAP).length, 8);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 141);
+  // Mission AD (§1) a légitimement complété la matrice avec 9 variables de symétrie secondaire
+  // réellement injectées additivement (reactiviteSecondaire.*/freinageUnipodal.*/mobiliteSecondaire.*
+  // /receptionUnipodale.*, cf. mission_ad_clinical_reasoning_tests.js AD33) — 141->150, jamais une
+  // variable inventée. diagnosticCount reste inchangé (les 9 ajouts sont tous EXPLANATORY).
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
   assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.diagnosticCount, 26);
 });
 

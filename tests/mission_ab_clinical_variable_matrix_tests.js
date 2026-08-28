@@ -235,15 +235,21 @@ test('AB20 — le rapport clinique (sections) est inchangé par Mission AB : "lo
   assert.ok(!ids.some(id => /matrix|matrice/i.test(id)), 'Mission AB ne doit ajouter aucune section de rapport (référence de code uniquement)');
 });
 
-// AB21 — comptage global stable (régression de référence)
-test('AB21 — comptage global de la matrice : 141 variables auditées (26 diagnostiques/28 confirmatives/87 explicatives, 29 classifiables/112 manquantes)', () => {
+// AB21 — comptage global stable (régression de référence). Mission AD (§1) a complété la matrice
+// avec les 9 variables de symétrie secondaire réellement injectées additivement par computeCsmV2()
+// en dehors des moteurs HYP (reactiviteSecondaire.*×3/freinageUnipodal.*×3/mobiliteSecondaire.ybt_ant
+// ×1/receptionUnipodale.*×2) — extension légitime et documentée, jamais une variable inventée (cf.
+// tests/mission_ad_clinical_reasoning_tests.js AD33). Comptages mis à jour en conséquence : 141+9=150
+// total, 87+9=96 explicatives (les 9 ajouts sont tous de rôle EXPLANATORY), 112+9=121 manquantes (les
+// 9 ajouts sont tous non_classifiable) — diagnostic/confirmative/classifiable inchangés.
+test('AB21 — comptage global de la matrice : 150 variables auditées (26 diagnostiques/28 confirmatives/96 explicatives, 29 classifiables/121 manquantes)', () => {
   const m = matrix().meta;
-  assert.strictEqual(m.totalVariables, 141);
+  assert.strictEqual(m.totalVariables, 150);
   assert.strictEqual(m.diagnosticCount, 26);
   assert.strictEqual(m.confirmativeCount, 28);
-  assert.strictEqual(m.explanatoryCount, 87);
+  assert.strictEqual(m.explanatoryCount, 96);
   assert.strictEqual(m.classifiableCount, 29);
-  assert.strictEqual(m.missingCount, 112);
+  assert.strictEqual(m.missingCount, 121);
 });
 
 // AB22 — granularité mixte conservée au sein d'un même rôle. Constat d'audit (Mission AB, §1) : le
