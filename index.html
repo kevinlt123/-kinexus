@@ -8723,7 +8723,12 @@ function csmV2ReportDeficitToPrioritiesHtml(s){
   var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
     +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">'+s.title+'</div>';
   s.items.forEach(function(rp,i){
-    var chainText=rp.reasoningPath.map(function(step){return step.text;}).filter(Boolean).join(' → ');
+    // Mission AG §12 (lisibilité) : un même step.text peut se répéter (une entrée par variable pont
+    // vers la même qualité source, cf. Mission Z reasoningPath) — dédoublonnage d'AFFICHAGE uniquement
+    // (texte déjà calculé, jamais recalculé), la trace complète reste dans rp.reasoningPath.
+    var steps=rp.reasoningPath.map(function(step){return step.text;}).filter(Boolean);
+    steps=steps.filter(function(v,i){return steps.indexOf(v)===i;});
+    var chainText=steps.join(' → ');
     out+='<div style="margin:6px 0;padding-left:8px;border-left:2px solid '+C.teal+'">'
       +'<div style="font-size:8.5pt;font-weight:700;color:#132B3A">'+(i+1)+'. '+csmV2QualityDisplayLabel(rp.quality)+'</div>'
       +'<div style="font-size:8pt;color:#333;line-height:1.5">'+chainText+'</div>'
@@ -8819,6 +8824,201 @@ function csmV2ReportDeficitToDecisionHtml(csmV2Rep){
   out+='</div>';
   return out;
 }
+// ══════════════════ MISSION AG — VALIDATION DU BILAN CLINIQUE FINAL KINEXUS ═══════════════════════
+// Couche de RENDU PURE (aucun recalcul, aucune donnée inventée). Audit préalable (§1) : plusieurs
+// structures Q->AF étaient déjà entièrement calculées mais JAMAIS consommées par un rendu — en
+// particulier clinicalDecisionSynthesis (Mission AE §11, synthèse finale 8 parties), clinicalAction
+// Plan (Mission AE §10, "prochaines étapes" axe uniquement), informationalTests/variableAnalysis/
+// clinicalConflicts/qualityToVariableReasoning/decisionLevels/variableHypotheses (Mission AF). Par
+// ailleurs, seules 6 des 8 qualités (Mobilité/Force/Puissance/Absorption/Réactivité/Stabilisation,
+// cf. CSM_V2_REPORT_SECTION_QUALITY) disposaient d'une carte dédiée dans le compte rendu — Explosivité
+// et Endurance n'apparaissaient dans AUCUNE carte par qualité. Les fonctions ci-dessous exposent ces
+// structures déjà calculées, pour les 8 qualités, sans jamais recalculer une preuve/un seuil/une
+// relation.
+
+// §8.B mission AG — csmV2QualityGenuinelyTested (Mission AF) distingue déjà "réellement testée" de
+// "aucune donnée fournie" ; réutilisé ici pour ne JAMAIS présenter une qualité non testée comme
+// "Préservée" (comportement LOCKED de csmV2QualitySeverity, jamais modifié ici) — uniquement au
+// niveau du RENDU, jamais un recalcul de severity.
+function csmV2ReportEffectiveQualityState(quality,clinicalProfile,symmetryEvidence){
+  var sev=clinicalProfile[quality].severity;
+  if(sev==='majeur'||sev==='modere')return sev;
+  if(sev==='preserved')return csmV2QualityGenuinelyTested(quality,symmetryEvidence)?'preserved':'non_determinable';
+  return 'non_determinable';
+}
+var CSM_V2_EFFECTIVE_STATE_LABEL={majeur:'Majeure',modere:'Modérée',preserved:'Préservée',non_determinable:'Non déterminée'};
+
+// §3.A — Profil global : compte les 8 qualités par état effectif (jamais un décompte codé en dur),
+// puis affiche la synthèse déjà calculée par computeCsmV2ClinicalDecisionSynthesis (Mission AE §11,
+// narrative générée dynamiquement à partir des structures ci-dessus — jamais consommée avant AG).
+function csmV2ReportGlobalProfileHtml(clinicalProfile,symmetryEvidence,clinicalDecisionSynthesis){
+  var buckets={preserved:[],majeur:[],modere:[],non_determinable:[]};
+  HYP_CSM_QUALITIES.forEach(function(q){buckets[csmV2ReportEffectiveQualityState(q,clinicalProfile,symmetryEvidence)].push(q);});
+  var groups=[['preserved','Préservées',C.vert],['majeur','Déficits majeurs',C.rouge],['modere','Déficits modérés',C.orange],['non_determinable','Non déterminées',C.gris||'#94A3B8']]
+    .filter(function(g){return buckets[g[0]].length;});
+  if(!groups.length&&!(clinicalDecisionSynthesis&&clinicalDecisionSynthesis.narrative))return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Profil global</div>';
+  groups.forEach(function(g){
+    out+='<div style="margin:4px 0"><span style="display:inline-block;padding:2px 8px;border-radius:12px;background:'+g[2]+'1A;color:'+g[2]+';font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-right:6px">'+g[1]+'</span>'
+      +'<span style="font-size:8.5pt;color:#333">'+buckets[g[0]].map(csmV2QualityDisplayLabel).join(', ')+'</span></div>';
+  });
+  if(clinicalDecisionSynthesis&&clinicalDecisionSynthesis.narrative){
+    out+='<p style="margin:8px 0 0;padding-top:8px;border-top:1px dashed '+C.border+';font-size:9pt;color:#333;line-height:1.6">'+clinicalDecisionSynthesis.narrative+'</p>';
+  }
+  out+='</div>';
+  return out;
+}
+
+// §3.B/§3.C/§4 — carte complète par qualité (les 8, y compris Explosivité/Endurance jamais couvertes
+// ailleurs) : OBJECTIVÉ PAR / EXPLIQUÉ PAR (contributif, jamais une cause) / ASSOCIÉ À / RESTE
+// INCERTAIN / À VÉRIFIER / AXE CLINIQUE — pure lecture de clinicalCausalReasoning.directEvidence
+// (Mission X), causeConsequenceRelations (Mission AF §8, déjà séparé structurellement potentialCauses/
+// contributingFactors/unknowns), qualityToVariableReasoning (Mission AF §3 sens 2) et csmV2AxesFor
+// Quality (Mission AE, CSM_V2_AXIS_QUALITY_MAP LOCKED). Vocabulaire imposé par la mission (Objectivé/
+// Supporté/Contributif/Associé/Hypothèse/Indéterminé) porté par CSM_V2_VERIFICATION_STATUS_LABEL,
+// jamais une flèche "cause" affichée pour une relation CONTRIBUTING/ASSOCIATED/HYPOTHESIS.
+var CSM_V2_VERIFICATION_STATUS_LABEL={CONTRIBUTING:'Contributif',ASSOCIATED:'Associé',HYPOTHESIS:'Hypothèse',REFUTED:'Hypothèse infirmée'};
+function csmV2ReportPrincipalDeficitLineHtml(label,items,emptyText){
+  if(!items||!items.length){if(!emptyText)return'';return'<div style="font-size:8pt;color:#888;font-style:italic">'+label+' : '+emptyText+'</div>';}
+  return'<div style="font-size:8pt;color:#555"><strong>'+label+' :</strong> '+items.join(', ')+'.</div>';
+}
+function csmV2ReportPrincipalDeficitCardHtml(rank,quality,csmV2Rep){
+  var cp=csmV2Rep.clinicalProfile[quality];
+  var qr=csmV2Rep.clinicalCausalReasoning.qualityReasoning[quality];
+  var rel=csmV2Rep.causeConsequenceRelations[quality];
+  var qtvr=csmV2Rep.qualityToVariableReasoning[quality];
+  var tier=csmV2Rep.clinicalPriorities[quality].tier;
+  var level=csmV2Rep.decisionLevels[quality];
+  var state=csmV2ReportEffectiveQualityState(quality,csmV2Rep.clinicalProfile,csmV2Rep.symmetryEvidence);
+  var col=csmV2SeverityColor(state==='non_determinable'?null:state);
+  var out='<div style="border:1px solid '+col+'40;background:'+col+'0D;border-left:4px solid '+col+';border-radius:8px;padding:10px 12px;margin:8px 0">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">'
+    +'<div style="font-size:9.5pt;font-weight:700;color:#132B3A">'+rank+'. '+csmV2QualityDisplayLabel(quality)+'</div>'
+    +'<div style="display:flex;gap:5px;flex-wrap:wrap">'
+    +'<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:'+col+'1A;color:'+col+';font-size:7.5pt;font-weight:700;text-transform:uppercase">'+CSM_V2_EFFECTIVE_STATE_LABEL[state]+'</span>'
+    +(tier?'<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#F0F4F7;color:#5B7A8C;font-size:7.5pt;font-weight:700;text-transform:uppercase">'+tier.replace(/_/g,' ')+'</span>':'')
+    +'<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#132B3A0D;color:#132B3A;font-size:7.5pt;font-weight:700">'+level.label+'</span>'
+    +'</div></div>';
+  if(state==='preserved'){
+    out+='<p style="margin:6px 0 0;font-size:8.5pt;color:#555">Qualité réellement testée et objectivement préservée sur ce bilan — aucun facteur explicatif recherché.</p>';
+  }else if(state==='non_determinable'&&cp.severity!=='majeur'&&cp.severity!=='modere'){
+    out+='<p style="margin:6px 0 0;font-size:8.5pt;color:#888;font-style:italic">Aucune donnée disponible pour cette qualité sur ce bilan — statut non déterminé, jamais présenté comme préservé par défaut.</p>';
+  }else{
+    var objectivePar=(qr.directEvidence[0]&&qr.directEvidence[0].evidence.map(function(e){return csmV2FriendlyKpiLabel(e.variable);}))||[];
+    // csmV2Unique() : déduplique par texte affiché — une même qualité "explains" peut apparaître
+    // plusieurs fois dans potentialCauses (une entrée par variable pont ASSOCIATED, cf. Mission AF
+    // §2 csmV2VerificationVariablesForQuality), jamais une donnée nouvelle, uniquement un affichage
+    // condensé au niveau carte (§12 mission : éviter les répétitions).
+    function csmV2Unique(arr){return arr.filter(function(v,i){return arr.indexOf(v)===i;});}
+    var expliquePar=csmV2Unique(rel.contributingFactors.map(function(c){return csmV2QualityDisplayLabel(c.source)+' ('+CSM_V2_VERIFICATION_STATUS_LABEL.CONTRIBUTING+')';}));
+    var associeA=csmV2Unique(rel.potentialCauses.filter(function(c){return c.evidenceType==='ASSOCIATED';}).map(function(c){return csmV2QualityDisplayLabel(c.source)+' ('+CSM_V2_VERIFICATION_STATUS_LABEL.ASSOCIATED+')';}));
+    var incertain=csmV2Unique(rel.potentialCauses.filter(function(c){return c.evidenceType==='HYPOTHESIS'||c.evidenceType==='REFUTED';}).map(function(c){return csmV2QualityDisplayLabel(c.source)+' ('+CSM_V2_VERIFICATION_STATUS_LABEL[c.evidenceType]+')';}));
+    incertain=incertain.concat(csmV2Unique(rel.unknowns.map(function(u){return u.label+' (Indéterminé)';})));
+    // §12 mission (lisibilité/longueur) : plafonne l'AFFICHAGE Niveau 1 à 6 éléments — la liste
+    // complète reste disponible sans troncature dans variableAnalysis/causeConsequenceRelations
+    // (Niveau 2, jamais perdue), uniquement une contrainte de présentation.
+    if(incertain.length>6)incertain=incertain.slice(0,6).concat(['+'+(incertain.length-6)+' variable(s) supplémentaire(s) (détails techniques disponibles)']);
+    out+=csmV2ReportPrincipalDeficitLineHtml('Objectivé par',objectivePar,'Aucune preuve diagnostique propre disponible.')
+      +csmV2ReportPrincipalDeficitLineHtml('Expliqué par',expliquePar,null)
+      +csmV2ReportPrincipalDeficitLineHtml('Associé à',associeA,null)
+      +csmV2ReportPrincipalDeficitLineHtml('Reste incertain',incertain,null);
+    if(qtvr&&qtvr.nextBestTest){
+      out+='<div style="font-size:8pt;color:#555"><strong>À vérifier :</strong> '+qtvr.nextBestTest+(qtvr.reason?' — '+qtvr.reason:'')+'</div>';
+    }
+  }
+  var axes=csmV2AxesForQuality(quality);
+  if(axes.length)out+='<div style="margin-top:4px;font-size:8pt;color:#555"><strong>Axe clinique :</strong> '+axes.join(', ')+'</div>';
+  out+='</div>';
+  return out;
+}
+var CSM_V2_TIER_RANK={PRIORITAIRE:0,IMPORTANTE:1,SECONDAIRE:2,A_SURVEILLER:3,NON_DETERMINEE:4};
+function csmV2ReportPrincipalDeficitsFullHtml(csmV2Rep){
+  if(!csmV2Rep.clinicalPriorities)return'';
+  var qualities=HYP_CSM_QUALITIES.slice().sort(function(a,b){
+    var ra=CSM_V2_TIER_RANK[csmV2Rep.clinicalPriorities[a].tier];ra=ra===undefined?5:ra;
+    var rb=CSM_V2_TIER_RANK[csmV2Rep.clinicalPriorities[b].tier];rb=rb===undefined?5:rb;
+    return ra-rb;
+  });
+  var out='<div style="margin:8px 0"><div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px">Principaux déficits — vue complète (8 qualités)</div>';
+  out+=qualities.map(function(q,i){return csmV2ReportPrincipalDeficitCardHtml(i+1,q,csmV2Rep);}).join('');
+  out+='</div>';
+  return out;
+}
+
+// §8.G — conflits/dissociations cliniques (Mission AF §7, computeCsmV2ClinicalConflicts) : jamais
+// rendus avant AG. Rend explicitement visible la dissociation Force max/RFD ainsi que les co-déficits
+// avec relation active et les déficits sans mécanisme démontré — jamais résolus silencieusement.
+var CSM_V2_CONFLICT_TITLE={force_max_vs_rfd:'Dissociation Force maximale / Production rapide de force',co_deficit_relation_active:'Co-déficit avec relation active',diagnostic_sans_mecanisme:'Déficit objectivé, mécanisme non déterminé'};
+function csmV2ReportClinicalConflictsHtml(clinicalConflicts){
+  if(!clinicalConflicts||!clinicalConflicts.length)return'';
+  var out='<div style="border:1px solid '+C.orange+'55;background:'+C.orange+'0D;border-radius:8px;padding:10px 12px;margin:8px 0">'
+    +'<div style="font-size:8pt;font-weight:700;color:'+C.orange+';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Points de vigilance / dissociations</div>';
+  out+=clinicalConflicts.map(function(c){
+    return'<div style="border-left:3px solid '+C.orange+';padding:4px 0 4px 10px;margin:6px 0">'
+      +'<div style="font-size:8.5pt;font-weight:700;color:#132B3A">'+(CSM_V2_CONFLICT_TITLE[c.type]||c.type)+' — '+c.qualities.map(csmV2QualityDisplayLabel).join(', ')+'</div>'
+      +'<div style="font-size:8pt;color:#555">'+c.description+'</div>'
+      +'<div style="font-size:8pt;color:#555;font-style:italic">'+c.interpretation+'</div>'
+      +'</div>';
+  }).join('');
+  out+='</div>';
+  return out;
+}
+
+// §5 — cartes de test (Mission AF §5, computeCsmV2InformationalTests) : jamais rendues avant AG.
+// N'affiche que les tests à gain réellement exploitable (jamais NONE présenté comme prioritaire, §8.H
+// mission — un test sans seuil reste disponible dans les données mais n'est jamais recommandé ici).
+var CSM_V2_GAIN_LABEL={HIGH:'Élevée',MODERATE:'Modérée',LOW:'Faible',NONE:'Nulle'};
+function csmV2ReportTestCardHtml(t){
+  return'<div style="border-left:3px solid '+C.teal+';padding:4px 0 4px 10px;margin:6px 0">'
+    +'<div style="font-size:8.5pt;font-weight:700;color:#132B3A;text-transform:uppercase">'+t.test+'</div>'
+    +'<div style="font-size:8pt;color:#555">→ Qualité ciblée : '+csmV2QualityDisplayLabel(t.targetQuality)+(t.targetMechanism?' — '+t.targetMechanism:'')+'</div>'
+    +'<div style="font-size:8pt;color:#555">→ Pourquoi : '+t.reasons.join(' ')+'</div>'
+    +'<div style="font-size:8pt;color:#555">→ Valeur informationnelle : '+(CSM_V2_GAIN_LABEL[t.expectedReasoningGain]||t.expectedReasoningGain)+' (priorité '+t.priority+')</div>'
+    +'<div style="font-size:8pt;color:#555">→ Disponibilité : non renseigné dans ce bilan actuellement</div>'
+    +'<div style="font-size:8pt;color:#555">→ Classifiabilité : '+(t.classifiability==='exploitable'?'exploitable (seuil réel disponible)':'non classifiable (aucun seuil disponible)')+'</div>'
+    +'</div>';
+}
+function csmV2ReportInformationalTestsHtml(informationalTests){
+  var useful=(informationalTests||[]).filter(function(t){return t.expectedReasoningGain!=='NONE';});
+  if(!useful.length)return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Tests à faire — valeur informationnelle</div>';
+  out+=useful.map(csmV2ReportTestCardHtml).join('');
+  out+='</div>';
+  return out;
+}
+
+// §9 — synthèse automatique finale (Mission AE §11, computeCsmV2ClinicalDecisionSynthesis) : générée
+// dynamiquement (profil principal/preuves/organisation/mécanismes/incertitudes/priorités/tests/axes),
+// jamais un paragraphe codé pour un patient particulier (cf. test dédié) — jamais rendue avant AG.
+function csmV2ReportFinalSynthesisHtml(clinicalDecisionSynthesis){
+  if(!clinicalDecisionSynthesis||!clinicalDecisionSynthesis.narrative)return'';
+  return'<div style="border:2px solid '+C.petrol+';background:'+C.petrol+'0D;border-radius:10px;padding:12px 14px;margin:10px 0">'
+    +'<div style="font-size:8pt;font-weight:700;color:'+C.petrol+';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Synthèse clinique finale</div>'
+    +'<p style="margin:0;font-size:9.5pt;color:'+C.text+';line-height:1.65">'+clinicalDecisionSynthesis.narrative+'</p>'
+    +'</div>';
+}
+
+// §10 — "Ce que je ferais ensuite" (Mission AE §10, computeCsmV2ClinicalActionPlan) : jamais rendue
+// avant AG. interventionAxis provient EXCLUSIVEMENT de CSM_V2_AXIS_QUALITY_MAP (LOCKED) — jamais un
+// exercice précis prescrit, reste au niveau évaluation complémentaire / axe de travail / surveillance.
+function csmV2ReportNextStepsHtml(clinicalActionPlan){
+  if(!clinicalActionPlan||!clinicalActionPlan.length)return'';
+  var out='<div style="border:1px solid '+C.border+';border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">'
+    +'<div style="font-size:8pt;font-weight:700;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Ce que je ferais ensuite</div>';
+  out+=clinicalActionPlan.slice(0,3).map(function(a,i){
+    return'<div style="border-left:3px solid '+C.teal+';padding:4px 0 4px 10px;margin:6px 0">'
+      +'<div style="font-size:8.5pt;font-weight:700;color:#132B3A">Priorité '+(i+1)+' — '+csmV2QualityDisplayLabel(a.quality)+'</div>'
+      +'<div style="font-size:8pt;color:#555">→ Pourquoi : '+a.interpretation+(a.unresolvedMechanism?' '+a.unresolvedMechanism:'')+'</div>'
+      +(a.nextAssessment?'<div style="font-size:8pt;color:#555">→ Évaluation complémentaire : '+a.nextAssessment+'</div>':'')
+      +(a.interventionAxis.length?'<div style="font-size:8pt;color:#555">→ Axe de travail : '+a.interventionAxis.join(', ')+'</div>':'')
+      +'</div>';
+  }).join('');
+  out+='</div>';
+  return out;
+}
+
 // Assemblage unique du corps du compte rendu clinique — SEULE implémentation, consommée à
 // l'identique par buildExpertReport (PDF) et ExpertView (mission Q, objectif 1 point 8).
 // Mission Y (synthèse du profil fonctionnel), §17 — "Organisation fonctionnelle du profil" :
@@ -8865,6 +9065,9 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
     html+='<div style="margin:0 0 8px">'+csmV2BodyZoneChipsHtml(crO.bodyZones)+'</div>';
   }
   if(byId.synthese&&byId.synthese.text)html+=csmV2ReportConclusionCalloutHtml({title:'Synthèse clinique',text:byId.synthese.text});
+  // Mission AG §3.A — profil global (compte des 8 qualités par état effectif + synthèse déjà
+  // calculée par computeCsmV2ClinicalDecisionSynthesis, Mission AE §11, jamais rendue avant AG).
+  html+=csmV2ReportGlobalProfileHtml(cp,csmV2Rep.symmetryEvidence,csmV2Rep.clinicalDecisionSynthesis);
   // Mission Y (synthèse du profil fonctionnel), §17 — patterns dominants/secondaires, AVANT les
   // cartes détaillées par qualité.
   html+=csmV2ReportPatternsHtml(byId.organisation_fonctionnelle_du_profil);
@@ -8878,15 +9081,25 @@ function csmV2ClinicalReportBodyHtml(csmV2Rep){
     var s=byId[id];
     if(s&&s.text)html+=csmV2ReportSectionCardHtml(s,cp,crO.bodyZones);
   });
+  // Mission AG §3.B/§3.C/§4 — vue complète des 8 qualités (les cartes ci-dessus n'en couvrent que 6,
+  // Explosivité/Puissance-RFD/Endurance n'ayant jamais de carte dédiée, cf. CSM_V2_REPORT_SECTION_
+  // QUALITY) : OBJECTIVÉ PAR / EXPLIQUÉ PAR / ASSOCIÉ À / RESTE INCERTAIN / À VÉRIFIER / AXE CLINIQUE.
+  html+=csmV2ReportPrincipalDeficitsFullHtml(csmV2Rep);
+  html+=csmV2ReportClinicalConflictsHtml(csmV2Rep.clinicalConflicts);
   html+=csmV2ReportTransversaleHtml(byId.transversale);
   html+=csmV2ReportOrganisationFonctionnelleHtml(byId.organisation_fonctionnelle);
   html+=csmV2ReportCausalTransversalHtml(byId.raisonnement_causal_transversal);
   html+=csmV2ReportFunctionalLogicHtml(byId.logique_fonctionnelle_profil);
   html+=csmV2ReportDeficitToPrioritiesHtml(byId.deficit_vers_priorites);
   html+=csmV2ReportDecisionBoardHtml(csmV2Rep.clinicalDecisionBoard);
+  html+=csmV2ReportInformationalTestsHtml(csmV2Rep.informationalTests);
   html+=csmV2ReportDeficitToDecisionHtml(csmV2Rep);
   if(csmV2Rep.synthesis&&csmV2Rep.synthesis.clinicalRelations)html+=csmV2ReportRelationsHtml(csmV2Rep.synthesis.clinicalRelations);
   html+=csmV2ReportPreservedCardHtml(byId.preservees);
+  // Mission AG §9/§10 — synthèse finale (Mission AE §11) et "Ce que je ferais ensuite" (Mission AE
+  // §10) : toutes deux calculées depuis Mission AE mais jamais rendues avant AG.
+  html+=csmV2ReportFinalSynthesisHtml(csmV2Rep.clinicalDecisionSynthesis);
+  html+=csmV2ReportNextStepsHtml(csmV2Rep.clinicalActionPlan);
   html+=csmV2ReportConclusionCalloutHtml(byId.conclusion);
   html+=csmV2ReportAxesHtml(byId.axes);
   if(byId.reevaluation&&byId.reevaluation.text)html+='<p style="margin:8px 0 0;font-size:8.5pt;color:#333;font-style:italic">'+byId.reevaluation.title+' — '+byId.reevaluation.text+'</p>';
@@ -11047,8 +11260,16 @@ function computeCsmV2InformationalTests(nextBestTestsByQuality,clinicalCausalRea
     var qr=clinicalCausalReasoning.qualityReasoning[q];
     nextBestTestsByQuality[q].tests.forEach(function(t){
       var reasons=[];
-      var isDiag=t.items[0].isDiagnostic;
-      if(!t.items[0].hasThreshold){reasons.push('Aucun seuil (ni THRESHOLDS ni NORMS_V2) — une donnée supplémentaire seule ne suffirait pas à la classifier.');}
+      // Bug corrigé mission AG (§12, découvert par inspection visuelle du PDF réel) : un groupe de test
+      // peut contenir des items aux hasThreshold hétérogènes (ex. Knee Extension : 1 KPI avec seuil,
+      // 2 sans) — t.expectedReasoningGain est déjà déterminé par le MEILLEUR item du groupe (cf.
+      // computeCsmV2NextBestTestsForQuality, `best=group.sort(...)[0]`), jamais par items[0] au hasard.
+      // classifiability/reasons/isDiag doivent donc être dérivés du MÊME item "best", pas de items[0]
+      // (sinon un test "gain LOW, seuil réel disponible" pouvait afficher "non classifiable" et le
+      // texte contradictoire "aucun seuil disponible").
+      var best=t.items.slice().sort(function(a,b){return CSM_V2_REASONING_GAIN_RANK[a.expectedReasoningGain]-CSM_V2_REASONING_GAIN_RANK[b.expectedReasoningGain];})[0];
+      var isDiag=best.isDiagnostic;
+      if(!best.hasThreshold){reasons.push('Aucun seuil (ni THRESHOLDS ni NORMS_V2) — une donnée supplémentaire seule ne suffirait pas à la classifier.');}
       else if(t.expectedReasoningGain==='HIGH')reasons.push('Variable diagnostique manquante, seuil réel disponible — pourrait faire passer '+csmV2QualityDisplayLabel(q)+' de non déterminée à objectivement démontrée.');
       else if(t.expectedReasoningGain==='MODERATE')reasons.push('Seuil réel disponible — pourrait établir ou différencier le mécanisme contributif de '+csmV2QualityDisplayLabel(q)+'.');
       else reasons.push('Seuil réel disponible, mais rôle confirmatif/graduation uniquement — n\'ajouterait pas d\'information diagnostique ou mécanistique nouvelle.');
@@ -11059,7 +11280,7 @@ function computeCsmV2InformationalTests(nextBestTestsByQuality,clinicalCausalRea
         currentEvidence:(qr.directEvidence[0]&&qr.directEvidence[0].evidence)||[],
         missingEvidence:t.items,
         expectedReasoningGain:t.expectedReasoningGain,
-        classifiability:t.items[0].hasThreshold?'exploitable':'non_classifiable',
+        classifiability:best.hasThreshold?'exploitable':'non_classifiable',
         priority:isDiag?'P1':(t.items.every(function(i){return csmV2VariableRole(i.variable)==='CONFIRMATIVE';})?'P3':'P2'),
         reasons:reasons
       });
