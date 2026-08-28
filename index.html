@@ -9088,11 +9088,24 @@ function csmV2MissingEvidenceForQuality(quality,symmetryEvidence){
 // functional_chain — jamais un niveau supérieur inventé simplement parce que plusieurs phrases
 // existent), convergence (§15), missingEvidence[] (§18). Ne recalcule JAMAIS supportLevel/narrative/
 // explanatoryEvidence/crossQualityEvidence existants — pure lecture augmentée.
+// Mission AC, correctif minimal (§ audit Partie 1, cas Endurance réel Yannis) : 'direct'/'convergent'
+// exigent désormais qu'AU MOINS une des preuves propres soit réellement diagnostique
+// (variable.indexOf('diagnosticEvidence.')===0) — un simple COMPTE ≥2 ne suffit plus. Avant ce
+// correctif, ≥2 preuves purement confirmatives/explicatives/secondaires (ex. explanatoryEvidence.
+// cinetique.soleus_iso_rfd100 + gastro_iso_rfd100 pour Endurance, AUCUNE preuve diagnostique
+// heel_raise_reps/repeated_hop) étaient promues 'convergent' au même titre qu'une vraie convergence
+// diagnostique, obtenant le même rang causal 'principal' (csmV2CausalRank) — exactement le cas que
+// chaque moteur HYP documente pourtant comme interdit ("jamais une deuxième preuve diagnostique,
+// seulement une graduation du support"). Le correctif ne change RIEN quand une preuve diagnostique
+// est déjà présente (Mobilité/Réactivité/Absorption/Puissance/Stabilisation Yannis : inchangés,
+// vérifié) — seul le cas 100% non-diagnostique change (Endurance Yannis : convergent -> associated,
+// Explosivité Yannis : associated -> associated, inchangé car déjà correct à 1 seule preuve).
 function csmV2ExplanatoryFactorsForQuality(quality,r,clinicalBridgeEvidence,clinicalFunctionalChains){
   var factors=[];
   if(r.explanatoryEvidence&&r.explanatoryEvidence.length){
-    var ownType=r.explanatoryEvidence.length>=2?'convergent':
-      (r.explanatoryEvidence[0].variable.indexOf('diagnosticEvidence.')===0?'direct':'associated');
+    var diagnosticPresent=r.explanatoryEvidence.some(function(e){return e.variable.indexOf('diagnosticEvidence.')===0;});
+    var ownType=r.explanatoryEvidence.length>=2?(diagnosticPresent?'convergent':'associated'):
+      (diagnosticPresent?'direct':'associated');
     factors.push({type:ownType,quality:quality,mechanism:csmV2QualityMechanism(quality),evidence:r.explanatoryEvidence,support:ownType,relationship:null,wording:null});
   }
   (r.crossQualityEvidence||[]).forEach(function(c){
