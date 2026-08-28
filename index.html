@@ -7570,6 +7570,11 @@ function computeCsmV2(functionScores,testData){
     variableConsequences:variableConsequencesV2,
     clinicalNodes:clinicalNodesV2,
     variableLevelSynthesis:variableLevelSynthesisV2,
+    // Mission AB (matrice clinique de référence) — VARIABLE -> RÔLE -> QUALITÉ -> MÉCANISME ->
+    // RELATIONS -> CONSÉQUENCES -> DONNÉES MANQUANTES. Référence STATIQUE (calculée une seule fois au
+    // chargement, indépendante de ce patient) exposée ici pour être consommable par les futurs
+    // moteurs — cf. CSM_V2_CLINICAL_VARIABLE_MATRIX ci-dessus.
+    variableMatrix:CSM_V2_CLINICAL_VARIABLE_MATRIX,
     // Mission O — compte rendu clinique automatique : couche additive PURE, consomme exclusivement
     // clinicalProfileV2/synthesisV2/absoluteEvidence/symmetryEvidence déjà calculés ci-dessus —
     // aucun recalcul de norme/LSI/statut, aucun moteur HYP LOCKED touché. Objet UNIQUE consommé à
@@ -9970,6 +9975,151 @@ function computeCsmV2VariableLevelSynthesis(clinicalProfile,graph,evidenceChains
     narrative:parts.length?parts.join(' '):null
   };
 }
+
+// ── Mission AB — MATRICE CLINIQUE DE RÉFÉRENCE DES VARIABLES ────────────────────────────────────
+// VARIABLE → RÔLE → QUALITÉ → MÉCANISME → RELATIONS → CONSÉQUENCES → DONNÉES MANQUANTES.
+// Référence STATIQUE (indépendante de tout patient) construite par introspection STRUCTURELLE des 8
+// moteurs computeHypXxx01 LOCKED (chacun appelé une seule fois, en lecture seule, avec testData={} —
+// exactement comme le fait déjà tout code consommateur de computeMoteur() — pour lire les clés
+// diagnosticEvidence/confirmativeEvidence/explanatoryEvidence que chaque moteur expose TOUJOURS,
+// qu'une donnée patient soit présente ou non : ces clés sont fixées par le code, jamais déduites
+// d'une proximité sémantique de nom). Aucun moteur HYP LOCKED n'est modifié ni ré-implémenté — un
+// simple appel, aucune logique clinique dupliquée. Aucun seuil, aucune norme, aucune relation
+// qualité->qualité inventés : `classifiability` relit exclusivement THRESHOLDS/NORMS_V2 (mêmes
+// tables que csmV2MissingEvidenceHasThreshold, Mission Z) ; `role` relit exclusivement
+// csmV2VariableRole (Mission AA, §3 : le rôle reste celui que le code donne structurellement à la
+// variable, jamais réécrit) ; relationsOut/relationsIn relisent exclusivement
+// HYP_QUALITY_RELATIONS/CLINICAL_HYPOTHESIS_WHITELIST, tous deux inchangés.
+function csmV2VariableMatrixLeafKeys(obj,prefix){
+  var out=[];
+  Object.keys(obj||{}).forEach(function(k){
+    var v=obj[k];
+    var path=prefix?prefix+'.'+k:k;
+    var isLeaf=!v||typeof v!=='object'||Array.isArray(v)||('status'in v)||('raw'in v)||('value'in v);
+    if(isLeaf)out.push(path);else out=out.concat(csmV2VariableMatrixLeafKeys(v,path));
+  });
+  return out;
+}
+// Résolution du test TBK d'une variable — même liste de préfixes/motifs que csmV2FriendlyKpiLabel/
+// csmV2ResolveKpiDir (Mission O/Q), jamais une nouvelle heuristique de correspondance de nom.
+function csmV2VariableMatrixTestKey(variablePath){
+  var stripped=(variablePath||'')
+    .replace(/^diagnosticEvidence\./,'').replace(/^confirmativeEvidence\./,'')
+    .replace(/^explanatoryEvidence\.[a-zA-Z]+\./,'').replace(/^segments\[\d+\]\./,'')
+    .replace(/^productionRapideForce\./,'').replace(/^freinageUnipodal\./,'')
+    .replace(/^reactiviteSecondaire\./,'').replace(/^mobiliteSecondaire\./,'').replace(/^receptionUnipodale\./,'');
+  var nested=stripped.match(/^(\w+)\.kpis\.(\w+)$/);
+  if(nested)stripped=nested[1]+'_'+nested[2];
+  var testKeys=Object.keys(TBK).filter(function(k){return stripped.indexOf(k+'_')===0;}).sort(function(a,b){return b.length-a.length;});
+  return testKeys.length?testKeys[0]:null;
+}
+// Statut de classifiabilité (§1) : 'exploitable' (THRESHOLDS, universel, toujours classifiable dès
+// qu'une valeur brute existe) / 'partiellement_exploitable' (NORMS_V2 seul, classifiable uniquement
+// si une population est sélectionnée) / 'non_classifiable' (aucune des deux tables) — dérivé
+// exclusivement des deux tables déjà existantes, jamais un nouveau seuil créé ni une distinction
+// inventée (même normalisation de clé que csmV2MissingEvidenceHasThreshold, Mission Z).
+function csmV2VariableMatrixClassifiability(variablePath){
+  var key=(variablePath||'').replace(/^diagnosticEvidence\./,'').replace(/^confirmativeEvidence\./,'').replace(/^explanatoryEvidence\.[a-zA-Z]+\./,'');
+  var nested=key.match(/^(\w+)\.kpis\.(\w+)$/);
+  if(nested)key=nested[1]+'_'+nested[2];
+  if(THRESHOLDS[key])return'exploitable';
+  if(NORMS_V2[key])return'partiellement_exploitable';
+  return'non_classifiable';
+}
+// Niveau de support du mécanisme (§2E) : distingue mécanisme réellement supporté / facteur associé /
+// mécanisme actuellement indéterminable — déduit exclusivement de `role` (déjà structurel) et
+// `classifiability` (déjà relu depuis THRESHOLDS/NORMS_V2), jamais un nouveau jugement clinique.
+function csmV2VariableMatrixMechanismSupport(role,classifiability){
+  var classifiable=classifiability!=='non_classifiable';
+  if(role==='DIRECT')return classifiable?'mecanisme_diagnostique_supporte':'mecanisme_indeterminable_sans_seuil';
+  return classifiable?'facteur_associe_classifiable':'facteur_documente_non_classifiable';
+}
+// Priorité P1/P2/P3 (§4) : uniquement pour les variables sans aucun seuil ni norme
+// (classifiability==='non_classifiable' — une variable déjà exploitable/partiellement exploitable
+// n'est pas "manquante" au sens de cette étape, elle attend au plus une sélection de population).
+// P1=diagnostique : chaque moteur HYP documente explicitement qu'une variable diagnostique non
+// classifiable empêche directement d'atteindre 'retenue_faible' — changerait réellement le
+// raisonnement clinique de la qualité. P2=explicative : couche mécanisme déjà nommée par chaque
+// moteur (biomecanique/capacite/forceStabilisateurs/forceDeFond/etc.) — permettrait de différencier
+// le mécanisme contributif. P3=confirmative : chaque moteur documente cette couche comme "jamais une
+// deuxième preuve diagnostique, seulement une graduation du support" — valeur ajoutée structurellement
+// plafonnée. Déterministe, dérivé exclusivement du rôle déjà structurel — jamais une priorisation
+// clinique nouvelle, jamais basé sur la facilité de collecte.
+function csmV2VariableMatrixPriority(role,classifiability){
+  if(classifiability!=='non_classifiable')return null;
+  if(role==='DIRECT')return'P1';
+  if(role==='EXPLANATORY')return'P2';
+  return'P3';
+}
+var CSM_V2_CLINICAL_VARIABLE_MATRIX=(function(){
+  var engineByQuality={
+    Force:computeHypForce01({},null,null,null),
+    Puissance:computeHypPower01({},null,null,null),
+    'Explosivité':computeHypExplosivity01({},null,null,null),
+    'Mobilité':computeHypMobility01({},null,null),
+    'Réactivité':computeHypReactivity01({},null,null,null),
+    Absorption:computeHypAbsorption01({},null,null,null),
+    Stabilisation:computeHypStabilization01({},null,null),
+    Endurance:computeHypEndurance01({},null,null,null)
+  };
+  var ROLE_FIELD={diagnostic:'diagnosticEvidence',confirmative:'confirmativeEvidence',explicative:'explanatoryEvidence'};
+  var byQuality={};
+  var allVariables=[];
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var e=engineByQuality[q];
+    var entry={quality:q,hypId:e.hypId,mechanism:csmV2QualityMechanism(q),diagnostic:[],confirmative:[],explicative:[],convergence:e.convergence||null};
+    Object.keys(ROLE_FIELD).forEach(function(roleLabel){
+      var field=ROLE_FIELD[roleLabel];
+      csmV2VariableMatrixLeafKeys(e[field]).forEach(function(key){
+        var variablePath=field+'.'+key;
+        var role=csmV2VariableRole(variablePath);
+        var classifiability=csmV2VariableMatrixClassifiability(variablePath);
+        var v={
+          variableKey:key,
+          variablePath:variablePath,
+          quality:q,
+          test:csmV2VariableMatrixTestKey(variablePath),
+          label:csmV2FriendlyKpiLabel(variablePath),
+          role:role,
+          classifiability:classifiability,
+          mechanismSupport:csmV2VariableMatrixMechanismSupport(role,classifiability),
+          priority:csmV2VariableMatrixPriority(role,classifiability)
+        };
+        entry[roleLabel].push(v);
+        allVariables.push(v);
+      });
+    });
+    entry.relationsOut=HYP_QUALITY_RELATIONS.filter(function(r){return r.explains===q;}).map(function(r){
+      var w=CLINICAL_HYPOTHESIS_WHITELIST.filter(function(x){return x.explains===r.explains&&x.explained===r.explained;})[0];
+      return{explained:r.explained,via:r.via,whitelisted:!!(w&&w.allowed)};
+    });
+    entry.relationsIn=HYP_QUALITY_RELATIONS.filter(function(r){return r.explained===q;}).map(function(r){
+      var w=CLINICAL_HYPOTHESIS_WHITELIST.filter(function(x){return x.explains===r.explains&&x.explained===r.explained;})[0];
+      return{explains:r.explains,via:r.via,whitelisted:!!(w&&w.allowed)};
+    });
+    entry.missingVariables=entry.diagnostic.concat(entry.confirmative,entry.explicative)
+      .filter(function(v){return v.classifiability==='non_classifiable';})
+      .sort(function(a,b){var rank={P1:1,P2:2,P3:3};return rank[a.priority]-rank[b.priority];});
+    byQuality[q]=entry;
+  });
+  var diagnosticCount=allVariables.filter(function(v){return v.role==='DIRECT';}).length;
+  var confirmativeCount=allVariables.filter(function(v){return v.role==='CONFIRMATIVE';}).length;
+  var explanatoryCount=allVariables.filter(function(v){return v.role==='EXPLANATORY';}).length;
+  var missingCount=allVariables.filter(function(v){return v.classifiability==='non_classifiable';}).length;
+  return{
+    byQuality:byQuality,
+    allVariables:allVariables,
+    meta:{
+      totalVariables:allVariables.length,
+      diagnosticCount:diagnosticCount,
+      confirmativeCount:confirmativeCount,
+      explanatoryCount:explanatoryCount,
+      classifiableCount:allVariables.length-missingCount,
+      missingCount:missingCount,
+      builtFrom:"Introspection structurelle des 8 moteurs computeHypXxx01 (testData={}) + THRESHOLDS/NORMS_V2 + HYP_QUALITY_RELATIONS + CLINICAL_HYPOTHESIS_WHITELIST — référence statique, indépendante de tout patient, Mission AB."
+    }
+  };
+})();
 
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
 // déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
