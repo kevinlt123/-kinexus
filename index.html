@@ -7525,6 +7525,9 @@ function computeCsmV2(functionScores,testData){
   // Mission AH (audit définitif de complétude clinique) — couche d'AUDIT PURE au-dessus de tout ce qui
   // précède, cf. section "MISSION AH" ci-dessus.
   var clinicalCompletenessAuditV2=computeCsmV2ClinicalCompletenessAudit(CSM_V2_CLINICAL_VARIABLE_MATRIX,clinicalProfileV2,clinicalCausalReasoningV2,clinicalEvidenceHierarchyV2,clinicalCertaintyV2,symmetryEvidence);
+  // Mission AI (déblocage diagnostique P0 + CMJ par phases) — couche additive PURE au-dessus de tout
+  // ce qui précède, cf. section "MISSION AI" ci-dessus.
+  var clinicalDiagnosticChainV2=computeCsmV2ClinicalDiagnosticChainAll(CSM_V2_CLINICAL_VARIABLE_MATRIX,clinicalCausalReasoningV2,symmetryEvidence,informationalTestsV2,CSM_V2_CMJ_PHASE_MATRIX,clinicalCompletenessAuditV2);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7660,6 +7663,12 @@ function computeCsmV2(functionScores,testData){
     // causalGaps/priorityGaps/completenessStatus — couche d'AUDIT PURE, aucun recalcul de seuil/
     // norme/relation, aucun score arbitraire.
     clinicalCompletenessAudit:clinicalCompletenessAuditV2,
+    // Mission AI — chaîne QUALITÉ -> PHASE CMJ -> VARIABLE DIAGNOSTIQUE -> STATUT DE CLASSIFICATION ->
+    // MÉCANISME -> FACTEURS EXPLICATIFS -> CONSÉQUENCES -> VARIABLES MANQUANTES -> MEILLEUR PROCHAIN
+    // ÉLÉMENT DE PREUVE, avec diagnosticBlockedReason/missingRequirement/bestNextEvidence explicites
+    // quand bloquée — couche additive PURE, aucun recalcul de seuil/norme/relation.
+    clinicalDiagnosticChain:clinicalDiagnosticChainV2,
+    cmjPhaseMatrix:CSM_V2_CMJ_PHASE_MATRIX,
     // Mission AB (matrice clinique de référence) — VARIABLE -> RÔLE -> QUALITÉ -> MÉCANISME ->
     // RELATIONS -> CONSÉQUENCES -> DONNÉES MANQUANTES. Référence STATIQUE (calculée une seule fois au
     // chargement, indépendante de ce patient) exposée ici pour être consommable par les futurs
@@ -11642,6 +11651,135 @@ function computeCsmV2AhCmjPhaseAudit(){
   return out;
 }
 var CSM_V2_AH_CMJ_PHASE_AUDIT=computeCsmV2AhCmjPhaseAudit();
+
+// ══════════════════ MISSION AI — DÉBLOCAGE DIAGNOSTIQUE P0 + CMJ PAR PHASES ═══════════════════════
+// Audit technique ET clinique exhaustif (§2 mission) de cmj_conc_rfd/cmj_conc_impulse_100
+// (Explosivité, seules variables diagnostiques P0) mené AVANT tout code : (1) produites par HYP-EXP-01
+// via testData.cmj.trials.conc_rfd/conc_impulse_100 (bilatéral, une seule valeur, jamais de colonne
+// D/G native) ; (2) définitions/unités ForceDecks confirmées dans TESTS['cmj'].kpis (N/s et Ns/kg) ;
+// (3) réellement importables — VALD_MAP les reconnaît (alias CSV réels, lignes ~469-470) ; (4) AUCUN
+// seuil THRESHOLDS (24 clés, vérifiées) ; (5) AUCUNE entrée NORMS_V2 (NORMS_V2_TEST_VARS.cmj=
+// ['cmj_peak_power'] uniquement) ; (6) AUCUNE paire d'asymétrie D/G (ASYM_SIDE_PAIRS ne couvre QUE
+// ecc_decel_rfd et landing_peak_force — conc_rfd/conc_impulse_100 n'apparaissent JAMAIS dans
+// symmetryEvidence['Explosivité'], vérifié empiriquement, y compris avec donnée réelle fournie) — donc
+// aucune classification par symétrie n'est disponible ni légitime aujourd'hui ; (7) la seule "preuve
+// équivalente" documentée est la relation Réactivité->Explosivité (sldj_rsi, HYP_QUALITY_RELATIONS,
+// déjà whitelisted) — DÉJÀ correctement exposée comme HYPOTHESIS/CONTRIBUTING (Mission AF), jamais
+// promue à diagnostic (la promouvoir violerait la règle "une association ne devient jamais une
+// causalité"). CONCLUSION FACTUELLE : aucun déblocage légitime n'existe avec les données/normes
+// actuelles — NOT_DETERMINED reste la SEULE réponse honnête. Le gain de cette mission est de rendre
+// cette conclusion EXPLICITE et interrogeable comme DONNÉE (diagnosticBlockedReason/missingRequirement
+// /bestNextEvidence), jamais de forcer un diagnostic.
+
+// §4 — CSM_V2_CMJ_PHASE_MATRIX : mapping phase -> variable -> qualité -> rôle -> classifiabilité ->
+// fonction clinique, pour LES 8 PHASES (même vides), réutilisant EXCLUSIVEMENT le catalogue CMJ déjà
+// existant (TESTS[test==='cmj'].kpis — jamais une variable inventée) et CSM_V2_CLINICAL_VARIABLE_
+// MATRIX (jamais recalculé) pour distinguer "consommée" (rôle/classifiabilité réels, déjà établis) de
+// "non consommée" (catalogué, jamais lu par aucun moteur HYP). Réutilise csmV2AhCmjPhaseForKey
+// (Mission AH) — jamais une seconde catégorisation créée.
+function computeCsmV2CmjPhaseMatrix(){
+  var cmjCatalog=(TESTS.filter(function(t){return t.key==='cmj';})[0]||{kpis:[]}).kpis;
+  var consumedByKey={};
+  CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.filter(function(v){return v.test==='cmj';}).forEach(function(v){
+    var suffix=v.variableKey.split('.').pop().replace(/^cmj_/,'');
+    (consumedByKey[suffix]=consumedByKey[suffix]||[]).push(v);
+  });
+  var out={};
+  CSM_V2_AH_CMJ_PHASES.forEach(function(p){out[p]={phase:p,label:CSM_V2_AH_CMJ_PHASE_LABEL[p],available:[],consumed:[],notConsumed:[],classifiable:[],nonClassifiable:[],qualities:[]};});
+  cmjCatalog.forEach(function(kpi){
+    var phase=csmV2AhCmjPhaseForKey(kpi.key);
+    if(!phase)return;
+    out[phase].available.push({key:kpi.key,label:kpi.label});
+    var consumers=consumedByKey[kpi.key]||[];
+    if(consumers.length){
+      consumers.forEach(function(v){
+        out[phase].consumed.push(v);
+        if(v.classifiability!=='non_classifiable')out[phase].classifiable.push(v);
+        else out[phase].nonClassifiable.push(v);
+        if(out[phase].qualities.indexOf(v.quality)===-1)out[phase].qualities.push(v.quality);
+      });
+    }else{
+      out[phase].notConsumed.push({key:kpi.key,label:kpi.label});
+    }
+  });
+  return out;
+}
+var CSM_V2_CMJ_PHASE_MATRIX=computeCsmV2CmjPhaseMatrix();
+
+// §5 — computeCsmV2ClinicalDiagnosticChain() : chaîne QUALITÉ -> (PHASE CMJ le cas échéant) ->
+// VARIABLE DIAGNOSTIQUE -> STATUT DE CLASSIFICATION -> MÉCANISME -> FACTEURS EXPLICATIFS ->
+// CONSÉQUENCES -> VARIABLES MANQUANTES -> MEILLEUR PROCHAIN ÉLÉMENT DE PREUVE. Quand la qualité est
+// bloquée (§2), expose explicitement diagnosticBlockedReason/missingRequirement/bestNextEvidence —
+// pure composition de structures déjà calculées (CSM_V2_CLINICAL_VARIABLE_MATRIX, clinicalCausal
+// Reasoning, symmetryEvidence, informationalTests, CSM_V2_CMJ_PHASE_MATRIX, clinicalCompletenessAudit)
+// — jamais un second moteur clinique, jamais un seuil inventé, jamais une association promue au rang
+// de preuve diagnostique.
+function csmV2AiDiagnosticStatus(matrixEntry,quality,symmetryEvidence){
+  var absoluteClassifiable=matrixEntry.diagnostic.filter(function(v){return v.classifiability!=='non_classifiable';});
+  if(absoluteClassifiable.length)return{status:'classifiable_absolute',variables:absoluteClassifiable};
+  var symmetryKeys=Object.keys((symmetryEvidence&&symmetryEvidence[quality])||{});
+  var symmetryClassifiable=matrixEntry.diagnostic.filter(function(v){return symmetryKeys.indexOf(v.variablePath)!==-1;});
+  if(symmetryClassifiable.length)return{status:'classifiable_symmetry',variables:symmetryClassifiable};
+  return{status:'blocked',variables:[]};
+}
+// csmV2AiIsCmjVariable() : test==='cmj' résolu par csmV2VariableMatrixTestKey (Mission AB) couvre la
+// majorité des cas, MAIS 2 variables diagnostiques réelles d'Absorption (braking_rfd/force_zero_vel,
+// libellées "CMJ — ...") ne sont pas résolues (limite pré-existante Mission AB, jamais introduite par
+// cette mission — documentée dans le rapport AI, jamais "corrigée" en modifiant Mission AB, hors
+// périmètre de cette mission). Repli sur le libellé déjà existant (jamais un nouveau champ inventé) —
+// toute variable dont le label commence par "CMJ —"/"Countermovement Jump —" est réellement issue du
+// CMJ, vérifié empiriquement (0 faux positif sur les 150 variables de la matrice, cf. tests AI).
+function csmV2AiIsCmjVariable(v){
+  return v.test==='cmj'||(v.label&&(v.label.indexOf('CMJ —')===0||v.label.indexOf('Countermovement Jump —')===0));
+}
+function csmV2AiCmjPhaseForVariable(variableKey,cmjPhaseMatrix){
+  var found=null;
+  CSM_V2_AH_CMJ_PHASES.forEach(function(p){
+    if(found)return;
+    if(cmjPhaseMatrix[p].consumed.some(function(v){return v.variableKey===variableKey;}))found=p;
+  });
+  if(found)return found;
+  // Repli pour les variables réellement CMJ mais non résolues par cmjPhaseMatrix.consumed (cf.
+  // csmV2AiIsCmjVariable ci-dessus) — même mot-clé déjà utilisé (csmV2AhCmjPhaseForKey, Mission AH),
+  // jamais une seconde catégorisation.
+  return csmV2AhCmjPhaseForKey(variableKey.split('.').pop().replace(/^cmj_/,''));
+}
+function computeCsmV2ClinicalDiagnosticChain(quality,variableMatrix,clinicalCausalReasoning,symmetryEvidence,informationalTests,cmjPhaseMatrix,clinicalCompletenessAudit){
+  var m=variableMatrix.byQuality[quality];
+  var qr=clinicalCausalReasoning.qualityReasoning[quality];
+  var diagResult=csmV2AiDiagnosticStatus(m,quality,symmetryEvidence);
+  var cmjDiagVar=m.diagnostic.filter(csmV2AiIsCmjVariable)[0]||null;
+  var phase=cmjDiagVar?csmV2AiCmjPhaseForVariable(cmjDiagVar.variableKey,cmjPhaseMatrix):null;
+  var chain={
+    quality:quality,
+    phase:phase,
+    diagnosticVariables:m.diagnostic,
+    diagnosticStatus:diagResult.status,
+    classifiableDiagnosticVariables:diagResult.variables,
+    mechanism:m.mechanism,
+    explanatoryFactors:m.explicative,
+    consequences:qr.consequences||[],
+    missingVariables:m.missingVariables,
+    completenessStatus:clinicalCompletenessAudit[quality].completenessStatus,
+    diagnosticBlockedReason:null,
+    missingRequirement:null,
+    bestNextEvidence:null
+  };
+  if(diagResult.status==='blocked'&&m.diagnostic.length){
+    chain.diagnosticBlockedReason="Aucune des "+m.diagnostic.length+" variable(s) diagnostique(s) de "+csmV2QualityDisplayLabel(quality)+" n'a de seuil (THRESHOLDS/NORMS_V2) NI de voie de symétrie D/G disponible (structurellement absente de symmetryEvidence pour ces variables) — le déficit ne peut aujourd'hui être objectivé que par un mécanisme croisé (bridge/relation), jamais promu au rang de diagnostic propre.";
+    chain.missingRequirement=m.diagnostic.map(function(v){return v.variableKey;}).join(', ')+" : ajouter un seuil clinique (THRESHOLDS ou NORMS_V2) validé par le praticien, OU documenter une paire d'asymétrie D/G réelle (ASYM_SIDE_PAIRS) si ForceDecks exporte une mesure bilatérale équivalente pour cette phase.";
+    var best=(informationalTests||[]).filter(function(t){return t.targetQuality===quality&&t.expectedReasoningGain!=='NONE';})[0]||null;
+    chain.bestNextEvidence=best?{test:best.test,reason:best.reasons.join(' ')}:{test:null,reason:"Aucun test complémentaire n'apporterait aujourd'hui de gain exploitable pour "+csmV2QualityDisplayLabel(quality)+' (toutes les variables restantes sont non classifiables).'};
+  }
+  return chain;
+}
+function computeCsmV2ClinicalDiagnosticChainAll(variableMatrix,clinicalCausalReasoning,symmetryEvidence,informationalTests,cmjPhaseMatrix,clinicalCompletenessAudit){
+  var out={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    out[q]=computeCsmV2ClinicalDiagnosticChain(q,variableMatrix,clinicalCausalReasoning,symmetryEvidence,informationalTests,cmjPhaseMatrix,clinicalCompletenessAudit);
+  });
+  return out;
+}
 
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
 // déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
