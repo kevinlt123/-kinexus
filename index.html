@@ -7522,6 +7522,9 @@ function computeCsmV2(functionScores,testData){
   var causeConsequenceRelationsV2=computeCsmV2CauseConsequenceRelations(clinicalProfileV2,clinicalCausalReasoningV2,symmetryEvidence);
   var knownSupportedHypothesisUnknownV2=computeCsmV2KnownSupportedHypothesisUnknownAll(clinicalProfileV2,clinicalCausalReasoningV2,clinicalCertaintyV2,variableHypothesesV2,nextBestTestsV2);
   var decisionSynthesisDetailedV2=computeCsmV2DecisionSynthesisDetailed(clinicalLimitationHierarchyV2,clinicalProfileV2,clinicalCausalReasoningV2,causeConsequenceRelationsV2,informationalTestsV2);
+  // Mission AH (audit définitif de complétude clinique) — couche d'AUDIT PURE au-dessus de tout ce qui
+  // précède, cf. section "MISSION AH" ci-dessus.
+  var clinicalCompletenessAuditV2=computeCsmV2ClinicalCompletenessAudit(CSM_V2_CLINICAL_VARIABLE_MATRIX,clinicalProfileV2,clinicalCausalReasoningV2,clinicalEvidenceHierarchyV2,clinicalCertaintyV2,symmetryEvidence);
 
   return{
     csmV2Id:'CSM-V2',
@@ -7652,6 +7655,11 @@ function computeCsmV2(functionScores,testData){
     causeConsequenceRelations:causeConsequenceRelationsV2,
     knownSupportedHypothesisUnknown:knownSupportedHypothesisUnknownV2,
     decisionSynthesisDetailed:decisionSynthesisDetailedV2,
+    // Mission AH (audit définitif de complétude clinique) — pour chacune des 8 qualités :
+    // diagnostic/confirmatory/explanatory/consequences/missing/unclassifiable/unused/relationships/
+    // causalGaps/priorityGaps/completenessStatus — couche d'AUDIT PURE, aucun recalcul de seuil/
+    // norme/relation, aucun score arbitraire.
+    clinicalCompletenessAudit:clinicalCompletenessAuditV2,
     // Mission AB (matrice clinique de référence) — VARIABLE -> RÔLE -> QUALITÉ -> MÉCANISME ->
     // RELATIONS -> CONSÉQUENCES -> DONNÉES MANQUANTES. Référence STATIQUE (calculée une seule fois au
     // chargement, indépendante de ce patient) exposée ici pour être consommable par les futurs
@@ -11463,6 +11471,177 @@ function computeCsmV2DecisionSynthesisDetailed(clinicalLimitationHierarchy,clini
     };
   });
 }
+
+// ══════════════════ MISSION AH — AUDIT DÉFINITIF DE COMPLÉTUDE CLINIQUE DES 8 QUALITÉS ════════════
+// Couche d'AUDIT PURE (lecture seule, aucun recalcul de seuil/norme/relation, aucun moteur HYP LOCKED
+// modifié, aucune nouvelle catégorie conceptuelle dans le moteur). Croise CSM_V2_CLINICAL_VARIABLE_
+// MATRIX (référence statique, Mission AB/AD) avec les structures patient déjà calculées (clinical
+// CausalReasoning, clinicalEvidenceHierarchy, clinicalCertainty, symmetryEvidence, Mission AF) pour
+// déterminer, qualité par qualité, ce qui est réellement diagnostiqué/expliqué/confirmé/manquant/non
+// classifiable/non consommé — jamais un score arbitraire de complétude.
+
+// §5 GAP-3 — CSM_V2_AH_ORPHAN_THRESHOLDS : variables THRESHOLDS (seuil universel réel, LOCKED) qui
+// n'apparaissent JAMAIS dans CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables (construite par introspection
+// réelle des 8 moteurs HYP, Mission AB) — donc jamais lues par aucun moteur. Vérifié par recoupement
+// direct avec le code source (7 clés confirmées : hip_rot_int_nkg/hip_rot_ext_nkg jamais référencées
+// ailleurs que dans la déclaration THRESHOLDS elle-même ; slcmj_height/sldj_tts/ybt_composite présentes
+// dans NORMS_V2 mais jamais lues par un moteur HYP ; sh_iso_9020_nkg/sh_iso_9090_nkg concernent
+// l'épaule, hors périmètre des 8 qualités actuelles). Static, calculé une seule fois au chargement —
+// jamais recalculé par patient, jamais une variable inventée (toutes les 7 existent déjà dans
+// THRESHOLDS LOCKED).
+function csmV2AhComputeOrphanThresholds(){
+  var usedSuffixes={};
+  CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.forEach(function(v){usedSuffixes[v.variableKey.split('.').pop()]=true;});
+  return Object.keys(THRESHOLDS).filter(function(k){return !usedSuffixes[k];});
+}
+var CSM_V2_AH_ORPHAN_THRESHOLDS=csmV2AhComputeOrphanThresholds();
+// Ancrage GAP-3 par qualité : une variable orpheline n'est rattachée à une qualité que si son test
+// (csmV2VariableMatrixTestKey, Mission AB) est DÉJÀ un test physique consommé par cette qualité (ex.
+// slcmj_height -> test 'slcmj', déjà utilisé par Puissance/Absorption pour peak_power/braking_*) —
+// jamais une nouvelle relation clinique inventée, simple regroupement par test déjà présent dans la
+// matrice. Une variable dont le test n'est consommé par AUCUNE qualité (hip_rot_int/ext, sh_iso_9020/
+// 9090) n'est rattachée à aucune qualité — jamais forcée.
+function csmV2AhUnusedForQuality(quality){
+  var testsOfQuality={};
+  CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[quality].diagnostic.concat(
+    CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[quality].confirmative,
+    CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[quality].explicative
+  ).forEach(function(v){testsOfQuality[v.test]=true;});
+  return CSM_V2_AH_ORPHAN_THRESHOLDS.filter(function(k){
+    var t=csmV2VariableMatrixTestKey(k);
+    return t&&testsOfQuality[t];
+  }).map(function(k){return{variableKey:k,test:csmV2VariableMatrixTestKey(k),threshold:THRESHOLDS[k]};});
+}
+
+// §9 — completenessStatus : relabelage déterministe de clinicalEvidenceHierarchy.verdict +
+// clinicalCertainty + csmV2QualityGenuinelyTested (Mission AF), jamais un score arbitraire.
+// DIAGNOSTIC_BLOCKED = aucune voie diagnostique n'existe structurellement (symmetryEvidence[q] vide —
+// jamais observé aujourd'hui sur les 8 qualités établies, cf. rapport final §N) ; NOT_DETERMINED = une
+// voie diagnostique existe mais CE bilan ne permet pas de conclure (donnée manquante/non classifiable
+// pour ce patient, ou qualité jamais réellement testée — jamais confondue avec "préservée", §9 mission
+// AH) ; PARTIAL = diagnostiquée mais mécanisme non/faiblement supporté (bridge seul ou confirmatif
+// seul, jamais promu diagnostic) ; COMPLETE = diagnostiquée ET (préservée réellement testée OU
+// expliquée par un mécanisme réellement supporté, jamais une preuve confirmative seule).
+function csmV2AhCompletenessStatus(quality,clinicalProfile,clinicalEvidenceHierarchy,clinicalCertainty,symmetryEvidence){
+  var structurallyDiagnosable=Object.keys((symmetryEvidence&&symmetryEvidence[quality])||{}).length>0;
+  if(!structurallyDiagnosable)return'DIAGNOSTIC_BLOCKED';
+  var severity=clinicalProfile[quality].severity;
+  var genuinelyTested=csmV2QualityGenuinelyTested(quality,symmetryEvidence);
+  if(severity==='preserved')return genuinelyTested?'COMPLETE':'NOT_DETERMINED';
+  var verdict=clinicalEvidenceHierarchy[quality].verdict;
+  if(verdict!=='DIAGNOSTIC_OBJECTIVE')return'NOT_DETERMINED';
+  var certainty=clinicalCertainty[quality];
+  if(certainty==='explained')return'COMPLETE';
+  return'PARTIAL';
+}
+
+// §6 GAP-5 / §5-6 priorisation P0-P3 : dérivés exclusivement des comptages déjà présents dans la
+// matrice statique (aucune nouvelle règle clinique, uniquement des seuils de comptage documentés).
+function csmV2AhCausalGaps(quality,matrixEntry){
+  var gaps=[];
+  if(!matrixEntry.relationsOut.length&&!matrixEntry.relationsIn.length){
+    gaps.push({type:'GAP_5',description:csmV2QualityDisplayLabel(quality)+" n'a aucune relation qualité→qualité validée (HYP_QUALITY_RELATIONS) dans un sens ou dans l'autre — isolée du graphe relationnel actuel."});
+  }
+  return gaps;
+}
+function csmV2AhPriorityGaps(quality,matrixEntry){
+  var gaps=[];
+  var diagClassifiable=matrixEntry.diagnostic.filter(function(v){return v.classifiability!=='non_classifiable';});
+  if(matrixEntry.diagnostic.length&&!diagClassifiable.length){
+    gaps.push({level:'P0',quality:quality,variable:matrixEntry.diagnostic.map(function(v){return v.variableKey;}).join(', '),role:'diagnostic',problem:'Aucune des variables diagnostiques de '+csmV2QualityDisplayLabel(quality)+" n'est classifiable (ni THRESHOLDS ni NORMS_V2).",why:'Bloque toute confirmation diagnostique par valeur absolue — seule une preuve par asymétrie (LSI) reste possible.',solution:'Ajouter un seuil (THRESHOLDS) ou une population de référence (NORMS_V2) pour au moins une de ces variables.'});
+  }
+  if(!matrixEntry.relationsOut.length&&!matrixEntry.relationsIn.length){
+    gaps.push({level:'P1',quality:quality,variable:null,role:'relation',problem:'Aucune relation qualité→qualité validée.',why:'Empêche d\'identifier un mécanisme croisé majeur pour '+csmV2QualityDisplayLabel(quality)+'.',solution:'Documenter et valider (praticien) une relation HYP_QUALITY_RELATIONS si une hypothèse clinique existe réellement.'});
+  }
+  if(!matrixEntry.confirmative.length){
+    gaps.push({level:'P2',quality:quality,variable:null,role:'confirmatif',problem:'Aucune variable confirmative pour '+csmV2QualityDisplayLabel(quality)+'.',why:"Aucune graduation du support diagnostique n'est possible au-delà de la preuve diagnostique elle-même.",solution:'Identifier une variable confirmative déjà collectée par un test existant.'});
+  }
+  var explicNonClassifiable=matrixEntry.explicative.filter(function(v){return v.classifiability==='non_classifiable';});
+  if(explicNonClassifiable.length){
+    gaps.push({level:'P3',quality:quality,variable:explicNonClassifiable.map(function(v){return v.variableKey;}),role:'explicatif',problem:explicNonClassifiable.length+' variable(s) explicative(s) non classifiable(s).',why:'Amélioration informative uniquement — n\'empêche ni le diagnostic ni la confirmation.',solution:'Ajouter un seuil/une norme si une valeur clinique réelle est démontrée.'});
+  }
+  return gaps;
+}
+
+// §10 — computeCsmV2ClinicalCompletenessAudit() : livrable principal de la mission, structure exacte
+// demandée par qualité (diagnostic/confirmatory/explanatory/consequences/missing/unclassifiable/
+// unused/relationships/causalGaps/priorityGaps/completenessStatus) — pure composition des structures
+// ci-dessus, aucun recalcul.
+function computeCsmV2ClinicalCompletenessAudit(variableMatrix,clinicalProfile,clinicalCausalReasoning,clinicalEvidenceHierarchy,clinicalCertainty,symmetryEvidence){
+  var out={};
+  HYP_CSM_QUALITIES.forEach(function(q){
+    var m=variableMatrix.byQuality[q];
+    var qr=clinicalCausalReasoning.qualityReasoning[q];
+    var allVars=m.diagnostic.concat(m.confirmative,m.explicative);
+    out[q]={
+      diagnostic:m.diagnostic,
+      confirmatory:m.confirmative,
+      explanatory:m.explicative,
+      consequences:qr.consequences||[],
+      missing:m.missingVariables,
+      unclassifiable:allVars.filter(function(v){return v.classifiability==='non_classifiable';}),
+      unused:csmV2AhUnusedForQuality(q),
+      relationships:{out:m.relationsOut,in:m.relationsIn,bridges:qr.bridges||[]},
+      causalGaps:csmV2AhCausalGaps(q,m),
+      priorityGaps:csmV2AhPriorityGaps(q,m),
+      completenessStatus:csmV2AhCompletenessStatus(q,clinicalProfile,clinicalEvidenceHierarchy,clinicalCertainty,symmetryEvidence)
+    };
+  });
+  return out;
+}
+
+// ══════════════ MISSION AH §3 — AUDIT CMJ PAR PHASE (AUDIT-ONLY, JAMAIS CONSOMMÉ) ═════════════════
+// Catégorisation DOCUMENTAIRE des variables CMJ déjà présentes dans CSM_V2_CLINICAL_VARIABLE_MATRIX
+// (test==='cmj', 16 entrées réelles Puissance/Explosivité) par phase biomécanique — AUCUNE nouvelle
+// catégorie n'est introduite dans le moteur clinique (aucun moteur HYP ni fonction de raisonnement ne
+// lit CSM_V2_AH_CMJ_PHASE_MAP), uniquement un regroupement de LECTURE pour l'audit clinique (§3
+// mission AH). Les mots-clés de rattachement (depth/ecc_/conc_/height/rsi/landing/...) reprennent le
+// vocabulaire ForceDecks déjà utilisé dans les libellés existants (labels TBK), jamais un jugement
+// biomécanique inventé — chaque variable reste rattachée à la même qualité/rôle/classifiability déjà
+// établis par la matrice, jamais recalculés ici.
+var CSM_V2_AH_CMJ_PHASES=['position_initiation','descente_countermovement','freinage_excentrique','transition','propulsion_concentrique','take_off','vol','reception'];
+var CSM_V2_AH_CMJ_PHASE_LABEL={
+  position_initiation:'Phase 1 — Position / initiation',
+  descente_countermovement:'Phase 2 — Descente / countermovement',
+  freinage_excentrique:'Phase 3 — Freinage excentrique',
+  transition:'Phase 4 — Transition',
+  propulsion_concentrique:'Phase 5 — Propulsion concentrique',
+  take_off:'Phase 6 — Take-off',
+  vol:'Phase 7 — Vol',
+  reception:'Phase 8 — Réception'
+};
+function csmV2AhCmjPhaseForKey(suffix){
+  if(/^depth$/.test(suffix))return'descente_countermovement';
+  if(/^(ecc_peak_vel|ecc_mean_power|ecc_mean_force|ecc_peak_force|braking_rfd|braking_peak_force|braking_impulse|braking_power|braking_eff|braking_duration|ecc_decel|ecc_duration)/.test(suffix))return'freinage_excentrique';
+  if(/^(force_zero_vel|edrfd_bm|contraction_time)/.test(suffix))return'transition';
+  if(/^(conc_rfd|conc_impulse_100|conc_impulse|conc_peak_force|conc_mean_force|conc_duration|conc_mean_power|conc_mean_vel|conc_peak_vel|peak_conc_force|peak_conc_vel|propulsion_eff)/.test(suffix))return'propulsion_concentrique';
+  if(/^(peak_power|rsi_mod|peak_vel|tto)/.test(suffix))return'take_off';
+  if(/^(height|ft_ct_ratio)/.test(suffix))return'vol';
+  if(/^(landing_|peak_landing_force|post_landing_stability|time_to_stab)/.test(suffix))return'reception';
+  return null;
+}
+// computeCsmV2AhCmjPhaseAudit() : STATIC (référence, indépendante du patient), calculée une seule fois
+// — jamais dans computeCsmV2() (aucun bilan n'en a besoin), exposée uniquement pour l'audit/les tests.
+function computeCsmV2AhCmjPhaseAudit(){
+  var cmjVars=CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.filter(function(v){return v.test==='cmj';});
+  var out={};
+  CSM_V2_AH_CMJ_PHASES.forEach(function(p){out[p]={phase:p,label:CSM_V2_AH_CMJ_PHASE_LABEL[p],variables:[],qualities:[]};});
+  cmjVars.forEach(function(v){
+    var suffix=v.variableKey.split('.').pop().replace(/^cmj_/,'');
+    var phase=csmV2AhCmjPhaseForKey(suffix);
+    if(!phase)return;
+    out[phase].variables.push(v);
+    if(out[phase].qualities.indexOf(v.quality)===-1)out[phase].qualities.push(v.quality);
+  });
+  CSM_V2_AH_CMJ_PHASES.forEach(function(p){
+    out[p].diagnostic=out[p].variables.filter(function(v){return v.role==='DIRECT';});
+    out[p].confirmative=out[p].variables.filter(function(v){return v.role==='CONFIRMATIVE';});
+    out[p].explanatory=out[p].variables.filter(function(v){return v.role==='EXPLANATORY';});
+    out[p].classifiable=out[p].variables.filter(function(v){return v.classifiability!=='non_classifiable';});
+  });
+  return out;
+}
+var CSM_V2_AH_CMJ_PHASE_AUDIT=computeCsmV2AhCmjPhaseAudit();
 
 // Mission Q, objectif 3 — Rapport patient (langage courant). Traduit EXCLUSIVEMENT des conclusions
 // déjà calculées (clinicalProfile/synthesis/hierarchy) en phrases sans jargon technique (aucun LSI,
