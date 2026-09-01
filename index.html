@@ -412,6 +412,14 @@ var FD_TEST_TYPE_MAP={
 // scientifique reconstruit), afin qu'elles soient importées automatiquement dès qu'elles sont
 // présentes dans le fichier — aucune nouvelle variable inventée, uniquement des motifs de
 // colonnes pour des KPIs déjà existants dans TBK/CMJ_VAR_META.
+// Mission AI (mapping sémantique, audit des 2 vrais exports ForceDecks de Yannis Briant) :
+// VALD a renommé cette famille de métriques "Eccentric Braking RFD/Impulse/..." dans ses exports
+// récents (les 2 fichiers réels utilisés ici l'utilisent partout) alors que Kinexus n'attendait
+// que l'ancien vocabulaire "Eccentric Deceleration .../EDRFD". Même variable clinique
+// (braking_rfd, poids 2.0), seul le libellé ForceDecks a changé — motif ajouté en alias, aucun
+// nouveau seuil ni nouvelle variable. Centralisé ici pour être partagé par braking_rfd et ses
+// déclinaisons G/D/asymétrie (cf. note ecc_decel_rfd_L/R ci-dessous) sans dupliquer la liste.
+var FD_ECC_BRAKING_RFD_PATTERNS=['Eccentric Braking RFD / BM','Eccentric Braking RFD/BM','Eccentric Braking RFD','Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'];
 var FD_KPI_PATTERNS={
   height:['Jump Height'],rsi_mod:['RSI-modified'],rsi:['RSI'],
   peak_power:['Peak Power / BM','Peak Power/BM','Peak Power'],conc_impulse:['Concentric Impulse'],peak_vel:['Peak Velocity'],
@@ -424,7 +432,11 @@ var FD_KPI_PATTERNS={
   // Colonnes Gauche/Droite (04/08) — mêmes motifs que la variable de base, cf. note ecc_decel_rfd_L/R.
   landing_peak_force_L:['Peak Landing Force','Peak Drop Landing Force'],landing_peak_force_R:['Peak Landing Force','Peak Drop Landing Force'],
   n:['Peak Force','Peak Vertical Force'],nkg:['Peak Force / BM','Peak Force/BM','Peak Vertical Force / BM','Peak Vertical Force/BM'],
-  conc_peak_force:['Concentric Peak Force','Peak Concentric Force'],conc_peak_vel:['Concentric Peak Velocity','Peak Concentric Velocity'],
+  // Mission AI : alias "/ BM" ajoutés (variable déjà existante, valeur canonique déjà en N/kg
+  // dans CMJ_VAR_META/TESTS — l'export réel Yannis expose ces métriques uniquement sous leur
+  // forme "/ BM", jamais sous forme absolue seule ; motif bare conservé en repli).
+  conc_peak_force:['Concentric Peak Force / BM','Concentric Peak Force/BM','Concentric Peak Force','Peak Concentric Force'],
+  conc_peak_vel:['Concentric Peak Velocity','Peak Concentric Velocity'],
   peak_conc_force:['Peak Concentric Force','Concentric Peak Force'],peak_conc_vel:['Peak Concentric Velocity','Concentric Peak Velocity'],
   // Décision d'architecture du praticien (04/08) : braking_rfd (variable clinique de référence,
   // poids 2.0 dans CMJ_VAR_META) devient officiellement la version relative au poids de corps
@@ -434,16 +446,34 @@ var FD_KPI_PATTERNS={
   // corporelle grâce à "N/kg" présent dans le libellé du kpi ci-dessus, mécanisme déjà existant,
   // jamais dupliqué ici). braking_rfd_abs capte explicitement la version absolue (N/s), donnée
   // complémentaire affichée mais jamais utilisée pour les scores/normes (CMJ_VAR_META tier 'info').
-  braking_rfd:['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'],
+  braking_rfd:FD_ECC_BRAKING_RFD_PATTERNS,
   braking_rfd_abs:['Braking RFD','Eccentric Deceleration RFD','EDRFD'],
   // Colonnes Gauche/Droite (04/08) : mêmes motifs que la variable de base — fdFindCol() détecte
   // le suffixe "(L)"/"(R)" automatiquement (fdColSuffix), jamais un motif dédié inventé. Absentes
   // si l'export ne les fournit pas (import robuste, aucune hypothèse de présence).
-  ecc_decel_rfd_L:['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'],
-  ecc_decel_rfd_R:['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'],
+  ecc_decel_rfd_L:FD_ECC_BRAKING_RFD_PATTERNS,
+  ecc_decel_rfd_R:FD_ECC_BRAKING_RFD_PATTERNS,
+  // Mission AI : asymétrie native ForceDecks (colonne "... % (Asym)") pour ce même KPI — motif
+  // absent jusqu'ici (le kpi ecc_decel_rfd_asym existait déjà dans TBK/CMJ_VAR_META/ASYM_SIDE_PAIRS
+  // mais n'avait AUCUNE entrée FD_KPI_PATTERNS, donc ne pouvait jamais être importé). fdFindCol
+  // isole la colonne "(Asym)" via fdColSuffix (side='asym'), jamais confondue avec la valeur brute.
+  ecc_decel_rfd_asym:FD_ECC_BRAKING_RFD_PATTERNS,
   braking_peak_force:['Braking Peak Force','Peak Braking Force'],
   peak_braking_force:['Peak Braking Force','Braking Peak Force'],
-  braking_impulse:['Braking Impulse','Eccentric Deceleration Impulse'],contraction_time:['Contraction Time'],
+  // Mission AI : alias "/ BM" (unité canonique Ns/kg) — l'export réel expose la version BM sous le
+  // libellé "Eccentric Deceleration Impulse / BM" (jamais "Braking Impulse / BM"). La colonne
+  // absolue "Eccentric Braking Impulse [N s]" reste volontairement NON aliasée ici : aucune
+  // variable Kinexus canonique n'existe pour la version absolue (cf. UNMAPPED_NEW_CANDIDATES,
+  // rapport mission) et fdVal() ne sait pas la convertir automatiquement (libellé "Ns/kg", pas
+  // "N/kg" — le mécanisme de conversion ne se déclenche pas), donc l'aliaser produirait une valeur
+  // dans la mauvaise unité, ce que la mission interdit explicitement.
+  braking_impulse:['Eccentric Deceleration Impulse / BM','Eccentric Deceleration Impulse/BM','Braking Impulse','Eccentric Deceleration Impulse'],
+  contraction_time:['Contraction Time'],
+  // Mission AI : même situation que ecc_decel_rfd_asym — kpi déjà connu (ASYM_PERFORMANCE_EQUIVALENT
+  // le rattache déjà à braking_impulse), aucune entrée FD_KPI_PATTERNS n'existait. L'asymétrie (%)
+  // est sans dimension : les deux libellés ForceDecks ("Braking"/"Deceleration") désignent la même
+  // colonne d'asymétrie, contrairement à la valeur brute où l'ambiguïté d'unité interdit l'alias.
+  ecc_decel_impulse_asym:['Eccentric Deceleration Impulse','Eccentric Braking Impulse'],
   ecc_duration:['Eccentric Duration'],conc_duration:['Concentric Duration'],
   time_to_stab:['Time to Stabilization','Time to Stabilise','Time to Stabilisation'],
   rfd50:['RFD - 50ms','RFD 0-50ms','RFD50'],rfd100:['RFD - 100ms','RFD 0-100ms','RFD100'],
@@ -455,11 +485,21 @@ var FD_KPI_PATTERNS={
   mean_height:['Mean Jump Height'],mean_rsi:['Mean RSI'],mean_peak_force:['Mean Peak Force'],
   n_hops:['Number of Hops/Reps','Number of Hops','Number of Reps'],
   // ── Ajouts (04/08) : variables utilisées par le référentiel des profils biomécaniques ──
-  conc_mean_force:['Concentric Mean Force'],conc_mean_power:['Concentric Mean Power'],conc_mean_vel:['Concentric Mean Velocity'],
+  // Mission AI : alias "/ BM" ajoutés pour conc_mean_force/ecc_mean_power/ecc_peak_force/
+  // force_zero_vel (unité canonique déjà N/kg ou W/kg dans TESTS.cmj.kpis ; l'export réel Yannis
+  // n'expose ces métriques que sous leur forme "/ BM" — sans l'alias, ces 3 KPIs biomécaniques
+  // n'étaient jamais importés depuis ce type d'export).
+  conc_mean_force:['Concentric Mean Force / BM','Concentric Mean Force/BM','Concentric Mean Force'],
+  conc_mean_power:['Concentric Mean Power'],conc_mean_vel:['Concentric Mean Velocity'],
   force_peak_power:['Force at Peak Power'],conc_displacement:['Concentric Displacement'],
-  force_zero_vel:['Force at Zero Velocity'],
-  ecc_mean_power:['Eccentric Mean Power'],ecc_mean_force:['Eccentric Mean Force'],
-  ecc_peak_force:['Eccentric Peak Force'],ecc_peak_vel:['Peak Eccentric Velocity','Eccentric Peak Velocity'],
+  force_zero_vel:['Force at Zero Velocity','Force at Zero Velocity / BM','Force at Zero Velocity/BM'],
+  // Mission AI : force_peak_power_asym existait déjà dans TBK (support de symmetryEvidence, cf.
+  // ASYM_PERFORMANCE_EQUIVALENT) mais sans aucune entrée FD_KPI_PATTERNS — jamais importable.
+  force_peak_power_asym:['Force at Peak Power'],
+  ecc_mean_power:['Eccentric Mean Power / BM','Eccentric Mean Power/BM','Eccentric Mean Power'],
+  ecc_mean_force:['Eccentric Mean Force'],
+  ecc_peak_force:['Eccentric Peak Force / BM','Eccentric Peak Force/BM','Eccentric Peak Force'],
+  ecc_peak_vel:['Peak Eccentric Velocity','Eccentric Peak Velocity'],
   ecc_decel:['Eccentric Deceleration'],braking_eff:['Braking Efficiency'],propulsion_eff:['Propulsion Efficiency'],
   braking_duration:['Eccentric Deceleration Phase Duration','Braking Phase Duration'],
   ft_ct_ratio:['FT:CT Ratio','FT:CT'],flight_time:['Flight Time'],
@@ -467,7 +507,13 @@ var FD_KPI_PATTERNS={
   landing_duration:['Landing Phase Duration'],landing_mean_power:['Landing Mean Power'],
   post_landing_stability:['Post Landing Stability'],
   conc_impulse_100:['Concentric Impulse 100ms','Concentric Impulse @ 100ms','Concentric Impulse (100ms)','Concentric Impulse at 100ms'],
-  conc_rfd:['Concentric RFD','Concentric Rate of Force']
+  conc_rfd:['Concentric RFD','Concentric Rate of Force'],
+  // Mission AI : conc_force_impulse_asym et p2_conc_impulse_asym existaient déjà dans TBK/
+  // ASYM_PERFORMANCE_EQUIVALENT (le commentaire d'origine indique que VALD déclare "Concentric
+  // Mean Force Asymmetry" et "Concentric Impulse Asymmetry" numériquement équivalentes, déjà
+  // fusionnées par Kinexus sous cette seule clé) mais sans aucune entrée FD_KPI_PATTERNS.
+  conc_force_impulse_asym:['Concentric Mean Force','Concentric Impulse'],
+  p2_conc_impulse_asym:['P2 Concentric Impulse']
 };
 function fdColSuffix(header){
   var t=header.trim();
@@ -476,20 +522,71 @@ function fdColSuffix(header){
   if(/\(r\)\s*$/i.test(t))return'R';
   return null;
 }
+// ══════════════════ MISSION AI (mapping sémantique) — normalisation robuste des en-têtes ═══════
+// ForceDecks écrit le même KPI avec des variantes purement syntaxiques d'un export à l'autre
+// (tiret vs espace : "Concentric Impulse-100ms" / "Concentric Impulse 100ms" ; "@" ; espaces
+// multiples). fdSepSplit tokenise l'en-tête ORIGINAL en mots séparés par espace/tiret/@, en
+// conservant la position de fin (dans la chaîne d'origine) de chaque mot — ce qui permet de
+// comparer les motifs "mot à mot" (donc indifférent au séparateur réellement utilisé) tout en
+// retrouvant, une fois le motif consommé, le caractère RÉEL qui suit dans l'en-tête d'origine
+// (utilisé ci-dessous pour ne jamais fusionner deux KPI différents, cf. fdFindCol).
+function fdSepSplit(str){
+  var toks=[];var i=0,n=str.length;
+  while(i<n){
+    while(i<n&&/[\s\-@]/.test(str[i]))i++;
+    if(i>=n)break;
+    var start=i;
+    while(i<n&&!/[\s\-@]/.test(str[i]))i++;
+    toks.push({tok:str.slice(start,i).toLowerCase(),end:i});
+  }
+  return toks;
+}
+function fdPatternTokens(p){return p.toLowerCase().split(/[\s\-@]+/).filter(Boolean);}
 function fdFindCol(headers,patterns,side){
   for(var i=0;i<patterns.length;i++){
-    var p=patterns[i].toLowerCase();
+    var pTokens=fdPatternTokens(patterns[i]);
+    var patternHasSlash=pTokens.indexOf('/')>=0;
     for(var j=0;j<headers.length;j++){
       var hd=headers[j];
-      var hl=hd.toLowerCase();
-      if(hl.indexOf(p)!==0)continue;
-      // Require a real word boundary right after the pattern (space/bracket/end),
-      // so a bare pattern like "Peak Force" or "RSI" doesn't also swallow a more
-      // specific column like "Peak Force / BM" or "RSI-modified".
-      var boundary=hl.charAt(p.length);
-      if(boundary&&boundary!==' '&&boundary!=='('&&boundary!=='['&&boundary!=='/')continue;
-      var rest=hl.slice(p.length).replace(/^\s*/,'');
-      if(rest.charAt(0)==='/'&&p.indexOf('/')<0)continue;
+      var hTok=fdSepSplit(hd);
+      var ok=true,hi=0;
+      for(var k=0;k<pTokens.length;k++){
+        if(hi>=hTok.length){ok=false;break;}
+        if(hTok[hi].tok===pTokens[k]){hi++;continue;}
+        // Un nombre parfois écrit collé à son unité ("100ms") et parfois séparé par un espace
+        // ("100 ms") dans les exports ForceDecks — fusion de 2 tokens d'en-tête CONSÉCUTIFS
+        // uniquement quand le premier est numérique (jamais pour un mot générique, ex. jamais
+        // "for"+"ce"="force" — bien trop permissif pour être sûr).
+        if(hi+1<hTok.length&&/^[0-9]/.test(hTok[hi].tok)&&(hTok[hi].tok+hTok[hi+1].tok)===pTokens[k]){hi+=2;continue;}
+        ok=false;break;
+      }
+      if(!ok)continue;
+      // Le motif est trouvé en tête de l'en-tête (mot à mot). Reste à vérifier que ce qui suit
+      // ne désigne pas un KPI PLUS SPÉCIFIQUE et DISTINCT — ex. "Concentric Impulse" ne doit
+      // jamais absorber "Concentric Impulse-100ms" (mot/nombre supplémentaire), ni "RSI" absorber
+      // "RSI-modified", ni "Eccentric Deceleration" absorber "Eccentric Deceleration Impulse / BM"
+      // (bug réel découvert lors de l'audit — cf. rapport mission). Seules les parenthèses/crochets
+      // d'unité ou de note ("(Imp-Mom)", "[N s]", "(Asym)", "%") sont ignorables sans être citées
+      // dans le motif ; tout mot ou nombre restant doit être explicitement dans le motif.
+      var idx=hi;
+      while(idx<hTok.length){
+        var tk=hTok[idx].tok;
+        if(/^[\[(]/.test(tk)){
+          while(idx<hTok.length&&!/[\])]$/.test(hTok[idx].tok))idx++;
+          idx++;
+          continue;
+        }
+        if(tk.charAt(0)==='%'){idx++;continue;}
+        break;
+      }
+      var nextTok=idx<hTok.length?hTok[idx]:null;
+      if(nextTok){
+        if(nextTok.tok.charAt(0)==='/'){
+          if(!patternHasSlash)continue;
+        }else{
+          continue;
+        }
+      }
       var sfx=fdColSuffix(hd);
       if(side===null&&sfx===null)return hd;
       if(side==='L'&&sfx==='L')return hd;
