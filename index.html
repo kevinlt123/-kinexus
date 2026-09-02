@@ -425,6 +425,16 @@ var FD_TEST_TYPE_MAP={
 // n'ont aujourd'hui AUCUNE variable Kinexus correspondante (cf. UNMAPPED_NEW_CANDIDATES, rapport).
 var FD_ECC_BRAKING_RFD_PATTERNS=['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'];
 var FD_KPI_PATTERNS={
+  // AMBIGU (audit export complet, non résolu ici — signalé au praticien, cf. rapport de mission) :
+  // ForceDecks expose 2-3 méthodes de calcul distinctes pour la hauteur de saut ("Jump Height
+  // (Flight Time)"=32.9cm, "Jump Height (Imp-Mom)"=30.0cm, "Jump Height (Imp-Dis)"=30.1cm, même
+  // séance) et 2 pour rsi_mod ("RSI-modified"=0.34 vs "RSI-modified (Imp-Mom)"=0.31) — valeurs
+  // réellement différentes, jamais interchangeables. Le motif nu ci-dessous capte la PREMIÈRE
+  // méthode rencontrée dans l'ordre des colonnes du fichier (non déterministe selon l'export), un
+  // comportement pré-existant à toutes les missions de mapping. height/rsi_mod alimentent des
+  // seuils déjà verrouillés (THRESHOLDS.cmj_height/cmj_rsi_mod) : choisir UNE méthode précise
+  // serait une décision de méthode de mesure clinique, hors périmètre d'une mission de mapping
+  // sémantique pur (§7/§11) — non modifié tant que le praticien n'a pas tranché.
   height:['Jump Height'],rsi_mod:['RSI-modified'],rsi:['RSI'],
   peak_power:['Peak Power / BM','Peak Power/BM','Peak Power'],conc_impulse:['Concentric Impulse'],peak_vel:['Peak Velocity'],
   tto:['Time To Take Off','Time to Take Off'],depth:['Countermovement Depth'],

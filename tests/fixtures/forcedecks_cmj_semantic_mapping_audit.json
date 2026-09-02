@@ -1,426 +1,2832 @@
-{
- "recognized": [
-  {
-   "header": "Braking Phase Duration [ms]",
-   "kpi": "braking_duration"
-  },
-  {
-   "header": "Concentric Duration [ms]",
-   "kpi": "conc_duration"
-  },
-  {
-   "header": "Concentric Impulse % (Asym) (%)",
-   "kpi": "conc_force_impulse_asym"
-  },
-  {
-   "header": "Concentric Impulse [N s]",
-   "kpi": "conc_impulse"
-  },
-  {
-   "header": "Concentric Impulse-100ms [N s]",
-   "kpi": "conc_impulse_100"
-  },
-  {
-   "header": "Concentric Mean Force % (Asym) (%)",
-   "kpi": "conc_force_impulse_asym"
-  },
-  {
-   "header": "Concentric Mean Force / BM [N/kg]",
-   "kpi": "conc_mean_force"
-  },
-  {
-   "header": "Concentric Mean Power [W]",
-   "kpi": "conc_mean_power"
-  },
-  {
-   "header": "Concentric Mean Velocity [m/s]",
-   "kpi": "conc_mean_vel"
-  },
-  {
-   "header": "Concentric Peak Force / BM [N/kg]",
-   "kpi": "conc_peak_force"
-  },
-  {
-   "header": "Concentric Peak Velocity [m/s]",
-   "kpi": "conc_peak_vel"
-  },
-  {
-   "header": "Concentric RFD [N/s]",
-   "kpi": "conc_rfd"
-  },
-  {
-   "header": "Countermovement Depth [cm]",
-   "kpi": "depth"
-  },
-  {
-   "header": "Eccentric Deceleration Impulse % (Asym) (%)",
-   "kpi": "ecc_decel_impulse_asym"
-  },
-  {
-   "header": "Eccentric Deceleration Impulse / BM [N s/kg]",
-   "kpi": "braking_impulse"
-  },
-  {
-   "header": "Eccentric Deceleration Peak Force [N]",
-   "kpi": "braking_peak_force"
-  },
-  {
-   "header": "Eccentric Deceleration Phase Duration [s]",
-   "kpi": "braking_duration"
-  },
-  {
-   "header": "Eccentric Deceleration RFD % (Asym) (%)",
-   "kpi": "ecc_decel_rfd_asym"
-  },
-  {
-   "header": "Eccentric Deceleration RFD / BM [N/s/kg]",
-   "kpi": "braking_rfd"
-  },
-  {
-   "header": "Eccentric Deceleration RFD [N/s]",
-   "kpi": "braking_rfd_abs"
-  },
-  {
-   "header": "Eccentric Deceleration RFD [N/s] (L)",
-   "kpi": "ecc_decel_rfd_L"
-  },
-  {
-   "header": "Eccentric Deceleration RFD [N/s] (R)",
-   "kpi": "ecc_decel_rfd_R"
-  },
-  {
-   "header": "Eccentric Mean Force [N]",
-   "kpi": "ecc_mean_force"
-  },
-  {
-   "header": "Eccentric Mean Power / BM [W/kg]",
-   "kpi": "ecc_mean_power"
-  },
-  {
-   "header": "Eccentric Peak Force / BM [N/kg]",
-   "kpi": "ecc_peak_force"
-  },
-  {
-   "header": "Eccentric Peak Velocity [m/s]",
-   "kpi": "ecc_peak_vel"
-  },
-  {
-   "header": "Flight Time [ms]",
-   "kpi": "flight_time"
-  },
-  {
-   "header": "Flight Time:Contraction Time",
-   "kpi": "ft_ct_ratio"
-  },
-  {
-   "header": "Force at Peak Power % (Asym) (%)",
-   "kpi": "force_peak_power_asym"
-  },
-  {
-   "header": "Force at Peak Power [N]",
-   "kpi": "force_peak_power"
-  },
-  {
-   "header": "Force at Zero Velocity [N]",
-   "kpi": "force_zero_vel"
-  },
-  {
-   "header": "Jump Height (Flight Time) [cm]",
-   "kpi": "height"
-  },
-  {
-   "header": "Jump Height (Imp-Mom) [cm]",
-   "kpi": "height"
-  },
-  {
-   "header": "Landing Impulse [N s]",
-   "kpi": "landing_impulse"
-  },
-  {
-   "header": "Landing RFD [N/s]",
-   "kpi": "landing_rfd"
-  },
-  {
-   "header": "Mean Landing Force [N]",
-   "kpi": "landing_mean_force"
-  },
-  {
-   "header": "Mean Landing Power [W]",
-   "kpi": "landing_mean_power"
-  },
-  {
-   "header": "P2 Concentric Impulse % (Asym) (%)",
-   "kpi": "p2_conc_impulse_asym"
-  },
-  {
-   "header": "Peak Landing Force % (Asym) (%)",
-   "kpi": "landing_peak_force_asym"
-  },
-  {
-   "header": "Peak Landing Force [N]",
-   "kpi": "landing_peak_force"
-  },
-  {
-   "header": "Peak Landing Force [N] (L)",
-   "kpi": "landing_peak_force_L"
-  },
-  {
-   "header": "Peak Landing Force [N] (R)",
-   "kpi": "landing_peak_force_R"
-  },
-  {
-   "header": "Peak Power / BM [W/kg]",
-   "kpi": "peak_power"
-  },
-  {
-   "header": "RSI-modified (Imp-Mom) [m/s]",
-   "kpi": "rsi_mod"
-  },
-  {
-   "header": "RSI-modified [m/s]",
-   "kpi": "rsi_mod"
-  }
- ],
- "unmapped": [
-  "Braking Phase Duration:Concentric Duration [%]",
-  "Braking Phase Duration:Contraction Time [%]",
-  "CMJ Stiffness % (Asym) (%)",
-  "CMJ Stiffness [N/m]",
-  "CMJ Stiffness [N/m] (L)",
-  "CMJ Stiffness [N/m] (R)",
-  "Concentric Impulse (Abs) / BM [N s/kg]",
-  "Concentric Impulse [N s] (L)",
-  "Concentric Impulse [N s] (R)",
-  "Concentric Impulse-100ms % (Asym) (%)",
-  "Concentric Impulse-100ms [N s] (L)",
-  "Concentric Impulse-100ms [N s] (R)",
-  "Concentric Impulse-100ms:Concentric Impulse",
-  "Concentric Impulse-100ms:Concentric Impulse % (Asym) (%)",
-  "Concentric Impulse-100ms:Concentric Impulse (L)",
-  "Concentric Impulse-100ms:Concentric Impulse (R)",
-  "Concentric Impulse-50ms % (Asym) (%)",
-  "Concentric Impulse-50ms [N s]",
-  "Concentric Impulse-50ms [N s] (L)",
-  "Concentric Impulse-50ms [N s] (R)",
-  "Concentric Impulse:Eccentric Deceleration Impulse Ratio",
-  "Concentric Maximum RFD % (Asym) (%)",
-  "Concentric Maximum RFD [N/s]",
-  "Concentric Maximum RFD [N/s] (L)",
-  "Concentric Maximum RFD [N/s] (R)",
-  "Concentric Mean Force / BW",
-  "Concentric Mean Force [N]",
-  "Concentric Mean Force [N] (L)",
-  "Concentric Mean Force [N] (R)",
-  "Concentric Mean Power / BM [W/kg]",
-  "Concentric Peak Force % (Asym) (%)",
-  "Concentric Peak Force [N]",
-  "Concentric Peak Force [N] (L)",
-  "Concentric Peak Force [N] (R)",
-  "Concentric Phase:Contraction Time Ratio [%]",
-  "Concentric RFD % (Asym) (%)",
-  "Concentric RFD - 100ms % (Asym) (%)",
-  "Concentric RFD - 100ms [N/s]",
-  "Concentric RFD - 100ms [N/s] (L)",
-  "Concentric RFD - 100ms [N/s] (R)",
-  "Concentric RFD - 200ms % (Asym) (%)",
-  "Concentric RFD - 200ms [N/s]",
-  "Concentric RFD - 200ms [N/s] (L)",
-  "Concentric RFD - 200ms [N/s] (R)",
-  "Concentric RFD - 50ms % (Asym) (%)",
-  "Concentric RFD - 50ms [N/s]",
-  "Concentric RFD - 50ms [N/s] (L)",
-  "Concentric RFD - 50ms [N/s] (R)",
-  "Concentric RFD / BM [N/s/kg]",
-  "Concentric RFD [N/s] (L)",
-  "Concentric RFD [N/s] (R)",
-  "Concentric RPD - 100ms [W/s]",
-  "Concentric RPD - 50ms [W/s]",
-  "Concentric RPD / BM [W/s/kg]",
-  "Concentric RPD [W/s]",
-  "Concentric RPD-100ms / BM [W/s/kg]",
-  "Concentric RPD-50ms / BM [W/s/kg]",
-  "Concentric Time to Peak Force % (Asym) (%)",
-  "Concentric Time to Peak Force [ms]",
-  "Concentric Time to Peak Force [ms] (L)",
-  "Concentric Time to Peak Force [ms] (R)",
-  "Contraction Time [ms]",
-  "Contraction Time:Eccentric Duration [%]",
-  "Displacement at Takeoff [cm]",
-  "Eccentric Acceleration Phase Duration [s]",
-  "Eccentric Acceleration Phase:Contraction Time Ratio [%]",
-  "Eccentric Braking Impulse % (Asym) (%)",
-  "Eccentric Braking Impulse [N s]",
-  "Eccentric Braking Impulse [N s] (L)",
-  "Eccentric Braking Impulse [N s] (R)",
-  "Eccentric Braking RFD % (Asym) (%)",
-  "Eccentric Braking RFD / BM [N/s/kg]",
-  "Eccentric Braking RFD [N/s]",
-  "Eccentric Braking RFD [N/s] (L)",
-  "Eccentric Braking RFD [N/s] (R)",
-  "Eccentric Braking RFD-100ms % (Asym) (%)",
-  "Eccentric Braking RFD-100ms / BM [N/s/kg]",
-  "Eccentric Braking RFD-100ms [N/s]",
-  "Eccentric Braking RFD-100ms [N/s] (L)",
-  "Eccentric Braking RFD-100ms [N/s] (R)",
-  "Eccentric Deceleration Impulse [N s]",
-  "Eccentric Deceleration Impulse [N s] (L)",
-  "Eccentric Deceleration Impulse [N s] (R)",
-  "Eccentric Deceleration Mean Force % (Asym) (%)",
-  "Eccentric Deceleration Mean Force / BM [N/kg]",
-  "Eccentric Deceleration Mean Force / BW",
-  "Eccentric Deceleration Mean Force [N]",
-  "Eccentric Deceleration Mean Force [N] (L)",
-  "Eccentric Deceleration Mean Force [N] (R)",
-  "Eccentric Deceleration Mean Power / BM [W/kg]",
-  "Eccentric Deceleration Mean Power [W]",
-  "Eccentric Deceleration Mean Velocity [m/s]",
-  "Eccentric Deceleration Peak Force % (Asym) (%)",
-  "Eccentric Deceleration Peak Force / BW",
-  "Eccentric Deceleration Peak Force [N] (L)",
-  "Eccentric Deceleration Peak Force [N] (R)",
-  "Eccentric Deceleration:Contraction Time Ratio [%]",
-  "Eccentric Duration [ms]",
-  "Eccentric Mean Braking Force [N]",
-  "Eccentric Mean Force % (Asym) (%)",
-  "Eccentric Mean Force [N] (L)",
-  "Eccentric Mean Force [N] (R)",
-  "Eccentric Mean Power [W]",
-  "Eccentric Peak Force % (Asym) (%)",
-  "Eccentric Peak Force [N]",
-  "Eccentric Peak Force [N] (L)",
-  "Eccentric Peak Force [N] (R)",
-  "Eccentric Peak Power / BM [W/kg]",
-  "Eccentric Peak Power [W]",
-  "Eccentric Peak Power:Concentric Peak Power",
-  "Eccentric Unloading Impulse % (Asym) (%)",
-  "Eccentric Unloading Impulse [N s]",
-  "Eccentric Unloading Impulse [N s] (L)",
-  "Eccentric Unloading Impulse [N s] (R)",
-  "Eccentric Unloading Phase Duration [s]",
-  "Eccentric Unloading Phase Impulse % (Asym) (%)",
-  "Eccentric Unloading Phase Impulse [N s]",
-  "Eccentric Unloading Phase Impulse [N s] (L)",
-  "Eccentric Unloading Phase Impulse [N s] (R)",
-  "Eccentric Unloading Phase Mean Force % (Asym) (%)",
-  "Eccentric Unloading Phase Mean Force / BM [N/s/kg]",
-  "Eccentric Unloading Phase Mean Force [N]",
-  "Eccentric Unloading Phase Mean Force [N] (L)",
-  "Eccentric Unloading Phase Mean Force [N] (R)",
-  "Eccentric Unloading Phase RFD % (Asym) (%)",
-  "Eccentric Unloading Phase RFD / BM [N/s/kg]",
-  "Eccentric Unloading Phase RFD [N/s]",
-  "Eccentric Unloading Phase RFD [N/s] (L)",
-  "Eccentric Unloading Phase RFD [N/s] (R)",
-  "Eccentric Unloading Phase:Contraction Time Ratio [%]",
-  "Eccentric Yielding Phase Duration [s]",
-  "Eccentric Yielding Phase Impulse % (Asym) (%)",
-  "Eccentric Yielding Phase Impulse [N s]",
-  "Eccentric Yielding Phase Impulse [N s] (L)",
-  "Eccentric Yielding Phase Impulse [N s] (R)",
-  "Eccentric Yielding Phase Mean Force % (Asym) (%)",
-  "Eccentric Yielding Phase Mean Force / BM [N/s/kg]",
-  "Eccentric Yielding Phase Mean Force [N]",
-  "Eccentric Yielding Phase Mean Force [N] (L)",
-  "Eccentric Yielding Phase Mean Force [N] (R)",
-  "Eccentric Yielding Phase RFD % (Asym) (%)",
-  "Eccentric Yielding Phase RFD / BM [N/s/kg]",
-  "Eccentric Yielding Phase RFD [N/s]",
-  "Eccentric Yielding Phase RFD [N/s] (L)",
-  "Eccentric Yielding Phase RFD [N/s] (R)",
-  "Eccentric Yielding Phase:Contraction Time Ratio [%]",
-  "Eccentric:Concentric Duration [%]",
-  "Eccentric:Concentric Mean Force Ratio % (Asym) (%)",
-  "Eccentric:Concentric Mean Force Ratio [%]",
-  "Eccentric:Concentric Mean Force Ratio [%] (L)",
-  "Eccentric:Concentric Mean Force Ratio [%] (R)",
-  "FlightTime:Eccentric Duration",
-  "Force at Peak Power [N] (L)",
-  "Force at Peak Power [N] (R)",
-  "Force at Zero Velocity % (Asym) (%)",
-  "Force at Zero Velocity / BM [N/kg]",
-  "Force at Zero Velocity [N] (L)",
-  "Force at Zero Velocity [N] (R)",
-  "Jump Height (FT) Relative Landing RFD [N/s/cm]",
-  "Jump Height (FT) Relative Peak Landing Force [N/cm]",
-  "Jump Height (Flight Time) in Inches [in]",
-  "Jump Height (Imp-Dis) [cm]",
-  "Jump Height (Imp-Mom) in Inches [in]",
-  "Landing Impulse % (Asym) (%)",
-  "Landing Impulse [N s] (L)",
-  "Landing Impulse [N s] (R)",
-  "Landing Net Peak Force / BM [N/kg]",
-  "Landing RFD % (Asym) (%)",
-  "Landing RFD 50ms [N/s]",
-  "Landing RFD [N/s] (L)",
-  "Landing RFD [N/s] (R)",
-  "Landing Stiffness % (Asym) (%)",
-  "Landing Stiffness [N/m]",
-  "Landing Stiffness [N/m] (L)",
-  "Landing Stiffness [N/m] (R)",
-  "Lower-Limb Stiffness [N/m]",
-  "Mean Eccentric+Concentric Power:Time [W/s]",
-  "Mean Landing Force % (Asym) (%)",
-  "Mean Landing Force [N] (L)",
-  "Mean Landing Force [N] (R)",
-  "Minimum Eccentric Force [N]",
-  "Movement Start to Peak Force [s]",
-  "Movement Start to Peak Power [s]",
-  "P1 Concentric Impulse % (Asym) (%)",
-  "P1 Concentric Impulse [N s]",
-  "P1 Concentric Impulse [N s] (L)",
-  "P1 Concentric Impulse [N s] (R)",
-  "P2 Concentric Impulse [N s]",
-  "P2 Concentric Impulse [N s] (L)",
-  "P2 Concentric Impulse [N s] (R)",
-  "P2 Concentric Impulse:P1 Concentric Impulse",
-  "P2 Concentric Impulse:P1 Concentric Impulse % (Asym) (%)",
-  "P2 Concentric Impulse:P1 Concentric Impulse (L)",
-  "P2 Concentric Impulse:P1 Concentric Impulse (R)",
-  "Peak Landing Acceleration [m/s²]",
-  "Peak Landing Force / BM [N/kg]",
-  "Peak Landing Force / BW",
-  "Peak Landing Power [W]",
-  "Peak Landing Velocity [m/s]",
-  "Peak Negative Landing Velocity [m/s]",
-  "Peak Net Takeoff Force / BM [N/kg]",
-  "Peak Power [W]",
-  "Peak Takeoff Acceleration [m/s²]",
-  "Positive Impulse % (Asym) (%)",
-  "Positive Impulse [N s]",
-  "Positive Impulse [N s] (L)",
-  "Positive Impulse [N s] (R)",
-  "Positive Takeoff Impulse % (Asym) (%)",
-  "Positive Takeoff Impulse [N s]",
-  "Positive Takeoff Impulse [N s] (L)",
-  "Positive Takeoff Impulse [N s] (R)",
-  "Start of Braking Phase [s]",
-  "Start of Concentric Phase [s]",
-  "Start of Eccentric Deceleration Phase [s]",
-  "Start of Integration [s]",
-  "Start of Movement Detection Threshold [N]",
-  "Start of Movement StdDev Period End [s]",
-  "Start of Movement StdDev Period Start [s]",
-  "Start of Movement [s]",
-  "Take-off Momentum [kg m/s]",
-  "Takeoff Peak Force % (Asym) (%)",
-  "Takeoff Peak Force / BM [N/kg]",
-  "Takeoff Peak Force [N]",
-  "Takeoff Peak Force [N] (L)",
-  "Takeoff Peak Force [N] (R)",
-  "Time to Braking Phase [s]",
-  "Total Work [J]",
-  "Velocity at Peak Power [m/s]",
-  "Vertical Velocity at Takeoff [m/s]"
- ],
- "metadata": [
-  "Additional Load [kg]",
-  "BW [KG]",
-  "Date",
-  "ExternalId",
-  "Name",
-  "Reps",
-  "Tags",
-  "Test Type",
-  "Time"
- ]
-}
+[
+ {
+  "forcedecks": "Additional Load [kg]",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "BW [KG]",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Braking Phase Duration [ms]",
+  "kinexus": "cmj_braking_duration",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "ms",
+  "status": "AMBIGUOUS",
+  "conf": "Basse (plusieurs methodes ForceDecks distinctes partagent ce kpi, comportement non deterministe pre-existant, signale au praticien)"
+ },
+ {
+  "forcedecks": "Braking Phase Duration:Concentric Duration [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Braking Phase Duration:Contraction Time [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "CMJ Stiffness % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "CMJ Stiffness [N/m]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/m",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "CMJ Stiffness [N/m] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/m",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "CMJ Stiffness [N/m] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/m",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Duration [ms]",
+  "kinexus": "cmj_conc_duration",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "ms",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Concentric Impulse % (Asym) (%)",
+  "kinexus": "cmj_conc_force_impulse_asym",
+  "test": "cmj",
+  "phase": "non_categorise",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Concentric Impulse (Abs) / BM [N s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse [N s]",
+  "kinexus": "cmj_conc_impulse",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "N s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Concentric Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-100ms % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-100ms [N s]",
+  "kinexus": "cmj_conc_impulse_100",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "N s",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Concentric Impulse-100ms [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-100ms [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-100ms:Concentric Impulse",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-100ms:Concentric Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-100ms:Concentric Impulse (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-100ms:Concentric Impulse (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-50ms % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-50ms [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-50ms [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse-50ms [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Impulse:Eccentric Deceleration Impulse Ratio",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Maximum RFD % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Maximum RFD [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Maximum RFD [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Maximum RFD [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Mean Force % (Asym) (%)",
+  "kinexus": "cmj_conc_force_impulse_asym",
+  "test": "cmj",
+  "phase": "non_categorise",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Concentric Mean Force / BM [N/kg]",
+  "kinexus": "cmj_conc_mean_force",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "N/kg",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Concentric Mean Force / BW",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Mean Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Mean Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Mean Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Mean Power / BM [W/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Mean Power [W]",
+  "kinexus": "cmj_conc_mean_power",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "W",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Concentric Mean Velocity [m/s]",
+  "kinexus": "cmj_conc_mean_vel",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "m/s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Concentric Peak Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Peak Force / BM [N/kg]",
+  "kinexus": "cmj_conc_peak_force",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "N/kg",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Concentric Peak Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Peak Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Peak Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Peak Velocity [m/s]",
+  "kinexus": "cmj_conc_peak_vel",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "m/s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Concentric Phase:Contraction Time Ratio [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 100ms % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 100ms [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 100ms [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 100ms [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 200ms % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 200ms [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 200ms [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 200ms [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 50ms % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 50ms [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 50ms [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD - 50ms [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD / BM [N/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD [N/s]",
+  "kinexus": "cmj_conc_rfd",
+  "test": "cmj",
+  "phase": "propulsion_concentrique",
+  "lat": "Bilateral",
+  "unit": "N/s",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Concentric RFD [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RFD [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RPD - 100ms [W/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RPD - 50ms [W/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RPD / BM [W/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RPD [W/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RPD-100ms / BM [W/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric RPD-50ms / BM [W/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Time to Peak Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Time to Peak Force [ms]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "ms",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Time to Peak Force [ms] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "ms",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Concentric Time to Peak Force [ms] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "ms",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Contraction Time [ms]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "ms",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Contraction Time:Eccentric Duration [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Countermovement Depth [cm]",
+  "kinexus": "cmj_depth",
+  "test": "cmj",
+  "phase": "descente_countermovement",
+  "lat": "Bilateral",
+  "unit": "cm",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Date",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Displacement at Takeoff [cm]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "cm",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Acceleration Phase Duration [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Acceleration Phase:Contraction Time Ratio [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD / BM [N/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD-100ms % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD-100ms / BM [N/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD-100ms [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD-100ms [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Braking RFD-100ms [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Impulse % (Asym) (%)",
+  "kinexus": "cmj_ecc_decel_impulse_asym",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Impulse / BM [N s/kg]",
+  "kinexus": "cmj_braking_impulse",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "N s/kg",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Force / BM [N/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Force / BW",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Power / BM [W/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Power [W]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Mean Velocity [m/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "m/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Peak Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Peak Force / BW",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Peak Force [N]",
+  "kinexus": "cmj_braking_peak_force",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "N",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Peak Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Peak Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration Phase Duration [s]",
+  "kinexus": "cmj_braking_duration",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "s",
+  "status": "AMBIGUOUS",
+  "conf": "Basse (plusieurs methodes ForceDecks distinctes partagent ce kpi, comportement non deterministe pre-existant, signale au praticien)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration RFD % (Asym) (%)",
+  "kinexus": "cmj_ecc_decel_rfd_asym",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration RFD / BM [N/s/kg]",
+  "kinexus": "cmj_braking_rfd",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "N/s/kg",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration RFD [N/s]",
+  "kinexus": "cmj_braking_rfd_abs",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "N/s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration RFD [N/s] (L)",
+  "kinexus": "cmj_ecc_decel_rfd_L",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration RFD [N/s] (R)",
+  "kinexus": "cmj_ecc_decel_rfd_R",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Eccentric Deceleration:Contraction Time Ratio [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Duration [ms]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "ms",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Mean Braking Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Mean Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Mean Force [N]",
+  "kinexus": "cmj_ecc_mean_force",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "N",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Eccentric Mean Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Mean Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Mean Power / BM [W/kg]",
+  "kinexus": "cmj_ecc_mean_power",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "W/kg",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Eccentric Mean Power [W]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Peak Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Peak Force / BM [N/kg]",
+  "kinexus": "cmj_ecc_peak_force",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "N/kg",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Eccentric Peak Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Peak Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Peak Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Peak Power / BM [W/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Peak Power [W]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Peak Power:Concentric Peak Power",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Peak Velocity [m/s]",
+  "kinexus": "cmj_ecc_peak_vel",
+  "test": "cmj",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
+  "unit": "m/s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Duration [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Mean Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Mean Force / BM [N/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Mean Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Mean Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase Mean Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase RFD % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase RFD / BM [N/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase RFD [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase RFD [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase RFD [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Unloading Phase:Contraction Time Ratio [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Duration [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Mean Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Mean Force / BM [N/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Mean Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Mean Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase Mean Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase RFD % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase RFD / BM [N/s/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase RFD [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase RFD [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase RFD [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric Yielding Phase:Contraction Time Ratio [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric:Concentric Duration [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric:Concentric Mean Force Ratio % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric:Concentric Mean Force Ratio [%]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric:Concentric Mean Force Ratio [%] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Eccentric:Concentric Mean Force Ratio [%] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "ExternalId",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Flight Time [ms]",
+  "kinexus": "cmj_flight_time",
+  "test": "cmj",
+  "phase": "non_categorise",
+  "lat": "Bilateral",
+  "unit": "ms",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Flight Time:Contraction Time",
+  "kinexus": "cmj_ft_ct_ratio",
+  "test": "cmj",
+  "phase": "vol",
+  "lat": "Bilateral",
+  "unit": "(sans unite)",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "FlightTime:Eccentric Duration",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Force at Peak Power % (Asym) (%)",
+  "kinexus": "cmj_force_peak_power_asym",
+  "test": "cmj",
+  "phase": "non_categorise",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Force at Peak Power [N]",
+  "kinexus": "cmj_force_peak_power",
+  "test": "cmj",
+  "phase": "non_categorise",
+  "lat": "Bilateral",
+  "unit": "N",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Force at Peak Power [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Force at Peak Power [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Force at Zero Velocity % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Force at Zero Velocity / BM [N/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Force at Zero Velocity [N]",
+  "kinexus": "cmj_force_zero_vel",
+  "test": "cmj",
+  "phase": "transition",
+  "lat": "Bilateral",
+  "unit": "N",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Force at Zero Velocity [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Force at Zero Velocity [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Jump Height (FT) Relative Landing RFD [N/s/cm]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s/cm",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Jump Height (FT) Relative Peak Landing Force [N/cm]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/cm",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Jump Height (Flight Time) [cm]",
+  "kinexus": "cmj_height",
+  "test": "cmj",
+  "phase": "vol",
+  "lat": "Bilateral",
+  "unit": "cm",
+  "status": "AMBIGUOUS",
+  "conf": "Basse (plusieurs methodes ForceDecks distinctes partagent ce kpi, comportement non deterministe pre-existant, signale au praticien)"
+ },
+ {
+  "forcedecks": "Jump Height (Flight Time) in Inches [in]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "in",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Jump Height (Imp-Dis) [cm]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "cm",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Jump Height (Imp-Mom) [cm]",
+  "kinexus": "cmj_height",
+  "test": "cmj",
+  "phase": "vol",
+  "lat": "Bilateral",
+  "unit": "cm",
+  "status": "AMBIGUOUS",
+  "conf": "Basse (plusieurs methodes ForceDecks distinctes partagent ce kpi, comportement non deterministe pre-existant, signale au praticien)"
+ },
+ {
+  "forcedecks": "Jump Height (Imp-Mom) in Inches [in]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "in",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing Impulse [N s]",
+  "kinexus": "cmj_landing_impulse",
+  "test": "cmj",
+  "phase": "reception",
+  "lat": "Bilateral",
+  "unit": "N s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Landing Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing Net Peak Force / BM [N/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing RFD % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing RFD 50ms [N/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing RFD [N/s]",
+  "kinexus": "cmj_landing_rfd",
+  "test": "cmj",
+  "phase": "reception",
+  "lat": "Bilateral",
+  "unit": "N/s",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Landing RFD [N/s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing RFD [N/s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing Stiffness % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing Stiffness [N/m]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/m",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing Stiffness [N/m] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N/m",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Landing Stiffness [N/m] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N/m",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Lower-Limb Stiffness [N/m]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/m",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Mean Eccentric+Concentric Power:Time [W/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Mean Landing Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Mean Landing Force [N]",
+  "kinexus": "cmj_landing_mean_force",
+  "test": "cmj",
+  "phase": "reception",
+  "lat": "Bilateral",
+  "unit": "N",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Mean Landing Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Mean Landing Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Mean Landing Power [W]",
+  "kinexus": "cmj_landing_mean_power",
+  "test": "cmj",
+  "phase": "reception",
+  "lat": "Bilateral",
+  "unit": "W",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "Minimum Eccentric Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Movement Start to Peak Force [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Movement Start to Peak Power [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Name",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P1 Concentric Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P1 Concentric Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P1 Concentric Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P1 Concentric Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P2 Concentric Impulse % (Asym) (%)",
+  "kinexus": "cmj_p2_conc_impulse_asym",
+  "test": "cmj",
+  "phase": "non_categorise",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
+ },
+ {
+  "forcedecks": "P2 Concentric Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P2 Concentric Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P2 Concentric Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P2 Concentric Impulse:P1 Concentric Impulse",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P2 Concentric Impulse:P1 Concentric Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P2 Concentric Impulse:P1 Concentric Impulse (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "P2 Concentric Impulse:P1 Concentric Impulse (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Landing Acceleration [m/s²]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "m/s²",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Landing Force % (Asym) (%)",
+  "kinexus": "cmj_landing_peak_force_asym",
+  "test": "cmj",
+  "phase": "reception",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Peak Landing Force / BM [N/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Landing Force / BW",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "(sans unite)",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Landing Force [N]",
+  "kinexus": "cmj_landing_peak_force",
+  "test": "cmj",
+  "phase": "reception",
+  "lat": "Bilateral",
+  "unit": "N",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Peak Landing Force [N] (L)",
+  "kinexus": "cmj_landing_peak_force_L",
+  "test": "cmj",
+  "phase": "reception",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Peak Landing Force [N] (R)",
+  "kinexus": "cmj_landing_peak_force_R",
+  "test": "cmj",
+  "phase": "reception",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Peak Landing Power [W]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Landing Velocity [m/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "m/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Negative Landing Velocity [m/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "m/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Net Takeoff Force / BM [N/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Power / BM [W/kg]",
+  "kinexus": "cmj_peak_power",
+  "test": "cmj",
+  "phase": "take_off",
+  "lat": "Bilateral",
+  "unit": "W/kg",
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
+ },
+ {
+  "forcedecks": "Peak Power [W]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "W",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Peak Takeoff Acceleration [m/s²]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "m/s²",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Positive Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Positive Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Positive Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Positive Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Positive Takeoff Impulse % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Positive Takeoff Impulse [N s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Positive Takeoff Impulse [N s] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Positive Takeoff Impulse [N s] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "RSI-modified (Imp-Mom) [m/s]",
+  "kinexus": "cmj_rsi_mod",
+  "test": "cmj",
+  "phase": "take_off",
+  "lat": "Bilateral",
+  "unit": "m/s",
+  "status": "AMBIGUOUS",
+  "conf": "Basse (plusieurs methodes ForceDecks distinctes partagent ce kpi, comportement non deterministe pre-existant, signale au praticien)"
+ },
+ {
+  "forcedecks": "RSI-modified [m/s]",
+  "kinexus": "cmj_rsi_mod",
+  "test": "cmj",
+  "phase": "take_off",
+  "lat": "Bilateral",
+  "unit": "m/s",
+  "status": "AMBIGUOUS",
+  "conf": "Basse (plusieurs methodes ForceDecks distinctes partagent ce kpi, comportement non deterministe pre-existant, signale au praticien)"
+ },
+ {
+  "forcedecks": "Reps",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Start of Braking Phase [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Start of Concentric Phase [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Start of Eccentric Deceleration Phase [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Start of Integration [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Start of Movement Detection Threshold [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Start of Movement StdDev Period End [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Start of Movement StdDev Period Start [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Start of Movement [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Tags",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Take-off Momentum [kg m/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "kg m/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Takeoff Peak Force % (Asym) (%)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Asymetrie (%)",
+  "unit": "%",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Takeoff Peak Force / BM [N/kg]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N/kg",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Takeoff Peak Force [N]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Takeoff Peak Force [N] (L)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Gauche (L)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Takeoff Peak Force [N] (R)",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Droite (R)",
+  "unit": "N",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Test Type",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Time",
+  "kinexus": "(metadonnee)",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "-",
+  "unit": "-",
+  "status": "METADATA",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Time to Braking Phase [s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Total Work [J]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "J",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Velocity at Peak Power [m/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "m/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ },
+ {
+  "forcedecks": "Vertical Velocity at Takeoff [m/s]",
+  "kinexus": "UNMAPPED_CANDIDATE",
+  "test": "cmj",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
+  "unit": "m/s",
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
+ }
+]
