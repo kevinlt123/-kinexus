@@ -118,8 +118,8 @@ test('SM5 — variantes d\'espacement (espaces multiples autour du motif) -> mê
   const col = fdFindCol(['Concentric  Impulse-100ms   [N s]'], FD_KPI_PATTERNS.conc_impulse_100, null);
   assert.ok(col, 'espaces multiples doivent rester tolérés (déjà géré par le strip existant)');
 });
-test('SM6 — variantes de ponctuation sûres ("Eccentric Braking RFD/BM" sans espaces) -> braking_rfd', () => {
-  const col = fdFindCol(['Eccentric Braking RFD/BM [N/s/kg]'], FD_KPI_PATTERNS.braking_rfd, null);
+test('SM6 — variantes de ponctuation sûres ("Eccentric Deceleration RFD/BM" sans espaces) -> braking_rfd', () => {
+  const col = fdFindCol(['Eccentric Deceleration RFD/BM [N/s/kg]'], FD_KPI_PATTERNS.braking_rfd, null);
   assert.ok(col);
 });
 
@@ -152,7 +152,7 @@ test('SM9 — "Concentric Peak Force" != "Eccentric Peak Force" (jamais fusionn�
 test('SM10 — "(L)" != "(R)" (colonnes G/D correctement distinguées)', () => {
   // fdColSuffix exige "(L)"/"(R)" en toute fin d'en-tête (contrat préexistant, non modifié par
   // cette mission) — contrairement à "(Asym)" qui peut apparaître n'importe où.
-  const headers = ['Eccentric Braking RFD / BM [N/s/kg] (L)', 'Eccentric Braking RFD / BM [N/s/kg] (R)'];
+  const headers = ['Eccentric Deceleration RFD / BM [N/s/kg] (L)', 'Eccentric Deceleration RFD / BM [N/s/kg] (R)'];
   const colL = fdFindCol(headers, FD_KPI_PATTERNS.ecc_decel_rfd_L, 'L');
   const colR = fdFindCol(headers, FD_KPI_PATTERNS.ecc_decel_rfd_R, 'R');
   assert.strictEqual(colL, headers[0]);
@@ -160,11 +160,28 @@ test('SM10 — "(L)" != "(R)" (colonnes G/D correctement distinguées)', () => {
   assert.notStrictEqual(colL, colR);
 });
 test('SM11 — asymétrie ForceDecks native correctement identifiée et distincte de la valeur brute', () => {
-  const headers = ['Eccentric Braking RFD / BM [N/s/kg]', 'Eccentric Braking RFD % (Asym) (%)'];
+  const headers = ['Eccentric Deceleration RFD / BM [N/s/kg]', 'Eccentric Deceleration RFD % (Asym) (%)'];
   const raw = fdFindCol(headers, FD_KPI_PATTERNS.braking_rfd, null);
   const asym = fdFindCol(headers, FD_KPI_PATTERNS.ecc_decel_rfd_asym, 'asym');
   assert.strictEqual(raw, headers[0]);
   assert.strictEqual(asym, headers[1]);
+});
+test('SM11bis — CORRECTIF : "Eccentric Braking RFD/Impulse" != "Eccentric Deceleration RFD/Impulse" (métriques ForceDecks réellement distinctes, jamais fusionnées)', () => {
+  // Découvert via l'audit de l'export ForceDecks COMPLET (17 fichiers réels, même séance) : les
+  // deux libellés coexistent dans les MÊMES fichiers avec des valeurs DIFFÉRENTES (Braking RFD
+  // [N/s]=2681 vs Deceleration RFD [N/s]=3508 ; Braking Impulse [N s]=33.4 vs Deceleration Impulse
+  // [N s]=84.2) — ce ne sont PAS deux écritures du même KPI. Un alias erroné avait été ajouté à la
+  // mission précédente (seuls 2 fichiers disponibles alors, jamais les deux variantes ensemble) ;
+  // corrigé ici. braking_rfd/braking_impulse/ecc_decel_rfd_asym/ecc_decel_impulse_asym ne doivent
+  // matcher QUE la famille "Deceleration".
+  const headers = ['Eccentric Braking RFD / BM [N/s/kg]', 'Eccentric Deceleration RFD / BM [N/s/kg]',
+    'Eccentric Braking Impulse [N s]', 'Eccentric Deceleration Impulse / BM [N s/kg]',
+    'Eccentric Braking RFD % (Asym) (%)', 'Eccentric Deceleration RFD % (Asym) (%)',
+    'Eccentric Braking Impulse % (Asym) (%)', 'Eccentric Deceleration Impulse % (Asym) (%)'];
+  assert.strictEqual(fdFindCol(headers, FD_KPI_PATTERNS.braking_rfd, null), headers[1], 'braking_rfd doit ignorer la colonne Braking et cibler Deceleration');
+  assert.strictEqual(fdFindCol(headers, FD_KPI_PATTERNS.braking_impulse, null), headers[3]);
+  assert.strictEqual(fdFindCol(headers, FD_KPI_PATTERNS.ecc_decel_rfd_asym, 'asym'), headers[5]);
+  assert.strictEqual(fdFindCol(headers, FD_KPI_PATTERNS.ecc_decel_impulse_asym, 'asym'), headers[7]);
 });
 
 // ═══════════════════════════ SM12-SM14 : import réel + fusion multi-CSV ═════════════════════════
@@ -190,10 +207,14 @@ test('SM14bis — nouvelles variables réellement débloquées par cette mission
   testData = simulateOnImport(testData, res1.data);
   testData = simulateOnImport(testData, res2.data);
   const keys = Object.keys(testData.cmj.trials);
-  ['conc_impulse_100', 'conc_mean_force', 'conc_peak_force', 'ecc_peak_force', 'ecc_mean_power', 'braking_rfd', 'braking_impulse',
-    'ecc_decel_rfd_asym', 'ecc_decel_impulse_asym', 'conc_force_impulse_asym', 'force_peak_power_asym', 'p2_conc_impulse_asym']
+  // braking_rfd/ecc_decel_rfd_asym/ecc_decel_impulse_asym NE sont PAS dans cette liste : ces 2
+  // fichiers n'exposent que la famille "Braking" pour ces métriques, jamais "Deceleration" (cf.
+  // SM11bis) — rester non reconnues ici est le comportement CORRECT, pas une régression.
+  ['conc_impulse_100', 'conc_mean_force', 'conc_peak_force', 'ecc_peak_force', 'ecc_mean_power', 'braking_impulse',
+    'conc_force_impulse_asym', 'force_peak_power_asym', 'p2_conc_impulse_asym']
     .forEach((k) => assert.ok(keys.indexOf(k) !== -1, k + ' devrait être débloqué'));
-  assert.strictEqual(keys.length, 20, 'total attendu : 13 (fichier 1) + 7 (fichier 2), sans doublon');
+  ['braking_rfd', 'ecc_decel_rfd_asym', 'ecc_decel_impulse_asym'].forEach((k) => assert.strictEqual(keys.indexOf(k), -1, k + ' ne doit PAS apparaître (uniquement la variante "Braking", jamais "Deceleration", dans ces 2 fichiers)'));
+  assert.strictEqual(keys.length, 17, 'total attendu après correctif SM11bis (3 clés retirées : braking_rfd, ecc_decel_rfd_asym, ecc_decel_impulse_asym)');
 });
 test('SM15 — aucune valeur existante n\'est écrasée par la fusion (valeurs réelles conservées telles quelles)', () => {
   let testData = {};
@@ -202,7 +223,7 @@ test('SM15 — aucune valeur existante n\'est écrasée par la fusion (valeurs r
   testData = simulateOnImport(testData, res2.data);
   assert.deepStrictEqual(testData.cmj.trials.height, heightBefore, 'height (venu du fichier 1) ne doit pas être modifié par la fusion du fichier 2');
   assert.deepStrictEqual(testData.cmj.trials.depth, [-36.1]);
-  assert.deepStrictEqual(testData.cmj.trials.braking_rfd, [35]);
+  assert.deepStrictEqual(testData.cmj.trials.braking_impulse, [1.09]);
 });
 test('SM16 — les colonnes sans correspondance sûre restent absentes (jamais une fusion silencieuse hasardeuse)', () => {
   const keys = Object.keys(res1.data.cmj.trials);
@@ -248,8 +269,11 @@ test('SM22 — ecc_mean_power reconnu via l\'alias "/ BM"', () => {
 test('SM23 — braking_impulse reconnu via l\'alias "Eccentric Deceleration Impulse / BM" (unité Ns/kg respectée)', () => {
   assert.deepStrictEqual(res1.data.cmj.trials.braking_impulse, [1.09]);
 });
-test('SM24 — braking_rfd reconnu via l\'alias "Eccentric Braking RFD / BM" (vocabulaire ForceDecks renommé)', () => {
-  assert.deepStrictEqual(res1.data.cmj.trials.braking_rfd, [35]);
+test('SM24 — braking_rfd reconnu via "Eccentric Deceleration RFD / BM" (fichier 09_01_5, jamais via "Eccentric Braking RFD / BM" — cf. SM11bis)', () => {
+  const res5 = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_01_5.csv'), 'utf8'));
+  assert.strictEqual(res5.error, null);
+  assert.deepStrictEqual(res5.data.cmj.trials.braking_rfd, [45]);
+  assert.strictEqual(res1.data.cmj.trials.braking_rfd, undefined, 'fichier 1 n\'expose que "Eccentric Braking RFD / BM" (35) — ne doit plus être reconnu comme braking_rfd');
 });
 test('SM25 — l\'absolu "Eccentric Braking Impulse [N s]" (sans BM) n\'est PAS aliasé à braking_impulse (unité ambiguë, non convertible automatiquement)', () => {
   // Vérifie qu'aucune entrée FD_KPI_PATTERNS.braking_impulse ne matche la colonne absolue,
@@ -259,11 +283,15 @@ test('SM25 — l\'absolu "Eccentric Braking Impulse [N s]" (sans BM) n\'est PAS 
 });
 
 // ═══════════════════════════ SM26-SM30 : les 5 clés d'asymétrie débloquées ═══════════════════════
-test('SM26 — ecc_decel_rfd_asym importé depuis "Eccentric Braking RFD % (Asym)"', () => {
-  assert.deepStrictEqual(res2.data.cmj.trials.ecc_decel_rfd_asym, [54]);
+const res10 = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_01_10.csv'), 'utf8'));
+test('SM26 — ecc_decel_rfd_asym importé depuis "Eccentric Deceleration RFD % (Asym)" (fichier 09_01_10), jamais depuis la colonne "Braking" (fichier 2)', () => {
+  assert.strictEqual(res10.error, null);
+  assert.deepStrictEqual(res10.data.cmj.trials.ecc_decel_rfd_asym, [54]);
+  assert.strictEqual(res2.data.cmj.trials.ecc_decel_rfd_asym, undefined, 'fichier 2 n\'expose que "Eccentric Braking RFD % (Asym)" — ne doit plus être reconnu (cf. SM11bis)');
 });
-test('SM27 — ecc_decel_impulse_asym importé depuis "Eccentric Braking Impulse % (Asym)"', () => {
-  assert.deepStrictEqual(res2.data.cmj.trials.ecc_decel_impulse_asym, [17]);
+test('SM27 — ecc_decel_impulse_asym importé depuis "Eccentric Deceleration Impulse % (Asym)" (fichier 09_01_10), jamais depuis "Eccentric Braking Impulse % (Asym)" (fichier 2)', () => {
+  assert.deepStrictEqual(res10.data.cmj.trials.ecc_decel_impulse_asym, [14]);
+  assert.strictEqual(res2.data.cmj.trials.ecc_decel_impulse_asym, undefined);
 });
 test('SM28 — conc_force_impulse_asym importé depuis "Concentric Impulse % (Asym)"', () => {
   assert.deepStrictEqual(res2.data.cmj.trials.conc_force_impulse_asym, [18]);
@@ -277,7 +305,8 @@ test('SM30 — p2_conc_impulse_asym importé depuis "P2 Concentric Impulse % (As
 test('SM31 — les valeurs d\'asymétrie importées restent des valeurs de magnitude (%) — le côté L/R textuel n\'est ni inventé ni perdu silencieusement (limitation déjà existante, documentée)', () => {
   // parseFloat("54 L") = 54 : comportement préexistant à cette mission (bestVal/fdVal),
   // non modifié ici — signalé pour information, hors périmètre (logique de valeur, pas de nom).
-  assert.strictEqual(typeof res2.data.cmj.trials.ecc_decel_rfd_asym[0], 'number');
+  const resAsym = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_01_10.csv'), 'utf8'));
+  assert.strictEqual(typeof resAsym.data.cmj.trials.ecc_decel_rfd_asym[0], 'number');
 });
 
 // ═══════════════════════════ SM32-SM39 : colonnes sans correspondance sûre restent non mappées ══
@@ -315,6 +344,85 @@ test('SM38 — conc_impulse_100 nouvellement importable reste NOT_DETERMINED cli
 });
 test('SM39 — aucune clé THRESHOLDS/NORMS_V2_TEST_VARS n\'a été ajoutée ou modifiée par cette mission (24 clés THRESHOLDS inchangées)', () => {
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
+});
+
+// ═══════════════ SM42-SM46 : 4 nouveaux alias sûrs + correctif fdVal W/kg (audit export complet) ═
+test('SM42 — braking_peak_force reconnu via "Eccentric Deceleration Peak Force" (absolu, converti /BM automatiquement)', () => {
+  const res4 = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_01_4.csv'), 'utf8'));
+  assert.ok(Math.abs(res4.data.cmj.trials.braking_peak_force[0] - 1613.0 / 77.46) < 1e-9);
+});
+test('SM43 — ft_ct_ratio reconnu via "Flight Time:Contraction Time" (forme développée réelle), jamais confondu avec "FlightTime:Eccentric Duration"', () => {
+  const res6 = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_01_6.csv'), 'utf8'));
+  assert.deepStrictEqual(res6.data.cmj.trials.ft_ct_ratio, [0.54]);
+});
+test('SM44 — landing_mean_force reconnu via l\'alias ordre-inversé "Mean Landing Force" (cohérence vérifiée : (L)+(R)=bilatéral, 442.1+512.9=955.0)', () => {
+  const res4b = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_02_4.csv'), 'utf8'));
+  assert.ok(Math.abs(res4b.data.cmj.trials.landing_mean_force[0] - 955.0 / 77.46) < 1e-9);
+});
+test('SM45 — landing_mean_power reconnu via l\'alias ordre-inversé "Mean Landing Power"', () => {
+  const res4b = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_02_4.csv'), 'utf8'));
+  assert.ok(Math.abs(res4b.data.cmj.trials.landing_mean_power[0] - 543.60 / 77.46) < 1e-9);
+});
+test('SM46 — CORRECTIF fdVal() : la conversion absolu -> /BM se déclenche aussi pour un libellé "(W/kg)" (bug réel découvert : conc_mean_power stockait 1863 au lieu de 24.05 W/kg)', () => {
+  const res2b = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_01_2.csv'), 'utf8'));
+  assert.ok(Math.abs(res2b.data.cmj.trials.conc_mean_power[0] - 1863 / 77.46) < 1e-9, 'attendu ~24.05 W/kg, jamais 1863 (unité brute non convertie)');
+});
+
+// ═══════════════════════════ SM47-SM50 : audit sur l'export ForceDecks COMPLET (17 fichiers réels) ═
+const FIXTURE_FILES = fs.readdirSync(path.join(__dirname, 'fixtures')).filter((f) => f.startsWith('yannis_forcedecks'));
+test('SM47 — les 17 fichiers réels (export complet ForceDecks, même séance Yannis) s\'importent tous sans erreur', () => {
+  assert.strictEqual(FIXTURE_FILES.length, 17);
+  FIXTURE_FILES.forEach((f) => {
+    const res = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', f), 'utf8'));
+    assert.strictEqual(res.error, null, f + ' : ' + res.error);
+    assert.ok(res.data.cmj, f + ' : test CMJ non détecté');
+  });
+});
+test('SM48 — l\'union des 17 fichiers reconnaît au moins 37 KPI CMJ distincts (aucune régression par rapport à l\'audit documenté du rapport de mission)', () => {
+  let testData = {};
+  FIXTURE_FILES.forEach((f) => {
+    const res = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', f), 'utf8'));
+    testData = simulateOnImport(testData, res.data);
+  });
+  const keys = Object.keys(testData.cmj.trials);
+  assert.ok(keys.length >= 37, 'attendu >= 37, obtenu ' + keys.length);
+});
+test('SM49 — sur l\'union des 17 fichiers, braking_rfd/braking_impulse/ecc_decel_rfd_L/R/asym/ecc_decel_impulse_asym proviennent tous de la famille "Deceleration" uniquement (aucune contamination "Braking")', () => {
+  let testData = {};
+  FIXTURE_FILES.forEach((f) => {
+    const res = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', f), 'utf8'));
+    testData = simulateOnImport(testData, res.data);
+  });
+  // mergeTrials concatène (plusieurs fichiers exposent la même métrique) : chaque valeur du
+  // tableau doit être proche de 45 (BM-relatif direct ou absolu auto-converti), jamais 35 (valeur
+  // de la colonne "Braking", qui ne doit plus jamais contaminer ce tableau).
+  testData.cmj.trials.braking_rfd.forEach((v) => assert.ok(Math.abs(v - 45) < 0.5, 'valeur suspecte (contamination "Braking" ?) : ' + v));
+  assert.deepStrictEqual(testData.cmj.trials.ecc_decel_rfd_L, [1759]);
+  assert.deepStrictEqual(testData.cmj.trials.ecc_decel_rfd_R, [1281]);
+});
+test('SM50 — le catalogue TESTS.cmj.kpis (51 clés) n\'a reçu AUCUNE nouvelle variable de cette mission (mapping seul, jamais de nouvelle variable clinique inventée)', () => {
+  assert.strictEqual(TBK.cmj.kpis.length, 51);
+});
+test('SM51 — l\'audit exhaustif enregistré (274 colonnes réelles uniques, 17 fichiers) reste cohérent avec le mapping en vigueur (garde-fou anti-dérive silencieuse)', () => {
+  const audit = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'forcedecks_cmj_semantic_mapping_audit.json'), 'utf8'));
+  const META = new Set(['Name', 'ExternalId', 'Test Type', 'Date', 'Time', 'BW [KG]', 'Reps', 'Tags', 'Additional Load [kg]']);
+  let recognizedBy = {};
+  const cmjTest = TBK.cmj;
+  FIXTURE_FILES.forEach((f) => {
+    const csvTxt = fs.readFileSync(path.join(__dirname, 'fixtures', f), 'utf8');
+    const headerLine = csvTxt.split('\n')[0].replace(/^﻿?"/, '').replace(/"$/, '');
+    const headers = headerLine.split('","').map((h) => h.trim());
+    cmjTest.kpis.forEach((kpi) => {
+      const patterns = FD_KPI_PATTERNS[kpi.key];
+      if (!patterns) return;
+      const side = /_asym$/.test(kpi.key) ? 'asym' : (/_L$/.test(kpi.key) ? 'L' : (/_R$/.test(kpi.key) ? 'R' : null));
+      const col = fdFindCol(headers, patterns, side);
+      if (col) recognizedBy[col.trim()] = kpi.key;
+    });
+  });
+  const liveRecognizedCount = Object.keys(recognizedBy).length;
+  assert.strictEqual(liveRecognizedCount, audit.recognized.length, 'le nombre de colonnes reconnues a dérivé sans mise à jour de l\'audit enregistré');
+  audit.recognized.forEach((r) => assert.strictEqual(recognizedBy[r.header], r.kpi, r.header + ' : mapping différent de l\'audit enregistré'));
 });
 
 // ═══════════════════════════ SM40-SM41 : régression clinique complète (fixture réelle Yannis) ═══

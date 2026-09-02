@@ -412,14 +412,18 @@ var FD_TEST_TYPE_MAP={
 // scientifique reconstruit), afin qu'elles soient importées automatiquement dès qu'elles sont
 // présentes dans le fichier — aucune nouvelle variable inventée, uniquement des motifs de
 // colonnes pour des KPIs déjà existants dans TBK/CMJ_VAR_META.
-// Mission AI (mapping sémantique, audit des 2 vrais exports ForceDecks de Yannis Briant) :
-// VALD a renommé cette famille de métriques "Eccentric Braking RFD/Impulse/..." dans ses exports
-// récents (les 2 fichiers réels utilisés ici l'utilisent partout) alors que Kinexus n'attendait
-// que l'ancien vocabulaire "Eccentric Deceleration .../EDRFD". Même variable clinique
-// (braking_rfd, poids 2.0), seul le libellé ForceDecks a changé — motif ajouté en alias, aucun
-// nouveau seuil ni nouvelle variable. Centralisé ici pour être partagé par braking_rfd et ses
-// déclinaisons G/D/asymétrie (cf. note ecc_decel_rfd_L/R ci-dessous) sans dupliquer la liste.
-var FD_ECC_BRAKING_RFD_PATTERNS=['Eccentric Braking RFD / BM','Eccentric Braking RFD/BM','Eccentric Braking RFD','Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'];
+// Mission AI (mapping sémantique, audit des 2 premiers vrais exports ForceDecks de Yannis Briant) :
+// CORRECTIF (analyse de l'export ForceDecks COMPLET, 17 fichiers réels, même séance) — l'hypothèse
+// initiale ("VALD a simplement renommé Deceleration -> Braking") était FAUSSE. L'export complet
+// expose "Eccentric Braking RFD [N/s]"=2681 ET "Eccentric Deceleration RFD [N/s]"=3508 dans la
+// MÊME ligne (idem Impulse : "Eccentric Braking Impulse"=33.4 Ns vs "Eccentric Deceleration
+// Impulse"=84.2 Ns) : ce sont deux métriques ForceDecks RÉELLEMENT DISTINCTES (sous-phases
+// différentes), jamais deux écritures du même KPI. Les alias "Eccentric Braking RFD..." ajoutés à
+// tort ont donc été retirés ci-dessous (cf. rapport de mission pour le détail) — braking_rfd
+// (valdName documenté dans CMJ_VAR_META : "Eccentric Deceleration RFD / BM (EDRFD)") ne doit
+// matcher QUE la famille "Deceleration"/EDRFD, jamais "Braking". "Eccentric Braking RFD/Impulse"
+// n'ont aujourd'hui AUCUNE variable Kinexus correspondante (cf. UNMAPPED_NEW_CANDIDATES, rapport).
+var FD_ECC_BRAKING_RFD_PATTERNS=['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'];
 var FD_KPI_PATTERNS={
   height:['Jump Height'],rsi_mod:['RSI-modified'],rsi:['RSI'],
   peak_power:['Peak Power / BM','Peak Power/BM','Peak Power'],conc_impulse:['Concentric Impulse'],peak_vel:['Peak Velocity'],
@@ -458,7 +462,12 @@ var FD_KPI_PATTERNS={
   // mais n'avait AUCUNE entrée FD_KPI_PATTERNS, donc ne pouvait jamais être importé). fdFindCol
   // isole la colonne "(Asym)" via fdColSuffix (side='asym'), jamais confondue avec la valeur brute.
   ecc_decel_rfd_asym:FD_ECC_BRAKING_RFD_PATTERNS,
-  braking_peak_force:['Braking Peak Force','Peak Braking Force'],
+  // Mission AI (audit export complet) : alias "Eccentric Deceleration Peak Force" ajouté (unité
+  // canonique N/kg déjà déclarée dans TESTS.cmj.kpis — la colonne réelle est absolue [N], conversion
+  // automatique par fdVal() via la masse corporelle, mécanisme déjà existant). Colonne réellement
+  // exportée par ForceDecks pour la variable "braking_peak_force", vérifiée sans ambiguïté (aucune
+  // colonne "Eccentric Braking Peak Force" concurrente trouvée dans les 17 fichiers réels).
+  braking_peak_force:['Eccentric Deceleration Peak Force','Braking Peak Force','Peak Braking Force'],
   peak_braking_force:['Peak Braking Force','Braking Peak Force'],
   // Mission AI : alias "/ BM" (unité canonique Ns/kg) — l'export réel expose la version BM sous le
   // libellé "Eccentric Deceleration Impulse / BM" (jamais "Braking Impulse / BM"). La colonne
@@ -470,10 +479,12 @@ var FD_KPI_PATTERNS={
   braking_impulse:['Eccentric Deceleration Impulse / BM','Eccentric Deceleration Impulse/BM','Braking Impulse','Eccentric Deceleration Impulse'],
   contraction_time:['Contraction Time'],
   // Mission AI : même situation que ecc_decel_rfd_asym — kpi déjà connu (ASYM_PERFORMANCE_EQUIVALENT
-  // le rattache déjà à braking_impulse), aucune entrée FD_KPI_PATTERNS n'existait. L'asymétrie (%)
-  // est sans dimension : les deux libellés ForceDecks ("Braking"/"Deceleration") désignent la même
-  // colonne d'asymétrie, contrairement à la valeur brute où l'ambiguïté d'unité interdit l'alias.
-  ecc_decel_impulse_asym:['Eccentric Deceleration Impulse','Eccentric Braking Impulse'],
+  // le rattache déjà à braking_impulse), aucune entrée FD_KPI_PATTERNS n'existait.
+  // CORRECTIF (export complet, 17 fichiers) : "Eccentric Braking Impulse % (Asym)"=17R et
+  // "Eccentric Deceleration Impulse % (Asym)"=14L sont des valeurs RÉELLEMENT différentes (même
+  // séance) — pas un simple changement de libellé (cf. note FD_ECC_BRAKING_RFD_PATTERNS ci-dessus).
+  // Alias "Eccentric Braking Impulse" retiré : ne cible plus que la famille "Deceleration".
+  ecc_decel_impulse_asym:['Eccentric Deceleration Impulse'],
   ecc_duration:['Eccentric Duration'],conc_duration:['Concentric Duration'],
   time_to_stab:['Time to Stabilization','Time to Stabilise','Time to Stabilisation'],
   rfd50:['RFD - 50ms','RFD 0-50ms','RFD50'],rfd100:['RFD - 100ms','RFD 0-100ms','RFD100'],
@@ -501,10 +512,21 @@ var FD_KPI_PATTERNS={
   ecc_peak_force:['Eccentric Peak Force / BM','Eccentric Peak Force/BM','Eccentric Peak Force'],
   ecc_peak_vel:['Peak Eccentric Velocity','Eccentric Peak Velocity'],
   ecc_decel:['Eccentric Deceleration'],braking_eff:['Braking Efficiency'],propulsion_eff:['Propulsion Efficiency'],
+  // NOTE (audit export complet, non résolu ici — signalé au praticien, cf. rapport de mission) :
+  // "Braking Phase Duration" (562ms, export réel) et "Eccentric Deceleration Phase Duration"
+  // (268ms, export réel, MÊME séance) sont des valeurs DIFFÉRENTES, alors que CMJ_VAR_META déclare
+  // valdName="Eccentric Deceleration Phase Duration" pour braking_duration. Alias non modifié
+  // (pattern pré-existant, antérieur à cette mission) tant que le praticien n'a pas tranché.
   braking_duration:['Eccentric Deceleration Phase Duration','Braking Phase Duration'],
-  ft_ct_ratio:['FT:CT Ratio','FT:CT'],flight_time:['Flight Time'],
-  landing_mean_force:['Landing Mean Force'],landing_rfd:['Landing RFD'],
-  landing_duration:['Landing Phase Duration'],landing_mean_power:['Landing Mean Power'],
+  // Mission AI (audit export complet) : alias ajouté — "Flight Time:Contraction Time" est la forme
+  // développée réellement exportée (jamais l'abréviation "FT:CT"). Distinct et non confondu avec
+  // "FlightTime:Eccentric Duration" (dénominateur différent, jamais aliasé).
+  ft_ct_ratio:['FT:CT Ratio','FT:CT','Flight Time:Contraction Time'],flight_time:['Flight Time'],
+  // Mission AI (audit export complet) : alias "Mean Landing Force"/"Mean Landing Power" ajoutés —
+  // ordre des mots inversé par rapport au motif existant, seule variante trouvée dans les exports
+  // réels ; vérifié : somme (L)+(R) = valeur bilatérale (442.1+512.9=955.0), aucune ambiguïté.
+  landing_mean_force:['Landing Mean Force','Mean Landing Force'],landing_rfd:['Landing RFD'],
+  landing_duration:['Landing Phase Duration'],landing_mean_power:['Landing Mean Power','Mean Landing Power'],
   post_landing_stability:['Post Landing Stability'],
   conc_impulse_100:['Concentric Impulse 100ms','Concentric Impulse @ 100ms','Concentric Impulse (100ms)','Concentric Impulse at 100ms'],
   conc_rfd:['Concentric RFD','Concentric Rate of Force'],
@@ -601,7 +623,17 @@ function fdFindCol(headers,patterns,side){
 function fdVal(raw,kpiLabel,matchedHeader,bw){
   var v=parseFloat(raw);
   if(isNaN(v))return null;
-  if(kpiLabel.indexOf('N/kg')>=0&&matchedHeader&&!/\/\s*kg|\/\s*bm/i.test(matchedHeader)&&bw){
+  // Mission AI (audit export complet, 17 fichiers) : bug réel découvert — la conversion
+  // absolu -> relatif au poids de corps ne se déclenchait QUE pour un libellé kpi "N/kg" (force),
+  // jamais pour "W/kg" (puissance). Conséquence concrète observée : conc_mean_power (label
+  // "(W/kg)") importé depuis la colonne absolue réelle "Concentric Mean Power [W]"=1863 restait
+  // stocké tel quel (1863), soit ~77x la valeur attendue (1863/77.46=24.05 W/kg) — même défaut pour
+  // landing_mean_power. Élargi à "W/kg" (puissance/masse, normalisation aussi directe que N/kg) ;
+  // volontairement PAS élargi à "Ns/kg" (impulsion) — cf. note conc_impulse/braking_impulse plus
+  // haut : "Concentric Impulse (Abs) / BM" réel (5.586) ne correspond PAS à impulsion_brute/BM
+  // (188.1/77.46=2.428), preuve d'une méthode de calcul ForceDecks différente pour l'impulsion —
+  // convertir aveuglément produirait une valeur non vérifiée, ce que la mission interdit.
+  if((kpiLabel.indexOf('N/kg')>=0||kpiLabel.indexOf('W/kg')>=0)&&matchedHeader&&!/\/\s*kg|\/\s*bm/i.test(matchedHeader)&&bw){
     v=v/bw;
   }
   var srcUnit=matchedHeader&&(matchedHeader.match(/\[([^\]]+)\]/)||[])[1];

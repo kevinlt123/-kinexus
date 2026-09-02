@@ -1,0 +1,426 @@
+{
+ "recognized": [
+  {
+   "header": "Braking Phase Duration [ms]",
+   "kpi": "braking_duration"
+  },
+  {
+   "header": "Concentric Duration [ms]",
+   "kpi": "conc_duration"
+  },
+  {
+   "header": "Concentric Impulse % (Asym) (%)",
+   "kpi": "conc_force_impulse_asym"
+  },
+  {
+   "header": "Concentric Impulse [N s]",
+   "kpi": "conc_impulse"
+  },
+  {
+   "header": "Concentric Impulse-100ms [N s]",
+   "kpi": "conc_impulse_100"
+  },
+  {
+   "header": "Concentric Mean Force % (Asym) (%)",
+   "kpi": "conc_force_impulse_asym"
+  },
+  {
+   "header": "Concentric Mean Force / BM [N/kg]",
+   "kpi": "conc_mean_force"
+  },
+  {
+   "header": "Concentric Mean Power [W]",
+   "kpi": "conc_mean_power"
+  },
+  {
+   "header": "Concentric Mean Velocity [m/s]",
+   "kpi": "conc_mean_vel"
+  },
+  {
+   "header": "Concentric Peak Force / BM [N/kg]",
+   "kpi": "conc_peak_force"
+  },
+  {
+   "header": "Concentric Peak Velocity [m/s]",
+   "kpi": "conc_peak_vel"
+  },
+  {
+   "header": "Concentric RFD [N/s]",
+   "kpi": "conc_rfd"
+  },
+  {
+   "header": "Countermovement Depth [cm]",
+   "kpi": "depth"
+  },
+  {
+   "header": "Eccentric Deceleration Impulse % (Asym) (%)",
+   "kpi": "ecc_decel_impulse_asym"
+  },
+  {
+   "header": "Eccentric Deceleration Impulse / BM [N s/kg]",
+   "kpi": "braking_impulse"
+  },
+  {
+   "header": "Eccentric Deceleration Peak Force [N]",
+   "kpi": "braking_peak_force"
+  },
+  {
+   "header": "Eccentric Deceleration Phase Duration [s]",
+   "kpi": "braking_duration"
+  },
+  {
+   "header": "Eccentric Deceleration RFD % (Asym) (%)",
+   "kpi": "ecc_decel_rfd_asym"
+  },
+  {
+   "header": "Eccentric Deceleration RFD / BM [N/s/kg]",
+   "kpi": "braking_rfd"
+  },
+  {
+   "header": "Eccentric Deceleration RFD [N/s]",
+   "kpi": "braking_rfd_abs"
+  },
+  {
+   "header": "Eccentric Deceleration RFD [N/s] (L)",
+   "kpi": "ecc_decel_rfd_L"
+  },
+  {
+   "header": "Eccentric Deceleration RFD [N/s] (R)",
+   "kpi": "ecc_decel_rfd_R"
+  },
+  {
+   "header": "Eccentric Mean Force [N]",
+   "kpi": "ecc_mean_force"
+  },
+  {
+   "header": "Eccentric Mean Power / BM [W/kg]",
+   "kpi": "ecc_mean_power"
+  },
+  {
+   "header": "Eccentric Peak Force / BM [N/kg]",
+   "kpi": "ecc_peak_force"
+  },
+  {
+   "header": "Eccentric Peak Velocity [m/s]",
+   "kpi": "ecc_peak_vel"
+  },
+  {
+   "header": "Flight Time [ms]",
+   "kpi": "flight_time"
+  },
+  {
+   "header": "Flight Time:Contraction Time",
+   "kpi": "ft_ct_ratio"
+  },
+  {
+   "header": "Force at Peak Power % (Asym) (%)",
+   "kpi": "force_peak_power_asym"
+  },
+  {
+   "header": "Force at Peak Power [N]",
+   "kpi": "force_peak_power"
+  },
+  {
+   "header": "Force at Zero Velocity [N]",
+   "kpi": "force_zero_vel"
+  },
+  {
+   "header": "Jump Height (Flight Time) [cm]",
+   "kpi": "height"
+  },
+  {
+   "header": "Jump Height (Imp-Mom) [cm]",
+   "kpi": "height"
+  },
+  {
+   "header": "Landing Impulse [N s]",
+   "kpi": "landing_impulse"
+  },
+  {
+   "header": "Landing RFD [N/s]",
+   "kpi": "landing_rfd"
+  },
+  {
+   "header": "Mean Landing Force [N]",
+   "kpi": "landing_mean_force"
+  },
+  {
+   "header": "Mean Landing Power [W]",
+   "kpi": "landing_mean_power"
+  },
+  {
+   "header": "P2 Concentric Impulse % (Asym) (%)",
+   "kpi": "p2_conc_impulse_asym"
+  },
+  {
+   "header": "Peak Landing Force % (Asym) (%)",
+   "kpi": "landing_peak_force_asym"
+  },
+  {
+   "header": "Peak Landing Force [N]",
+   "kpi": "landing_peak_force"
+  },
+  {
+   "header": "Peak Landing Force [N] (L)",
+   "kpi": "landing_peak_force_L"
+  },
+  {
+   "header": "Peak Landing Force [N] (R)",
+   "kpi": "landing_peak_force_R"
+  },
+  {
+   "header": "Peak Power / BM [W/kg]",
+   "kpi": "peak_power"
+  },
+  {
+   "header": "RSI-modified (Imp-Mom) [m/s]",
+   "kpi": "rsi_mod"
+  },
+  {
+   "header": "RSI-modified [m/s]",
+   "kpi": "rsi_mod"
+  }
+ ],
+ "unmapped": [
+  "Braking Phase Duration:Concentric Duration [%]",
+  "Braking Phase Duration:Contraction Time [%]",
+  "CMJ Stiffness % (Asym) (%)",
+  "CMJ Stiffness [N/m]",
+  "CMJ Stiffness [N/m] (L)",
+  "CMJ Stiffness [N/m] (R)",
+  "Concentric Impulse (Abs) / BM [N s/kg]",
+  "Concentric Impulse [N s] (L)",
+  "Concentric Impulse [N s] (R)",
+  "Concentric Impulse-100ms % (Asym) (%)",
+  "Concentric Impulse-100ms [N s] (L)",
+  "Concentric Impulse-100ms [N s] (R)",
+  "Concentric Impulse-100ms:Concentric Impulse",
+  "Concentric Impulse-100ms:Concentric Impulse % (Asym) (%)",
+  "Concentric Impulse-100ms:Concentric Impulse (L)",
+  "Concentric Impulse-100ms:Concentric Impulse (R)",
+  "Concentric Impulse-50ms % (Asym) (%)",
+  "Concentric Impulse-50ms [N s]",
+  "Concentric Impulse-50ms [N s] (L)",
+  "Concentric Impulse-50ms [N s] (R)",
+  "Concentric Impulse:Eccentric Deceleration Impulse Ratio",
+  "Concentric Maximum RFD % (Asym) (%)",
+  "Concentric Maximum RFD [N/s]",
+  "Concentric Maximum RFD [N/s] (L)",
+  "Concentric Maximum RFD [N/s] (R)",
+  "Concentric Mean Force / BW",
+  "Concentric Mean Force [N]",
+  "Concentric Mean Force [N] (L)",
+  "Concentric Mean Force [N] (R)",
+  "Concentric Mean Power / BM [W/kg]",
+  "Concentric Peak Force % (Asym) (%)",
+  "Concentric Peak Force [N]",
+  "Concentric Peak Force [N] (L)",
+  "Concentric Peak Force [N] (R)",
+  "Concentric Phase:Contraction Time Ratio [%]",
+  "Concentric RFD % (Asym) (%)",
+  "Concentric RFD - 100ms % (Asym) (%)",
+  "Concentric RFD - 100ms [N/s]",
+  "Concentric RFD - 100ms [N/s] (L)",
+  "Concentric RFD - 100ms [N/s] (R)",
+  "Concentric RFD - 200ms % (Asym) (%)",
+  "Concentric RFD - 200ms [N/s]",
+  "Concentric RFD - 200ms [N/s] (L)",
+  "Concentric RFD - 200ms [N/s] (R)",
+  "Concentric RFD - 50ms % (Asym) (%)",
+  "Concentric RFD - 50ms [N/s]",
+  "Concentric RFD - 50ms [N/s] (L)",
+  "Concentric RFD - 50ms [N/s] (R)",
+  "Concentric RFD / BM [N/s/kg]",
+  "Concentric RFD [N/s] (L)",
+  "Concentric RFD [N/s] (R)",
+  "Concentric RPD - 100ms [W/s]",
+  "Concentric RPD - 50ms [W/s]",
+  "Concentric RPD / BM [W/s/kg]",
+  "Concentric RPD [W/s]",
+  "Concentric RPD-100ms / BM [W/s/kg]",
+  "Concentric RPD-50ms / BM [W/s/kg]",
+  "Concentric Time to Peak Force % (Asym) (%)",
+  "Concentric Time to Peak Force [ms]",
+  "Concentric Time to Peak Force [ms] (L)",
+  "Concentric Time to Peak Force [ms] (R)",
+  "Contraction Time [ms]",
+  "Contraction Time:Eccentric Duration [%]",
+  "Displacement at Takeoff [cm]",
+  "Eccentric Acceleration Phase Duration [s]",
+  "Eccentric Acceleration Phase:Contraction Time Ratio [%]",
+  "Eccentric Braking Impulse % (Asym) (%)",
+  "Eccentric Braking Impulse [N s]",
+  "Eccentric Braking Impulse [N s] (L)",
+  "Eccentric Braking Impulse [N s] (R)",
+  "Eccentric Braking RFD % (Asym) (%)",
+  "Eccentric Braking RFD / BM [N/s/kg]",
+  "Eccentric Braking RFD [N/s]",
+  "Eccentric Braking RFD [N/s] (L)",
+  "Eccentric Braking RFD [N/s] (R)",
+  "Eccentric Braking RFD-100ms % (Asym) (%)",
+  "Eccentric Braking RFD-100ms / BM [N/s/kg]",
+  "Eccentric Braking RFD-100ms [N/s]",
+  "Eccentric Braking RFD-100ms [N/s] (L)",
+  "Eccentric Braking RFD-100ms [N/s] (R)",
+  "Eccentric Deceleration Impulse [N s]",
+  "Eccentric Deceleration Impulse [N s] (L)",
+  "Eccentric Deceleration Impulse [N s] (R)",
+  "Eccentric Deceleration Mean Force % (Asym) (%)",
+  "Eccentric Deceleration Mean Force / BM [N/kg]",
+  "Eccentric Deceleration Mean Force / BW",
+  "Eccentric Deceleration Mean Force [N]",
+  "Eccentric Deceleration Mean Force [N] (L)",
+  "Eccentric Deceleration Mean Force [N] (R)",
+  "Eccentric Deceleration Mean Power / BM [W/kg]",
+  "Eccentric Deceleration Mean Power [W]",
+  "Eccentric Deceleration Mean Velocity [m/s]",
+  "Eccentric Deceleration Peak Force % (Asym) (%)",
+  "Eccentric Deceleration Peak Force / BW",
+  "Eccentric Deceleration Peak Force [N] (L)",
+  "Eccentric Deceleration Peak Force [N] (R)",
+  "Eccentric Deceleration:Contraction Time Ratio [%]",
+  "Eccentric Duration [ms]",
+  "Eccentric Mean Braking Force [N]",
+  "Eccentric Mean Force % (Asym) (%)",
+  "Eccentric Mean Force [N] (L)",
+  "Eccentric Mean Force [N] (R)",
+  "Eccentric Mean Power [W]",
+  "Eccentric Peak Force % (Asym) (%)",
+  "Eccentric Peak Force [N]",
+  "Eccentric Peak Force [N] (L)",
+  "Eccentric Peak Force [N] (R)",
+  "Eccentric Peak Power / BM [W/kg]",
+  "Eccentric Peak Power [W]",
+  "Eccentric Peak Power:Concentric Peak Power",
+  "Eccentric Unloading Impulse % (Asym) (%)",
+  "Eccentric Unloading Impulse [N s]",
+  "Eccentric Unloading Impulse [N s] (L)",
+  "Eccentric Unloading Impulse [N s] (R)",
+  "Eccentric Unloading Phase Duration [s]",
+  "Eccentric Unloading Phase Impulse % (Asym) (%)",
+  "Eccentric Unloading Phase Impulse [N s]",
+  "Eccentric Unloading Phase Impulse [N s] (L)",
+  "Eccentric Unloading Phase Impulse [N s] (R)",
+  "Eccentric Unloading Phase Mean Force % (Asym) (%)",
+  "Eccentric Unloading Phase Mean Force / BM [N/s/kg]",
+  "Eccentric Unloading Phase Mean Force [N]",
+  "Eccentric Unloading Phase Mean Force [N] (L)",
+  "Eccentric Unloading Phase Mean Force [N] (R)",
+  "Eccentric Unloading Phase RFD % (Asym) (%)",
+  "Eccentric Unloading Phase RFD / BM [N/s/kg]",
+  "Eccentric Unloading Phase RFD [N/s]",
+  "Eccentric Unloading Phase RFD [N/s] (L)",
+  "Eccentric Unloading Phase RFD [N/s] (R)",
+  "Eccentric Unloading Phase:Contraction Time Ratio [%]",
+  "Eccentric Yielding Phase Duration [s]",
+  "Eccentric Yielding Phase Impulse % (Asym) (%)",
+  "Eccentric Yielding Phase Impulse [N s]",
+  "Eccentric Yielding Phase Impulse [N s] (L)",
+  "Eccentric Yielding Phase Impulse [N s] (R)",
+  "Eccentric Yielding Phase Mean Force % (Asym) (%)",
+  "Eccentric Yielding Phase Mean Force / BM [N/s/kg]",
+  "Eccentric Yielding Phase Mean Force [N]",
+  "Eccentric Yielding Phase Mean Force [N] (L)",
+  "Eccentric Yielding Phase Mean Force [N] (R)",
+  "Eccentric Yielding Phase RFD % (Asym) (%)",
+  "Eccentric Yielding Phase RFD / BM [N/s/kg]",
+  "Eccentric Yielding Phase RFD [N/s]",
+  "Eccentric Yielding Phase RFD [N/s] (L)",
+  "Eccentric Yielding Phase RFD [N/s] (R)",
+  "Eccentric Yielding Phase:Contraction Time Ratio [%]",
+  "Eccentric:Concentric Duration [%]",
+  "Eccentric:Concentric Mean Force Ratio % (Asym) (%)",
+  "Eccentric:Concentric Mean Force Ratio [%]",
+  "Eccentric:Concentric Mean Force Ratio [%] (L)",
+  "Eccentric:Concentric Mean Force Ratio [%] (R)",
+  "FlightTime:Eccentric Duration",
+  "Force at Peak Power [N] (L)",
+  "Force at Peak Power [N] (R)",
+  "Force at Zero Velocity % (Asym) (%)",
+  "Force at Zero Velocity / BM [N/kg]",
+  "Force at Zero Velocity [N] (L)",
+  "Force at Zero Velocity [N] (R)",
+  "Jump Height (FT) Relative Landing RFD [N/s/cm]",
+  "Jump Height (FT) Relative Peak Landing Force [N/cm]",
+  "Jump Height (Flight Time) in Inches [in]",
+  "Jump Height (Imp-Dis) [cm]",
+  "Jump Height (Imp-Mom) in Inches [in]",
+  "Landing Impulse % (Asym) (%)",
+  "Landing Impulse [N s] (L)",
+  "Landing Impulse [N s] (R)",
+  "Landing Net Peak Force / BM [N/kg]",
+  "Landing RFD % (Asym) (%)",
+  "Landing RFD 50ms [N/s]",
+  "Landing RFD [N/s] (L)",
+  "Landing RFD [N/s] (R)",
+  "Landing Stiffness % (Asym) (%)",
+  "Landing Stiffness [N/m]",
+  "Landing Stiffness [N/m] (L)",
+  "Landing Stiffness [N/m] (R)",
+  "Lower-Limb Stiffness [N/m]",
+  "Mean Eccentric+Concentric Power:Time [W/s]",
+  "Mean Landing Force % (Asym) (%)",
+  "Mean Landing Force [N] (L)",
+  "Mean Landing Force [N] (R)",
+  "Minimum Eccentric Force [N]",
+  "Movement Start to Peak Force [s]",
+  "Movement Start to Peak Power [s]",
+  "P1 Concentric Impulse % (Asym) (%)",
+  "P1 Concentric Impulse [N s]",
+  "P1 Concentric Impulse [N s] (L)",
+  "P1 Concentric Impulse [N s] (R)",
+  "P2 Concentric Impulse [N s]",
+  "P2 Concentric Impulse [N s] (L)",
+  "P2 Concentric Impulse [N s] (R)",
+  "P2 Concentric Impulse:P1 Concentric Impulse",
+  "P2 Concentric Impulse:P1 Concentric Impulse % (Asym) (%)",
+  "P2 Concentric Impulse:P1 Concentric Impulse (L)",
+  "P2 Concentric Impulse:P1 Concentric Impulse (R)",
+  "Peak Landing Acceleration [m/s²]",
+  "Peak Landing Force / BM [N/kg]",
+  "Peak Landing Force / BW",
+  "Peak Landing Power [W]",
+  "Peak Landing Velocity [m/s]",
+  "Peak Negative Landing Velocity [m/s]",
+  "Peak Net Takeoff Force / BM [N/kg]",
+  "Peak Power [W]",
+  "Peak Takeoff Acceleration [m/s²]",
+  "Positive Impulse % (Asym) (%)",
+  "Positive Impulse [N s]",
+  "Positive Impulse [N s] (L)",
+  "Positive Impulse [N s] (R)",
+  "Positive Takeoff Impulse % (Asym) (%)",
+  "Positive Takeoff Impulse [N s]",
+  "Positive Takeoff Impulse [N s] (L)",
+  "Positive Takeoff Impulse [N s] (R)",
+  "Start of Braking Phase [s]",
+  "Start of Concentric Phase [s]",
+  "Start of Eccentric Deceleration Phase [s]",
+  "Start of Integration [s]",
+  "Start of Movement Detection Threshold [N]",
+  "Start of Movement StdDev Period End [s]",
+  "Start of Movement StdDev Period Start [s]",
+  "Start of Movement [s]",
+  "Take-off Momentum [kg m/s]",
+  "Takeoff Peak Force % (Asym) (%)",
+  "Takeoff Peak Force / BM [N/kg]",
+  "Takeoff Peak Force [N]",
+  "Takeoff Peak Force [N] (L)",
+  "Takeoff Peak Force [N] (R)",
+  "Time to Braking Phase [s]",
+  "Total Work [J]",
+  "Velocity at Peak Power [m/s]",
+  "Vertical Velocity at Takeoff [m/s]"
+ ],
+ "metadata": [
+  "Additional Load [kg]",
+  "BW [KG]",
+  "Date",
+  "ExternalId",
+  "Name",
+  "Reps",
+  "Tags",
+  "Test Type",
+  "Time"
+ ]
+}
