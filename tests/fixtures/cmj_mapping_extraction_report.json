@@ -1,0 +1,2421 @@
+{
+ "generatedAt": "2026-09-02",
+ "note": "Extraction en lecture seule du mapping CMJ ACTUEL (aucune modification de FD_KPI_PATTERNS/TESTS/THRESHOLDS/NORMS_V2/HYP). Compagnon de tests/fixtures/forcedecks_cmj_semantic_mapping_audit.json (non modifie), avec la nomenclature de statut demandee par cette mission (EXACT/ALIAS/VARIANT/AMBIGUOUS/NO_CURRENT_EQUIVALENT).",
+ "table1_dictionnaire_cmj_kinexus": [
+  {
+   "key": "height",
+   "canonical": "cmj_height",
+   "label": "Height (cm)",
+   "type": "source",
+   "phaseKinexus": "flight",
+   "tier": "master",
+   "qualities": "Puissance:CONFIRMATIVE",
+   "hypEngines": "HYP-PUI-01",
+   "forcedecksHeaders": [
+    "Jump Height (Flight Time) [cm]",
+    "Jump Height (Imp-Mom) [cm]"
+   ],
+   "mappingStatus": "AMBIGUOUS"
+  },
+  {
+   "key": "rsi_mod",
+   "canonical": "cmj_rsi_mod",
+   "label": "RSI Mod",
+   "type": "source",
+   "phaseKinexus": "flight",
+   "tier": "master",
+   "qualities": "Explosivité:EXPLANATORY",
+   "hypEngines": "HYP-EXP-01",
+   "forcedecksHeaders": [
+    "RSI-modified (Imp-Mom) [m/s]",
+    "RSI-modified [m/s]"
+   ],
+   "mappingStatus": "AMBIGUOUS"
+  },
+  {
+   "key": "peak_power",
+   "canonical": "cmj_peak_power",
+   "label": "Peak Power (W/kg)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "master",
+   "qualities": "Puissance:DIRECT | Explosivité:CONFIRMATIVE",
+   "hypEngines": "HYP-PUI-01, HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Peak Power / BM [W/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_impulse",
+   "canonical": "cmj_conc_impulse",
+   "label": "Impulsion concentrique (Ns/kg)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "support",
+   "qualities": "Explosivité:CONFIRMATIVE",
+   "hypEngines": "HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Concentric Impulse [N s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "peak_vel",
+   "canonical": "cmj_peak_vel",
+   "label": "Peak Velocity (m/s)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "tto",
+   "canonical": "cmj_tto",
+   "label": "Time to Take Off (ms)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "depth",
+   "canonical": "cmj_depth",
+   "label": "Countermovement Depth (cm)",
+   "type": "source",
+   "phaseKinexus": "unloading",
+   "tier": "master",
+   "qualities": "Puissance:EXPLANATORY | Explosivité:EXPLANATORY",
+   "hypEngines": "HYP-PUI-01, HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Countermovement Depth [cm]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_peak_force",
+   "canonical": "cmj_ecc_peak_force",
+   "label": "Eccentric Peak Force (N/kg)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Peak Force / BM [N/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_peak_vel",
+   "canonical": "cmj_ecc_peak_vel",
+   "label": "Peak Eccentric Velocity (m/s)",
+   "type": "source",
+   "phaseKinexus": "unloading",
+   "tier": "master",
+   "qualities": "Explosivité:EXPLANATORY",
+   "hypEngines": "HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Eccentric Peak Velocity [m/s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_peak_force",
+   "canonical": "cmj_conc_peak_force",
+   "label": "Concentric Peak Force (N/kg)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "info",
+   "qualities": "Explosivité:CONFIRMATIVE",
+   "hypEngines": "HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Concentric Peak Force / BM [N/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_mean_force",
+   "canonical": "cmj_conc_mean_force",
+   "label": "Concentric Mean Force (N/kg)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "master",
+   "qualities": "Explosivité:CONFIRMATIVE",
+   "hypEngines": "HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Concentric Mean Force / BM [N/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_mean_vel",
+   "canonical": "cmj_conc_mean_vel",
+   "label": "Concentric Mean Velocity (m/s)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Concentric Mean Velocity [m/s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_mean_power",
+   "canonical": "cmj_conc_mean_power",
+   "label": "Concentric Mean Power (W/kg)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Concentric Mean Power [W]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_rfd",
+   "canonical": "cmj_conc_rfd",
+   "label": "Concentric Rate of Force (N/s)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "info",
+   "qualities": "Puissance:EXPLANATORY | Explosivité:DIRECT",
+   "hypEngines": "HYP-PUI-01, HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Concentric RFD [N/s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_duration",
+   "canonical": "cmj_conc_duration",
+   "label": "Concentric Duration (ms)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "info",
+   "qualities": "Explosivité:EXPLANATORY",
+   "hypEngines": "HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Concentric Duration [ms]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_displacement",
+   "canonical": "cmj_conc_displacement",
+   "label": "Concentric Displacement (cm)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "braking_duration",
+   "canonical": "cmj_braking_duration",
+   "label": "Braking Phase Duration (ms)",
+   "type": "source",
+   "phaseKinexus": "unloading",
+   "tier": "master",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Braking Phase Duration [ms]",
+    "Eccentric Deceleration Phase Duration [s]"
+   ],
+   "mappingStatus": "AMBIGUOUS"
+  },
+  {
+   "key": "braking_impulse",
+   "canonical": "cmj_braking_impulse",
+   "label": "Braking Impulse (Ns/kg)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "support",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Deceleration Impulse / BM [N s/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "braking_peak_force",
+   "canonical": "cmj_braking_peak_force",
+   "label": "Braking Peak Force (N/kg)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Deceleration Peak Force [N]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "braking_rfd",
+   "canonical": "cmj_braking_rfd",
+   "label": "Braking Rate of Force / BM (N/kg/s)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "master",
+   "qualities": "Absorption:DIRECT | Explosivité:EXPLANATORY",
+   "hypEngines": "HYP-ABS-01, HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Eccentric Deceleration RFD / BM [N/s/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "braking_rfd_abs",
+   "canonical": "cmj_braking_rfd_abs",
+   "label": "Braking Rate of Force - Absolue (N/s)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Deceleration RFD [N/s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "braking_power",
+   "canonical": "cmj_braking_power",
+   "label": "Braking Power (W/kg)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Deceleration Mean Power / BM [W/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "propulsion_eff",
+   "canonical": "cmj_propulsion_eff",
+   "label": "Propulsion Efficiency (%)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "braking_eff",
+   "canonical": "cmj_braking_eff",
+   "label": "Braking Efficiency (%)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "ft_ct_ratio",
+   "canonical": "cmj_ft_ct_ratio",
+   "label": "FT:CT Ratio",
+   "type": "source",
+   "phaseKinexus": "flight",
+   "tier": "master",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Flight Time:Contraction Time"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_impulse_100",
+   "canonical": "cmj_conc_impulse_100",
+   "label": "Impulsion concentrique @100ms (Ns/kg)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "master",
+   "qualities": "Explosivité:DIRECT",
+   "hypEngines": "HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Concentric Impulse-100ms [N s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_decel",
+   "canonical": "cmj_ecc_decel",
+   "label": "Eccentric Deceleration (m/s²)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "conc_peak_vel",
+   "canonical": "cmj_conc_peak_vel",
+   "label": "Concentric Peak Velocity (m/s)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Concentric Peak Velocity [m/s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_mean_force",
+   "canonical": "cmj_ecc_mean_force",
+   "label": "Eccentric Mean Force (N/kg)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Mean Force [N]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_mean_power",
+   "canonical": "cmj_ecc_mean_power",
+   "label": "Eccentric Mean Power (W/kg)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "master",
+   "qualities": "Explosivité:EXPLANATORY",
+   "hypEngines": "HYP-EXP-01",
+   "forcedecksHeaders": [
+    "Eccentric Mean Power / BM [W/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "landing_peak_force",
+   "canonical": "cmj_landing_peak_force",
+   "label": "Landing Peak Force (N/kg)",
+   "type": "source",
+   "phaseKinexus": "landing",
+   "tier": "master",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Peak Landing Force [N]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "landing_mean_force",
+   "canonical": "cmj_landing_mean_force",
+   "label": "Landing Mean Force (N/kg)",
+   "type": "source",
+   "phaseKinexus": "landing",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Mean Landing Force [N]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "landing_impulse",
+   "canonical": "cmj_landing_impulse",
+   "label": "Landing Impulse (Ns/kg)",
+   "type": "source",
+   "phaseKinexus": "landing",
+   "tier": "support",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Landing Impulse [N s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "landing_rfd",
+   "canonical": "cmj_landing_rfd",
+   "label": "Landing RFD (N/s)",
+   "type": "source",
+   "phaseKinexus": "landing",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Landing RFD [N/s]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "landing_duration",
+   "canonical": "cmj_landing_duration",
+   "label": "Landing Phase Duration (ms)",
+   "type": "source",
+   "phaseKinexus": "landing",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "landing_mean_power",
+   "canonical": "cmj_landing_mean_power",
+   "label": "Landing Mean Power (W/kg)",
+   "type": "source",
+   "phaseKinexus": "landing",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Mean Landing Power [W]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "time_to_stab",
+   "canonical": "cmj_time_to_stab",
+   "label": "Time to Stabilization (s)",
+   "type": "source",
+   "phaseKinexus": "landing",
+   "tier": "master",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "post_landing_stability",
+   "canonical": "cmj_post_landing_stability",
+   "label": "Post Landing Stability",
+   "type": "source",
+   "phaseKinexus": "landing",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [],
+   "mappingStatus": "NO_CURRENT_MAPPING"
+  },
+  {
+   "key": "force_zero_vel",
+   "canonical": "cmj_force_zero_vel",
+   "label": "Force at Zero Velocity (N/kg)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "master",
+   "qualities": "Absorption:DIRECT",
+   "hypEngines": "HYP-ABS-01",
+   "forcedecksHeaders": [
+    "Force at Zero Velocity [N]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "force_peak_power",
+   "canonical": "cmj_force_peak_power",
+   "label": "Force at Peak Power (N/kg)",
+   "type": "source",
+   "phaseKinexus": "concentric",
+   "tier": "support",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Force at Peak Power [N]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "flight_time",
+   "canonical": "cmj_flight_time",
+   "label": "Flight Time (ms)",
+   "type": "source",
+   "phaseKinexus": "flight",
+   "tier": "support",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Flight Time [ms]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_decel_rfd_asym",
+   "canonical": "cmj_ecc_decel_rfd_asym",
+   "label": "Eccentric Deceleration RFD Asymmetry (%)",
+   "type": "derived",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Deceleration RFD % (Asym) (%)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_decel_rfd_L",
+   "canonical": "cmj_ecc_decel_rfd_L",
+   "label": "Eccentric Deceleration RFD Gauche (N/s)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Deceleration RFD [N/s] (L)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_decel_rfd_R",
+   "canonical": "cmj_ecc_decel_rfd_R",
+   "label": "Eccentric Deceleration RFD Droit (N/s)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Deceleration RFD [N/s] (R)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_decel_impulse_asym",
+   "canonical": "cmj_ecc_decel_impulse_asym",
+   "label": "Eccentric Deceleration Impulse Asymmetry (%)",
+   "type": "derived",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Deceleration Impulse % (Asym) (%)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_force_impulse_asym",
+   "canonical": "cmj_conc_force_impulse_asym",
+   "label": "Concentric Mean Force / Impulse Asymmetry (%)",
+   "type": "derived",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Concentric Impulse % (Asym) (%)",
+    "Concentric Mean Force % (Asym) (%)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "force_peak_power_asym",
+   "canonical": "cmj_force_peak_power_asym",
+   "label": "Force at Peak Power Asymmetry (%)",
+   "type": "derived",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Force at Peak Power % (Asym) (%)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "p2_conc_impulse_asym",
+   "canonical": "cmj_p2_conc_impulse_asym",
+   "label": "P2 Concentric Impulse Asymmetry (%)",
+   "type": "derived",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "P2 Concentric Impulse % (Asym) (%)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "landing_peak_force_asym",
+   "canonical": "cmj_landing_peak_force_asym",
+   "label": "Peak Landing Force Asymmetry (%)",
+   "type": "derived",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Peak Landing Force % (Asym) (%)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "landing_peak_force_L",
+   "canonical": "cmj_landing_peak_force_L",
+   "label": "Peak Landing Force Gauche (N/kg)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Peak Landing Force [N] (L)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "landing_peak_force_R",
+   "canonical": "cmj_landing_peak_force_R",
+   "label": "Peak Landing Force Droit (N/kg)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Peak Landing Force [N] (R)"
+   ],
+   "mappingStatus": "MAPPED"
+  }
+ ],
+ "table3_forcedecks_vers_kinexus": [
+  {
+   "forcedecks": "Additional Load [kg]",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "BW [KG]",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "Braking Phase Duration [ms]",
+   "kinexus": "cmj_braking_duration",
+   "correspondance": "AMBIGUOUS",
+   "commentaire": "braking_duration"
+  },
+  {
+   "forcedecks": "Braking Phase Duration:Concentric Duration [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Braking Phase Duration:Contraction Time [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "CMJ Stiffness % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "CMJ Stiffness [N/m]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "CMJ Stiffness [N/m] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "CMJ Stiffness [N/m] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Duration [ms]",
+   "kinexus": "cmj_conc_duration",
+   "correspondance": "EXACT",
+   "commentaire": "conc_duration"
+  },
+  {
+   "forcedecks": "Concentric Impulse % (Asym) (%)",
+   "kinexus": "cmj_conc_force_impulse_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "conc_force_impulse_asym"
+  },
+  {
+   "forcedecks": "Concentric Impulse (Abs) / BM [N s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse [N s]",
+   "kinexus": "cmj_conc_impulse",
+   "correspondance": "EXACT",
+   "commentaire": "conc_impulse"
+  },
+  {
+   "forcedecks": "Concentric Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-100ms % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-100ms [N s]",
+   "kinexus": "cmj_conc_impulse_100",
+   "correspondance": "VARIANT",
+   "commentaire": "conc_impulse_100"
+  },
+  {
+   "forcedecks": "Concentric Impulse-100ms [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-100ms [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-100ms:Concentric Impulse",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-100ms:Concentric Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-100ms:Concentric Impulse (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-100ms:Concentric Impulse (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-50ms % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-50ms [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-50ms [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse-50ms [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Impulse:Eccentric Deceleration Impulse Ratio",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Maximum RFD % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Maximum RFD [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Maximum RFD [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Maximum RFD [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Mean Force % (Asym) (%)",
+   "kinexus": "cmj_conc_force_impulse_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "conc_force_impulse_asym"
+  },
+  {
+   "forcedecks": "Concentric Mean Force / BM [N/kg]",
+   "kinexus": "cmj_conc_mean_force",
+   "correspondance": "EXACT",
+   "commentaire": "conc_mean_force"
+  },
+  {
+   "forcedecks": "Concentric Mean Force / BW",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Mean Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Mean Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Mean Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Mean Power / BM [W/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Mean Power [W]",
+   "kinexus": "cmj_conc_mean_power",
+   "correspondance": "EXACT",
+   "commentaire": "conc_mean_power"
+  },
+  {
+   "forcedecks": "Concentric Mean Velocity [m/s]",
+   "kinexus": "cmj_conc_mean_vel",
+   "correspondance": "EXACT",
+   "commentaire": "conc_mean_vel"
+  },
+  {
+   "forcedecks": "Concentric Peak Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Peak Force / BM [N/kg]",
+   "kinexus": "cmj_conc_peak_force",
+   "correspondance": "EXACT",
+   "commentaire": "conc_peak_force"
+  },
+  {
+   "forcedecks": "Concentric Peak Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Peak Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Peak Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Peak Velocity [m/s]",
+   "kinexus": "cmj_conc_peak_vel",
+   "correspondance": "EXACT",
+   "commentaire": "conc_peak_vel"
+  },
+  {
+   "forcedecks": "Concentric Phase:Contraction Time Ratio [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 100ms % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 100ms [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 100ms [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 100ms [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 200ms % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 200ms [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 200ms [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 200ms [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 50ms % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 50ms [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 50ms [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD - 50ms [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD / BM [N/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD [N/s]",
+   "kinexus": "cmj_conc_rfd",
+   "correspondance": "EXACT",
+   "commentaire": "conc_rfd"
+  },
+  {
+   "forcedecks": "Concentric RFD [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RFD [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RPD - 100ms [W/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RPD - 50ms [W/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RPD / BM [W/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RPD [W/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RPD-100ms / BM [W/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric RPD-50ms / BM [W/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Time to Peak Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Time to Peak Force [ms]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Time to Peak Force [ms] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Concentric Time to Peak Force [ms] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Contraction Time [ms]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Contraction Time:Eccentric Duration [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Countermovement Depth [cm]",
+   "kinexus": "cmj_depth",
+   "correspondance": "EXACT",
+   "commentaire": "depth"
+  },
+  {
+   "forcedecks": "Date",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "Displacement at Takeoff [cm]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Acceleration Phase Duration [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Acceleration Phase:Contraction Time Ratio [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD / BM [N/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD-100ms % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD-100ms / BM [N/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD-100ms [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD-100ms [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Braking RFD-100ms [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Impulse % (Asym) (%)",
+   "kinexus": "cmj_ecc_decel_impulse_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "ecc_decel_impulse_asym"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Impulse / BM [N s/kg]",
+   "kinexus": "cmj_braking_impulse",
+   "correspondance": "EXACT",
+   "commentaire": "braking_impulse"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Force / BM [N/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Force / BW",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Power / BM [W/kg]",
+   "kinexus": "cmj_braking_power",
+   "correspondance": "EXACT",
+   "commentaire": "braking_power"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Power [W]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Mean Velocity [m/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Peak Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Peak Force / BW",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Peak Force [N]",
+   "kinexus": "cmj_braking_peak_force",
+   "correspondance": "EXACT",
+   "commentaire": "braking_peak_force"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Peak Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Peak Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Deceleration Phase Duration [s]",
+   "kinexus": "cmj_braking_duration",
+   "correspondance": "AMBIGUOUS",
+   "commentaire": "braking_duration"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration RFD % (Asym) (%)",
+   "kinexus": "cmj_ecc_decel_rfd_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "ecc_decel_rfd_asym"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration RFD / BM [N/s/kg]",
+   "kinexus": "cmj_braking_rfd",
+   "correspondance": "EXACT",
+   "commentaire": "braking_rfd"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration RFD [N/s]",
+   "kinexus": "cmj_braking_rfd_abs",
+   "correspondance": "ALIAS",
+   "commentaire": "braking_rfd_abs"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration RFD [N/s] (L)",
+   "kinexus": "cmj_ecc_decel_rfd_L",
+   "correspondance": "VARIANT",
+   "commentaire": "ecc_decel_rfd_L"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration RFD [N/s] (R)",
+   "kinexus": "cmj_ecc_decel_rfd_R",
+   "correspondance": "VARIANT",
+   "commentaire": "ecc_decel_rfd_R"
+  },
+  {
+   "forcedecks": "Eccentric Deceleration:Contraction Time Ratio [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Duration [ms]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Mean Braking Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Mean Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Mean Force [N]",
+   "kinexus": "cmj_ecc_mean_force",
+   "correspondance": "EXACT",
+   "commentaire": "ecc_mean_force"
+  },
+  {
+   "forcedecks": "Eccentric Mean Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Mean Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Mean Power / BM [W/kg]",
+   "kinexus": "cmj_ecc_mean_power",
+   "correspondance": "EXACT",
+   "commentaire": "ecc_mean_power"
+  },
+  {
+   "forcedecks": "Eccentric Mean Power [W]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Peak Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Peak Force / BM [N/kg]",
+   "kinexus": "cmj_ecc_peak_force",
+   "correspondance": "EXACT",
+   "commentaire": "ecc_peak_force"
+  },
+  {
+   "forcedecks": "Eccentric Peak Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Peak Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Peak Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Peak Power / BM [W/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Peak Power [W]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Peak Power:Concentric Peak Power",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Peak Velocity [m/s]",
+   "kinexus": "cmj_ecc_peak_vel",
+   "correspondance": "ALIAS",
+   "commentaire": "ecc_peak_vel"
+  },
+  {
+   "forcedecks": "Eccentric Unloading Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Duration [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Mean Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Mean Force / BM [N/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Mean Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Mean Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase Mean Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase RFD % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase RFD / BM [N/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase RFD [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase RFD [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase RFD [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Unloading Phase:Contraction Time Ratio [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Duration [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Mean Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Mean Force / BM [N/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Mean Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Mean Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase Mean Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase RFD % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase RFD / BM [N/s/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase RFD [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase RFD [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase RFD [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric Yielding Phase:Contraction Time Ratio [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric:Concentric Duration [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric:Concentric Mean Force Ratio % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric:Concentric Mean Force Ratio [%]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric:Concentric Mean Force Ratio [%] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Eccentric:Concentric Mean Force Ratio [%] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "ExternalId",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "Flight Time [ms]",
+   "kinexus": "cmj_flight_time",
+   "correspondance": "EXACT",
+   "commentaire": "flight_time"
+  },
+  {
+   "forcedecks": "Flight Time:Contraction Time",
+   "kinexus": "cmj_ft_ct_ratio",
+   "correspondance": "ALIAS",
+   "commentaire": "ft_ct_ratio"
+  },
+  {
+   "forcedecks": "FlightTime:Eccentric Duration",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Force at Peak Power % (Asym) (%)",
+   "kinexus": "cmj_force_peak_power_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "force_peak_power_asym"
+  },
+  {
+   "forcedecks": "Force at Peak Power [N]",
+   "kinexus": "cmj_force_peak_power",
+   "correspondance": "EXACT",
+   "commentaire": "force_peak_power"
+  },
+  {
+   "forcedecks": "Force at Peak Power [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Force at Peak Power [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Force at Zero Velocity % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Force at Zero Velocity / BM [N/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Force at Zero Velocity [N]",
+   "kinexus": "cmj_force_zero_vel",
+   "correspondance": "EXACT",
+   "commentaire": "force_zero_vel"
+  },
+  {
+   "forcedecks": "Force at Zero Velocity [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Force at Zero Velocity [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Jump Height (FT) Relative Landing RFD [N/s/cm]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Jump Height (FT) Relative Peak Landing Force [N/cm]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Jump Height (Flight Time) [cm]",
+   "kinexus": "cmj_height",
+   "correspondance": "AMBIGUOUS",
+   "commentaire": "height"
+  },
+  {
+   "forcedecks": "Jump Height (Flight Time) in Inches [in]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Jump Height (Imp-Dis) [cm]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Jump Height (Imp-Mom) [cm]",
+   "kinexus": "cmj_height",
+   "correspondance": "AMBIGUOUS",
+   "commentaire": "height"
+  },
+  {
+   "forcedecks": "Jump Height (Imp-Mom) in Inches [in]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing Impulse [N s]",
+   "kinexus": "cmj_landing_impulse",
+   "correspondance": "EXACT",
+   "commentaire": "landing_impulse"
+  },
+  {
+   "forcedecks": "Landing Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing Net Peak Force / BM [N/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing RFD % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing RFD 50ms [N/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing RFD [N/s]",
+   "kinexus": "cmj_landing_rfd",
+   "correspondance": "EXACT",
+   "commentaire": "landing_rfd"
+  },
+  {
+   "forcedecks": "Landing RFD [N/s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing RFD [N/s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing Stiffness % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing Stiffness [N/m]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing Stiffness [N/m] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Landing Stiffness [N/m] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Lower-Limb Stiffness [N/m]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Mean Eccentric+Concentric Power:Time [W/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Mean Landing Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Mean Landing Force [N]",
+   "kinexus": "cmj_landing_mean_force",
+   "correspondance": "ALIAS",
+   "commentaire": "landing_mean_force"
+  },
+  {
+   "forcedecks": "Mean Landing Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Mean Landing Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Mean Landing Power [W]",
+   "kinexus": "cmj_landing_mean_power",
+   "correspondance": "ALIAS",
+   "commentaire": "landing_mean_power"
+  },
+  {
+   "forcedecks": "Minimum Eccentric Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Movement Start to Peak Force [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Movement Start to Peak Power [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Name",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "P1 Concentric Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P1 Concentric Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P1 Concentric Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P1 Concentric Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P2 Concentric Impulse % (Asym) (%)",
+   "kinexus": "cmj_p2_conc_impulse_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "p2_conc_impulse_asym"
+  },
+  {
+   "forcedecks": "P2 Concentric Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P2 Concentric Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P2 Concentric Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P2 Concentric Impulse:P1 Concentric Impulse",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P2 Concentric Impulse:P1 Concentric Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P2 Concentric Impulse:P1 Concentric Impulse (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "P2 Concentric Impulse:P1 Concentric Impulse (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Landing Acceleration [m/s²]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Landing Force % (Asym) (%)",
+   "kinexus": "cmj_landing_peak_force_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "landing_peak_force_asym"
+  },
+  {
+   "forcedecks": "Peak Landing Force / BM [N/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Landing Force / BW",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Landing Force [N]",
+   "kinexus": "cmj_landing_peak_force",
+   "correspondance": "EXACT",
+   "commentaire": "landing_peak_force"
+  },
+  {
+   "forcedecks": "Peak Landing Force [N] (L)",
+   "kinexus": "cmj_landing_peak_force_L",
+   "correspondance": "VARIANT",
+   "commentaire": "landing_peak_force_L"
+  },
+  {
+   "forcedecks": "Peak Landing Force [N] (R)",
+   "kinexus": "cmj_landing_peak_force_R",
+   "correspondance": "VARIANT",
+   "commentaire": "landing_peak_force_R"
+  },
+  {
+   "forcedecks": "Peak Landing Power [W]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Landing Velocity [m/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Negative Landing Velocity [m/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Net Takeoff Force / BM [N/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Power / BM [W/kg]",
+   "kinexus": "cmj_peak_power",
+   "correspondance": "EXACT",
+   "commentaire": "peak_power"
+  },
+  {
+   "forcedecks": "Peak Power [W]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Peak Takeoff Acceleration [m/s²]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Positive Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Positive Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Positive Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Positive Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Positive Takeoff Impulse % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Positive Takeoff Impulse [N s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Positive Takeoff Impulse [N s] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Positive Takeoff Impulse [N s] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "RSI-modified (Imp-Mom) [m/s]",
+   "kinexus": "cmj_rsi_mod",
+   "correspondance": "AMBIGUOUS",
+   "commentaire": "rsi_mod"
+  },
+  {
+   "forcedecks": "RSI-modified [m/s]",
+   "kinexus": "cmj_rsi_mod",
+   "correspondance": "AMBIGUOUS",
+   "commentaire": "rsi_mod"
+  },
+  {
+   "forcedecks": "Reps",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "Start of Braking Phase [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Start of Concentric Phase [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Start of Eccentric Deceleration Phase [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Start of Integration [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Start of Movement Detection Threshold [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Start of Movement StdDev Period End [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Start of Movement StdDev Period Start [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Start of Movement [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Tags",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "Take-off Momentum [kg m/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Takeoff Peak Force % (Asym) (%)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Takeoff Peak Force / BM [N/kg]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Takeoff Peak Force [N]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Takeoff Peak Force [N] (L)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Takeoff Peak Force [N] (R)",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Test Type",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "Time",
+   "kinexus": null,
+   "correspondance": "N/A_METADATA",
+   "commentaire": "colonne administrative"
+  },
+  {
+   "forcedecks": "Time to Braking Phase [s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Total Work [J]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Velocity at Peak Power [m/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  },
+  {
+   "forcedecks": "Vertical Velocity at Takeoff [m/s]",
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
+  }
+ ],
+ "table7_redondances_probables": [
+  "Concentric Mean Force / BW",
+  "Concentric Mean Force [N]",
+  "Concentric Mean Power / BM [W/kg]",
+  "Concentric Peak Force [N]",
+  "Eccentric Deceleration Impulse [N s]",
+  "Eccentric Deceleration Mean Power [W]",
+  "Eccentric Deceleration Peak Force / BW",
+  "Eccentric Mean Power [W]",
+  "Eccentric Peak Force [N]",
+  "Force at Zero Velocity / BM [N/kg]",
+  "Peak Landing Force / BM [N/kg]",
+  "Peak Landing Force / BW",
+  "Peak Power [W]"
+ ]
+}
