@@ -479,6 +479,15 @@ var FD_KPI_PATTERNS={
   // colonne "Eccentric Braking Peak Force" concurrente trouvée dans les 17 fichiers réels).
   braking_peak_force:['Eccentric Deceleration Peak Force','Braking Peak Force','Peak Braking Force'],
   peak_braking_force:['Peak Braking Force','Braking Peak Force'],
+  // Mission mapping sémantique (validé par le praticien) : "Eccentric Deceleration Mean Power"
+  // pour braking_power, même famille que braking_rfd/braking_impulse/braking_peak_force ci-dessus
+  // ("braking_X" = "Eccentric Deceleration X"). Alias "/ BM" prioritaire (unité canonique W/kg déjà
+  // déclarée dans TESTS.cmj.kpis) ; motif absolu en repli, converti automatiquement via fdVal()
+  // (correctif W/kg de la mission précédente). Distinct vérifié de ecc_mean_power (bare "Eccentric
+  // Mean Power", puissance excentrique globale) : valeurs réellement différentes sur la même séance
+  // réelle (10,1 W/kg pour Deceleration vs 6,27 W/kg pour la moyenne excentrique globale) — jamais
+  // fusionnés, il s'agit bien de la puissance moyenne de la seule phase de décélération.
+  braking_power:['Eccentric Deceleration Mean Power / BM','Eccentric Deceleration Mean Power/BM','Eccentric Deceleration Mean Power'],
   // Mission AI : alias "/ BM" (unité canonique Ns/kg) — l'export réel expose la version BM sous le
   // libellé "Eccentric Deceleration Impulse / BM" (jamais "Braking Impulse / BM"). La colonne
   // absolue "Eccentric Braking Impulse [N s]" reste volontairement NON aliasée ici : aucune

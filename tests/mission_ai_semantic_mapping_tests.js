@@ -508,6 +508,24 @@ test('SM60 — G/D non-CMJ (soleus_iso, test D/G réel) : latéralité toujours 
   assert.ok(TBK.soleus_iso && !TBK.soleus_iso.bilateral, 'soleus_iso doit rester un test D/G (bilateral:false), non modifié par cette mission');
 });
 
+// ═══════════════ SM61-SM62 : braking_power (validé par le praticien, ajouté sur demande) ════════
+test('SM61 — braking_power reconnu via "Eccentric Deceleration Mean Power / BM" (même famille que braking_rfd/braking_impulse/braking_peak_force), distinct de ecc_mean_power (valeurs réellement différentes sur la même séance : 10.1 W/kg vs 6.27 W/kg)', () => {
+  const res4 = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_01_4.csv'), 'utf8'));
+  assert.deepStrictEqual(res4.data.cmj.trials.braking_power, [10.1]);
+  const res5 = processCSV(fs.readFileSync(path.join(__dirname, 'fixtures', 'yannis_forcedecks_09_01_5.csv'), 'utf8'));
+  assert.deepStrictEqual(res5.data.cmj.trials.ecc_mean_power, [6.27]);
+  assert.notStrictEqual(res4.data.cmj.trials.braking_power[0], res5.data.cmj.trials.ecc_mean_power[0]);
+});
+test('SM62 — braking_power jamais confondu avec "Eccentric Braking RFD/Impulse" (famille non-Deceleration) ni avec la version absolue seule (conversion /BM automatique vérifiée)', () => {
+  const headers = ['Eccentric Deceleration Mean Power [W]'];
+  const col = fdFindCol(headers, FD_KPI_PATTERNS.braking_power, null);
+  assert.strictEqual(col, headers[0]);
+  // conc_displacement volontairement non mappé (incertitude non levée, cf. rapport) : le motif
+  // FD_KPI_PATTERNS.conc_displacement reste inchangé et ne matche pas "Displacement at Takeoff".
+  const colDisp = fdFindCol(['Displacement at Takeoff [cm]'], FD_KPI_PATTERNS.conc_displacement, null);
+  assert.strictEqual(colDisp, null, 'conc_displacement ne doit toujours pas matcher "Displacement at Takeoff" (incertitude non résolue)');
+});
+
 // ═══════════════════════════ SM40-SM41 : régression clinique complète (fixture réelle Yannis) ═══
 const YANNIS_DATA = {
   wblt: { active: true, D: { trials: { distance: [10] } }, G: { trials: { distance: [14] } } },

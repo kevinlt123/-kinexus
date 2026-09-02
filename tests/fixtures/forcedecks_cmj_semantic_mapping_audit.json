@@ -1071,13 +1071,13 @@
  },
  {
   "forcedecks": "Eccentric Deceleration Mean Power / BM [W/kg]",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_braking_power",
   "test": "cmj",
-  "phase": "-",
-  "lat": "Bilateral/inconnu",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
   "unit": "W/kg",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "Eccentric Deceleration Mean Power [W]",
