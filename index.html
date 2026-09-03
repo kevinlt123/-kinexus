@@ -7808,7 +7808,21 @@ function csmV2MobilityYbtAssociation(clinicalProfile){
 // (LOCKED, jamais touchés).
 function csmV2QualityHasSufficientDiagnosticEvidence(quality,functionScores){
   var hyp=functionScores&&functionScores[quality];
-  var diagnosticEvidence=(hyp&&(hyp.diagnosticEvidence||hyp.diagnostic))||{};
+  // Pipeline réel (computeMoteur) : fSc[quality] est un objet APLATI {status,confidence,coverage,
+  // directTests,directStatuses,<hypXxx01>:<résultat brut du moteur HYP>,...} — le résultat brut
+  // (seul porteur de .diagnosticEvidence/.diagnostic) est imbriqué sous une clé propre à chaque
+  // qualité (hypAbs01/hypRea01/hypMob01/hypPui01/hypFor01/hypExp01/hypSta01/hypEnd01, cf.
+  // computeMoteur ~L12933-13107). On ne code EN DUR aucun de ces 8 noms de clé (ils ne sont pas
+  // garantis stables) : on recherche structurellement, parmi les valeurs de fSc[quality], le
+  // premier objet portant .diagnosticEvidence/.diagnostic — c'est nécessairement le résultat brut
+  // du moteur HYP, quelle que soit la clé sous laquelle computeMoteur l'a nommé. Compat conservée
+  // avec l'accès direct hyp.diagnosticEvidence/.diagnostic (forme utilisée par les tests unitaires
+  // Mission D qui passent le résultat HYP brut directement, sans passer par computeMoteur).
+  var directEvidence=hyp&&(hyp.diagnosticEvidence||hyp.diagnostic);
+  var rawHyp=directEvidence?hyp:(hyp&&Object.keys(hyp).map(function(k){return hyp[k];}).filter(function(v){
+    return v&&typeof v==='object'&&(v.diagnosticEvidence||v.diagnostic);
+  })[0]);
+  var diagnosticEvidence=(rawHyp&&(rawHyp.diagnosticEvidence||rawHyp.diagnostic))||{};
   var leafPaths=csmV2VariableMatrixLeafKeys(diagnosticEvidence);
   var eligible=[];
   leafPaths.forEach(function(path){
