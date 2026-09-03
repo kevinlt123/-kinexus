@@ -411,8 +411,8 @@ test('SM49 — sur l\'union des 17 fichiers, braking_rfd/braking_impulse/ecc_dec
   assert.deepStrictEqual(testData.cmj.trials.ecc_decel_rfd_L, [1759]);
   assert.deepStrictEqual(testData.cmj.trials.ecc_decel_rfd_R, [1281]);
 });
-test('SM50 — le catalogue TESTS.cmj.kpis n\'a reçu AUCUNE nouvelle variable de CETTE mission de mapping sémantique (mapping seul, jamais de nouvelle variable clinique inventée ici) — 59 clés reflète une mission ULTÉRIEURE distincte et explicitement validée (evidence secondaire par qualité, 8 nouvelles clés : ecc_duration, ecc_peak_power, leg_stiffness(+L/R/asym), contraction_time, conc_impulse_100_asym), pas cette mission-ci', () => {
-  assert.strictEqual(TBK.cmj.kpis.length, 59);
+test('SM50 — le catalogue TESTS.cmj.kpis n\'a reçu AUCUNE nouvelle variable de CETTE mission de mapping sémantique (mapping seul, jamais de nouvelle variable clinique inventée ici) — 65 clés reflète 2 missions ULTÉRIEURES distinctes et explicitement validées (evidence secondaire par qualité, 8 nouvelles clés : ecc_duration, ecc_peak_power, leg_stiffness(+L/R/asym), contraction_time, conc_impulse_100_asym ; référentiel sémantique Kinexus<->VALD, 6 nouvelles clés : conc_mean_force_L/R, force_peak_power_L/R, force_zero_vel_L/R), pas cette mission-ci', () => {
+  assert.strictEqual(TBK.cmj.kpis.length, 65);
 });
 function liveRecognizeAll() {
   let recognizedBy = {};

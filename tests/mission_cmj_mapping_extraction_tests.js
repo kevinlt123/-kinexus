@@ -38,8 +38,8 @@ test('E1 — la mission d\'extraction ORIGINALE (commit 0765771) n\'avait modifi
   const stat = execSync('git diff --stat 0765771~1 0765771 -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   assert.strictEqual(stat.trim(), '', 'le commit 0765771 aurait dû ne toucher aucune ligne de index.html : ' + stat);
 });
-test('E2 — TESTS.cmj.kpis : 59 clés (51 + 8 evidence secondaire, mission ULTÉRIEURE validée : ecc_duration, ecc_peak_power, leg_stiffness+L/R/asym, contraction_time, conc_impulse_100_asym)', () => {
-  assert.strictEqual(TBK.cmj.kpis.length, 59);
+test('E2 — TESTS.cmj.kpis : 65 clés (51 + 8 evidence secondaire + 6 mission référentiel sémantique Kinexus<->VALD, missions ULTÉRIEURES validées : ecc_duration, ecc_peak_power, leg_stiffness+L/R/asym, contraction_time, conc_impulse_100_asym, conc_mean_force_L/R, force_peak_power_L/R, force_zero_vel_L/R)', () => {
+  assert.strictEqual(TBK.cmj.kpis.length, 65);
 });
 test('E3 — THRESHOLDS inchangé : toujours 24 clés verrouillées', () => {
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
@@ -84,17 +84,17 @@ test('E7 — le mapping FD_KPI_PATTERNS existant n\'a pas changé : l\'audit dé
 
 // ═══════════════════════ Extraction : TABLE 1 (dictionnaire CMJ Kinexus) ════════════════════════
 const report = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'cmj_mapping_extraction_report.json'), 'utf8'));
-test('E8 — TABLE 1 couvre exactement les 59 clés du catalogue TESTS.cmj.kpis (51 + 8 evidence secondaire, mission ultérieure validée), aucune inventée', () => {
+test('E8 — TABLE 1 couvre exactement les 65 clés du catalogue TESTS.cmj.kpis (51 + 8 evidence secondaire + 6 mission référentiel sémantique Kinexus<->VALD), aucune inventée', () => {
   const t1 = report.table1_dictionnaire_cmj_kinexus;
-  assert.strictEqual(t1.length, 59);
+  assert.strictEqual(t1.length, 65);
   const catalogKeys = new Set(TBK.cmj.kpis.map((k) => k.key));
   t1.forEach((r) => assert.ok(catalogKeys.has(r.key), r.key + ' absent du catalogue réel'));
 });
-test('E9 — 50 clés Kinexus CMJ ont au moins 1 en-tête ForceDecks reconnu (42 + 8 evidence secondaire) ; les 9 mêmes clés restent NO_CURRENT_MAPPING (liste exacte inchangée — aucune des 8 nouvelles clés n\'y figure, cohérent)', () => {
+test('E9 — 56 clés Kinexus CMJ ont au moins 1 en-tête ForceDecks reconnu (42 + 8 evidence secondaire + 6 mission référentiel sémantique conc_mean_force_L/R, force_peak_power_L/R, force_zero_vel_L/R) ; les 9 mêmes clés restent NO_CURRENT_MAPPING (liste exacte inchangée — aucune des 14 nouvelles clés n\'y figure, cohérent)', () => {
   const t1 = report.table1_dictionnaire_cmj_kinexus;
   const mapped = t1.filter((r) => r.mappingStatus !== 'NO_CURRENT_MAPPING');
   const unmapped = t1.filter((r) => r.mappingStatus === 'NO_CURRENT_MAPPING').map((r) => r.key).sort();
-  assert.strictEqual(mapped.length, 50);
+  assert.strictEqual(mapped.length, 56);
   assert.deepStrictEqual(unmapped, ['braking_eff', 'conc_displacement', 'ecc_decel', 'landing_duration', 'peak_vel', 'post_landing_stability', 'propulsion_eff', 'time_to_stab', 'tto']);
 });
 
@@ -111,11 +111,13 @@ test('E11 — statuts TABLE 3 conformes au vocabulaire de la mission (EXACT/ALIA
   Object.keys(counts).forEach((s) => assert.ok(allowed.has(s), 'statut inattendu : ' + s));
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   assert.strictEqual(total, 283);
-  // braking_duration résolu (mission ultérieure validée, evidence secondaire) : 6 -> 4 AMBIGUOUS
-  // (height x2, rsi_mod x2). NO_CURRENT_EQUIVALENT diminue d'autant (+ CMJ Stiffness désormais
-  // mappée) : 228 -> 221.
+  // braking_duration résolu (mission evidence secondaire) : 6 -> 4 AMBIGUOUS (height x2, rsi_mod
+  // x2). NO_CURRENT_EQUIVALENT : 228 -> 221 (evidence secondaire) -> 215 (mission référentiel
+  // sémantique Kinexus<->VALD, audit préalable : conc_mean_force_L/R, force_peak_power_L/R,
+  // force_zero_vel_L/R désormais VARIANT — colonnes (L)/(R) réellement présentes dans l'export réel,
+  // valeurs vérifiées manuellement, cf. commit).
   assert.strictEqual(counts.AMBIGUOUS, 4);
-  assert.strictEqual(counts.NO_CURRENT_EQUIVALENT, 221);
+  assert.strictEqual(counts.NO_CURRENT_EQUIVALENT, 215);
 });
 test('E12 — aucun header ForceDecks n\'est silencieusement ignoré : union TABLE3 == union des 17 fichiers fixtures réels', () => {
   function parseCsvLine(line) { return line.replace(/^﻿?"/, '').replace(/"$/, '').split('","'); }

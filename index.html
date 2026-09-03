@@ -143,7 +143,24 @@ var TESTS=[
     // Asymétrie native ForceDecks pour conc_impulse_100 (déjà diagnostique Explosivité) — jamais
     // classifiable (aucun seuil/norme, comme conc_impulse_100 lui-même), exposée en evidence
     // secondaire uniquement.
-    {key:'conc_impulse_100_asym',label:'Concentric Impulse-100ms Asymmetry (%)',step:0.1,dir:'min'}
+    {key:'conc_impulse_100_asym',label:'Concentric Impulse-100ms Asymmetry (%)',step:0.1,dir:'min'},
+    // Mission référentiel sémantique Kinexus<->VALD (audit préalable) : colonnes Gauche/Droite
+    // réellement présentes dans l'export réel pour 3 variables déjà mappées en bilatéral —
+    // "Concentric Mean Force [N] (L)/(R)", "Force at Peak Power [N] (L)/(R)", "Force at Zero
+    // Velocity [N] (L)/(R)" (valeurs réelles confirmées, ex. yannis_forcedecks_09_02_1.csv :
+    // Concentric Mean Force L=692/R=619 ; yannis_forcedecks_09_02_3.csv : Force at Peak Power
+    // L=778/R=696, Force at Zero Velocity L=781/R=745). conc_force_impulse_asym et
+    // force_peak_power_asym existaient déjà (colonnes "% (Asym)" natives) mais leur côté dominant
+    // restait indéterminable faute de paire G/D — désormais disponible (cf. ASYM_SIDE_PAIRS
+    // ci-dessus). force_zero_vel n'a PAS de colonne "% (Asym)" native observée dans l'export réel
+    // (cf. commentaire ASYM_PERFORMANCE_EQUIVALENT) : ses valeurs G/D sont exposées seules, sans
+    // kpi d'asymétrie inventé.
+    {key:'conc_mean_force_L',label:'Concentric Mean Force Gauche (N/kg)',step:0.01,dir:'max'},
+    {key:'conc_mean_force_R',label:'Concentric Mean Force Droit (N/kg)',step:0.01,dir:'max'},
+    {key:'force_peak_power_L',label:'Force at Peak Power Gauche (N/kg)',step:0.01,dir:'max'},
+    {key:'force_peak_power_R',label:'Force at Peak Power Droit (N/kg)',step:0.01,dir:'max'},
+    {key:'force_zero_vel_L',label:'Force at Zero Velocity Gauche (N/kg)',step:0.01,dir:'max'},
+    {key:'force_zero_vel_R',label:'Force at Zero Velocity Droit (N/kg)',step:0.01,dir:'max'}
   ]},
   {key:'slcmj',label:'Single Leg Jump',cat:'Sauts',bilateral:false,kpis:[{key:'height',label:'Height (cm)',step:0.1,dir:'max'},{key:'rsi_mod',label:'RSI Mod',step:0.01,dir:'max'},{key:'peak_conc_force',label:'Peak Concentric Force (N/kg)',step:0.01,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'peak_conc_vel',label:'Peak Concentric Velocity (m/s)',step:0.01,dir:'max'},{key:'edrfd_bm',label:'EDRFD / BM (N/s/kg)',step:0.1,dir:'max'},{key:'braking_rfd',label:'Braking RFD (N/s)',step:1,dir:'max'},{key:'peak_braking_force',label:'Peak Braking Force (N/kg)',step:0.01,dir:'max'},{key:'braking_impulse',label:'Braking Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'depth',label:'Countermovement Depth (cm)',step:0.1,dir:'max'},{key:'contraction_time',label:'Contraction Time (ms)',step:1,dir:'min'},{key:'ecc_duration',label:'Eccentric Duration (ms)',step:1,dir:'min'},{key:'conc_duration',label:'Concentric Duration (ms)',step:1,dir:'min'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'time_to_stab',label:'Time to Stabilization (s)',step:0.01,dir:'min'}]},
   {key:'cmjr',label:'Countermovement Rebound Jump',cat:'Sauts',bilateral:true,kpis:[{key:'first_height',label:'First Jump Height (cm)',step:0.1,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'mean_ct',label:'Mean Contact Time (ms)',step:1,dir:'min'},{key:'mean_rebound_height',label:'Mean Rebound Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'mean_stiffness',label:'Mean Leg Stiffness (kN/m)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'rsi_decay',label:'RSI Decay (%)',step:0.1,dir:'min'},{key:'stiffness_decay',label:'Leg Stiffness Decay (%)',step:0.1,dir:'min'}]},
@@ -355,15 +372,21 @@ function effectiveAsymPhaseVariables(phaseKey,pop){
 }
 // Paires de valeurs brutes Gauche/Droite disponibles pour déterminer le "côté dominant" — UNIQUEMENT
 // pour les KPIs d'asymétrie où VALD expose les deux côtés séparément dans ForceDecks. Pour les
-// autres (ecc_decel_impulse_asym, conc_force_impulse_asym, force_peak_power_asym,
-// p2_conc_impulse_asym, conc_impulse_100_asym), aucune paire G/D n'existe dans TBK aujourd'hui —
-// le côté dominant reste "indéterminé" pour ces variables, jamais déduit du signe ou d'une autre
-// invention. leg_stiffness_asym ajoutée (mission evidence secondaire, validé) : "CMJ Stiffness
-// [N/m] (L)/(R)" réellement disponibles dans l'export réel.
+// autres (ecc_decel_impulse_asym, p2_conc_impulse_asym, conc_impulse_100_asym), aucune paire G/D
+// n'existe dans TBK aujourd'hui — le côté dominant reste "indéterminé" pour ces variables, jamais
+// déduit du signe ou d'une autre invention. leg_stiffness_asym ajoutée (mission evidence
+// secondaire, validé) : "CMJ Stiffness [N/m] (L)/(R)" réellement disponibles dans l'export réel.
+// conc_force_impulse_asym/force_peak_power_asym : paire G/D ajoutée (mission référentiel
+// sémantique Kinexus<->VALD, audit préalable) — "Concentric Mean Force [N] (L)/(R)" et "Force at
+// Peak Power [N] (L)/(R)" réellement disponibles dans l'export réel (cf. FD_KPI_PATTERNS
+// conc_mean_force_L/R, force_peak_power_L/R). Le côté dominant, jusqu'ici toujours "indéterminé"
+// pour ces 2 kpis d'asymétrie natifs, est désormais déterminable.
 var ASYM_SIDE_PAIRS={
   ecc_decel_rfd_asym:{L:'ecc_decel_rfd_L',R:'ecc_decel_rfd_R'},
   landing_peak_force_asym:{L:'landing_peak_force_L',R:'landing_peak_force_R'},
-  leg_stiffness_asym:{L:'leg_stiffness_L',R:'leg_stiffness_R'}
+  leg_stiffness_asym:{L:'leg_stiffness_L',R:'leg_stiffness_R'},
+  conc_force_impulse_asym:{L:'conc_mean_force_L',R:'conc_mean_force_R'},
+  force_peak_power_asym:{L:'force_peak_power_L',R:'force_peak_power_R'}
 };
 
 // ── CSV IMPORT MAPPERS ───────────────────────────────────────────────────────
@@ -582,6 +605,14 @@ var FD_KPI_PATTERNS={
   // Mission AI : force_peak_power_asym existait déjà dans TBK (support de symmetryEvidence, cf.
   // ASYM_PERFORMANCE_EQUIVALENT) mais sans aucune entrée FD_KPI_PATTERNS — jamais importable.
   force_peak_power_asym:['Force at Peak Power'],
+  // Mission référentiel sémantique Kinexus<->VALD (audit préalable, colonnes (L)/(R) réellement
+  // présentes dans l'export réel) : mêmes motifs que la variable bilatérale de base — le suffixe
+  // (L)/(R) est isolé par fdColSuffix/fdFindCol(side), jamais par un motif dédié.
+  conc_mean_force_L:['Concentric Mean Force / BM','Concentric Mean Force/BM','Concentric Mean Force'],
+  conc_mean_force_R:['Concentric Mean Force / BM','Concentric Mean Force/BM','Concentric Mean Force'],
+  force_peak_power_L:['Force at Peak Power'],force_peak_power_R:['Force at Peak Power'],
+  force_zero_vel_L:['Force at Zero Velocity','Force at Zero Velocity / BM','Force at Zero Velocity/BM'],
+  force_zero_vel_R:['Force at Zero Velocity','Force at Zero Velocity / BM','Force at Zero Velocity/BM'],
   ecc_mean_power:['Eccentric Mean Power / BM','Eccentric Mean Power/BM','Eccentric Mean Power'],
   // Mission evidence secondaire (validé) : nouvelle clé ecc_peak_power — jamais confondue avec
   // ecc_mean_power (valeurs réellement différentes : "Eccentric Peak Power [W]" != "Eccentric Mean
