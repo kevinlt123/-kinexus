@@ -188,9 +188,8 @@ test('GUARD 3 — THRESHOLDS/NORMS/NORMS_V2/CSM_V2_CLINICAL_VARIABLE_MATRIX/CMJ_
   assert.deepStrictEqual(CMJ_PLAUSIBLE_RANGE.depth, [2, 60]);
   assert.deepStrictEqual(CMJ_PLAUSIBLE_RANGE.ecc_peak_vel, [0.2, 5]);
 });
-test('GUARD 4 — le diff de ce commit touche fdSignCorrected/importForceDecks, jamais computeMoteur/computeCsmV2/computeBiomecaPhase', () => {
-  const diff = execSync('git diff HEAD -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  if (diff.trim().length === 0) return; // déjà commité au moment du test
+test('GUARD 4 — le commit de CE fix (8741e01) touchait bien fdSignCorrected/importForceDecks, jamais computeMoteur/computeCsmV2/computeBiomecaPhase — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html ailleurs — attendu, hors périmètre de cette garde)', () => {
+  const diff = execSync('git diff 8741e01~1 8741e01 -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   assert.ok(diff.includes('fdSignCorrected'));
   assert.ok(!diff.includes('function computeMoteur('));
   assert.ok(!diff.includes('function computeCsmV2('));

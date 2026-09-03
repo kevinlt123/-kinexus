@@ -2965,7 +2965,19 @@ var BiomechanicalProfileEngine=(function(){
     var discriminantesOk=discriminantes.filter(function(e){return e.available;});
     var threshold=effectiveMissingDataThreshold();
     var ratio=discriminantes.length?discriminantesOk.length/discriminantes.length:0;
-    if(discriminantes.length===0||ratio<threshold){
+    // RÉVISÉ (validé par le praticien, même principe que le Moteur Biomécanique des phases —
+    // effectiveMinVariablesPrincipales, 2->1) : un profil devient exploitable dès qu'AU MOINS
+    // effectiveMinVariablesPrincipales(discriminantes.length) variable(s) discriminante(s) sont
+    // disponibles, MÊME si le ratio historique (seuil 50%, algorithme praticien du 03/08) n'est
+    // pas atteint — sufficient si LE PLANCHER DE COMPTE OU LE RATIO est satisfait (OR, jamais un
+    // AND qui exigerait les deux). Le ratio reste la voie de sufficiency quand plus de données
+    // sont disponibles (comportement 03/08 inchangé dans ce cas) ; le plancher de compte est la
+    // voie qui débloque un profil autrement structurellement inexploitable faute de couverture
+    // NORMS suffisante pour TOUTES les variables discriminantes définies (constat : aucune
+    // population du catalogue ne couvre jamais plus de 1 à 3 variables discriminantes sur 3-4
+    // définies par profil).
+    var minRequis=effectiveMinVariablesPrincipales(discriminantes.length);
+    if(discriminantes.length===0||(discriminantesOk.length<minRequis&&ratio<threshold)){
       return{
         sufficient:false,percentileGlobal:null,
         reason:discriminantes.length===0?'Aucune variable discriminante définie pour ce profil (référentiel non encore renseigné).':'Données insuffisantes pour calculer ce profil ('+discriminantesOk.length+'/'+discriminantes.length+' variables discriminantes disponibles).',
