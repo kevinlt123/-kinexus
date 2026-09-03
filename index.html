@@ -1334,7 +1334,7 @@ function validateClinicalConcordance(biomecaLevel,qualiteLevel){
 var BIOMECA_PROFILES_LS_KEY='kinexus_biomeca_profiles';
 var DEFAULT_BIOMECA_PROFILE_ID='default';
 function defaultBiomecaProfilesState(){
-  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,minVariablesPrincipales:2,profileEngineRoleWeights:{}}}]};
+  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,minVariablesPrincipales:1,profileEngineRoleWeights:{}}}]};
 }
 function loadBiomecaProfilesState(){
   try{
@@ -1387,11 +1387,17 @@ function effectiveMissingDataThreshold(){
   return cfg.missingDataThreshold!=null?cfg.missingDataThreshold:0.5;
 }
 // Nombre minimum de variables "principales" (biomécaniquement pertinentes ET normées) requis
-// pour qu'une phase soit exploitable, quel que soit le ratio ci-dessus — règle explicite du
-// praticien (04/08) : "minimum 2 variables principales normées". Empêche qu'une phase ne
-// possédant qu'1 seule variable normée disponible soit jugée suffisante par le seul ratio
-// (1/1 = 100% passerait le seuil par défaut alors que l'exigence de robustesse porte sur un
-// COMPTE minimal, pas seulement une proportion).
+// pour qu'une phase soit exploitable, quel que soit le ratio ci-dessus. Historique : le praticien
+// avait initialement fixé cette exigence à 2 (04/08), pour empêcher qu'une phase ne possédant
+// qu'1 seule variable normée disponible soit jugée suffisante par le seul ratio (1/1 = 100%
+// passerait le seuil par défaut alors que l'exigence de robustesse portait sur un COMPTE minimal,
+// pas seulement une proportion). RÉVISÉ (validé par le praticien, suite à l'audit montrant que
+// Concentric et Landing ne dépassent jamais 1 variable principale normée dans AUCUNE des 64
+// populations NORMS — un plancher à 2 rendait donc ces 2 phases structurellement et
+// définitivement inexploitables, quelle que soit la population choisie) : 1 variable principale
+// normée et classifiable suffit désormais à rendre une phase exploitable — même principe que le
+// "minimum diagnostique suffisant" déjà appliqué aux qualités cliniques (cf.
+// csmV2QualityHasSufficientDiagnosticEvidence).
 // Plancher ADAPTATIF (praticien, 04/08, extension au Moteur d'Asymétrie) : min(configuré,
 // totalEligible) — jamais une exigence structurellement impossible à satisfaire. Si une phase ne
 // possède, par nature, qu'UNE seule variable biomécaniquement pertinente (ex. Landing pour le
@@ -1399,11 +1405,11 @@ function effectiveMissingDataThreshold(){
 // ForceDecks), le plancher redescend à 1 pour cette phase plutôt que de la rendre à jamais
 // non-exploitable. Pour le Moteur Biomécanique de performance, chaque phase possède aujourd'hui
 // au moins 3 variables éligibles (cf. CMJ_VAR_META) : le plancher adaptatif s'y résout donc
-// toujours à la valeur configurée (2 par défaut), sans changement de comportement — appel avec
-// totalEligible omis ou >= au minimum configuré.
+// toujours à la valeur configurée (1 depuis la révision ci-dessus), sans changement de
+// comportement — appel avec totalEligible omis ou >= au minimum configuré.
 function effectiveMinVariablesPrincipales(totalEligible){
   var cfg=activeBiomecaProfile().config||{};
-  var configure=cfg.minVariablesPrincipales!=null?cfg.minVariablesPrincipales:2;
+  var configure=cfg.minVariablesPrincipales!=null?cfg.minVariablesPrincipales:1;
   return totalEligible!=null?Math.min(configure,totalEligible):configure;
 }
 // Disponibilité de normes fiables (percentiles) pour une variable de phase CMJ, dans la
