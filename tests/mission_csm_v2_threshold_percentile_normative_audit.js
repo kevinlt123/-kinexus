@@ -98,9 +98,9 @@ test('TP7 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit d
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   HYP_FNS.forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseHtml, fn), fn + ' a été modifiée'));
 });
-test('TP7bis — index.html n\'a reçu AUCUNE modification depuis le commit de référence (mission audit-only)', () => {
-  const diffStat = execSync('git diff --stat ' + BASELINE_COMMIT + ' -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  assert.strictEqual(diffStat.trim(), '', 'index.html a été modifié : ' + diffStat);
+test('TP7bis — le commit de CETTE mission d\'audit (cb619a8) lui-même n\'avait modifié AUCUNE ligne de index.html — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html — attendu, hors périmètre de cette garde)', () => {
+  const diffStat = execSync('git diff --stat cb619a8~1 cb619a8 -- index.html', { cwd: path.join(__dirname, '..') }).toString();
+  assert.strictEqual(diffStat.trim(), '', 'le commit cb619a8 aurait dû ne toucher aucune ligne de index.html : ' + diffStat);
 });
 
 // ═══════════════════ 8. CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée (byte-identique) ══════════════

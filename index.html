@@ -7737,6 +7737,54 @@ function csmV2MobilityYbtAssociation(clinicalProfile){
   }
   return{supported:false,sentence:null};
 }
+// ── MISSION — PRINCIPE DU MINIMUM DIAGNOSTIQUE SUFFISANT ────────────────────────────────────────
+// "Une variable diagnostique pertinente, valide, disponible et classifiable suffit à diagnostiquer
+// une qualité." Couche additive PURE : ne modifie AUCUN moteur HYP-XX-01 LOCKED, ne recalcule AUCUN
+// seuil/norme/statut — lit exclusivement functionScores[quality].diagnosticEvidence, l'objet DÉJÀ
+// produit par le moteur HYP correspondant (le même objet dont CSM_V2_CLINICAL_VARIABLE_MATRIX est
+// dérivé, ici avec les VRAIES données du patient au lieu de testData={}). csmV2VariableMatrixLeafKeys
+// (Mission AB, LOCKED, réutilisée telle quelle) identifie les feuilles ; une feuille est "éligible"
+// si son champ .status (déjà calculé par le moteur HYP via applyThr — NORMS ou THRESHOLDS, jamais
+// recalculé ici) est non nul, c.-à-d. qu'une classification a RÉELLEMENT été produite pour CE
+// patient. §8 de la mission : une variable NORMS sans population compatible ne produit jamais de
+// .status réel côté moteur HYP -> jamais comptée ici, aucune règle nouvelle nécessaire. Ne confond
+// jamais "diagnostiquée" (>=1 preuve éligible) et "convergence"/"robustesse" (nombre de preuves,
+// concordance) — ces notions restent exclusivement dans csmV2QualitySeverity/unipodalFunctionalDeficit
+// (LOCKED, jamais touchés).
+function csmV2QualityHasSufficientDiagnosticEvidence(quality,functionScores){
+  var hyp=functionScores&&functionScores[quality];
+  var diagnosticEvidence=(hyp&&(hyp.diagnosticEvidence||hyp.diagnostic))||{};
+  var leafPaths=csmV2VariableMatrixLeafKeys(diagnosticEvidence);
+  var eligible=[];
+  leafPaths.forEach(function(path){
+    var node=path.split('.').reduce(function(o,k){return o&&typeof o==='object'?o[k]:undefined;},diagnosticEvidence);
+    // 'indisponible' est le placeholder "aucune donnée/aucune classification" utilisé par plusieurs
+    // moteurs HYP (ex. Réactivité/Puissance/Explosivité, cf. index.html ~L5647/5899) au même titre
+    // que status=null (Absorption) — vérifié empiriquement : avec testData={} sur les 8 moteurs, ces
+    // 2 valeurs sont les SEULES observées pour .status. Jamais une nouvelle règle de classification :
+    // exclut uniquement les 2 placeholders déjà utilisés par le code LOCKED lui-même.
+    var hasRealStatus=node&&typeof node==='object'&&!Array.isArray(node)&&('status' in node)&&node.status!=null&&node.status!=='indisponible';
+    if(hasRealStatus)eligible.push({variableKey:path,status:node.status,valdName:(CMJ_VAR_META[path]||{}).valdName||path});
+  });
+  return{
+    quality:quality,
+    diagnosticVariableCount:leafPaths.length,
+    diagnosticVariableKeys:leafPaths,
+    eligibleDiagnosticEvidence:eligible,
+    eligibleCount:eligible.length,
+    sufficientDiagnosticEvidence:eligible.length>=1,
+    primaryDiagnosticVariable:eligible.length?eligible[0].variableKey:null,
+    secondaryDiagnosticVariables:eligible.length>1?eligible.slice(1).map(function(e){return e.variableKey;}):[],
+    reason:eligible.length>=1
+      ?(eligible.length+' variable(s) diagnostique(s) classifiable(s) pour ce bilan (>= 1 suffit, principe du minimum diagnostique suffisant)')
+      :('aucune variable diagnostique classifiable pour ce bilan (0/'+leafPaths.length+') -> NOT_DETERMINED')
+  };
+}
+function computeCsmV2QualityDiagnosticSufficiency(functionScores){
+  var out={};
+  HYP_CSM_QUALITIES.forEach(function(q){out[q]=csmV2QualityHasSufficientDiagnosticEvidence(q,functionScores);});
+  return out;
+}
 function computeCsmV2(functionScores,testData){
   var qualities=computeHypClinicalSynthesisQualities(functionScores);
   var absoluteEvidence={};
@@ -7891,6 +7939,13 @@ function computeCsmV2(functionScores,testData){
   // Mission AI (déblocage diagnostique P0 + CMJ par phases) — couche additive PURE au-dessus de tout
   // ce qui précède, cf. section "MISSION AI" ci-dessus.
   var clinicalDiagnosticChainV2=computeCsmV2ClinicalDiagnosticChainAll(CSM_V2_CLINICAL_VARIABLE_MATRIX,clinicalCausalReasoningV2,symmetryEvidence,informationalTestsV2,CSM_V2_CMJ_PHASE_MATRIX,clinicalCompletenessAuditV2);
+  // Mission — principe du minimum diagnostique suffisant : couche additive PURE au-dessus de tout ce
+  // qui précède (cf. csmV2QualityHasSufficientDiagnosticEvidence ci-dessus). Ne modifie AUCUNE
+  // sévérité/statut déjà calculé — expose uniquement, par qualité, si >=1 variable diagnostique est
+  // réellement classifiable pour CE bilan (functionScores[quality].diagnosticEvidence, données
+  // réelles du patient), distinct de CSM_V2_CLINICAL_VARIABLE_MATRIX (référence STATIQUE,
+  // testData={}, jamais modifiée).
+  var qualityDiagnosticSufficiencyV2=computeCsmV2QualityDiagnosticSufficiency(functionScores);
 
   return{
     csmV2Id:'CSM-V2',
@@ -8032,6 +8087,10 @@ function computeCsmV2(functionScores,testData){
     // quand bloquée — couche additive PURE, aucun recalcul de seuil/norme/relation.
     clinicalDiagnosticChain:clinicalDiagnosticChainV2,
     cmjPhaseMatrix:CSM_V2_CMJ_PHASE_MATRIX,
+    // Mission — principe du minimum diagnostique suffisant : par qualité, sufficientDiagnosticEvidence
+    // (>=1 variable diagnostique classifiable pour CE patient), primaryDiagnosticVariable, éventuelles
+    // secondaryDiagnosticVariables — couche additive PURE, cf. csmV2QualityHasSufficientDiagnosticEvidence.
+    qualityDiagnosticSufficiency:qualityDiagnosticSufficiencyV2,
     // Mission AB (matrice clinique de référence) — VARIABLE -> RÔLE -> QUALITÉ -> MÉCANISME ->
     // RELATIONS -> CONSÉQUENCES -> DONNÉES MANQUANTES. Référence STATIQUE (calculée une seule fois au
     // chargement, indépendante de ce patient) exposée ici pour être consommable par les futurs

@@ -127,9 +127,9 @@ test('GC8 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit d
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   HYP_FNS.forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseHtml, fn), fn + ' a été modifiée'));
 });
-test('GC8bis — index.html n\'a reçu AUCUNE modification depuis le commit de référence (mission audit-only)', () => {
-  const diffStat = execSync('git diff --stat ' + BASELINE_COMMIT + ' -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  assert.strictEqual(diffStat.trim(), '', 'index.html a été modifié : ' + diffStat);
+test('GC8bis — le commit de CETTE mission d\'audit (b5a38f2) lui-même n\'avait modifié AUCUNE ligne de index.html — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html — attendu, hors périmètre de cette garde)', () => {
+  const diffStat = execSync('git diff --stat b5a38f2~1 b5a38f2 -- index.html', { cwd: path.join(__dirname, '..') }).toString();
+  assert.strictEqual(diffStat.trim(), '', 'le commit b5a38f2 aurait dû ne toucher aucune ligne de index.html : ' + diffStat);
 });
 
 // ═══════════════════ 9. CSM_V2_CLINICAL_VARIABLE_MATRIX reste inchangée ═════════════════════════

@@ -108,9 +108,9 @@ test('GA6 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit d
   // une future dérive sans re-belier tout le corps de fonction.
   assert.ok(Object.values(hashes).every((n) => n > 0));
 });
-test('GA6bis — index.html n\'a reçu AUCUNE modification depuis le commit de référence de cette mission d\'audit (mission audit-only)', () => {
-  const diffStat = execSync('git diff --stat ' + BASELINE_COMMIT + ' -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  assert.strictEqual(diffStat.trim(), '', 'index.html a été modifié par une mission qui devait être audit-only : ' + diffStat);
+test('GA6bis — le commit de CETTE mission d\'audit (fc6b97b) lui-même n\'avait modifié AUCUNE ligne de index.html — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée, principe du minimum diagnostique suffisant, a depuis modifié index.html — attendu, hors périmètre de cette garde)', () => {
+  const diffStat = execSync('git diff --stat fc6b97b~1 fc6b97b -- index.html', { cwd: path.join(__dirname, '..') }).toString();
+  assert.strictEqual(diffStat.trim(), '', 'le commit fc6b97b aurait dû ne toucher aucune ligne de index.html : ' + diffStat);
 });
 
 // ═══════════════════ 7. Les mappings récemment validés sont retrouvés ═══════════════════════════
