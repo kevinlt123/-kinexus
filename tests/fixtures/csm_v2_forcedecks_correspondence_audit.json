@@ -1,0 +1,1729 @@
+{
+  "generatedAt": "2026-09-03T08:54:39.299Z",
+  "mission": "MISSION — AUDIT GLOBAL CSM V2 x FORCEDECKS",
+  "baselineCommit": "fc6b97b",
+  "kinexusVariableInventory": [
+    {
+      "key": "height",
+      "canonical": "cmj_height",
+      "label": "Height (cm)",
+      "phase": "FLIGHT_OUTPUT",
+      "subPhase": null,
+      "correspondence": "AMBIGUOUS",
+      "matchedHeader": "Jump Height (Flight Time) [cm]",
+      "matchedFile": "yannis_forcedecks_09_01_6.csv",
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "rsi_mod",
+      "canonical": "cmj_rsi_mod",
+      "label": "RSI Mod",
+      "phase": "FLIGHT_OUTPUT",
+      "subPhase": null,
+      "correspondence": "AMBIGUOUS",
+      "matchedHeader": "RSI-modified [m/s]",
+      "matchedFile": "yannis_forcedecks_09_01_8.csv",
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "peak_power",
+      "canonical": "cmj_peak_power",
+      "label": "Peak Power (W/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Peak Power / BM [W/kg]",
+      "matchedFile": "yannis_forcedecks_09_01_8.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_8.csv",
+        "header": "Peak Power / BM [W/kg]",
+        "raw": "46.1",
+        "bw": 77.46,
+        "kinexusValue": 46.1,
+        "unit": "W/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            5,
+            120
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "conc_impulse",
+      "canonical": "cmj_conc_impulse",
+      "label": "Impulsion concentrique (Ns/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Concentric Impulse [N s]",
+      "matchedFile": "yannis_forcedecks_09_01_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_2.csv",
+        "header": "Concentric Impulse [N s]",
+        "raw": "188.1",
+        "bw": 77.46,
+        "kinexusValue": 188.1,
+        "unit": "Ns/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            0.5,
+            10
+          ],
+          "ok": false,
+          "reason": "Valeur (188.1) hors plage physiquement possible [0.5 – 10] pour cette variable."
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "peak_vel",
+      "canonical": "cmj_peak_vel",
+      "label": "Peak Velocity (m/s)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "tto",
+      "canonical": "cmj_tto",
+      "label": "Time to Take Off (ms)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "depth",
+      "canonical": "cmj_depth",
+      "label": "Countermovement Depth (cm)",
+      "phase": "UNLOADING",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Countermovement Depth [cm]",
+      "matchedFile": "yannis_forcedecks_09_01_3.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_3.csv",
+        "header": "Countermovement Depth [cm]",
+        "raw": "-36.1",
+        "bw": 77.46,
+        "kinexusValue": -36.1,
+        "unit": "cm",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            2,
+            60
+          ],
+          "ok": false,
+          "reason": "Valeur (-36.1) hors plage physiquement possible [2 – 60] pour cette variable."
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "ecc_peak_force",
+      "canonical": "cmj_ecc_peak_force",
+      "label": "Eccentric Peak Force (N/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Peak Force / BM [N/kg]",
+      "matchedFile": "yannis_forcedecks_09_01_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_5.csv",
+        "header": "Eccentric Peak Force / BM [N/kg]",
+        "raw": "20.8",
+        "bw": 77.46,
+        "kinexusValue": 20.8,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "ecc_peak_vel",
+      "canonical": "cmj_ecc_peak_vel",
+      "label": "Peak Eccentric Velocity (m/s)",
+      "phase": "UNLOADING",
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "Eccentric Peak Velocity [m/s]",
+      "matchedFile": "yannis_forcedecks_09_01_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_5.csv",
+        "header": "Eccentric Peak Velocity [m/s]",
+        "raw": "-0.82",
+        "bw": 77.46,
+        "kinexusValue": -0.82,
+        "unit": "m/s",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            0.2,
+            5
+          ],
+          "ok": false,
+          "reason": "Valeur (-0.82) hors plage physiquement possible [0.2 – 5] pour cette variable."
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "conc_peak_force",
+      "canonical": "cmj_conc_peak_force",
+      "label": "Concentric Peak Force (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric Peak Force / BM [N/kg]",
+      "matchedFile": "yannis_forcedecks_09_01_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_2.csv",
+        "header": "Concentric Peak Force / BM [N/kg]",
+        "raw": "20.9",
+        "bw": 77.46,
+        "kinexusValue": 20.9,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "conc_mean_force",
+      "canonical": "cmj_conc_mean_force",
+      "label": "Concentric Mean Force (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric Mean Force / BM [N/kg]",
+      "matchedFile": "yannis_forcedecks_09_01_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_2.csv",
+        "header": "Concentric Mean Force / BM [N/kg]",
+        "raw": "17.3",
+        "bw": 77.46,
+        "kinexusValue": 17.3,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_PLUS_LR_PLUS_ASYM"
+    },
+    {
+      "key": "conc_mean_vel",
+      "canonical": "cmj_conc_mean_vel",
+      "label": "Concentric Mean Velocity (m/s)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Concentric Mean Velocity [m/s]",
+      "matchedFile": "yannis_forcedecks_09_01_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_2.csv",
+        "header": "Concentric Mean Velocity [m/s]",
+        "raw": "1.53",
+        "bw": 77.46,
+        "kinexusValue": 1.53,
+        "unit": "m/s",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "conc_mean_power",
+      "canonical": "cmj_conc_mean_power",
+      "label": "Concentric Mean Power (W/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Concentric Mean Power [W]",
+      "matchedFile": "yannis_forcedecks_09_01_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_2.csv",
+        "header": "Concentric Mean Power [W]",
+        "raw": "1863",
+        "bw": 77.46,
+        "kinexusValue": 24.051123160340822,
+        "unit": "W/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "conc_rfd",
+      "canonical": "cmj_conc_rfd",
+      "label": "Concentric Rate of Force (N/s)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric RFD [N/s]",
+      "matchedFile": "yannis_forcedecks_09_01_3.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_3.csv",
+        "header": "Concentric RFD [N/s]",
+        "raw": "2441",
+        "bw": 77.46,
+        "kinexusValue": 2441,
+        "unit": "N/s",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "conc_duration",
+      "canonical": "cmj_conc_duration",
+      "label": "Concentric Duration (ms)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Concentric Duration [ms]",
+      "matchedFile": "yannis_forcedecks_09_01_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_2.csv",
+        "header": "Concentric Duration [ms]",
+        "raw": "328",
+        "bw": 77.46,
+        "kinexusValue": 328,
+        "unit": "ms",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "conc_displacement",
+      "canonical": "cmj_conc_displacement",
+      "label": "Concentric Displacement (cm)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "braking_duration",
+      "canonical": "cmj_braking_duration",
+      "label": "Braking Phase Duration (ms)",
+      "phase": "BRAKING",
+      "subPhase": "eccentric_deceleration",
+      "correspondence": "EXACT",
+      "matchedHeader": "Eccentric Deceleration Phase Duration [s]",
+      "matchedFile": "yannis_forcedecks_09_01_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_4.csv",
+        "header": "Eccentric Deceleration Phase Duration [s]",
+        "raw": "0.268",
+        "bw": 77.46,
+        "kinexusValue": 268,
+        "unit": "ms",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            50,
+            2000
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "braking_impulse",
+      "canonical": "cmj_braking_impulse",
+      "label": "Braking Impulse (Ns/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Deceleration Impulse / BM [N s/kg]",
+      "matchedFile": "yannis_forcedecks_09_01_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_4.csv",
+        "header": "Eccentric Deceleration Impulse / BM [N s/kg]",
+        "raw": "1.09",
+        "bw": 77.46,
+        "kinexusValue": 1.09,
+        "unit": "Ns/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            0.2,
+            8
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_PLUS_ASYM"
+    },
+    {
+      "key": "braking_peak_force",
+      "canonical": "cmj_braking_peak_force",
+      "label": "Braking Peak Force (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Deceleration Peak Force [N]",
+      "matchedFile": "yannis_forcedecks_09_01_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_4.csv",
+        "header": "Eccentric Deceleration Peak Force [N]",
+        "raw": "1613.0",
+        "bw": 77.46,
+        "kinexusValue": 20.82365091660212,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "braking_rfd",
+      "canonical": "cmj_braking_rfd",
+      "label": "Braking Rate of Force / BM (N/kg/s)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Deceleration RFD [N/s]",
+      "matchedFile": "yannis_forcedecks_09_01_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_4.csv",
+        "header": "Eccentric Deceleration RFD [N/s]",
+        "raw": "3508",
+        "bw": 77.46,
+        "kinexusValue": 45.287890524141496,
+        "unit": "N/kg/s",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            1,
+            1000
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_PLUS_ASYM"
+    },
+    {
+      "key": "braking_rfd_abs",
+      "canonical": "cmj_braking_rfd_abs",
+      "label": "Braking Rate of Force - Absolue (N/s)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "Eccentric Deceleration RFD [N/s]",
+      "matchedFile": "yannis_forcedecks_09_01_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_4.csv",
+        "header": "Eccentric Deceleration RFD [N/s]",
+        "raw": "3508",
+        "bw": 77.46,
+        "kinexusValue": 3508,
+        "unit": "N/s",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            10,
+            20000
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "braking_power",
+      "canonical": "cmj_braking_power",
+      "label": "Braking Power (W/kg)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Deceleration Mean Power / BM [W/kg]",
+      "matchedFile": "yannis_forcedecks_09_01_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_4.csv",
+        "header": "Eccentric Deceleration Mean Power / BM [W/kg]",
+        "raw": "10.1",
+        "bw": 77.46,
+        "kinexusValue": 10.1,
+        "unit": "W/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "propulsion_eff",
+      "canonical": "cmj_propulsion_eff",
+      "label": "Propulsion Efficiency (%)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "braking_eff",
+      "canonical": "cmj_braking_eff",
+      "label": "Braking Efficiency (%)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "ft_ct_ratio",
+      "canonical": "cmj_ft_ct_ratio",
+      "label": "FT:CT Ratio",
+      "phase": "FLIGHT_OUTPUT",
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "Flight Time:Contraction Time",
+      "matchedFile": "yannis_forcedecks_09_01_6.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_6.csv",
+        "header": "Flight Time:Contraction Time",
+        "raw": "0.54",
+        "bw": 77.46,
+        "kinexusValue": 0.54,
+        "unit": null,
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            0.1,
+            3
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "conc_impulse_100",
+      "canonical": "cmj_conc_impulse_100",
+      "label": "Impulsion concentrique @100ms (Ns/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric Impulse-100ms [N s]",
+      "matchedFile": "yannis_forcedecks_09_01_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_2.csv",
+        "header": "Concentric Impulse-100ms [N s]",
+        "raw": "80.5",
+        "bw": 77.46,
+        "kinexusValue": 80.5,
+        "unit": "Ns/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            0.1,
+            4
+          ],
+          "ok": false,
+          "reason": "Valeur (80.5) hors plage physiquement possible [0.1 – 4] pour cette variable."
+        }
+      },
+      "gdStatus": "GLOBAL_PLUS_ASYM"
+    },
+    {
+      "key": "ecc_decel",
+      "canonical": "cmj_ecc_decel",
+      "label": "Eccentric Deceleration (m/s²)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "conc_peak_vel",
+      "canonical": "cmj_conc_peak_vel",
+      "label": "Concentric Peak Velocity (m/s)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric Peak Velocity [m/s]",
+      "matchedFile": "yannis_forcedecks_09_01_3.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_3.csv",
+        "header": "Concentric Peak Velocity [m/s]",
+        "raw": "2.64",
+        "bw": 77.46,
+        "kinexusValue": 2.64,
+        "unit": "m/s",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "ecc_mean_force",
+      "canonical": "cmj_ecc_mean_force",
+      "label": "Eccentric Mean Force (N/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Eccentric Mean Force [N]",
+      "matchedFile": "yannis_forcedecks_09_01_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_5.csv",
+        "header": "Eccentric Mean Force [N]",
+        "raw": "761",
+        "bw": 77.46,
+        "kinexusValue": 9.824425509940616,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "ecc_mean_power",
+      "canonical": "cmj_ecc_mean_power",
+      "label": "Eccentric Mean Power (W/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Mean Power / BM [W/kg]",
+      "matchedFile": "yannis_forcedecks_09_01_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_5.csv",
+        "header": "Eccentric Mean Power / BM [W/kg]",
+        "raw": "6.27",
+        "bw": 77.46,
+        "kinexusValue": 6.27,
+        "unit": "W/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            1,
+            80
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "landing_peak_force",
+      "canonical": "cmj_landing_peak_force",
+      "label": "Landing Peak Force (N/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Peak Landing Force [N]",
+      "matchedFile": "yannis_forcedecks_09_02_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_5.csv",
+        "header": "Peak Landing Force [N]",
+        "raw": "4491",
+        "bw": 77.46,
+        "kinexusValue": 57.97831138652208,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            5,
+            120
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_PLUS_LR_PLUS_ASYM"
+    },
+    {
+      "key": "landing_mean_force",
+      "canonical": "cmj_landing_mean_force",
+      "label": "Landing Mean Force (N/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "Mean Landing Force [N]",
+      "matchedFile": "yannis_forcedecks_09_02_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_4.csv",
+        "header": "Mean Landing Force [N]",
+        "raw": "955.0",
+        "bw": 77.46,
+        "kinexusValue": 12.32894397108185,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "landing_impulse",
+      "canonical": "cmj_landing_impulse",
+      "label": "Landing Impulse (Ns/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Landing Impulse [N s]",
+      "matchedFile": "yannis_forcedecks_09_02_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_4.csv",
+        "header": "Landing Impulse [N s]",
+        "raw": "70.4",
+        "bw": 77.46,
+        "kinexusValue": 70.4,
+        "unit": "Ns/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            0.2,
+            10
+          ],
+          "ok": false,
+          "reason": "Valeur (70.4) hors plage physiquement possible [0.2 – 10] pour cette variable."
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "landing_rfd",
+      "canonical": "cmj_landing_rfd",
+      "label": "Landing RFD (N/s)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Landing RFD [N/s]",
+      "matchedFile": "yannis_forcedecks_09_02_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_4.csv",
+        "header": "Landing RFD [N/s]",
+        "raw": "90590",
+        "bw": 77.46,
+        "kinexusValue": 90590,
+        "unit": "N/s",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "landing_duration",
+      "canonical": "cmj_landing_duration",
+      "label": "Landing Phase Duration (ms)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "landing_mean_power",
+      "canonical": "cmj_landing_mean_power",
+      "label": "Landing Mean Power (W/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "Mean Landing Power [W]",
+      "matchedFile": "yannis_forcedecks_09_02_4.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_4.csv",
+        "header": "Mean Landing Power [W]",
+        "raw": "543.60",
+        "bw": 77.46,
+        "kinexusValue": 7.017815646785438,
+        "unit": "W/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "time_to_stab",
+      "canonical": "cmj_time_to_stab",
+      "label": "Time to Stabilization (s)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "post_landing_stability",
+      "canonical": "cmj_post_landing_stability",
+      "label": "Post Landing Stability",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "NO_CURRENT_EQUIVALENT",
+      "matchedHeader": null,
+      "matchedFile": null,
+      "numericCheck": {
+        "checked": false
+      },
+      "gdStatus": "NO_LR_AVAILABLE"
+    },
+    {
+      "key": "force_zero_vel",
+      "canonical": "cmj_force_zero_vel",
+      "label": "Force at Zero Velocity (N/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Force at Zero Velocity [N]",
+      "matchedFile": "yannis_forcedecks_09_01_6.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_6.csv",
+        "header": "Force at Zero Velocity [N]",
+        "raw": "1613",
+        "bw": 77.46,
+        "kinexusValue": 20.82365091660212,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_PLUS_LR"
+    },
+    {
+      "key": "force_peak_power",
+      "canonical": "cmj_force_peak_power",
+      "label": "Force at Peak Power (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Force at Peak Power [N]",
+      "matchedFile": "yannis_forcedecks_09_01_6.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_6.csv",
+        "header": "Force at Peak Power [N]",
+        "raw": "1504",
+        "bw": 77.46,
+        "kinexusValue": 19.416473018332045,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_PLUS_LR_PLUS_ASYM"
+    },
+    {
+      "key": "flight_time",
+      "canonical": "cmj_flight_time",
+      "label": "Flight Time (ms)",
+      "phase": "FLIGHT_OUTPUT",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Flight Time [ms]",
+      "matchedFile": "yannis_forcedecks_09_01_6.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_6.csv",
+        "header": "Flight Time [ms]",
+        "raw": "518",
+        "bw": 77.46,
+        "kinexusValue": 518,
+        "unit": "ms",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            100,
+            1200
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "ecc_decel_rfd_asym",
+      "canonical": "cmj_ecc_decel_rfd_asym",
+      "label": "Eccentric Deceleration RFD Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Deceleration RFD % (Asym) (%)",
+      "matchedFile": "yannis_forcedecks_09_01_10.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_10.csv",
+        "header": "Eccentric Deceleration RFD % (Asym) (%)",
+        "raw": "54 L",
+        "bw": 77.46,
+        "kinexusValue": 54,
+        "unit": "%",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "ecc_decel_rfd_L",
+      "canonical": "cmj_ecc_decel_rfd_L",
+      "label": "Eccentric Deceleration RFD Gauche (N/s)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Deceleration RFD [N/s] (L)",
+      "matchedFile": "yannis_forcedecks_09_02_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_2.csv",
+        "header": "Eccentric Deceleration RFD [N/s] (L)",
+        "raw": "1759",
+        "bw": 77.46,
+        "kinexusValue": 1759,
+        "unit": "N/s",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "ecc_decel_rfd_R",
+      "canonical": "cmj_ecc_decel_rfd_R",
+      "label": "Eccentric Deceleration RFD Droit (N/s)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Deceleration RFD [N/s] (R)",
+      "matchedFile": "yannis_forcedecks_09_02_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_2.csv",
+        "header": "Eccentric Deceleration RFD [N/s] (R)",
+        "raw": "1281",
+        "bw": 77.46,
+        "kinexusValue": 1281,
+        "unit": "N/s",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "ecc_decel_impulse_asym",
+      "canonical": "cmj_ecc_decel_impulse_asym",
+      "label": "Eccentric Deceleration Impulse Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Eccentric Deceleration Impulse % (Asym) (%)",
+      "matchedFile": "yannis_forcedecks_09_01_10.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_10.csv",
+        "header": "Eccentric Deceleration Impulse % (Asym) (%)",
+        "raw": "14 L",
+        "bw": 77.46,
+        "kinexusValue": 14,
+        "unit": "%",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "conc_force_impulse_asym",
+      "canonical": "cmj_conc_force_impulse_asym",
+      "label": "Concentric Mean Force / Impulse Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric Mean Force % (Asym) (%)",
+      "matchedFile": "yannis_forcedecks_09_01_9.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_9.csv",
+        "header": "Concentric Mean Force % (Asym) (%)",
+        "raw": "18 L",
+        "bw": 77.46,
+        "kinexusValue": 18,
+        "unit": "%",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "force_peak_power_asym",
+      "canonical": "cmj_force_peak_power_asym",
+      "label": "Force at Peak Power Asymmetry (%)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Force at Peak Power % (Asym) (%)",
+      "matchedFile": "yannis_forcedecks_09_02_0.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_0.csv",
+        "header": "Force at Peak Power % (Asym) (%)",
+        "raw": "10 L",
+        "bw": 77.46,
+        "kinexusValue": 10,
+        "unit": "%",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "p2_conc_impulse_asym",
+      "canonical": "cmj_p2_conc_impulse_asym",
+      "label": "P2 Concentric Impulse Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "P2 Concentric Impulse % (Asym) (%)",
+      "matchedFile": "yannis_forcedecks_09_02_0.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_0.csv",
+        "header": "P2 Concentric Impulse % (Asym) (%)",
+        "raw": "15 L",
+        "bw": 77.46,
+        "kinexusValue": 15,
+        "unit": "%",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "landing_peak_force_asym",
+      "canonical": "cmj_landing_peak_force_asym",
+      "label": "Peak Landing Force Asymmetry (%)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Peak Landing Force % (Asym) (%)",
+      "matchedFile": "yannis_forcedecks_09_02_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_5.csv",
+        "header": "Peak Landing Force % (Asym) (%)",
+        "raw": "19 L",
+        "bw": 77.46,
+        "kinexusValue": 19,
+        "unit": "%",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "landing_peak_force_L",
+      "canonical": "cmj_landing_peak_force_L",
+      "label": "Peak Landing Force Gauche (N/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Peak Landing Force [N] (L)",
+      "matchedFile": "yannis_forcedecks_09_02_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_5.csv",
+        "header": "Peak Landing Force [N] (L)",
+        "raw": "2525",
+        "bw": 77.46,
+        "kinexusValue": 32.59746966176091,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            5,
+            120
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "landing_peak_force_R",
+      "canonical": "cmj_landing_peak_force_R",
+      "label": "Peak Landing Force Droit (N/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Peak Landing Force [N] (R)",
+      "matchedFile": "yannis_forcedecks_09_02_6.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_6.csv",
+        "header": "Peak Landing Force [N] (R)",
+        "raw": "2030",
+        "bw": 77.46,
+        "kinexusValue": 26.207074619158277,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            5,
+            120
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "ecc_duration",
+      "canonical": "cmj_ecc_duration",
+      "label": "Eccentric Duration (ms)",
+      "phase": "UNLOADING",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Eccentric Duration [ms]",
+      "matchedFile": "yannis_forcedecks_09_01_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_5.csv",
+        "header": "Eccentric Duration [ms]",
+        "raw": "734",
+        "bw": 77.46,
+        "kinexusValue": 734,
+        "unit": "ms",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "ecc_peak_power",
+      "canonical": "cmj_ecc_peak_power",
+      "label": "Eccentric Peak Power (W/kg)",
+      "phase": "BRAKING",
+      "subPhase": "eccentric_deceleration",
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Eccentric Peak Power / BM [W/kg]",
+      "matchedFile": "yannis_forcedecks_09_01_5.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_5.csv",
+        "header": "Eccentric Peak Power / BM [W/kg]",
+        "raw": "12.4",
+        "bw": 77.46,
+        "kinexusValue": 12.4,
+        "unit": "W/kg",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "contraction_time",
+      "canonical": "cmj_contraction_time",
+      "label": "Contraction Time (ms)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Contraction Time [ms]",
+      "matchedFile": "yannis_forcedecks_09_01_3.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_3.csv",
+        "header": "Contraction Time [ms]",
+        "raw": "1062",
+        "bw": 77.46,
+        "kinexusValue": 1062,
+        "unit": "ms",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_ONLY"
+    },
+    {
+      "key": "leg_stiffness",
+      "canonical": "cmj_leg_stiffness",
+      "label": "CMJ Stiffness (N/m)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "CMJ Stiffness [N/m]",
+      "matchedFile": "yannis_forcedecks_09_01_2.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_2.csv",
+        "header": "CMJ Stiffness [N/m]",
+        "raw": "4245",
+        "bw": 77.46,
+        "kinexusValue": 4245,
+        "unit": "N/m",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": "GLOBAL_PLUS_LR_PLUS_ASYM"
+    },
+    {
+      "key": "leg_stiffness_L",
+      "canonical": "cmj_leg_stiffness_L",
+      "label": "CMJ Stiffness Gauche (N/m)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "CMJ Stiffness [N/m] (L)",
+      "matchedFile": "yannis_forcedecks_09_02_0.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_0.csv",
+        "header": "CMJ Stiffness [N/m] (L)",
+        "raw": "2056",
+        "bw": 77.46,
+        "kinexusValue": 2056,
+        "unit": "N/m",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "leg_stiffness_R",
+      "canonical": "cmj_leg_stiffness_R",
+      "label": "CMJ Stiffness Droit (N/m)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "CMJ Stiffness [N/m] (R)",
+      "matchedFile": "yannis_forcedecks_09_02_0.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_0.csv",
+        "header": "CMJ Stiffness [N/m] (R)",
+        "raw": "1983",
+        "bw": 77.46,
+        "kinexusValue": 1983,
+        "unit": "N/m",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "leg_stiffness_asym",
+      "canonical": "cmj_leg_stiffness_asym",
+      "label": "CMJ Stiffness Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "correspondence": "VALIDATED_ALIAS",
+      "matchedHeader": "CMJ Stiffness % (Asym) (%)",
+      "matchedFile": "yannis_forcedecks_09_01_9.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_9.csv",
+        "header": "CMJ Stiffness % (Asym) (%)",
+        "raw": "13 L",
+        "bw": 77.46,
+        "kinexusValue": 13,
+        "unit": "%",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "conc_impulse_100_asym",
+      "canonical": "cmj_conc_impulse_100_asym",
+      "label": "Concentric Impulse-100ms Asymmetry (%)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric Impulse-100ms % (Asym) (%)",
+      "matchedFile": "yannis_forcedecks_09_01_9.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_01_9.csv",
+        "header": "Concentric Impulse-100ms % (Asym) (%)",
+        "raw": "19 L",
+        "bw": 77.46,
+        "kinexusValue": 19,
+        "unit": "%",
+        "pass": true,
+        "technicalPlausibility": null
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "conc_mean_force_L",
+      "canonical": "cmj_conc_mean_force_L",
+      "label": "Concentric Mean Force Gauche (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric Mean Force [N] (L)",
+      "matchedFile": "yannis_forcedecks_09_02_1.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_1.csv",
+        "header": "Concentric Mean Force [N] (L)",
+        "raw": "692",
+        "bw": 77.46,
+        "kinexusValue": 8.933643170668732,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "conc_mean_force_R",
+      "canonical": "cmj_conc_mean_force_R",
+      "label": "Concentric Mean Force Droit (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Concentric Mean Force [N] (R)",
+      "matchedFile": "yannis_forcedecks_09_02_1.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_1.csv",
+        "header": "Concentric Mean Force [N] (R)",
+        "raw": "619",
+        "bw": 77.46,
+        "kinexusValue": 7.991221275497032,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "force_peak_power_L",
+      "canonical": "cmj_force_peak_power_L",
+      "label": "Force at Peak Power Gauche (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Force at Peak Power [N] (L)",
+      "matchedFile": "yannis_forcedecks_09_02_3.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_3.csv",
+        "header": "Force at Peak Power [N] (L)",
+        "raw": "778",
+        "bw": 77.46,
+        "kinexusValue": 10.043893622514847,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "force_peak_power_R",
+      "canonical": "cmj_force_peak_power_R",
+      "label": "Force at Peak Power Droit (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "correspondence": "EXACT",
+      "matchedHeader": "Force at Peak Power [N] (R)",
+      "matchedFile": "yannis_forcedecks_09_02_3.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_3.csv",
+        "header": "Force at Peak Power [N] (R)",
+        "raw": "696",
+        "bw": 77.46,
+        "kinexusValue": 8.985282726568553,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "force_zero_vel_L",
+      "canonical": "cmj_force_zero_vel_L",
+      "label": "Force at Zero Velocity Gauche (N/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Force at Zero Velocity [N] (L)",
+      "matchedFile": "yannis_forcedecks_09_02_3.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_3.csv",
+        "header": "Force at Zero Velocity [N] (L)",
+        "raw": "781",
+        "bw": 77.46,
+        "kinexusValue": 10.082623289439711,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": null
+    },
+    {
+      "key": "force_zero_vel_R",
+      "canonical": "cmj_force_zero_vel_R",
+      "label": "Force at Zero Velocity Droit (N/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "correspondence": "EXACT_WITH_VARIANT",
+      "matchedHeader": "Force at Zero Velocity [N] (R)",
+      "matchedFile": "yannis_forcedecks_09_02_3.csv",
+      "numericCheck": {
+        "checked": true,
+        "file": "yannis_forcedecks_09_02_3.csv",
+        "header": "Force at Zero Velocity [N] (R)",
+        "raw": "745",
+        "bw": 77.46,
+        "kinexusValue": 9.617867286341339,
+        "unit": "N/kg",
+        "pass": true,
+        "technicalPlausibility": {
+          "range": [
+            3,
+            60
+          ],
+          "ok": true,
+          "reason": null
+        }
+      },
+      "gdStatus": null
+    }
+  ],
+  "correspondenceVocabulary": "EXACT / EXACT_WITH_VARIANT / VALIDATED_ALIAS / AMBIGUOUS / PLAUSIBLE_UNVALIDATED / NO_CURRENT_EQUIVALENT",
+  "correspondenceDistribution": {
+    "AMBIGUOUS": 2,
+    "EXACT_WITH_VARIANT": 27,
+    "EXACT": 18,
+    "NO_CURRENT_EQUIVALENT": 9,
+    "VALIDATED_ALIAS": 9
+  },
+  "collisions": [
+    {
+      "kinexusKey": "braking_rfd/braking_impulse",
+      "candidateA": "Eccentric Deceleration RFD/Impulse",
+      "candidateB": "Eccentric Braking RFD/Impulse",
+      "valuesDiffer": true,
+      "whyDifferent": "Deux familles ForceDecks réellement distinctes (valeurs différentes sur la même ligne réelle) — \"Eccentric Braking\" et \"Eccentric Deceleration\" ne sont PAS synonymes malgré la proximité lexicale.",
+      "correctMapping": "braking_rfd/braking_impulse ne ciblent QUE la famille \"Eccentric Deceleration\" (FD_KPI_PATTERNS), jamais \"Eccentric Braking\" — corrigé et verrouillé par test de non-régression (SM11bis).",
+      "status": "RESOLVED_VERIFIED"
+    },
+    {
+      "kinexusKey": "height",
+      "candidateA": "Jump Height (Flight Time) [cm]",
+      "candidateB": "Jump Height (Imp-Mom) [cm]",
+      "valuesDiffer": true,
+      "whyDifferent": "Deux méthodes de calcul VALD réellement différentes (32.9 vs 30.0 sur la même séance réelle) — jamais une simple variante d'écriture.",
+      "correctMapping": "AMBIGUOUS assumé — aucune fusion, la colonne réellement importée dépend de l'ordre des colonnes du fichier (comportement non déterministe documenté, SM53bis).",
+      "status": "DOCUMENTED_AMBIGUOUS_NOT_RESOLVED"
+    },
+    {
+      "kinexusKey": "rsi_mod",
+      "candidateA": "RSI-modified [m/s]",
+      "candidateB": "RSI-modified (Imp-Mom) [m/s]",
+      "valuesDiffer": "non vérifié sur les 17 fichiers réels (les deux colonnes n'apparaissent jamais ensemble dans le même fichier)",
+      "whyDifferent": "Même famille RSI-Mod, méthode de calcul potentiellement différente (Imp-Mom vs Flight-Time) — même pattern de risque que height.",
+      "correctMapping": "AMBIGUOUS assumé par précaution (§7 des missions précédentes) — jamais fusionné.",
+      "status": "DOCUMENTED_AMBIGUOUS_NOT_RESOLVED"
+    },
+    {
+      "kinexusKey": "conc_rfd",
+      "candidateA": "Concentric RFD [N/s]",
+      "candidateB": "Concentric Maximum RFD [N/s] / Concentric RFD - 100ms/200ms/50ms [N/s]",
+      "valuesDiffer": true,
+      "whyDifferent": "fdFindCol exige une correspondance TOKEN À TOKEN + absence de mot/nombre supplémentaire non prévu par le motif — \"Maximum\" et \"- 100ms\" ne sont jamais absorbés silencieusement.",
+      "correctMapping": "conc_rfd résout exclusivement \"Concentric RFD [N/s]\" — vérifié programmatiquement dans cette mission (aucune collision).",
+      "status": "VERIFIED_NO_COLLISION"
+    },
+    {
+      "kinexusKey": "braking_duration",
+      "candidateA": "Eccentric Deceleration Phase Duration",
+      "candidateB": "(ancien) \"Braking Phase Duration\" — colonne inexistante dans l'export réel",
+      "valuesDiffer": "n/a (candidate B jamais observée dans les 17 fichiers réels)",
+      "whyDifferent": "Motif restreint (mission evidence secondaire) à la seule colonne réellement présente.",
+      "correctMapping": "braking_duration -> \"Eccentric Deceleration Phase Duration\" uniquement, motif \"Braking Phase Duration\" retiré.",
+      "status": "RESOLVED_VERIFIED"
+    },
+    {
+      "kinexusKey": "leg_stiffness",
+      "candidateA": "CMJ Stiffness [N/m]",
+      "candidateB": "Lower-Limb Stiffness (métrique ForceDecks distincte, jamais observée dans les 17 fichiers avec ce nom exact)",
+      "valuesDiffer": "non applicable (candidate B non présente dans ces fixtures)",
+      "whyDifferent": "Documenté comme 2 métriques ForceDecks conceptuellement différentes (raideur globale du mouvement vs raideur segmentaire) — jamais aliasées.",
+      "correctMapping": "leg_stiffness ne cible que \"CMJ Stiffness\"/\"Leg Stiffness\" (le second terme n'a jamais été observé isolément dans un contexte \"Lower-Limb\" réel).",
+      "status": "RESOLVED_VERIFIED"
+    }
+  ],
+  "technicalPlausibilityGaps": [
+    {
+      "key": "conc_impulse",
+      "correspondence": "EXACT",
+      "header": "Concentric Impulse [N s]",
+      "kinexusValue": 188.1,
+      "range": [
+        0.5,
+        10
+      ],
+      "reason": "Valeur (188.1) hors plage physiquement possible [0.5 – 10] pour cette variable."
+    },
+    {
+      "key": "depth",
+      "correspondence": "EXACT",
+      "header": "Countermovement Depth [cm]",
+      "kinexusValue": -36.1,
+      "range": [
+        2,
+        60
+      ],
+      "reason": "Valeur (-36.1) hors plage physiquement possible [2 – 60] pour cette variable."
+    },
+    {
+      "key": "ecc_peak_vel",
+      "correspondence": "VALIDATED_ALIAS",
+      "header": "Eccentric Peak Velocity [m/s]",
+      "kinexusValue": -0.82,
+      "range": [
+        0.2,
+        5
+      ],
+      "reason": "Valeur (-0.82) hors plage physiquement possible [0.2 – 5] pour cette variable."
+    },
+    {
+      "key": "conc_impulse_100",
+      "correspondence": "EXACT_WITH_VARIANT",
+      "header": "Concentric Impulse-100ms [N s]",
+      "kinexusValue": 80.5,
+      "range": [
+        0.1,
+        4
+      ],
+      "reason": "Valeur (80.5) hors plage physiquement possible [0.1 – 4] pour cette variable."
+    },
+    {
+      "key": "landing_impulse",
+      "correspondence": "EXACT",
+      "header": "Landing Impulse [N s]",
+      "kinexusValue": 70.4,
+      "range": [
+        0.2,
+        10
+      ],
+      "reason": "Valeur (70.4) hors plage physiquement possible [0.2 – 10] pour cette variable."
+    }
+  ],
+  "gdStatusDistribution": {
+    "GLOBAL_ONLY": 28,
+    "NO_LR_AVAILABLE": 9,
+    "GLOBAL_PLUS_LR_PLUS_ASYM": 4,
+    "GLOBAL_PLUS_ASYM": 3,
+    "GLOBAL_PLUS_LR": 1
+  },
+  "sourceVsCalculated": {
+    "sourceAsymmetryColumns": [
+      "ecc_decel_rfd_asym",
+      "ecc_decel_impulse_asym",
+      "conc_force_impulse_asym",
+      "force_peak_power_asym",
+      "p2_conc_impulse_asym",
+      "landing_peak_force_asym",
+      "leg_stiffness_asym",
+      "conc_impulse_100_asym"
+    ],
+    "calculatedSymmetryEntries": [
+      {
+        "key": "reactiviteSecondaire.cmj_leg_stiffness_symmetry",
+        "formula": "autoLSI(leg_stiffness_L, leg_stiffness_R) — LSI générique déjà existant, jamais une nouvelle formule",
+        "output": "lsi, asymmetryPercent, status(normal/deficient/non_determinable)"
+      }
+    ],
+    "note": "Les kpis \"_asym\" (ex. leg_stiffness_asym) importent une colonne \"% (Asym)\" NATIVE ForceDecks — SOURCE. Les entrées \"*_symmetry\" de la couche evidence secondaire CALCULENT un LSI depuis les paires G/D — CALCULATED, jamais une nouvelle formule (autoLSI/lsiSt déjà existants). Les deux coexistent pour leg_stiffness sans collision (namespaces distincts)."
+  },
+  "reverseGaps": [
+    {
+      "header": "Concentric RFD - 50ms [N/s]",
+      "classification": "RELEVANT_MISSING",
+      "note": "Réel, G/D + Asym natif disponibles, aucune clé rfd50 pour cmj."
+    },
+    {
+      "header": "Concentric RFD - 100ms [N/s]",
+      "classification": "RELEVANT_MISSING",
+      "note": "Réel, G/D + Asym natif disponibles, aucune clé rfd100 pour cmj."
+    },
+    {
+      "header": "Concentric RFD - 200ms [N/s]",
+      "classification": "RELEVANT_MISSING",
+      "note": "Réel, G/D + Asym natif disponibles, aucune clé rfd200 pour cmj."
+    },
+    {
+      "header": "Concentric Maximum RFD [N/s]",
+      "classification": "DIFFERENT_METHOD",
+      "note": "Pic instantané vs conc_rfd déjà mappé (méthode différente) — jamais fusionné sans preuve."
+    },
+    {
+      "header": "Landing RFD 50ms [N/s]",
+      "classification": "POTENTIALLY_RELEVANT",
+      "note": "Variante windowed de landing_rfd (déjà mappé, tier info) — utilité clinique non démontrée."
+    },
+    {
+      "header": "Eccentric Braking RFD/Impulse (famille complète)",
+      "classification": "DIFFERENT_METHOD",
+      "note": "Famille distincte de \"Eccentric Deceleration\" (valeurs différentes) — jamais mappée, décision déjà actée."
+    },
+    {
+      "header": "Jump Height (FT) Relative Peak Landing Force [N/cm]",
+      "classification": "OUT_OF_SCOPE",
+      "note": "Métrique composite normalisée par la hauteur de vol — aucun équivalent conceptuel Kinexus actuel."
+    },
+    {
+      "header": "Jump Height (FT) Relative Landing RFD [N/s/cm]",
+      "classification": "OUT_OF_SCOPE",
+      "note": "Idem — composite, hors périmètre du catalogue actuel."
+    },
+    {
+      "header": "P1 Concentric Impulse [N s]",
+      "classification": "POTENTIALLY_RELEVANT",
+      "note": "Sous-phase P1 explicitement autorisée par cette mission (§Concentric->P1/P2) — non représentée (seul P2 l'est via p2_conc_impulse_asym, contextuel)."
+    },
+    {
+      "header": "Eccentric Yielding/Unloading Phase Impulse/Mean Force/RFD (familles complètes)",
+      "classification": "REDUNDANT",
+      "note": "Sous-découpage de la phase excentrique déjà couverte par ecc_duration/braking_rfd/braking_impulse/ecc_mean_power/ecc_peak_power à un niveau agrégé suffisant pour l'usage clinique actuel."
+    },
+    {
+      "header": "Concentric:Eccentric / Eccentric:Concentric Mean Force Ratio",
+      "classification": "POTENTIALLY_RELEVANT",
+      "note": "Ratio composite freinage/propulsion — utilité clinique non démontrée, jamais audité par le praticien."
+    }
+  ]
+}

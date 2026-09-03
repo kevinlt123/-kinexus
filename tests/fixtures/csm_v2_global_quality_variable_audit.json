@@ -1,0 +1,2024 @@
+{
+  "generatedAt": "2026-09-03T08:44:48.667Z",
+  "mission": "MISSION AI — GLOBAL QUALITY × VARIABLE AUDIT POST-ADDITIONS",
+  "baselineCommit": "54a513f",
+  "execSummary": {
+    "qualitiesAudited": 8,
+    "totalVariablesInMatrix": 150,
+    "diagnosticCount": 26,
+    "confirmativeCount": 28,
+    "explanatoryCount": 96,
+    "classifiableCount": 29,
+    "nonClassifiableCount": 121,
+    "cmjKpiCatalogSize": 65,
+    "cmjNewestAdditionsUnused": 54,
+    "gapsP0": 2,
+    "gapsP1": 1,
+    "gapsP2": 2,
+    "gapsP3": 8
+  },
+  "qualitySummary": [
+    {
+      "quality": "Mobilité",
+      "hypId": "HYP-MOB-01",
+      "diagnostic": 1,
+      "confirmative": 1,
+      "explanatory": 1,
+      "symmetryEvidenceKeys": 1,
+      "classifiable": 1,
+      "coverage": "LIMITED",
+      "robustness": "MODERATE",
+      "topGapLevel": "P3"
+    },
+    {
+      "quality": "Réactivité",
+      "hypId": "HYP-REA-01",
+      "diagnostic": 2,
+      "confirmative": 9,
+      "explanatory": 10,
+      "symmetryEvidenceKeys": 4,
+      "classifiable": 2,
+      "coverage": "LIMITED",
+      "robustness": "MODERATE",
+      "topGapLevel": "P3"
+    },
+    {
+      "quality": "Absorption",
+      "hypId": "HYP-ABS-01",
+      "diagnostic": 3,
+      "confirmative": 0,
+      "explanatory": 9,
+      "symmetryEvidenceKeys": 6,
+      "classifiable": 0,
+      "coverage": "PARTIAL",
+      "robustness": "FRAGILE",
+      "topGapLevel": "P0"
+    },
+    {
+      "quality": "Force",
+      "hypId": "HYP-FOR-01",
+      "diagnostic": 4,
+      "confirmative": 4,
+      "explanatory": 5,
+      "symmetryEvidenceKeys": 38,
+      "classifiable": 1,
+      "coverage": "PARTIAL",
+      "robustness": "FRAGILE",
+      "topGapLevel": "P3"
+    },
+    {
+      "quality": "Puissance",
+      "hypId": "HYP-PUI-01",
+      "diagnostic": 2,
+      "confirmative": 1,
+      "explanatory": 6,
+      "symmetryEvidenceKeys": 3,
+      "classifiable": 1,
+      "coverage": "LIMITED",
+      "robustness": "FRAGILE",
+      "topGapLevel": "P3"
+    },
+    {
+      "quality": "Explosivité",
+      "hypId": "HYP-EXP-01",
+      "diagnostic": 2,
+      "confirmative": 4,
+      "explanatory": 9,
+      "symmetryEvidenceKeys": 2,
+      "classifiable": 0,
+      "coverage": "LIMITED",
+      "robustness": "FRAGILE",
+      "topGapLevel": "P0"
+    },
+    {
+      "quality": "Stabilisation",
+      "hypId": "HYP-STA-01",
+      "diagnostic": 6,
+      "confirmative": 0,
+      "explanatory": 11,
+      "symmetryEvidenceKeys": 21,
+      "classifiable": 2,
+      "coverage": "PARTIAL",
+      "robustness": "MODERATE",
+      "topGapLevel": "P2"
+    },
+    {
+      "quality": "Endurance",
+      "hypId": "HYP-END-01",
+      "diagnostic": 6,
+      "confirmative": 9,
+      "explanatory": 45,
+      "symmetryEvidenceKeys": 60,
+      "classifiable": 1,
+      "coverage": "PARTIAL",
+      "robustness": "MODERATE",
+      "topGapLevel": "P3"
+    }
+  ],
+  "cmjInventory": [
+    {
+      "key": "height",
+      "canonical": "cmj_height",
+      "label": "Height (cm)",
+      "phase": "FLIGHT_OUTPUT",
+      "subPhase": null,
+      "inferredPhase": "FLIGHT_OUTPUT",
+      "tier": "master",
+      "threshold": true,
+      "fdPatternExists": true,
+      "fdAuditStatus": "AMBIGUOUS",
+      "fdHeaders": [
+        "Jump Height (Flight Time) [cm]",
+        "Jump Height (Imp-Mom) [cm]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "rsi_mod",
+      "canonical": "cmj_rsi_mod",
+      "label": "RSI Mod",
+      "phase": "FLIGHT_OUTPUT",
+      "subPhase": null,
+      "inferredPhase": "FLIGHT_OUTPUT",
+      "tier": "master",
+      "threshold": true,
+      "fdPatternExists": true,
+      "fdAuditStatus": "AMBIGUOUS",
+      "fdHeaders": [
+        "RSI-modified (Imp-Mom) [m/s]",
+        "RSI-modified [m/s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "peak_power",
+      "canonical": "cmj_peak_power",
+      "label": "Peak Power (W/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Peak Power / BM [W/kg]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_impulse",
+      "canonical": "cmj_conc_impulse",
+      "label": "Impulsion concentrique (Ns/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "support",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Concentric Impulse [N s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "peak_vel",
+      "canonical": "cmj_peak_vel",
+      "label": "Peak Velocity (m/s)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "tto",
+      "canonical": "cmj_tto",
+      "label": "Time to Take Off (ms)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "depth",
+      "canonical": "cmj_depth",
+      "label": "Countermovement Depth (cm)",
+      "phase": "UNLOADING",
+      "subPhase": null,
+      "inferredPhase": "UNLOADING",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Countermovement Depth [cm]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_peak_force",
+      "canonical": "cmj_ecc_peak_force",
+      "label": "Eccentric Peak Force (N/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Peak Force / BM [N/kg]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_peak_vel",
+      "canonical": "cmj_ecc_peak_vel",
+      "label": "Peak Eccentric Velocity (m/s)",
+      "phase": "UNLOADING",
+      "subPhase": null,
+      "inferredPhase": "UNLOADING",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Eccentric Peak Velocity [m/s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_peak_force",
+      "canonical": "cmj_conc_peak_force",
+      "label": "Concentric Peak Force (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Concentric Peak Force / BM [N/kg]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_mean_force",
+      "canonical": "cmj_conc_mean_force",
+      "label": "Concentric Mean Force (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Concentric Mean Force / BM [N/kg]"
+      ],
+      "hasLR": true,
+      "asymKey": "conc_force_impulse_asym",
+      "dominantSideAvailable": true,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_mean_vel",
+      "canonical": "cmj_conc_mean_vel",
+      "label": "Concentric Mean Velocity (m/s)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Concentric Mean Velocity [m/s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_mean_power",
+      "canonical": "cmj_conc_mean_power",
+      "label": "Concentric Mean Power (W/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Concentric Mean Power [W]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Puissance",
+          "evidenceKey": "puissanceSecondaire.cmj_conc_mean_power",
+          "role": "explicative",
+          "kind": "value"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "conc_rfd",
+      "canonical": "cmj_conc_rfd",
+      "label": "Concentric Rate of Force (N/s)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Concentric RFD [N/s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_duration",
+      "canonical": "cmj_conc_duration",
+      "label": "Concentric Duration (ms)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Concentric Duration [ms]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_displacement",
+      "canonical": "cmj_conc_displacement",
+      "label": "Concentric Displacement (cm)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "braking_duration",
+      "canonical": "cmj_braking_duration",
+      "label": "Braking Phase Duration (ms)",
+      "phase": "BRAKING",
+      "subPhase": "eccentric_deceleration",
+      "inferredPhase": "BRAKING",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Eccentric Deceleration Phase Duration [s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Absorption",
+          "evidenceKey": "absorptionSecondaire.cmj_braking_duration",
+          "role": "explicative",
+          "kind": "value"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "braking_impulse",
+      "canonical": "cmj_braking_impulse",
+      "label": "Braking Impulse (Ns/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "support",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Deceleration Impulse / BM [N s/kg]"
+      ],
+      "hasLR": false,
+      "asymKey": "ecc_decel_impulse_asym",
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "braking_peak_force",
+      "canonical": "cmj_braking_peak_force",
+      "label": "Braking Peak Force (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Deceleration Peak Force [N]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "braking_rfd",
+      "canonical": "cmj_braking_rfd",
+      "label": "Braking Rate of Force / BM (N/kg/s)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Deceleration RFD / BM [N/s/kg]"
+      ],
+      "hasLR": false,
+      "asymKey": "ecc_decel_rfd_asym",
+      "dominantSideAvailable": true,
+      "usedByLockedEngine": [
+        {
+          "quality": "Absorption",
+          "role": "DIRECT",
+          "variablePath": "diagnosticEvidence.braking_rfd",
+          "classifiability": "non_classifiable"
+        }
+      ],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "braking_rfd_abs",
+      "canonical": "cmj_braking_rfd_abs",
+      "label": "Braking Rate of Force - Absolue (N/s)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Eccentric Deceleration RFD [N/s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "braking_power",
+      "canonical": "cmj_braking_power",
+      "label": "Braking Power (W/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Deceleration Mean Power / BM [W/kg]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "propulsion_eff",
+      "canonical": "cmj_propulsion_eff",
+      "label": "Propulsion Efficiency (%)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "braking_eff",
+      "canonical": "cmj_braking_eff",
+      "label": "Braking Efficiency (%)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ft_ct_ratio",
+      "canonical": "cmj_ft_ct_ratio",
+      "label": "FT:CT Ratio",
+      "phase": "FLIGHT_OUTPUT",
+      "subPhase": null,
+      "inferredPhase": "FLIGHT_OUTPUT",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Flight Time:Contraction Time"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_impulse_100",
+      "canonical": "cmj_conc_impulse_100",
+      "label": "Impulsion concentrique @100ms (Ns/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Concentric Impulse-100ms [N s]"
+      ],
+      "hasLR": false,
+      "asymKey": "conc_impulse_100_asym",
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_decel",
+      "canonical": "cmj_ecc_decel",
+      "label": "Eccentric Deceleration (m/s²)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_peak_vel",
+      "canonical": "cmj_conc_peak_vel",
+      "label": "Concentric Peak Velocity (m/s)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Concentric Peak Velocity [m/s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_mean_force",
+      "canonical": "cmj_ecc_mean_force",
+      "label": "Eccentric Mean Force (N/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Eccentric Mean Force [N]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_mean_power",
+      "canonical": "cmj_ecc_mean_power",
+      "label": "Eccentric Mean Power (W/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Mean Power / BM [W/kg]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Absorption",
+          "evidenceKey": "absorptionSecondaire.cmj_ecc_mean_power",
+          "role": "explicative",
+          "kind": "value"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "landing_peak_force",
+      "canonical": "cmj_landing_peak_force",
+      "label": "Landing Peak Force (N/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Peak Landing Force [N]"
+      ],
+      "hasLR": true,
+      "asymKey": "landing_peak_force_asym",
+      "dominantSideAvailable": true,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "landing_mean_force",
+      "canonical": "cmj_landing_mean_force",
+      "label": "Landing Mean Force (N/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Mean Landing Force [N]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "landing_impulse",
+      "canonical": "cmj_landing_impulse",
+      "label": "Landing Impulse (Ns/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": "support",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Landing Impulse [N s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Absorption",
+          "evidenceKey": "absorptionSecondaire.cmj_landing_impulse",
+          "role": "support",
+          "kind": "value"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "landing_rfd",
+      "canonical": "cmj_landing_rfd",
+      "label": "Landing RFD (N/s)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Landing RFD [N/s]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "landing_duration",
+      "canonical": "cmj_landing_duration",
+      "label": "Landing Phase Duration (ms)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "landing_mean_power",
+      "canonical": "cmj_landing_mean_power",
+      "label": "Landing Mean Power (W/kg)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Mean Landing Power [W]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "time_to_stab",
+      "canonical": "cmj_time_to_stab",
+      "label": "Time to Stabilization (s)",
+      "phase": "LANDING",
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "post_landing_stability",
+      "canonical": "cmj_post_landing_stability",
+      "label": "Post Landing Stability",
+      "phase": "LANDING",
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "NOT_MAPPED",
+      "fdHeaders": [],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "force_zero_vel",
+      "canonical": "cmj_force_zero_vel",
+      "label": "Force at Zero Velocity (N/kg)",
+      "phase": "BRAKING",
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": "master",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Force at Zero Velocity [N]"
+      ],
+      "hasLR": true,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [
+        {
+          "quality": "Absorption",
+          "role": "DIRECT",
+          "variablePath": "diagnosticEvidence.force_zero_vel",
+          "classifiability": "non_classifiable"
+        }
+      ],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "force_peak_power",
+      "canonical": "cmj_force_peak_power",
+      "label": "Force at Peak Power (N/kg)",
+      "phase": "CONCENTRIC",
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": "support",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Force at Peak Power [N]"
+      ],
+      "hasLR": true,
+      "asymKey": "force_peak_power_asym",
+      "dominantSideAvailable": true,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "flight_time",
+      "canonical": "cmj_flight_time",
+      "label": "Flight Time (ms)",
+      "phase": "FLIGHT_OUTPUT",
+      "subPhase": null,
+      "inferredPhase": "FLIGHT_OUTPUT",
+      "tier": "support",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Flight Time [ms]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_decel_rfd_asym",
+      "canonical": "cmj_ecc_decel_rfd_asym",
+      "label": "Eccentric Deceleration RFD Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Deceleration RFD % (Asym) (%)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_decel_rfd_L",
+      "canonical": "cmj_ecc_decel_rfd_L",
+      "label": "Eccentric Deceleration RFD Gauche (N/s)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Eccentric Deceleration RFD [N/s] (L)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_decel_rfd_R",
+      "canonical": "cmj_ecc_decel_rfd_R",
+      "label": "Eccentric Deceleration RFD Droit (N/s)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Eccentric Deceleration RFD [N/s] (R)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_decel_impulse_asym",
+      "canonical": "cmj_ecc_decel_impulse_asym",
+      "label": "Eccentric Deceleration Impulse Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Deceleration Impulse % (Asym) (%)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_force_impulse_asym",
+      "canonical": "cmj_conc_force_impulse_asym",
+      "label": "Concentric Mean Force / Impulse Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Concentric Impulse % (Asym) (%)",
+        "Concentric Mean Force % (Asym) (%)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "force_peak_power_asym",
+      "canonical": "cmj_force_peak_power_asym",
+      "label": "Force at Peak Power Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Force at Peak Power % (Asym) (%)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "p2_conc_impulse_asym",
+      "canonical": "cmj_p2_conc_impulse_asym",
+      "label": "P2 Concentric Impulse Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "P2 Concentric Impulse % (Asym) (%)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "landing_peak_force_asym",
+      "canonical": "cmj_landing_peak_force_asym",
+      "label": "Peak Landing Force Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Peak Landing Force % (Asym) (%)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "landing_peak_force_L",
+      "canonical": "cmj_landing_peak_force_L",
+      "label": "Peak Landing Force Gauche (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Peak Landing Force [N] (L)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "landing_peak_force_R",
+      "canonical": "cmj_landing_peak_force_R",
+      "label": "Peak Landing Force Droit (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "LANDING",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Peak Landing Force [N] (R)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "ecc_duration",
+      "canonical": "cmj_ecc_duration",
+      "label": "Eccentric Duration (ms)",
+      "phase": "UNLOADING",
+      "subPhase": null,
+      "inferredPhase": "UNLOADING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Duration [ms]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Absorption",
+          "evidenceKey": "absorptionSecondaire.cmj_ecc_duration",
+          "role": "explicative",
+          "kind": "value"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "ecc_peak_power",
+      "canonical": "cmj_ecc_peak_power",
+      "label": "Eccentric Peak Power (W/kg)",
+      "phase": "BRAKING",
+      "subPhase": "eccentric_deceleration",
+      "inferredPhase": "BRAKING",
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Eccentric Peak Power / BM [W/kg]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Absorption",
+          "evidenceKey": "absorptionSecondaire.cmj_ecc_peak_power",
+          "role": "explicative_mecanistique",
+          "kind": "value"
+        },
+        {
+          "quality": "Puissance",
+          "evidenceKey": "puissanceSecondaire.cmj_ecc_peak_power",
+          "role": "explicative",
+          "kind": "value"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "contraction_time",
+      "canonical": "cmj_contraction_time",
+      "label": "Contraction Time (ms)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Contraction Time [ms]"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Réactivité",
+          "evidenceKey": "reactiviteSecondaire.cmj_contraction_time",
+          "role": "support",
+          "kind": "value"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "leg_stiffness",
+      "canonical": "cmj_leg_stiffness",
+      "label": "CMJ Stiffness (N/m)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": "info",
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "CMJ Stiffness [N/m]"
+      ],
+      "hasLR": true,
+      "asymKey": "leg_stiffness_asym",
+      "dominantSideAvailable": true,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Réactivité",
+          "evidenceKey": "reactiviteSecondaire.cmj_leg_stiffness",
+          "role": "explicative",
+          "kind": "value"
+        },
+        {
+          "quality": "Réactivité",
+          "evidenceKey": "reactiviteSecondaire.cmj_leg_stiffness_symmetry",
+          "role": "explicative",
+          "kind": "symmetry"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "leg_stiffness_L",
+      "canonical": "cmj_leg_stiffness_L",
+      "label": "CMJ Stiffness Gauche (N/m)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "CMJ Stiffness [N/m] (L)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "leg_stiffness_R",
+      "canonical": "cmj_leg_stiffness_R",
+      "label": "CMJ Stiffness Droit (N/m)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "CMJ Stiffness [N/m] (R)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "leg_stiffness_asym",
+      "canonical": "cmj_leg_stiffness_asym",
+      "label": "CMJ Stiffness Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": null,
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "CMJ Stiffness % (Asym) (%)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_impulse_100_asym",
+      "canonical": "cmj_conc_impulse_100_asym",
+      "label": "Concentric Impulse-100ms Asymmetry (%)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED_WITH_VARIANT",
+      "fdHeaders": [
+        "Concentric Impulse-100ms % (Asym) (%)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [
+        {
+          "quality": "Explosivité",
+          "evidenceKey": "explosiviteSecondaire.cmj_conc_impulse_100_asym",
+          "role": "support",
+          "kind": "value"
+        }
+      ],
+      "exploitableStatus": "AVAILABLE_WITHOUT_THRESHOLD"
+    },
+    {
+      "key": "conc_mean_force_L",
+      "canonical": "cmj_conc_mean_force_L",
+      "label": "Concentric Mean Force Gauche (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Concentric Mean Force [N] (L)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "conc_mean_force_R",
+      "canonical": "cmj_conc_mean_force_R",
+      "label": "Concentric Mean Force Droit (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Concentric Mean Force [N] (R)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "force_peak_power_L",
+      "canonical": "cmj_force_peak_power_L",
+      "label": "Force at Peak Power Gauche (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Force at Peak Power [N] (L)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "force_peak_power_R",
+      "canonical": "cmj_force_peak_power_R",
+      "label": "Force at Peak Power Droit (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "CONCENTRIC",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Force at Peak Power [N] (R)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "force_zero_vel_L",
+      "canonical": "cmj_force_zero_vel_L",
+      "label": "Force at Zero Velocity Gauche (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Force at Zero Velocity [N] (L)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    },
+    {
+      "key": "force_zero_vel_R",
+      "canonical": "cmj_force_zero_vel_R",
+      "label": "Force at Zero Velocity Droit (N/kg)",
+      "phase": null,
+      "subPhase": null,
+      "inferredPhase": "BRAKING",
+      "tier": null,
+      "threshold": false,
+      "fdPatternExists": true,
+      "fdAuditStatus": "MAPPED",
+      "fdHeaders": [
+        "Force at Zero Velocity [N] (R)"
+      ],
+      "hasLR": false,
+      "asymKey": null,
+      "dominantSideAvailable": false,
+      "usedByLockedEngine": [],
+      "usedBySecondaryEvidence": [],
+      "exploitableStatus": "AVAILABLE_UNUSED"
+    }
+  ],
+  "phaseSummary": {
+    "UNLOADING": {
+      "availableCount": 3,
+      "diagnosticCount": 0,
+      "confirmativeCount": 0,
+      "explanatoryCount": 1,
+      "asymmetricCount": 0,
+      "unusedCount": 2,
+      "variables": [
+        "depth",
+        "ecc_peak_vel",
+        "ecc_duration"
+      ]
+    },
+    "BRAKING": {
+      "availableCount": 13,
+      "diagnosticCount": 2,
+      "confirmativeCount": 0,
+      "explanatoryCount": 3,
+      "asymmetricCount": 3,
+      "unusedCount": 8,
+      "variables": [
+        "ecc_peak_force",
+        "braking_duration",
+        "braking_impulse",
+        "braking_rfd",
+        "braking_rfd_abs",
+        "braking_eff",
+        "ecc_decel",
+        "ecc_mean_force",
+        "ecc_mean_power",
+        "force_zero_vel",
+        "ecc_peak_power",
+        "force_zero_vel_L",
+        "force_zero_vel_R"
+      ]
+    },
+    "CONCENTRIC": {
+      "availableCount": 19,
+      "diagnosticCount": 0,
+      "confirmativeCount": 0,
+      "explanatoryCount": 2,
+      "asymmetricCount": 3,
+      "unusedCount": 17,
+      "variables": [
+        "peak_power",
+        "conc_impulse",
+        "conc_peak_force",
+        "conc_mean_force",
+        "conc_mean_vel",
+        "conc_mean_power",
+        "conc_rfd",
+        "conc_duration",
+        "conc_displacement",
+        "propulsion_eff",
+        "conc_impulse_100",
+        "conc_peak_vel",
+        "force_peak_power",
+        "force_peak_power_asym",
+        "conc_impulse_100_asym",
+        "conc_mean_force_L",
+        "conc_mean_force_R",
+        "force_peak_power_L",
+        "force_peak_power_R"
+      ]
+    },
+    "FLIGHT_OUTPUT": {
+      "availableCount": 4,
+      "diagnosticCount": 0,
+      "confirmativeCount": 0,
+      "explanatoryCount": 0,
+      "asymmetricCount": 0,
+      "unusedCount": 4,
+      "variables": [
+        "height",
+        "rsi_mod",
+        "ft_ct_ratio",
+        "flight_time"
+      ]
+    },
+    "LANDING": {
+      "availableCount": 11,
+      "diagnosticCount": 0,
+      "confirmativeCount": 0,
+      "explanatoryCount": 1,
+      "asymmetricCount": 1,
+      "unusedCount": 10,
+      "variables": [
+        "landing_peak_force",
+        "landing_mean_force",
+        "landing_impulse",
+        "landing_rfd",
+        "landing_duration",
+        "landing_mean_power",
+        "time_to_stab",
+        "post_landing_stability",
+        "landing_peak_force_asym",
+        "landing_peak_force_L",
+        "landing_peak_force_R"
+      ]
+    }
+  },
+  "transversalVariables": [
+    "peak_vel",
+    "tto",
+    "braking_peak_force",
+    "braking_power",
+    "ecc_decel_rfd_asym",
+    "ecc_decel_rfd_L",
+    "ecc_decel_rfd_R",
+    "ecc_decel_impulse_asym",
+    "conc_force_impulse_asym",
+    "p2_conc_impulse_asym",
+    "contraction_time",
+    "leg_stiffness",
+    "leg_stiffness_L",
+    "leg_stiffness_R",
+    "leg_stiffness_asym"
+  ],
+  "redundancyPairs": [
+    {
+      "primary": "rsi_mod",
+      "secondary": "ft_ct_ratio",
+      "reason": "Fortement corrélées (mesures apparentées de la réactivité au sol) — RSI-Mod reste la seule preuve diagnostique (THRESHOLDS.cmj_rsi_mod existe, pas pour ft_ct_ratio)."
+    },
+    {
+      "primary": "height",
+      "secondary": "flight_time",
+      "reason": "Flight Time est une variable intermédiaire utilisée pour dériver Jump Height (méthode Flight Time) — jamais une seconde preuve indépendante de la performance de saut."
+    },
+    {
+      "primary": "conc_mean_force",
+      "secondary": "conc_impulse",
+      "reason": "Liées mathématiquement via la durée de la phase concentrique — répondent à des questions différentes (pic vs cumul) mais ne doivent pas être interprétées comme deux déficits indépendants sans justification."
+    },
+    {
+      "primary": "peak_power",
+      "secondary": "conc_mean_power",
+      "reason": "Peak Power et Mean Power décrivent le même phénomène (production de puissance concentrique) à deux instants différents — ne jamais surpondérer en comptant les deux comme preuves indépendantes."
+    },
+    {
+      "primary": "ecc_mean_power",
+      "secondary": "ecc_peak_power",
+      "reason": "Complémentaires (moyenne vs pic de la même phase de freinage) — conserver les deux si utiles, jamais deux diagnostics indépendants du même mécanisme."
+    }
+  ],
+  "cmjRfdWindowedAudit": {
+    "existsInTBKcmj": {
+      "rfd50": false,
+      "rfd100": false,
+      "rfd150": false,
+      "rfd200": false
+    },
+    "existsInCmjVarMeta": {
+      "rfd50": false,
+      "rfd100": false,
+      "rfd150": false,
+      "rfd200": false
+    },
+    "usedByAnyHypEngineForCmj": false,
+    "realForceDecksColumnsFound": [
+      {
+        "header": "Concentric RFD - 50ms [N/s]",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 100ms [N/s]",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 200ms [N/s]",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 50ms [N/s] (L)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 100ms [N/s] (L)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 200ms [N/s] (L)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 50ms [N/s] (R)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 100ms [N/s] (R)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 200ms [N/s] (R)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 50ms % (Asym) (%)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 100ms % (Asym) (%)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      },
+      {
+        "header": "Concentric RFD - 200ms % (Asym) (%)",
+        "presentInAudit": true,
+        "status": "UNMAPPED_CANDIDATE"
+      }
+    ],
+    "note200msOnly150Missing": "Aucune colonne \"Concentric RFD - 150ms\" observée dans les 17 fichiers réels (seulement 50/100/200ms) — rfd150 générique (isométrique) n'a de toute façon aucun équivalent CMJ réel.",
+    "conclusion": "FUTURE_AUDIT / FUTURE_IMPLEMENTATION_CANDIDATE — colonnes réelles présentes (Concentric RFD -50/100/200ms, valeurs + G/D + Asym natif) mais AUCUNE clé Kinexus CMJ dédiée, AUCUN mapping FD_KPI_PATTERNS pour le test cmj, AUCUNE consommation par un moteur HYP ni evidence secondaire. rfd100/150/200 génériques existent UNIQUEMENT pour les tests isométriques (imtp, hip_*, etc.), jamais pour cmj — aucune collision actuelle."
+  },
+  "priorityGapsByQuality": {
+    "Mobilité": [
+      {
+        "level": "P3",
+        "quality": "Mobilité",
+        "variable": [
+          "mobiliteSecondaire.ybt_ant"
+        ],
+        "role": "explicatif",
+        "problem": "1 variable(s) explicative(s) non classifiable(s).",
+        "why": "Amélioration informative uniquement — n'empêche ni le diagnostic ni la confirmation.",
+        "solution": "Ajouter un seuil/une norme si une valeur clinique réelle est démontrée."
+      }
+    ],
+    "Réactivité": [
+      {
+        "level": "P3",
+        "quality": "Réactivité",
+        "variable": [
+          "cmjr.mean_ct",
+          "cmjr.mean_stiffness",
+          "cmjr.mean_rebound_height",
+          "cmjr.mean_rsi",
+          "cmjr.rsi_decay",
+          "cmjr.stiffness_decay",
+          "repeated_hop.mean_rsi",
+          "reactiviteSecondaire.sldj_height",
+          "reactiviteSecondaire.sldj_contact_time",
+          "reactiviteSecondaire.sldj_peak_prop_power"
+        ],
+        "role": "explicatif",
+        "problem": "10 variable(s) explicative(s) non classifiable(s).",
+        "why": "Amélioration informative uniquement — n'empêche ni le diagnostic ni la confirmation.",
+        "solution": "Ajouter un seuil/une norme si une valeur clinique réelle est démontrée."
+      }
+    ],
+    "Absorption": [
+      {
+        "level": "P0",
+        "quality": "Absorption",
+        "variable": "braking_rfd, force_zero_vel, braking_impulse",
+        "role": "diagnostic",
+        "problem": "Aucune des variables diagnostiques de Absorption n'est classifiable (ni THRESHOLDS ni NORMS_V2).",
+        "why": "Bloque toute confirmation diagnostique par valeur absolue — seule une preuve par asymétrie (LSI) reste possible.",
+        "solution": "Ajouter un seuil (THRESHOLDS) ou une population de référence (NORMS_V2) pour au moins une de ces variables."
+      },
+      {
+        "level": "P1",
+        "quality": "Absorption",
+        "variable": null,
+        "role": "relation",
+        "problem": "Aucune relation qualité→qualité validée.",
+        "why": "Empêche d'identifier un mécanisme croisé majeur pour Absorption.",
+        "solution": "Documenter et valider (praticien) une relation HYP_QUALITY_RELATIONS si une hypothèse clinique existe réellement."
+      },
+      {
+        "level": "P2",
+        "quality": "Absorption",
+        "variable": null,
+        "role": "confirmatif",
+        "problem": "Aucune variable confirmative pour Absorption.",
+        "why": "Aucune graduation du support diagnostique n'est possible au-delà de la preuve diagnostique elle-même.",
+        "solution": "Identifier une variable confirmative déjà collectée par un test existant."
+      },
+      {
+        "level": "P3",
+        "quality": "Absorption",
+        "variable": [
+          "capaciteExcentrique.ecc_mean_power",
+          "capaciteExcentrique.ecc_peak_vel",
+          "strategie.depth",
+          "strategie.braking_duration",
+          "absorptionReactive.dj_contact_time",
+          "freinageUnipodal.slcmj_braking_rfd",
+          "freinageUnipodal.slcmj_braking_impulse",
+          "freinageUnipodal.slcmj_peak_braking_force"
+        ],
+        "role": "explicatif",
+        "problem": "8 variable(s) explicative(s) non classifiable(s).",
+        "why": "Amélioration informative uniquement — n'empêche ni le diagnostic ni la confirmation.",
+        "solution": "Ajouter un seuil/une norme si une valeur clinique réelle est démontrée."
+      }
+    ],
+    "Force": [
+      {
+        "level": "P3",
+        "quality": "Force",
+        "variable": [
+          "imtp_rfd100",
+          "imtp_ttpf",
+          "slimtp_rfd100",
+          "iso_belt_squat_rfd100",
+          "sl_iso_push_rfd100"
+        ],
+        "role": "explicatif",
+        "problem": "5 variable(s) explicative(s) non classifiable(s).",
+        "why": "Amélioration informative uniquement — n'empêche ni le diagnostic ni la confirmation.",
+        "solution": "Ajouter un seuil/une norme si une valeur clinique réelle est démontrée."
+      }
+    ],
+    "Puissance": [
+      {
+        "level": "P3",
+        "quality": "Puissance",
+        "variable": [
+          "capacite.force.iso_belt_squat_n",
+          "capacite.rfd.imtp_rfd100",
+          "capacite.ttpf.imtp_ttpf",
+          "capacite.profilForceVitesse.profil_fv_v0",
+          "strategie.cmj_depth",
+          "strategie.cmj_conc_rfd"
+        ],
+        "role": "explicatif",
+        "problem": "6 variable(s) explicative(s) non classifiable(s).",
+        "why": "Amélioration informative uniquement — n'empêche ni le diagnostic ni la confirmation.",
+        "solution": "Ajouter un seuil/une norme si une valeur clinique réelle est démontrée."
+      }
+    ],
+    "Explosivité": [
+      {
+        "level": "P0",
+        "quality": "Explosivité",
+        "variable": "cmj_conc_rfd, cmj_conc_impulse_100",
+        "role": "diagnostic",
+        "problem": "Aucune des variables diagnostiques de Explosivité n'est classifiable (ni THRESHOLDS ni NORMS_V2).",
+        "why": "Bloque toute confirmation diagnostique par valeur absolue — seule une preuve par asymétrie (LSI) reste possible.",
+        "solution": "Ajouter un seuil (THRESHOLDS) ou une population de référence (NORMS_V2) pour au moins une de ces variables."
+      },
+      {
+        "level": "P3",
+        "quality": "Explosivité",
+        "variable": [
+          "forceCapacite.iso_belt_squat_n",
+          "rfd.imtp_ttpf",
+          "biomecanique.cmj_depth",
+          "biomecanique.cmj_conc_duration",
+          "biomecanique.cmj_ecc_mean_power",
+          "biomecanique.cmj_ecc_peak_vel",
+          "biomecanique.cmj_braking_rfd"
+        ],
+        "role": "explicatif",
+        "problem": "7 variable(s) explicative(s) non classifiable(s).",
+        "why": "Amélioration informative uniquement — n'empêche ni le diagnostic ni la confirmation.",
+        "solution": "Ajouter un seuil/une norme si une valeur clinique réelle est démontrée."
+      }
+    ],
+    "Stabilisation": [
+      {
+        "level": "P2",
+        "quality": "Stabilisation",
+        "variable": null,
+        "role": "confirmatif",
+        "problem": "Aucune variable confirmative pour Stabilisation.",
+        "why": "Aucune graduation du support diagnostique n'est possible au-delà de la preuve diagnostique elle-même.",
+        "solution": "Identifier une variable confirmative déjà collectée par un test existant."
+      },
+      {
+        "level": "P3",
+        "quality": "Stabilisation",
+        "variable": [
+          "forceStabilisateurs.hip_abd_rfd100",
+          "forceStabilisateurs.hip_abd_rfd200",
+          "forceStabilisateurs.hip_ext_rfd100",
+          "forceStabilisateurs.hip_ext_rfd200",
+          "forceStabilisateurs.hip_add_rfd100",
+          "forceStabilisateurs.inv_iso_rfd100",
+          "forceStabilisateurs.ev_iso_rfd100",
+          "forceStabilisateurs.df_iso_rfd100",
+          "receptionUnipodale.sllt_peak_landing_force",
+          "receptionUnipodale.sllt_loading_rate"
+        ],
+        "role": "explicatif",
+        "problem": "10 variable(s) explicative(s) non classifiable(s).",
+        "why": "Amélioration informative uniquement — n'empêche ni le diagnostic ni la confirmation.",
+        "solution": "Ajouter un seuil/une norme si une valeur clinique réelle est démontrée."
+      }
+    ],
+    "Endurance": [
+      {
+        "level": "P3",
+        "quality": "Endurance",
+        "variable": [
+          "forceDeFond.slimtp_n",
+          "forceDeFond.slimtp_nkg",
+          "forceDeFond.iso_belt_squat_n",
+          "forceDeFond.iso_belt_squat_nkg",
+          "forceDeFond.sl_iso_push_n",
+          "forceSegmentaire.knee_ext_n",
+          "forceSegmentaire.knee_flex_n",
+          "forceSegmentaire.soleus_iso_n",
+          "forceSegmentaire.gastro_iso_n",
+          "forceSegmentaire.hip_flex_n",
+          "forceSegmentaire.hip_ext_n",
+          "forceSegmentaire.hip_abd_n",
+          "forceSegmentaire.hip_add_n",
+          "forceSegmentaire.df_iso_n",
+          "forceSegmentaire.df_iso_nkg",
+          "forceSegmentaire.inv_iso_n",
+          "forceSegmentaire.inv_iso_nkg",
+          "forceSegmentaire.ev_iso_n",
+          "forceSegmentaire.ev_iso_nkg",
+          "cinetique.slimtp_rfd100",
+          "cinetique.iso_belt_squat_rfd100",
+          "cinetique.sl_iso_push_rfd100",
+          "cinetique.knee_ext_rfd100",
+          "cinetique.knee_flex_rfd100",
+          "cinetique.soleus_iso_rfd100",
+          "cinetique.gastro_iso_rfd100",
+          "cinetique.hip_flex_rfd100",
+          "cinetique.hip_ext_rfd100",
+          "cinetique.hip_abd_rfd100",
+          "cinetique.hip_add_rfd100",
+          "cinetique.df_iso_rfd100",
+          "cinetique.inv_iso_rfd100",
+          "cinetique.ev_iso_rfd100"
+        ],
+        "role": "explicatif",
+        "problem": "33 variable(s) explicative(s) non classifiable(s).",
+        "why": "Amélioration informative uniquement — n'empêche ni le diagnostic ni la confirmation.",
+        "solution": "Ajouter un seuil/une norme si une valeur clinique réelle est démontrée."
+      }
+    ]
+  },
+  "yannisCheck": {
+    "severitiesMatchBaseline": true,
+    "severities": {
+      "Force": "preserved",
+      "Puissance": "modere",
+      "Explosivité": "modere",
+      "Mobilité": "majeur",
+      "Réactivité": "majeur",
+      "Absorption": "majeur",
+      "Stabilisation": "majeur",
+      "Endurance": "majeur"
+    },
+    "secondaryEvidenceOnlyAdditive": {
+      "emptyAsExpected": true,
+      "found": []
+    }
+  }
+}
