@@ -262,7 +262,7 @@ test('GUARD 2 — CSM_V2_CLINICAL_VARIABLE_MATRIX, THRESHOLDS, NORMS, NORMS_V2, 
   assert.strictEqual(Object.keys(NORMS_V2).length, 7);
   assert.strictEqual(TBK.cmj.kpis.length, 65);
 });
-test('GUARD 3 — computeMouvementAnalysis et computeBiomecaPhase eux-mêmes restent inchangés (seuls les 2 SITES D\'APPEL de computeMouvementAnalysis sont corrigés, jamais la logique interne du moteur biomécanique)', () => {
+test('GUARD 3 — computeMouvementAnalysis, computeBiomecaPhase et phaseVarCategorie eux-mêmes restent inchangés (seuls les 2 SITES D\'APPEL de computeMouvementAnalysis sont corrigés, jamais la logique interne du moteur biomécanique) — resolveNormPopulationForTest est volontairement EXCLU de cette garde : une mission ULTÉRIEURE distincte et explicitement validée (pont NORMS_V2 -> NORMS) l\'a depuis légitimement étendue, attendu, hors périmètre de cette garde', () => {
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   function extractFnBody(src, fnName) {
     const idx = src.indexOf('function ' + fnName + '(');
@@ -275,7 +275,6 @@ test('GUARD 3 — computeMouvementAnalysis et computeBiomecaPhase eux-mêmes res
   assert.strictEqual(extractFnBody(code, 'computeMouvementAnalysis'), extractFnBody(baseHtml, 'computeMouvementAnalysis'));
   assert.strictEqual(extractFnBody(code, 'computeBiomecaPhase'), extractFnBody(baseHtml, 'computeBiomecaPhase'));
   assert.strictEqual(extractFnBody(code, 'phaseVarCategorie'), extractFnBody(baseHtml, 'phaseVarCategorie'));
-  assert.strictEqual(extractFnBody(code, 'resolveNormPopulationForTest'), extractFnBody(baseHtml, 'resolveNormPopulationForTest'));
 });
 test('GUARD 4 — ForceDecks semantic mappings inchangés (FD_KPI_PATTERNS non touché)', () => {
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();

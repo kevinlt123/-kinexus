@@ -4536,22 +4536,77 @@ function effectiveNormPop(athlete){
   if(athlete.sexe==='M')return'general_m';
   return null;
 }
+// MISSION — PONT NORMS_V2 -> NORMS (bug pipeline CMJ Yanis, suite du commit 8cddd86). Bridge
+// EXPLICITE, jamais une invention : construit à partir de correspondances DÉJÀ DOCUMENTÉES dans le
+// code lui-même (chaque entrée NORMS_V2 "Sxxx" porte déjà mapping_note:"Deja largement couvert par
+// NORMS actuel" — cf. index.html, table NORMS_V2, extraction VALD 04/08) — ex. S001
+// population_vald:"College - Men's Swimming" correspond EXACTEMENT à NORM_POPULATIONS
+// {key:'college_swim_m',label:'Natation — Homme College'}, ajoutée à NORMS lors de la MÊME
+// extraction VALD (04/08). Chaque paire ci-dessous a été vérifiée individuellement (population_vald
+// + sexe -> clé NORM_POPULATIONS au libellé sémantiquement identique) ; SEULES les correspondances
+// non ambiguës sont incluses. AUCUNE norme/donnée nouvelle : cette table ne fait que RECONNAÎTRE une
+// équivalence déjà attestée par le code — jamais une estimation, jamais un fallback arbitraire (une
+// entrée absente de cette table retourne null, jamais une population devinée).
+// Portée volontairement restreinte à CMJ (testKey==='cmj') — cf. §3/§14 de la mission : rester
+// strictement ciblé, ne pas modifier la résolution des autres tests (imtp/dj/sldj/etc.), qui
+// conservent leur comportement historique inchangé (repli sur normPop pour tout sélecteur objet).
+var CMJ_NORMS_V2_POPULATION_VALD_BRIDGE={
+  "College - Men’s Swimming|Unknown":'college_swim_m',"College - Men's Swimming|Unknown":'college_swim_m',
+  "College - Women’s Swimming|Unknown":'college_swim_f',"College - Women's Swimming|Unknown":'college_swim_f',
+  "College - Men’s Basketball|Unknown":'college_bball_m',"College - Men's Basketball|Unknown":'college_bball_m',
+  "College - Women’s Basketball|Unknown":'college_bball_f',"College - Women's Basketball|Unknown":'college_bball_f',
+  "College - Men’s Volleyball|Unknown":'college_volleyball_m',"College - Men's Volleyball|Unknown":'college_volleyball_m',
+  "College - Men’s Soccer|Unknown":'college_soccer_m',"College - Men's Soccer|Unknown":'college_soccer_m',
+  "College - Women’s Soccer|Unknown":'college_soccer_f',"College - Women's Soccer|Unknown":'college_soccer_f',
+  "College - Women’s Track & Field|Unknown":'college_track_f',"College - Women's Track & Field|Unknown":'college_track_f',
+  "College - Men’s Track & Field|Unknown":'college_track_m',"College - Men's Track & Field|Unknown":'college_track_m',
+  "Rugby Union|Unknown":'rugby_union_m',"Rugby League|Unknown":'rugby_league_m',
+  "Men’s Football (Soccer)|Unknown":'football_m',"Men's Football (Soccer)|Unknown":'football_m',
+  "Women’s Football (Soccer)|Unknown":'football_f',"Women's Football (Soccer)|Unknown":'football_f',
+  "Men’s Tennis|Unknown":'tennis_m',"Men's Tennis|Unknown":'tennis_m',
+  "Women’s Tennis|Unknown":'tennis_f',"Women's Tennis|Unknown":'tennis_f',
+  "Allied Health|Male":'allied_health_m',"Allied Health|Female":'allied_health_f',
+  "Weightlifting|Male":'weightlifting_m',"Weightlifting|Female":'weightlifting_f',
+  "Basketball|Unknown":'bball_general',"Men’s Handball|Unknown":'handball_m',"Men's Handball|Unknown":'handball_m'
+  // "Allied Health|Unknown" et "Endurance Sports|*" volontairement ABSENTS : sexe non déterminable
+  // pour Allied Health sans plus d'info, aucune clé NORM_POPULATIONS "endurance" n'existe -> null,
+  // jamais un fallback devine.
+};
+// Normalise UNE sélection (chaîne legacy déjà valide, OU objet sélecteur NORMS_V2) vers un
+// identifiant canonique de population NORMS/NORM_POPULATIONS — ou null si aucune correspondance
+// fiable n'existe (jamais un fallback arbitraire). Cas gérés (§4 de la mission) : chaîne historique
+// (retournée telle quelle) ; objet portant déjà un norm_population_key explicite (même convention
+// que les entrées Belt Squat, cf. index.html ~L1759) ; objet NORMS_V2 population_vald+sexe résolu
+// via CMJ_NORMS_V2_POPULATION_VALD_BRIDGE (CMJ uniquement) ; tout le reste (objet non reconnu,
+// null, absent, sélection incompatible avec ce test) -> null.
+function normalizeNormSelectionForTest(testKey,selection){
+  if(selection==null)return null;
+  if(typeof selection==='string')return selection||null;
+  if(typeof selection!=='object')return null;
+  if(typeof selection.norm_population_key==='string'&&selection.norm_population_key)return selection.norm_population_key;
+  if(testKey==='cmj'&&typeof selection.population_vald==='string'){
+    var sexeKey=selection.sexe||'Unknown';
+    var bridged=CMJ_NORMS_V2_POPULATION_VALD_BRIDGE[selection.population_vald+'|'+sexeKey];
+    if(bridged&&NORMS[bridged])return bridged; // vérifie que la population résolue existe réellement dans NORMS
+  }
+  return null;
+}
 // Résolveur additif de population normative PAR TEST (mission "AMÉLIORATION FONCTIONNELLE BELT
-// SQUAT", Phase 3/4). Ne remplace PAS effectiveNormPop/athlete.normPopulation — s'y ajoute.
-// Priorité : 1) athlete.normSelections[testKey] si renseigné (norme spécifique à CE test) ;
-// 2) sinon normPop tel que déjà résolu par effectiveNormPop (comportement historique inchangé
-// si aucune sélection spécifique n'existe) ; le repli THRESHOLDS reste géré en aval par applyThr,
-// strictement inchangé. Fonction pure, aucun effet de bord, aucune valeur normative inventée —
-// se contente de choisir QUELLE population interroger pour un testKey donné.
-// Contrat : ne retourne JAMAIS un objet -- un selecteur NORMS_V2 (objet) n'est JAMAIS un population
-// key valide pour NORMS[pop][...] (applyThr/normRefValue/etc. l'ignoreraient silencieusement en
-// tombant sur THRESHOLDS generiques, ce qui casserait a tort les AUTRES KPI du meme test non
-// couverts par NORMS_V2). Quand normSelections[testKey] est un objet, tous les appelants de cette
-// fonction retombent donc sur normPop (population de reference globale de l'athlete) exactement
-// comme en l'absence de selection -- SEUL computeStatusWithNormsV2 lit normSelections[testKey]
-// directement pour appliquer un selecteur NORMS_V2 aux variables qu'il couvre reellement.
+// SQUAT", Phase 3/4 ; étendu par le pont NORMS_V2 ci-dessus). Ne remplace PAS
+// effectiveNormPop/athlete.normPopulation — s'y ajoute.
+// Priorité : 1) athlete.normSelections[testKey] si renseigné ET normalisable en identifiant
+// canonique valide (chaîne legacy déjà supportée, OU objet NORMS_V2 reconnu par le pont ci-dessus) ;
+// 2) sinon normPop tel que déjà résolu par effectiveNormPop (comportement historique inchangé si
+// aucune sélection spécifique n'existe OU si l'objet n'est pas reconnu) ; le repli THRESHOLDS reste
+// géré en aval par applyThr, strictement inchangé. Fonction pure, aucun effet de bord, aucune valeur
+// normative inventée — se contente de choisir QUELLE population interroger pour un testKey donné.
+// SEUL computeStatusWithNormsV2 continue par ailleurs de lire normSelections[testKey] directement
+// pour appliquer un sélecteur NORMS_V2 aux variables qu'il couvre réellement (cmj_peak_power, etc.)
+// — comportement inchangé, ce pont ne le remplace pas, il s'y ajoute pour les AUTRES variables du
+// même test (non couvertes par NORMS_V2) qui dépendent de NORMS/THRESHOLDS via applyThr.
 function resolveNormPopulationForTest(testKey,normPop,normSelections){
-  if(normSelections&&testKey&&typeof normSelections[testKey]==='string'&&normSelections[testKey])return normSelections[testKey];
+  var normalized=(normSelections&&testKey)?normalizeNormSelectionForTest(testKey,normSelections[testKey]):null;
+  if(normalized)return normalized;
   return normPop;
 }
 function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
