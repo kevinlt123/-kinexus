@@ -135,13 +135,12 @@ function importRealYanisCmj() {
   });
   return merged;
 }
-test('TEST 9 — computeMouvementAnalysis, avec les vraies données ForceDecks CSV de Yanis (17 fichiers) + population automatique cabinet, atteint 4/5 phases exploitables (Braking/Concentric/Flight/Landing) — contre 1/5 avec sa population propre college_swim_m (Flight seule). Unloading reste bloquée par un problème PRÉEXISTANT et SANS RAPPORT avec cette révision (depth/ecc_peak_vel importés avec un signe négatif, hors de CMJ_PLAUSIBLE_RANGE qui attend une magnitude positive — hors périmètre de ce changement, jamais touché ici).', () => {
+test('TEST 9 — computeMouvementAnalysis, avec les vraies données ForceDecks CSV de Yanis (17 fichiers) + population automatique cabinet, atteint 5/5 phases exploitables — contre 1/5 avec sa population propre college_swim_m (Flight seule). Unloading (bloquée à 4/5 lors de l\'introduction de cette population, cf. commit dbd93ad) est débloquée par la correction du signe depth/ecc_peak_vel (mission dédiée, fdSignCorrected).', () => {
   const bilan = { testData: importRealYanisCmj() };
   const res = computeMouvementAnalysis(bilan, effectiveCmjPhaseAnalysisPopulation(), 25, {});
   const sufficientCount = CMJ_PHASES.filter((p) => res.phases[p].sufficient).length;
-  assert.strictEqual(sufficientCount, 4);
-  assert.strictEqual(res.phases.unloading.sufficient, false);
-  ['braking', 'concentric', 'flight', 'landing'].forEach((p) => assert.strictEqual(res.phases[p].sufficient, true, p));
+  assert.strictEqual(sufficientCount, 5);
+  CMJ_PHASES.forEach((p) => assert.strictEqual(res.phases[p].sufficient, true, p));
 });
 
 // ═══════════════ TEST 10 — configurabilité cabinet : une dérogation explicite dans le profil actif
@@ -201,9 +200,8 @@ test('GUARD 3 — THRESHOLDS/NORMS/NORMS_V2/CSM_V2_CLINICAL_VARIABLE_MATRIX/NORM
   assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
   assert.strictEqual(NORM_POPULATIONS.length, 64);
 });
-test('GUARD 4 — le diff de ce commit touche computeMouvementAnalysis (call sites) et la config du Moteur Biomécanique, jamais computeMoteur/computeCsmV2', () => {
-  const diff = execSync('git diff HEAD -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  if (diff.trim().length === 0) return; // déjà commité au moment du test
+test('GUARD 4 — le commit de CETTE décision (dbd93ad) touchait bien computeMouvementAnalysis (call sites) et la config du Moteur Biomécanique, jamais computeMoteur/computeCsmV2 — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html ailleurs — attendu, hors périmètre de cette garde)', () => {
+  const diff = execSync('git diff dbd93ad~1 dbd93ad -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   assert.ok(diff.includes('effectiveCmjPhaseAnalysisPopulation'));
   assert.ok(!diff.includes('function computeMoteur('));
   assert.ok(!diff.includes('function computeCsmV2('));

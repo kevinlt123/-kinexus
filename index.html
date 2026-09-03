@@ -761,6 +761,23 @@ function fdVal(raw,kpiLabel,matchedHeader,bw){
   }
   return v;
 }
+// Convention de signe VALD (export ForceDecks brut) : "Countermovement Depth" (CMJ et SLCMJ) et
+// "Eccentric Peak Velocity" (CMJ) sont exportés par VALD en valeur SIGNÉE, direction descendante
+// = négative (constat réel, export Yanis vérifié : Countermovement Depth = -36.1 cm, Eccentric
+// Peak Velocity = -0.82 m/s — colonnes "Countermovement Depth [cm]"/"Eccentric Peak Velocity
+// [m/s]"). Kinexus utilise partout ailleurs la convention MAGNITUDE positive pour ces 2 kpis :
+// NORMS (cmj_depth/cmj_ecc_peak_vel, whatever la population : bandes toujours positives, ex.
+// bball2425_bleague cmj_depth:[23.7...40.4]), CMJ_PLAUSIBLE_RANGE (depth:[2,60],
+// ecc_peak_vel:[0.2,5]) et TBK.cmj.kpis/TBK.slcmj.kpis (dir:'max', qui suppose une valeur positive
+// où "plus grand = plus profond/plus rapide"). Sans correction, une valeur négative réelle échoue
+// systématiquement validateTechnical (hors plage) et rend la phase Unloading structurellement
+// non-exploitable pour TOUT patient dont l'export VALD utilise cette convention — pas un problème
+// de population ni de seuil, une conversion de signe manquante à la source. Corrigé à l'IMPORT
+// (point unique, même principe que la conversion N/kg déjà faite dans fdVal ci-dessus) :
+// magnitude uniquement, jamais un changement de la grandeur physique mesurée.
+function fdSignCorrected(kpiKey,v){
+  return(v!=null&&(kpiKey==='depth'||kpiKey==='ecc_peak_vel'))?Math.abs(v):v;
+}
 function importForceDecks(parsed){
   var result={};
   var headers=parsed.headers,rows=parsed.rows;
@@ -784,7 +801,7 @@ function importForceDecks(parsed){
         // simplement ces kpis absents, sans bloquer l'import du reste.
         var side=/_asym$/.test(kpi.key)?'asym':(/_L$/.test(kpi.key)?'L':(/_R$/.test(kpi.key)?'R':null));
         var col=fdFindCol(headers,patterns,side);if(!col)return;
-        var v=fdVal(row[col],kpi.label,col,bw);
+        var v=fdSignCorrected(kpi.key,fdVal(row[col],kpi.label,col,bw));
         if(v!=null){if(!result[testKey].trials[kpi.key])result[testKey].trials[kpi.key]=[];result[testKey].trials[kpi.key].push(v);}
       });
     }else{
@@ -793,8 +810,8 @@ function importForceDecks(parsed){
         var patterns=FD_KPI_PATTERNS[kpi.key];if(!patterns)return;
         var colL=fdFindCol(headers,patterns,'L');
         var colR=fdFindCol(headers,patterns,'R');
-        if(colL){var vl=fdVal(row[colL],kpi.label,colL,bw);if(vl!=null){if(!result[testKey].G.trials[kpi.key])result[testKey].G.trials[kpi.key]=[];result[testKey].G.trials[kpi.key].push(vl);}}
-        if(colR){var vr=fdVal(row[colR],kpi.label,colR,bw);if(vr!=null){if(!result[testKey].D.trials[kpi.key])result[testKey].D.trials[kpi.key]=[];result[testKey].D.trials[kpi.key].push(vr);}}
+        if(colL){var vl=fdSignCorrected(kpi.key,fdVal(row[colL],kpi.label,colL,bw));if(vl!=null){if(!result[testKey].G.trials[kpi.key])result[testKey].G.trials[kpi.key]=[];result[testKey].G.trials[kpi.key].push(vl);}}
+        if(colR){var vr=fdSignCorrected(kpi.key,fdVal(row[colR],kpi.label,colR,bw));if(vr!=null){if(!result[testKey].D.trials[kpi.key])result[testKey].D.trials[kpi.key]=[];result[testKey].D.trials[kpi.key].push(vr);}}
       });
     }
   });

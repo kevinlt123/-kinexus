@@ -105,7 +105,11 @@ test('YANIS 4 — les valeurs numériques réelles (height=32.9, braking_rfd≈4
   assert.strictEqual(cmjValues.height, 32.9);
   assert.ok(Math.abs(cmjValues.braking_rfd - 45.287890524141496) < 1e-9);
   assert.strictEqual(cmjValues.conc_impulse, 188.1);
-  assert.strictEqual(cmjValues.depth, -36.1); // signe natif ForceDecks préservé, jamais altéré silencieusement
+  // depth=36.1 (positif) depuis la mission dédiée "fix signe depth/ecc_peak_vel" (postérieure à
+  // celle-ci) : le signe natif ForceDecks (négatif, direction descendante) est désormais corrigé
+  // en magnitude à l'import (fdSignCorrected), cohérent avec NORMS/CMJ_PLAUSIBLE_RANGE — non-
+  // régressé par CETTE mission, changé par une mission ultérieure explicitement validée.
+  assert.strictEqual(cmjValues.depth, 36.1);
   Object.keys(cmjValues).forEach((k) => assert.ok(!Number.isNaN(cmjValues[k]), k + ' est NaN'));
 });
 

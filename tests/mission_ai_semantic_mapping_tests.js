@@ -226,7 +226,12 @@ test('SM15 — aucune valeur existante n\'est écrasée par la fusion (valeurs r
   const heightBefore = testData.cmj.trials.height.slice();
   testData = simulateOnImport(testData, res2.data);
   assert.deepStrictEqual(testData.cmj.trials.height, heightBefore, 'height (venu du fichier 1) ne doit pas être modifié par la fusion du fichier 2');
-  assert.deepStrictEqual(testData.cmj.trials.depth, [-36.1]);
+  // depth=36.1 (positif) depuis la mission dédiée "fix signe depth/ecc_peak_vel" (postérieure à
+  // celle-ci) : VALD exporte cette colonne en négatif (direction descendante), corrigé en
+  // magnitude à l'import (fdSignCorrected) pour rester cohérent avec NORMS/CMJ_PLAUSIBLE_RANGE —
+  // valeur non-régressée par CETTE mission, juste par une mission ultérieure et explicitement
+  // validée.
+  assert.deepStrictEqual(testData.cmj.trials.depth, [36.1]);
   assert.deepStrictEqual(testData.cmj.trials.braking_impulse, [1.09]);
 });
 test('SM16 — les colonnes sans correspondance sûre restent absentes (jamais une fusion silencieuse hasardeuse)', () => {
@@ -243,7 +248,8 @@ test('SM16 — les colonnes sans correspondance sûre restent absentes (jamais u
 test('SM17 — les variables déjà reconnues avant la mission continuent à fonctionner EXACTEMENT comme avant (mêmes valeurs)', () => {
   assert.deepStrictEqual(res1.data.cmj.trials.height, [30]);
   assert.deepStrictEqual(res1.data.cmj.trials.conc_impulse, [188.1]);
-  assert.deepStrictEqual(res1.data.cmj.trials.depth, [-36.1]);
+  // depth=36.1 (positif) depuis la mission dédiée "fix signe depth/ecc_peak_vel" — cf. SM15.
+  assert.deepStrictEqual(res1.data.cmj.trials.depth, [36.1]);
   // braking_duration=562 volontairement retiré de cette assertion : c'était la valeur de
   // "Braking Phase Duration" (bug corrigé, mission evidence secondaire validée) — fichier 1 seul
   // n'a plus de mapping pour braking_duration (aucune colonne "Eccentric Deceleration Phase
