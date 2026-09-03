@@ -188,7 +188,7 @@ test('SM11bis — CORRECTIF : "Eccentric Braking RFD/Impulse" != "Eccentric Dece
 test('SM12 — CSV 1 importé seul : les KPI attendus (avant mission) restent tous présents', () => {
   assert.strictEqual(res1.error, null);
   const keys = Object.keys(res1.data.cmj.trials);
-  BEFORE_FILE1_KEYS.filter((k) => k !== 'ecc_decel').forEach((k) => assert.ok(keys.indexOf(k) !== -1, k + ' manquant après mission (régression)'));
+  BEFORE_FILE1_KEYS.filter((k) => k !== 'ecc_decel' && k !== 'braking_duration').forEach((k) => assert.ok(keys.indexOf(k) !== -1, k + ' manquant après mission (régression)'));
 });
 test('SM13 — CSV 2 importé seul : les KPI attendus (avant mission) restent tous présents', () => {
   assert.strictEqual(res2.error, null);
@@ -200,7 +200,7 @@ test('SM14 — CSV 1 + CSV 2 -> union complète, aucune perte de ce qui existait
   testData = simulateOnImport(testData, res1.data);
   testData = simulateOnImport(testData, res2.data);
   const keys = Object.keys(testData.cmj.trials);
-  BEFORE_FILE1_KEYS.filter((k) => k !== 'ecc_decel').concat(BEFORE_FILE2_KEYS).forEach((k) => assert.ok(keys.indexOf(k) !== -1, k));
+  BEFORE_FILE1_KEYS.filter((k) => k !== 'ecc_decel' && k !== 'braking_duration').concat(BEFORE_FILE2_KEYS).forEach((k) => assert.ok(keys.indexOf(k) !== -1, k));
 });
 test('SM14bis — nouvelles variables réellement débloquées par cette mission sont bien dans l\'union', () => {
   let testData = {};
@@ -210,11 +210,15 @@ test('SM14bis — nouvelles variables réellement débloquées par cette mission
   // braking_rfd/ecc_decel_rfd_asym/ecc_decel_impulse_asym NE sont PAS dans cette liste : ces 2
   // fichiers n'exposent que la famille "Braking" pour ces métriques, jamais "Deceleration" (cf.
   // SM11bis) — rester non reconnues ici est le comportement CORRECT, pas une régression.
+  // braking_duration N'EST PLUS dans cette liste (correctif validé : plus jamais "Braking Phase
+  // Duration", absente de ces 2 fichiers précis pour "Eccentric Deceleration Phase Duration").
   ['conc_impulse_100', 'conc_mean_force', 'conc_peak_force', 'ecc_peak_force', 'ecc_mean_power', 'braking_impulse',
-    'conc_force_impulse_asym', 'force_peak_power_asym', 'p2_conc_impulse_asym']
+    'conc_force_impulse_asym', 'force_peak_power_asym', 'p2_conc_impulse_asym',
+    // Mission evidence secondaire (validé) : nouvelles variables réellement débloquées.
+    'leg_stiffness', 'leg_stiffness_asym', 'conc_impulse_100_asym']
     .forEach((k) => assert.ok(keys.indexOf(k) !== -1, k + ' devrait être débloqué'));
-  ['braking_rfd', 'ecc_decel_rfd_asym', 'ecc_decel_impulse_asym'].forEach((k) => assert.strictEqual(keys.indexOf(k), -1, k + ' ne doit PAS apparaître (uniquement la variante "Braking", jamais "Deceleration", dans ces 2 fichiers)'));
-  assert.strictEqual(keys.length, 17, 'total attendu après correctif SM11bis (3 clés retirées : braking_rfd, ecc_decel_rfd_asym, ecc_decel_impulse_asym)');
+  ['braking_rfd', 'ecc_decel_rfd_asym', 'ecc_decel_impulse_asym', 'braking_duration'].forEach((k) => assert.strictEqual(keys.indexOf(k), -1, k + ' ne doit PAS apparaître dans ces 2 fichiers précis'));
+  assert.strictEqual(keys.length, 19, 'total attendu après correctifs SM11bis (-3 : braking_rfd/ecc_decel_rfd_asym/ecc_decel_impulse_asym) + braking_duration (-1) + evidence secondaire (+3 : leg_stiffness/leg_stiffness_asym/conc_impulse_100_asym), soit 17-1+3=19');
 });
 test('SM15 — aucune valeur existante n\'est écrasée par la fusion (valeurs réelles conservées telles quelles)', () => {
   let testData = {};
@@ -227,9 +231,12 @@ test('SM15 — aucune valeur existante n\'est écrasée par la fusion (valeurs r
 });
 test('SM16 — les colonnes sans correspondance sûre restent absentes (jamais une fusion silencieuse hasardeuse)', () => {
   const keys = Object.keys(res1.data.cmj.trials);
-  // "CMJ Stiffness" n'a aucun kpi.key dans TESTS.cmj.kpis (leg_stiffness n'existe que pour
-  // dj/sldj/cmjr) : ne doit jamais apparaître, quelle que soit la robustesse du matching syntaxique.
-  assert.strictEqual(keys.indexOf('leg_stiffness'), -1);
+  // "P1 Concentric Impulse" absolu n'a toujours aucun kpi.key dans TESTS.cmj.kpis (seule
+  // l'asymétrie P2 existe) : ne doit jamais apparaître.
+  assert.strictEqual(keys.indexOf('p1_conc_impulse'), -1);
+  // "Lower-Limb Stiffness" ne doit JAMAIS être capturée par leg_stiffness (mission evidence
+  // secondaire, validé) : seule "CMJ Stiffness" est aliasée — vérifié directement sur le motif.
+  assert.strictEqual(fdFindCol(['Lower-Limb Stiffness [N/m]'], FD_KPI_PATTERNS.leg_stiffness, null), null);
 });
 
 // ═══════════════════════════ SM17 : non-régression des variables déjà reconnues avant ═══════════
@@ -237,7 +244,10 @@ test('SM17 — les variables déjà reconnues avant la mission continuent à fon
   assert.deepStrictEqual(res1.data.cmj.trials.height, [30]);
   assert.deepStrictEqual(res1.data.cmj.trials.conc_impulse, [188.1]);
   assert.deepStrictEqual(res1.data.cmj.trials.depth, [-36.1]);
-  assert.deepStrictEqual(res1.data.cmj.trials.braking_duration, [562]);
+  // braking_duration=562 volontairement retiré de cette assertion : c'était la valeur de
+  // "Braking Phase Duration" (bug corrigé, mission evidence secondaire validée) — fichier 1 seul
+  // n'a plus de mapping pour braking_duration (aucune colonne "Eccentric Deceleration Phase
+  // Duration" dans ce fichier précis), comportement CORRECT désormais (cf. SM12).
   assert.deepStrictEqual(res1.data.cmj.trials.flight_time, [518]);
   assert.ok(Math.abs(res1.data.cmj.trials.force_zero_vel[0] - 20.82365091660212) < 1e-9);
   assert.deepStrictEqual(res2.data.cmj.trials.rsi_mod, [0.31]);
@@ -310,9 +320,10 @@ test('SM31 — les valeurs d\'asymétrie importées restent des valeurs de magni
 });
 
 // ═══════════════════════════ SM32-SM39 : colonnes sans correspondance sûre restent non mappées ══
-const UNMAPPED_HEADERS_FILE1 = ['CMJ Stiffness [N/m]', 'Concentric Impulse (Abs) / BM [N s/kg]', 'Eccentric Braking Impulse [N s]', 'P1 Concentric Impulse [N s]', 'P2 Concentric Impulse [N s]', 'Peak Net Takeoff Force / BM [N/kg]'];
-test('SM32 — "CMJ Stiffness" reste non mappé (aucun kpi.key leg_stiffness pour le test cmj)', () => {
-  assert.strictEqual(Object.keys(res1.data.cmj.trials).indexOf('leg_stiffness'), -1);
+const UNMAPPED_HEADERS_FILE1 = ['Concentric Impulse (Abs) / BM [N s/kg]', 'Eccentric Braking Impulse [N s]', 'P1 Concentric Impulse [N s]', 'P2 Concentric Impulse [N s]', 'Peak Net Takeoff Force / BM [N/kg]'];
+test('SM32 — "CMJ Stiffness" est désormais correctement mappée (mission evidence secondaire, validée) ; "Lower-Limb Stiffness" reste jamais aliasée', () => {
+  assert.deepStrictEqual(res1.data.cmj.trials.leg_stiffness, [4245]);
+  assert.strictEqual(fdFindCol(['Lower-Limb Stiffness [N/m]'], FD_KPI_PATTERNS.leg_stiffness, null), null);
 });
 test('SM33 — "P1 Concentric Impulse" reste non mappé (aucune clé p1_conc_impulse dans le catalogue Kinexus)', () => {
   const catalog = TBK.cmj.kpis.map((k) => k.key);
@@ -400,8 +411,8 @@ test('SM49 — sur l\'union des 17 fichiers, braking_rfd/braking_impulse/ecc_dec
   assert.deepStrictEqual(testData.cmj.trials.ecc_decel_rfd_L, [1759]);
   assert.deepStrictEqual(testData.cmj.trials.ecc_decel_rfd_R, [1281]);
 });
-test('SM50 — le catalogue TESTS.cmj.kpis (51 clés) n\'a reçu AUCUNE nouvelle variable de cette mission (mapping seul, jamais de nouvelle variable clinique inventée)', () => {
-  assert.strictEqual(TBK.cmj.kpis.length, 51);
+test('SM50 — le catalogue TESTS.cmj.kpis n\'a reçu AUCUNE nouvelle variable de CETTE mission de mapping sémantique (mapping seul, jamais de nouvelle variable clinique inventée ici) — 59 clés reflète une mission ULTÉRIEURE distincte et explicitement validée (evidence secondaire par qualité, 8 nouvelles clés : ecc_duration, ecc_peak_power, leg_stiffness(+L/R/asym), contraction_time, conc_impulse_100_asym), pas cette mission-ci', () => {
+  assert.strictEqual(TBK.cmj.kpis.length, 59);
 });
 function liveRecognizeAll() {
   let recognizedBy = {};
@@ -436,14 +447,16 @@ test('SM52 — statuts de l\'audit exhaustif conformes à la mission (MAPPED / M
   const counts = {};
   audit.forEach((r) => { counts[r.status] = (counts[r.status] || 0) + 1; });
   assert.strictEqual(counts.METADATA, 9);
-  assert.strictEqual(counts.AMBIGUOUS, 6);
+  // braking_duration N'EST PLUS ambigu (mission evidence secondaire, validé — restreint à
+  // "Eccentric Deceleration Phase Duration" uniquement) : 6 -> 4 (height x2, rsi_mod x2).
+  assert.strictEqual(counts.AMBIGUOUS, 4);
   assert.ok(counts.MAPPED >= 20 && counts.MAPPED_WITH_VARIANT >= 15);
   assert.strictEqual(counts.MAPPED + counts.MAPPED_WITH_VARIANT + counts.AMBIGUOUS + counts.UNMAPPED_CANDIDATE + counts.METADATA, 283);
 });
-test('SM53 — les 3 KPI AMBIGUS (height, rsi_mod, braking_duration) sont bien classés AMBIGUOUS, jamais silencieusement MAPPED (§7 de la mission : ne jamais fusionner des définitions réellement différentes)', () => {
+test('SM53 — les 2 KPI AMBIGUS restants (height, rsi_mod) sont bien classés AMBIGUOUS, jamais silencieusement MAPPED (§7 de la mission : ne jamais fusionner des définitions réellement différentes) ; braking_duration a été résolu (mission evidence secondaire) et n\'est plus dans cette liste', () => {
   const audit = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'forcedecks_cmj_semantic_mapping_audit.json'), 'utf8'));
   const ambiguousKpis = new Set(audit.filter((r) => r.status === 'AMBIGUOUS').map((r) => r.kinexus));
-  assert.deepStrictEqual([...ambiguousKpis].sort(), ['cmj_braking_duration', 'cmj_height', 'cmj_rsi_mod']);
+  assert.deepStrictEqual([...ambiguousKpis].sort(), ['cmj_height', 'cmj_rsi_mod']);
 });
 test('SM53bis — comportement AMBIGU documenté par la preuve : "Jump Height (Flight Time)"=32.9 != "Jump Height (Imp-Mom)"=30.0 (même séance réelle), aucune fusion/moyenne inventée par le code', () => {
   const headersA = ['Jump Height (Flight Time) [cm]', 'Jump Height (Imp-Mom) [cm]'];

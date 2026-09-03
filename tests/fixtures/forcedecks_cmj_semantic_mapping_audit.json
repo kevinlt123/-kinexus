@@ -21,13 +21,13 @@
  },
  {
   "forcedecks": "Braking Phase Duration [ms]",
-  "kinexus": "cmj_braking_duration",
+  "kinexus": "UNMAPPED_CANDIDATE",
   "test": "cmj",
-  "phase": "freinage_excentrique",
-  "lat": "Bilateral",
+  "phase": "-",
+  "lat": "Bilateral/inconnu",
   "unit": "ms",
-  "status": "AMBIGUOUS",
-  "conf": "Basse (plusieurs methodes ForceDecks distinctes partagent ce kpi, comportement non deterministe pre-existant, signale au praticien)"
+  "status": "UNMAPPED_CANDIDATE",
+  "conf": "-"
  },
  {
   "forcedecks": "Braking Phase Duration:Concentric Duration [%]",
@@ -51,43 +51,43 @@
  },
  {
   "forcedecks": "CMJ Stiffness % (Asym) (%)",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_leg_stiffness_asym",
   "test": "cmj",
-  "phase": "-",
+  "phase": "non_categorise",
   "lat": "Asymetrie (%)",
   "unit": "%",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "CMJ Stiffness [N/m]",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_leg_stiffness",
   "test": "cmj",
-  "phase": "-",
-  "lat": "Bilateral/inconnu",
+  "phase": "non_categorise",
+  "lat": "Bilateral",
   "unit": "N/m",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "CMJ Stiffness [N/m] (L)",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_leg_stiffness_L",
   "test": "cmj",
-  "phase": "-",
+  "phase": "non_categorise",
   "lat": "Gauche (L)",
   "unit": "N/m",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "CMJ Stiffness [N/m] (R)",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_leg_stiffness_R",
   "test": "cmj",
-  "phase": "-",
+  "phase": "non_categorise",
   "lat": "Droite (R)",
   "unit": "N/m",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "Concentric Duration [ms]",
@@ -151,13 +151,13 @@
  },
  {
   "forcedecks": "Concentric Impulse-100ms % (Asym) (%)",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_conc_impulse_100_asym",
   "test": "cmj",
-  "phase": "-",
+  "phase": "propulsion_concentrique",
   "lat": "Asymetrie (%)",
   "unit": "%",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "Concentric Impulse-100ms [N s]",
@@ -751,13 +751,13 @@
  },
  {
   "forcedecks": "Contraction Time [ms]",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_contraction_time",
   "test": "cmj",
-  "phase": "-",
-  "lat": "Bilateral/inconnu",
+  "phase": "transition",
+  "lat": "Bilateral",
   "unit": "ms",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "Contraction Time:Eccentric Duration [%]",
@@ -1156,8 +1156,8 @@
   "phase": "freinage_excentrique",
   "lat": "Bilateral",
   "unit": "s",
-  "status": "AMBIGUOUS",
-  "conf": "Basse (plusieurs methodes ForceDecks distinctes partagent ce kpi, comportement non deterministe pre-existant, signale au praticien)"
+  "status": "MAPPED",
+  "conf": "Haute (motif pre-existant, verifie)"
  },
  {
   "forcedecks": "Eccentric Deceleration RFD % (Asym) (%)",
@@ -1221,13 +1221,13 @@
  },
  {
   "forcedecks": "Eccentric Duration [ms]",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_ecc_duration",
   "test": "cmj",
-  "phase": "-",
-  "lat": "Bilateral/inconnu",
+  "phase": "freinage_excentrique",
+  "lat": "Bilateral",
   "unit": "ms",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "Eccentric Mean Braking Force [N]",
@@ -1351,13 +1351,13 @@
  },
  {
   "forcedecks": "Eccentric Peak Power / BM [W/kg]",
-  "kinexus": "UNMAPPED_CANDIDATE",
+  "kinexus": "cmj_ecc_peak_power",
   "test": "cmj",
-  "phase": "-",
-  "lat": "Bilateral/inconnu",
+  "phase": "non_categorise",
+  "lat": "Bilateral",
   "unit": "W/kg",
-  "status": "UNMAPPED_CANDIDATE",
-  "conf": "-"
+  "status": "MAPPED_WITH_VARIANT",
+  "conf": "Moyenne-Haute (alias ajoute par mission de mapping)"
  },
  {
   "forcedecks": "Eccentric Peak Power [W]",

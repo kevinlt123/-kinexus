@@ -124,7 +124,26 @@ var TESTS=[
     {key:'ecc_decel_rfd_asym',label:'Eccentric Deceleration RFD Asymmetry (%)',step:0.1,dir:'min'},{key:'ecc_decel_rfd_L',label:'Eccentric Deceleration RFD Gauche (N/s)',step:1,dir:'max'},{key:'ecc_decel_rfd_R',label:'Eccentric Deceleration RFD Droit (N/s)',step:1,dir:'max'},
     {key:'ecc_decel_impulse_asym',label:'Eccentric Deceleration Impulse Asymmetry (%)',step:0.1,dir:'min'},
     {key:'conc_force_impulse_asym',label:'Concentric Mean Force / Impulse Asymmetry (%)',step:0.1,dir:'min'},{key:'force_peak_power_asym',label:'Force at Peak Power Asymmetry (%)',step:0.1,dir:'min'},{key:'p2_conc_impulse_asym',label:'P2 Concentric Impulse Asymmetry (%)',step:0.1,dir:'min'},
-    {key:'landing_peak_force_asym',label:'Peak Landing Force Asymmetry (%)',step:0.1,dir:'min'},{key:'landing_peak_force_L',label:'Peak Landing Force Gauche (N/kg)',step:0.01,dir:'min'},{key:'landing_peak_force_R',label:'Peak Landing Force Droit (N/kg)',step:0.01,dir:'min'}
+    {key:'landing_peak_force_asym',label:'Peak Landing Force Asymmetry (%)',step:0.1,dir:'min'},{key:'landing_peak_force_L',label:'Peak Landing Force Gauche (N/kg)',step:0.01,dir:'min'},{key:'landing_peak_force_R',label:'Peak Landing Force Droit (N/kg)',step:0.01,dir:'min'},
+    // ── Mission mapping sémantique — evidence secondaire par qualité (validé, audit préalable) ──
+    // 5 variables réellement disponibles dans l'export ForceDecks complet mais absentes du
+    // catalogue CMJ jusqu'ici. Jamais consommées par un moteur HYP-XX-01 LOCKED — uniquement par
+    // la couche additive parallèle (computeCsmV2*SecondaryEvidence, cf. plus bas, précédent Mission
+    // K3/computeCsmV2SldjSecondarySymmetryEvidence) et le Moteur Biomécanique (CMJ_VAR_META).
+    {key:'ecc_duration',label:'Eccentric Duration (ms)',step:1,dir:'min'},
+    {key:'ecc_peak_power',label:'Eccentric Peak Power (W/kg)',step:0.1,dir:'max'},
+    {key:'contraction_time',label:'Contraction Time (ms)',step:1,dir:'min'},
+    // "CMJ Stiffness" (motif dédié, jamais aliasé à "Lower-Limb Stiffness" — 2 métriques
+    // ForceDecks réellement distinctes, valeurs différentes sur la même séance réelle : 4245 N/m
+    // vs 3076.00 N/m). G/D + asymétrie natives réellement disponibles dans l'export.
+    {key:'leg_stiffness',label:'CMJ Stiffness (N/m)',step:1,dir:'max'},
+    {key:'leg_stiffness_L',label:'CMJ Stiffness Gauche (N/m)',step:1,dir:'max'},
+    {key:'leg_stiffness_R',label:'CMJ Stiffness Droit (N/m)',step:1,dir:'max'},
+    {key:'leg_stiffness_asym',label:'CMJ Stiffness Asymmetry (%)',step:0.1,dir:'min'},
+    // Asymétrie native ForceDecks pour conc_impulse_100 (déjà diagnostique Explosivité) — jamais
+    // classifiable (aucun seuil/norme, comme conc_impulse_100 lui-même), exposée en evidence
+    // secondaire uniquement.
+    {key:'conc_impulse_100_asym',label:'Concentric Impulse-100ms Asymmetry (%)',step:0.1,dir:'min'}
   ]},
   {key:'slcmj',label:'Single Leg Jump',cat:'Sauts',bilateral:false,kpis:[{key:'height',label:'Height (cm)',step:0.1,dir:'max'},{key:'rsi_mod',label:'RSI Mod',step:0.01,dir:'max'},{key:'peak_conc_force',label:'Peak Concentric Force (N/kg)',step:0.01,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'peak_conc_vel',label:'Peak Concentric Velocity (m/s)',step:0.01,dir:'max'},{key:'edrfd_bm',label:'EDRFD / BM (N/s/kg)',step:0.1,dir:'max'},{key:'braking_rfd',label:'Braking RFD (N/s)',step:1,dir:'max'},{key:'peak_braking_force',label:'Peak Braking Force (N/kg)',step:0.01,dir:'max'},{key:'braking_impulse',label:'Braking Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'depth',label:'Countermovement Depth (cm)',step:0.1,dir:'max'},{key:'contraction_time',label:'Contraction Time (ms)',step:1,dir:'min'},{key:'ecc_duration',label:'Eccentric Duration (ms)',step:1,dir:'min'},{key:'conc_duration',label:'Concentric Duration (ms)',step:1,dir:'min'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'landing_impulse',label:'Landing Impulse (Ns/kg)',step:0.01,dir:'max'},{key:'time_to_stab',label:'Time to Stabilization (s)',step:0.01,dir:'min'}]},
   {key:'cmjr',label:'Countermovement Rebound Jump',cat:'Sauts',bilateral:true,kpis:[{key:'first_height',label:'First Jump Height (cm)',step:0.1,dir:'max'},{key:'peak_power',label:'Peak Power (W/kg)',step:0.1,dir:'max'},{key:'mean_ct',label:'Mean Contact Time (ms)',step:1,dir:'min'},{key:'mean_rebound_height',label:'Mean Rebound Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'mean_stiffness',label:'Mean Leg Stiffness (kN/m)',step:0.1,dir:'max'},{key:'peak_landing_force',label:'Peak Landing Force (N/kg)',step:0.01,dir:'min'},{key:'rsi_decay',label:'RSI Decay (%)',step:0.1,dir:'min'},{key:'stiffness_decay',label:'Leg Stiffness Decay (%)',step:0.1,dir:'min'}]},
@@ -189,12 +208,25 @@ var CMJ_VAR_META={
   // Unloading — variables VALD phase 1 (rattachement Kinexus, cf. note ci-dessus)
   depth:              {phase:'unloading',tier:'master',weight:1.5,valdName:'Countermovement Depth'},
   ecc_peak_vel:       {phase:'unloading',tier:'master',weight:1.0,valdName:'Eccentric Peak Velocity'},
-  braking_duration:   {phase:'unloading',tier:'master',weight:1.0,valdName:'Eccentric Deceleration Phase Duration',note:'clé historique "braking_duration" ; variable VALD rattachée à Unloading par choix Kinexus (cf. note ci-dessus).'},
+  // Mission evidence secondaire (validé par le praticien) : nouvelle variable, disponible dans
+  // l'export réel ("Eccentric Duration [ms]"), tier 'info' (aucun seuil/norme — jamais promue
+  // master/support sans base de classification réelle).
+  ecc_duration:       {phase:'unloading',tier:'info',valdName:'Eccentric Duration'},
   // Braking — variables VALD phase 2 propres (au-delà des 3 partagées avec Unloading ci-dessus)
   ecc_mean_power:     {phase:'braking',tier:'master',weight:1.0,valdName:'Eccentric Mean Power'},
   force_zero_vel:     {phase:'braking',tier:'master',weight:1.5,valdName:'Force at Zero Velocity'},
   braking_rfd:        {phase:'braking',tier:'master',weight:2.0,valdName:'Eccentric Deceleration RFD / BM (EDRFD)',note:'clé historique "braking_rfd" ; décision du praticien (04/08) — variable clinique de référence officiellement relative au poids de corps (N/kg/s). Version absolue disponible séparément sous braking_rfd_abs (tier "info", jamais scorée).'},
   braking_impulse:    {phase:'braking',tier:'support',weight:1.0,valdName:'Eccentric Deceleration Impulse'},
+  // CORRECTIF (validé par le praticien, mission evidence secondaire — annule la décision 04/08
+  // ci-dessus qui rattachait cette variable à Unloading) : "Eccentric Deceleration Phase Duration"
+  // appartient sémantiquement à Braking/Eccentric Deceleration, jamais à Unloading. Clé historique
+  // "braking_duration" conservée (backward-compatible), mapping ForceDecks restreint à cette seule
+  // colonne (cf. FD_KPI_PATTERNS — "Braking Phase Duration" retirée, valeur différente).
+  braking_duration:   {phase:'braking',subPhase:'eccentric_deceleration',tier:'master',weight:1.0,valdName:'Eccentric Deceleration Phase Duration',note:'clé historique "braking_duration" ; rattachée à Braking/Eccentric Deceleration (corrigé — précédemment Unloading par choix Kinexus 04/08, décision annulée).'},
+  // Mission evidence secondaire (validé) : nouvelle variable, disponible dans l'export réel
+  // ("Eccentric Peak Power [W]"/"/ BM [W/kg]"), distincte de ecc_mean_power (valeurs réellement
+  // différentes). Tier 'info' (aucun seuil/norme).
+  ecc_peak_power:     {phase:'braking',subPhase:'eccentric_deceleration',tier:'info',valdName:'Eccentric Peak Power'},
   // Concentric — variables VALD phase 3
   peak_power:         {phase:'concentric',tier:'master',weight:1.5,valdName:'Peak Power / BM'},
   conc_mean_force:    {phase:'concentric',tier:'master',weight:1.5,valdName:'Concentric Mean Force'},
@@ -221,7 +253,12 @@ var CMJ_VAR_META={
   landing_mean_force:{phase:'landing',tier:'info'},landing_rfd:{phase:'landing',tier:'info'},
   landing_duration:{phase:'landing',tier:'info',note:'Utilisée par le profil Absorbeur (descriptive, poids 0 — jamais scorée). Décision du praticien (05/08) : identifiée comme candidate au socle des 20 métriques d\'export ForceDecks, mais écartée UNIQUEMENT faute de slot disponible (cf. CMJ_EXPORT_SOCLE_20 ci-dessous) — jamais à considérer comme abandonnée.'},
   landing_mean_power:{phase:'landing',tier:'info'},post_landing_stability:{phase:'landing',tier:'info'},
-  tto:{phase:null,tier:'info',note:'Time to Take Off = temps de contraction total, dénominateur de RSI-Mod/FT:CT ; pas une variable de phase VALD en soi.'}
+  tto:{phase:null,tier:'info',note:'Time to Take Off = temps de contraction total, dénominateur de RSI-Mod/FT:CT ; pas une variable de phase VALD en soi.'},
+  // Mission evidence secondaire (validé par le praticien) : variables TRANSVERSALES CMJ — ne
+  // couvrent aucune phase unique (même convention que tto ci-dessus, phase:null), jamais forcées
+  // dans une phase artificiellement (§7 de la mission). Tier 'info' (aucun seuil/norme).
+  leg_stiffness:{phase:null,tier:'info',valdName:'CMJ Stiffness',note:'Variable transversale (raideur globale du mouvement) — distincte de "Lower-Limb Stiffness" (métrique ForceDecks différente, jamais aliasée). G/D + asymétrie natives disponibles (leg_stiffness_L/R/asym).'},
+  contraction_time:{phase:null,tier:'info',valdName:'Contraction Time',note:'Variable transversale (durée totale de contraction) — contextualise Eccentric Duration/Concentric Duration/FT:CT, jamais une phase supplémentaire.'}
 };
 // ── Socle des 20 métriques d'export ForceDecks (limite logicielle du client VALD) ──
 // Décision du praticien (05/08), à la suite d'un export réel vérifié :
@@ -265,8 +302,10 @@ var CMJ_EXPORT_SOCLE_20_CANDIDATS_EXCLUS=['conc_mean_power','landing_duration'];
 // importante, à signaler :
 // la GRANDE MAJORITÉ des variables de performance CMJ_VAR_META n'ont AUCUN équivalent
 // d'asymétrie dans ForceDecks aujourd'hui (ex. ecc_mean_power, force_zero_vel, peak_power,
-// conc_impulse_100, time_to_stab, landing_impulse, height, ft_ct_ratio, rsi_mod, flight_time,
+// time_to_stab, landing_impulse, height, ft_ct_ratio, rsi_mod, flight_time,
 // depth, ecc_peak_vel, braking_duration — aucun n'a de "Asymmetry" correspondant dans TBK).
+// conc_impulse_100 et leg_stiffness en ont désormais un (mission evidence secondaire, validé —
+// "Concentric Impulse-100ms % (Asym)" et "CMJ Stiffness % (Asym)" réellement disponibles).
 var ASYM_PERFORMANCE_EQUIVALENT={
   braking_rfd:'ecc_decel_rfd_asym',
   braking_impulse:'ecc_decel_impulse_asym',
@@ -276,7 +315,9 @@ var ASYM_PERFORMANCE_EQUIVALENT={
   // (support), qui n'a donc pas de secondaire propre dans le référentiel dérivé ci-dessous.
   conc_mean_force:'conc_force_impulse_asym',
   force_peak_power:'force_peak_power_asym',
-  landing_peak_force:'landing_peak_force_asym'
+  landing_peak_force:'landing_peak_force_asym',
+  conc_impulse_100:'conc_impulse_100_asym',
+  leg_stiffness:'leg_stiffness_asym'
 };
 // Dérive le référentiel principales/secondaires/contextuelles d'UNE phase, pour UNE population de
 // normes donnée — à partir de CMJ_VAR_META + ASYM_PERFORMANCE_EQUIVALENT + effectiveBiomecaTier()
@@ -315,11 +356,14 @@ function effectiveAsymPhaseVariables(phaseKey,pop){
 // Paires de valeurs brutes Gauche/Droite disponibles pour déterminer le "côté dominant" — UNIQUEMENT
 // pour les KPIs d'asymétrie où VALD expose les deux côtés séparément dans ForceDecks. Pour les
 // autres (ecc_decel_impulse_asym, conc_force_impulse_asym, force_peak_power_asym,
-// p2_conc_impulse_asym), aucune paire G/D n'existe dans TBK aujourd'hui — le côté dominant reste
-// "indéterminé" pour ces variables, jamais déduit du signe ou d'une autre invention.
+// p2_conc_impulse_asym, conc_impulse_100_asym), aucune paire G/D n'existe dans TBK aujourd'hui —
+// le côté dominant reste "indéterminé" pour ces variables, jamais déduit du signe ou d'une autre
+// invention. leg_stiffness_asym ajoutée (mission evidence secondaire, validé) : "CMJ Stiffness
+// [N/m] (L)/(R)" réellement disponibles dans l'export réel.
 var ASYM_SIDE_PAIRS={
   ecc_decel_rfd_asym:{L:'ecc_decel_rfd_L',R:'ecc_decel_rfd_R'},
-  landing_peak_force_asym:{L:'landing_peak_force_L',R:'landing_peak_force_R'}
+  landing_peak_force_asym:{L:'landing_peak_force_L',R:'landing_peak_force_R'},
+  leg_stiffness_asym:{L:'leg_stiffness_L',R:'leg_stiffness_R'}
 };
 
 // ── CSV IMPORT MAPPERS ───────────────────────────────────────────────────────
@@ -424,6 +468,10 @@ var FD_TEST_TYPE_MAP={
 // matcher QUE la famille "Deceleration"/EDRFD, jamais "Braking". "Eccentric Braking RFD/Impulse"
 // n'ont aujourd'hui AUCUNE variable Kinexus correspondante (cf. UNMAPPED_NEW_CANDIDATES, rapport).
 var FD_ECC_BRAKING_RFD_PATTERNS=['Eccentric Deceleration RFD / BM','Eccentric Deceleration RFD/BM','EDRFD / BM','EDRFD/BM','Braking RFD / BM','Braking RFD/BM','Braking RFD','Eccentric Deceleration RFD','EDRFD'];
+// Partagé par conc_impulse_100 (valeur brute) et conc_impulse_100_asym (asymétrie native
+// ForceDecks, mission evidence secondaire validée) — mêmes variantes tiret/espace/@, fdColSuffix
+// isole la colonne "(Asym)" comme pour tous les autres kpis d'asymétrie déjà en place.
+var FD_CONC_IMPULSE_100_PATTERNS=['Concentric Impulse 100ms','Concentric Impulse @ 100ms','Concentric Impulse (100ms)','Concentric Impulse at 100ms'];
 var FD_KPI_PATTERNS={
   // AMBIGU (audit export complet, non résolu ici — signalé au praticien, cf. rapport de mission) :
   // ForceDecks expose 2-3 méthodes de calcul distinctes pour la hauteur de saut ("Jump Height
@@ -440,7 +488,15 @@ var FD_KPI_PATTERNS={
   tto:['Time To Take Off','Time to Take Off'],depth:['Countermovement Depth'],
   contact_time:['Contact Time'],peak_prop_force:['Peak Propulsive Force','Peak Drive-Off Force'],
   peak_prop_power:['Peak Propulsive Power','Peak Instantaneous Power / BM','Peak Instantaneous Power/BM'],landing_impulse:['Landing Impulse'],
-  leg_stiffness:['Leg Stiffness'],tts:['Time to Stabilise','Time to Stabilization','Time to Stabilisation'],
+  // Mission evidence secondaire (validé) : "CMJ Stiffness" ajouté en alias — jamais "Lower-Limb
+  // Stiffness" (2 métriques ForceDecks réellement distinctes, valeurs différentes sur la même
+  // séance réelle : CMJ Stiffness=4245 N/m vs Lower-Limb Stiffness=3076.00 N/m, jamais aliasées).
+  // leg_stiffness_L/R/asym partagent ce motif (G/D + asymétrie natives réellement disponibles pour
+  // "CMJ Stiffness" spécifiquement, jamais inventées pour "Leg Stiffness" seul).
+  leg_stiffness:['Leg Stiffness','CMJ Stiffness'],
+  leg_stiffness_L:['Leg Stiffness','CMJ Stiffness'],leg_stiffness_R:['Leg Stiffness','CMJ Stiffness'],
+  leg_stiffness_asym:['Leg Stiffness','CMJ Stiffness'],
+  tts:['Time to Stabilise','Time to Stabilization','Time to Stabilisation'],
   peak_landing_force:['Peak Landing Force','Peak Drop Landing Force'],landing_peak_force:['Peak Landing Force','Peak Drop Landing Force'],
   landing_peak_force_asym:['Peak Landing Force','Peak Drop Landing Force'],
   // Colonnes Gauche/Droite (04/08) — mêmes motifs que la variable de base, cf. note ecc_decel_rfd_L/R.
@@ -527,16 +583,21 @@ var FD_KPI_PATTERNS={
   // ASYM_PERFORMANCE_EQUIVALENT) mais sans aucune entrée FD_KPI_PATTERNS — jamais importable.
   force_peak_power_asym:['Force at Peak Power'],
   ecc_mean_power:['Eccentric Mean Power / BM','Eccentric Mean Power/BM','Eccentric Mean Power'],
+  // Mission evidence secondaire (validé) : nouvelle clé ecc_peak_power — jamais confondue avec
+  // ecc_mean_power (valeurs réellement différentes : "Eccentric Peak Power [W]" != "Eccentric Mean
+  // Power [W]", colonnes distinctes vérifiées dans l'export réel).
+  ecc_peak_power:['Eccentric Peak Power / BM','Eccentric Peak Power/BM','Eccentric Peak Power'],
   ecc_mean_force:['Eccentric Mean Force'],
   ecc_peak_force:['Eccentric Peak Force / BM','Eccentric Peak Force/BM','Eccentric Peak Force'],
   ecc_peak_vel:['Peak Eccentric Velocity','Eccentric Peak Velocity'],
   ecc_decel:['Eccentric Deceleration'],braking_eff:['Braking Efficiency'],propulsion_eff:['Propulsion Efficiency'],
-  // NOTE (audit export complet, non résolu ici — signalé au praticien, cf. rapport de mission) :
-  // "Braking Phase Duration" (562ms, export réel) et "Eccentric Deceleration Phase Duration"
-  // (268ms, export réel, MÊME séance) sont des valeurs DIFFÉRENTES, alors que CMJ_VAR_META déclare
-  // valdName="Eccentric Deceleration Phase Duration" pour braking_duration. Alias non modifié
-  // (pattern pré-existant, antérieur à cette mission) tant que le praticien n'a pas tranché.
-  braking_duration:['Eccentric Deceleration Phase Duration','Braking Phase Duration'],
+  // CORRECTIF (validé par le praticien, mission evidence secondaire) : "Braking Phase Duration"
+  // (562ms, export réel) et "Eccentric Deceleration Phase Duration" (268ms, export réel, MÊME
+  // séance) sont des valeurs DIFFÉRENTES — retiré "Braking Phase Duration" du mapping. braking_duration
+  // (clé historique conservée) ne matche plus QUE "Eccentric Deceleration Phase Duration",
+  // conformément au valdName déjà documenté dans CMJ_VAR_META. "Braking Phase Duration" reste
+  // non mappée (aucune variable Kinexus canonique ne la cible aujourd'hui).
+  braking_duration:['Eccentric Deceleration Phase Duration'],
   // Mission AI (audit export complet) : alias ajouté — "Flight Time:Contraction Time" est la forme
   // développée réellement exportée (jamais l'abréviation "FT:CT"). Distinct et non confondu avec
   // "FlightTime:Eccentric Duration" (dénominateur différent, jamais aliasé).
@@ -547,7 +608,12 @@ var FD_KPI_PATTERNS={
   landing_mean_force:['Landing Mean Force','Mean Landing Force'],landing_rfd:['Landing RFD'],
   landing_duration:['Landing Phase Duration'],landing_mean_power:['Landing Mean Power','Mean Landing Power'],
   post_landing_stability:['Post Landing Stability'],
-  conc_impulse_100:['Concentric Impulse 100ms','Concentric Impulse @ 100ms','Concentric Impulse (100ms)','Concentric Impulse at 100ms'],
+  conc_impulse_100:FD_CONC_IMPULSE_100_PATTERNS,
+  // Mission evidence secondaire (validé) : asymétrie native ForceDecks réellement disponible pour
+  // conc_impulse_100 (déjà diagnostique Explosivité) — "Concentric Impulse-100ms % (Asym)". Motif
+  // partagé (mêmes variantes tiret/espace/@ que la valeur brute) — fdColSuffix isole la colonne
+  // "(Asym)", jamais confondue avec la valeur brute (cf. mécanisme déjà éprouvé ecc_decel_rfd_asym).
+  conc_impulse_100_asym:FD_CONC_IMPULSE_100_PATTERNS,
   conc_rfd:['Concentric RFD','Concentric Rate of Force'],
   // Mission AI : conc_force_impulse_asym et p2_conc_impulse_asym existaient déjà dans TBK/
   // ASYM_PERFORMANCE_EQUIVALENT (le commentaire d'origine indique que VALD déclare "Concentric
@@ -7514,6 +7580,118 @@ function computeCsmV2SlltSymmetryEvidence(testData){
   });
   return out;
 }
+// ── MISSION AI — EVIDENCE SECONDAIRE PAR QUALITÉ (validé par le praticien) ───────────────────────
+// Couche ADDITIVE PARALLÈLE, patron identique à computeCsmV2SldjSecondarySymmetryEvidence
+// ci-dessus (Étape K3) : AUCUN moteur computeHypXX01 LOCKED n'est modifié, aucune de leurs
+// diagnosticEvidence/confirmativeEvidence/explanatoryEvidence n'est touchée, aucun `state`/severity
+// n'est recalculé. Expose uniquement des variables CMJ réellement disponibles (import ForceDecks
+// vérifié) comme evidence CONTEXTUELLE/EXPLICATIVE secondaire, jamais diagnostique (role:'secondary'
+// systématique, aucun seuil inventé, `status` toujours 'non_determinable' sauf quand une symétrie
+// G/D réelle existe — auquel cas seule sa classification LSI générique, déjà utilisée ailleurs
+// dans Kinexus, est appliquée, jamais une nouvelle règle).
+//
+// Redondances documentées ici (jamais une déduplication automatique dans un moteur LOCKED) :
+// - RSI-Mod = primaire (déjà diagnostique Réactivité via HYP-REA-01) ; FT:CT = secondaire/
+//   contextuel (déjà exposé par symmetryEvidence, non dupliqué ici).
+// - Jump Height = primaire (diagnostique Puissance) ; Flight Time = intermédiaire, jamais compté
+//   comme preuve indépendante (non exposé ici comme evidence secondaire distincte).
+// - Concentric Impulse / Concentric Mean Force : liées mathématiquement (durée de phase), toutes
+//   deux déjà CONFIRMATIVE Explosivité dans CSM_V2_CLINICAL_VARIABLE_MATRIX — non dupliquées ici.
+// - Eccentric Mean Power / Eccentric Peak Power : complémentaires, jamais deux preuves
+//   indépendantes du même mécanisme — cf. CSM_V2_CMJ_REDUNDANCY_PAIRS ci-dessous (documentation
+//   seule, aucune logique de déduplication dans les moteurs LOCKED).
+var CSM_V2_CMJ_REDUNDANCY_PAIRS=[
+  {primary:'rsi_mod',secondary:'ft_ct_ratio',reason:'Fortement corrélées (mesures apparentées de la réactivité au sol) — RSI-Mod reste la seule preuve diagnostique (THRESHOLDS.cmj_rsi_mod existe, pas pour ft_ct_ratio).'},
+  {primary:'height',secondary:'flight_time',reason:'Flight Time est une variable intermédiaire utilisée pour dériver Jump Height (méthode Flight Time) — jamais une seconde preuve indépendante de la performance de saut.'},
+  {primary:'conc_mean_force',secondary:'conc_impulse',reason:'Liées mathématiquement via la durée de la phase concentrique — répondent à des questions différentes (pic vs cumul) mais ne doivent pas être interprétées comme deux déficits indépendants sans justification.'},
+  {primary:'peak_power',secondary:'conc_mean_power',reason:'Peak Power et Mean Power décrivent le même phénomène (production de puissance concentrique) à deux instants différents — ne jamais surpondérer en comptant les deux comme preuves indépendantes.'},
+  {primary:'ecc_mean_power',secondary:'ecc_peak_power',reason:'Complémentaires (moyenne vs pic de la même phase de freinage) — conserver les deux si utiles, jamais deux diagnostics indépendants du même mécanisme.'}
+];
+// Valeur brute + role secondaire, SANS jamais inventer un statut/seuil. Utilisé pour les variables
+// sans G/D (single value CMJ bilatéral).
+function csmV2SecondaryValueEntry(cmjValues,key,role,notes){
+  if(cmjValues[key]==null)return null;
+  return{available:true,value:cmjValues[key],role:role,status:'non_determinable',notes:notes||null};
+}
+// Valeur brute + symétrie LSI générique (déjà utilisée ailleurs dans Kinexus, jamais une nouvelle
+// règle) quand une paire G/D réelle existe — même mécanisme que computeCsmV2SldjSecondarySymmetryEvidence.
+function csmV2SecondarySymmetryEntry(cmjValues,baseKey,lKey,rKey,role,notes){
+  var vL=cmjValues[lKey],vR=cmjValues[rKey];
+  if(vL==null||vR==null)return null;
+  var lsi=autoLSI(vL,vR);
+  return{
+    available:true,rawL:vL,rawR:vR,lsi:lsi,role:role,
+    asymmetryPercent:lsi!=null?Math.round((100-lsi)*10)/10:null,
+    status:lsi!=null?(lsiSt(lsi)==='vert'||lsiSt(lsi)==='jaune'?'normal':'deficient'):'non_determinable',
+    source:'lsiSt_generic_v1',notes:notes||null
+  };
+}
+// ABSORPTION — HYP-ABS-01 (LOCKED) n'est pas modifiée : braking_rfd/force_zero_vel restent
+// l'unique mécanisme diagnostique. Ajoute ecc_peak_power (nouvelle variable, distincte de
+// ecc_mean_power), ecc_duration (contextuel, phase Unloading), ecc_mean_power (déjà disponible
+// mais jusqu'ici relié uniquement à Explosivité dans CSM_V2_CLINICAL_VARIABLE_MATRIX — ajouté ici
+// comme lien PARALLÈLE pour Absorption, sans retirer le lien existant), braking_duration (corrigé
+// phase Braking, jamais consommé par un moteur jusqu'ici), landing_impulse (disponible, exposé en
+// contexte SEULEMENT — aucune relation causale établie avec Absorption dans HYP_QUALITY_RELATIONS/
+// CLINICAL_HYPOTHESIS_WHITELIST, donc aucune contribution affirmée ici).
+function computeCsmV2AbsorptionSecondaryEvidence(testData){
+  var out={};
+  if(!(testData&&testData.cmj&&testData.cmj.active))return out;
+  var cmjValues=resolveCmjValues({testData:testData});
+  var e1=csmV2SecondaryValueEntry(cmjValues,'ecc_peak_power','explicative_mecanistique','Puissance excentrique — distincte de ecc_mean_power (cf. CSM_V2_CMJ_REDUNDANCY_PAIRS), aucun seuil disponible.');
+  if(e1)out['absorptionSecondaire.cmj_ecc_peak_power']=e1;
+  var e2=csmV2SecondaryValueEntry(cmjValues,'ecc_duration','explicative','Durée totale de la phase excentrique (Unloading) — contexte, aucun seuil disponible.');
+  if(e2)out['absorptionSecondaire.cmj_ecc_duration']=e2;
+  var e3=csmV2SecondaryValueEntry(cmjValues,'ecc_mean_power','explicative','Déjà reliée à Explosivité (biomecanique.cmj_ecc_mean_power, moteur LOCKED, non modifié) — ajoutée ici en parallèle comme contexte de la capacité de freinage.');
+  if(e3)out['absorptionSecondaire.cmj_ecc_mean_power']=e3;
+  var e4=csmV2SecondaryValueEntry(cmjValues,'braking_duration','explicative','Eccentric Deceleration Phase Duration — durée de la phase de freinage, jamais consommée par un moteur HYP.');
+  if(e4)out['absorptionSecondaire.cmj_braking_duration']=e4;
+  var e5=csmV2SecondaryValueEntry(cmjValues,'landing_impulse','support','Disponible, exposée en contexte uniquement — aucune relation causale établie avec Absorption dans HYP_QUALITY_RELATIONS/CLINICAL_HYPOTHESIS_WHITELIST, aucune contribution affirmée.');
+  if(e5)out['absorptionSecondaire.cmj_landing_impulse']=e5;
+  return out;
+}
+// PUISSANCE — HYP-PUI-01 (LOCKED) n'est pas modifiée : cmj_peak_power reste l'unique variable
+// DIRECT. conc_mean_power (déjà disponible, jamais reliée à Puissance dans la matrice) et
+// ecc_peak_power (nouvelle) ajoutées comme explicatif/complémentaire — jamais promues diagnostic
+// (aucun seuil, conformément à l'instruction explicite de la mission).
+function computeCsmV2PuissanceSecondaryEvidence(testData){
+  var out={};
+  if(!(testData&&testData.cmj&&testData.cmj.active))return out;
+  var cmjValues=resolveCmjValues({testData:testData});
+  var e1=csmV2SecondaryValueEntry(cmjValues,'conc_mean_power','explicative','Complémentaire de Peak Power/BM (déjà DIRECT) — cf. CSM_V2_CMJ_REDUNDANCY_PAIRS, jamais une 2e preuve indépendante.');
+  if(e1)out['puissanceSecondaire.cmj_conc_mean_power']=e1;
+  var e2=csmV2SecondaryValueEntry(cmjValues,'ecc_peak_power','explicative','Caractérise la stratégie de production de puissance excentrique — jamais transformée en diagnostic Puissance faute de seuil.');
+  if(e2)out['puissanceSecondaire.cmj_ecc_peak_power']=e2;
+  return out;
+}
+// RÉACTIVITÉ — HYP-REA-01 (LOCKED) n'est pas modifiée : sldj_rsi reste l'unique mécanisme
+// diagnostique (cf. computeCsmV2SldjSecondarySymmetryEvidence ci-dessus). leg_stiffness ("CMJ
+// Stiffness", JAMAIS "Lower-Limb Stiffness" — 2 métriques distinctes) et contraction_time ajoutées
+// comme variables TRANSVERSALES explicatives, avec symétrie G/D réelle pour leg_stiffness.
+function computeCsmV2ReactivitySecondaryEvidence(testData){
+  var out={};
+  if(!(testData&&testData.cmj&&testData.cmj.active))return out;
+  var cmjValues=resolveCmjValues({testData:testData});
+  var e1=csmV2SecondaryValueEntry(cmjValues,'leg_stiffness','explicative','CMJ Stiffness — variable transversale (raideur globale), jamais forcée dans une phase (§7 mission phases).');
+  if(e1)out['reactiviteSecondaire.cmj_leg_stiffness']=e1;
+  var e2=csmV2SecondaryValueEntry(cmjValues,'contraction_time','support','Contextualise Eccentric Duration/Concentric Duration/FT:CT — jamais une phase supplémentaire.');
+  if(e2)out['reactiviteSecondaire.cmj_contraction_time']=e2;
+  var sym=csmV2SecondarySymmetryEntry(cmjValues,'leg_stiffness','leg_stiffness_L','leg_stiffness_R','explicative','Asymétrie native ForceDecks disponible (leg_stiffness_L/R) — LSI générique, jamais un seuil clinique dédié.');
+  if(sym)out['reactiviteSecondaire.cmj_leg_stiffness_symmetry']=sym;
+  return out;
+}
+// EXPLOSIVITÉ — HYP-EXP-01 (LOCKED) n'est pas modifiée. conc_impulse_100 reste l'unique variable
+// DIRECT (toujours NOT_DETERMINED, aucun seuil — inchangé). Ajoute uniquement son asymétrie native
+// ForceDecks (conc_impulse_100_asym), jamais classifiable non plus (même absence de seuil que la
+// valeur brute), exposée en contexte.
+function computeCsmV2ExplosiviteSecondaryEvidence(testData){
+  var out={};
+  if(!(testData&&testData.cmj&&testData.cmj.active))return out;
+  var cmjValues=resolveCmjValues({testData:testData});
+  var e1=csmV2SecondaryValueEntry(cmjValues,'conc_impulse_100_asym','support','Asymétrie native de conc_impulse_100 (déjà DIRECT, NOT_DETERMINED faute de seuil) — magnitude seule, côté dominant non fourni par ForceDecks pour cette variable (cf. ASYM_SIDE_PAIRS).');
+  if(e1)out['explosiviteSecondaire.cmj_conc_impulse_100_asym']=e1;
+  return out;
+}
 // Association WBLT × Y-Balance antérieur (mission Étape K5) — jamais une nouvelle
 // CLINICAL_HYPOTHESIS/relation HYP_QUALITY_RELATIONS (référentiels LOCKED, non touchés) : une simple
 // phrase de synthèse, générée UNIQUEMENT si wblt_distance ET ybt_ant sont TOUS DEUX réellement
@@ -7544,6 +7722,12 @@ function computeCsmV2(functionScores,testData){
   symmetryEvidence['Mobilité']=Object.assign({},symmetryEvidence['Mobilité'],computeCsmV2YbtSymmetryEvidence(testData));
   // Mission CSM V2.2, Étape L12 (ex-K4, réception unipodale sllt) : même principe additif.
   symmetryEvidence['Stabilisation']=Object.assign({},symmetryEvidence['Stabilisation'],computeCsmV2SlltSymmetryEvidence(testData));
+  // Mission AI — evidence secondaire par qualité (validé) : même principe additif, aucun moteur
+  // HYP-XX-01 LOCKED modifié (cf. commentaire au-dessus de computeCsmV2AbsorptionSecondaryEvidence).
+  symmetryEvidence['Absorption']=Object.assign({},symmetryEvidence['Absorption'],computeCsmV2AbsorptionSecondaryEvidence(testData));
+  symmetryEvidence['Puissance']=Object.assign({},symmetryEvidence['Puissance'],computeCsmV2PuissanceSecondaryEvidence(testData));
+  symmetryEvidence['Réactivité']=Object.assign({},symmetryEvidence['Réactivité'],computeCsmV2ReactivitySecondaryEvidence(testData));
+  symmetryEvidence['Explosivité']=Object.assign({},symmetryEvidence['Explosivité'],computeCsmV2ExplosiviteSecondaryEvidence(testData));
   var patterns=[];
 
   HYP_CSM_QUALITIES.forEach(function(q){

@@ -34,12 +34,12 @@ function test(name, fn) {
 console.log('MISSION — extraction du mapping CMJ actuel Kinexus <-> ForceDecks');
 
 // ═══════════════════════ Non-modification (garde-fous obligatoires §8) ══════════════════════════
-test('E1 — index.html n\'a subi AUCUNE modification par cette mission (git status propre sur ce fichier)', () => {
-  const out = execSync('git status --porcelain -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  assert.strictEqual(out.trim(), '', 'index.html a été modifié : ' + out);
+test('E1 — la mission d\'extraction ORIGINALE (commit 0765771) n\'avait modifié AUCUNE ligne de index.html — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée, evidence secondaire par qualité, a depuis modifié index.html — attendu, hors périmètre de cette garde)', () => {
+  const stat = execSync('git diff --stat 0765771~1 0765771 -- index.html', { cwd: path.join(__dirname, '..') }).toString();
+  assert.strictEqual(stat.trim(), '', 'le commit 0765771 aurait dû ne toucher aucune ligne de index.html : ' + stat);
 });
-test('E2 — TESTS.cmj.kpis inchangé : toujours 51 clés, aucune ajoutée ni retirée', () => {
-  assert.strictEqual(TBK.cmj.kpis.length, 51);
+test('E2 — TESTS.cmj.kpis : 59 clés (51 + 8 evidence secondaire, mission ULTÉRIEURE validée : ecc_duration, ecc_peak_power, leg_stiffness+L/R/asym, contraction_time, conc_impulse_100_asym)', () => {
+  assert.strictEqual(TBK.cmj.kpis.length, 59);
 });
 test('E3 — THRESHOLDS inchangé : toujours 24 clés verrouillées', () => {
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
@@ -84,17 +84,17 @@ test('E7 — le mapping FD_KPI_PATTERNS existant n\'a pas changé : l\'audit dé
 
 // ═══════════════════════ Extraction : TABLE 1 (dictionnaire CMJ Kinexus) ════════════════════════
 const report = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'cmj_mapping_extraction_report.json'), 'utf8'));
-test('E8 — TABLE 1 couvre exactement les 51 clés du catalogue TESTS.cmj.kpis, aucune inventée', () => {
+test('E8 — TABLE 1 couvre exactement les 59 clés du catalogue TESTS.cmj.kpis (51 + 8 evidence secondaire, mission ultérieure validée), aucune inventée', () => {
   const t1 = report.table1_dictionnaire_cmj_kinexus;
-  assert.strictEqual(t1.length, 51);
+  assert.strictEqual(t1.length, 59);
   const catalogKeys = new Set(TBK.cmj.kpis.map((k) => k.key));
   t1.forEach((r) => assert.ok(catalogKeys.has(r.key), r.key + ' absent du catalogue réel'));
 });
-test('E9 — 42 clés Kinexus CMJ ont au moins 1 en-tête ForceDecks reconnu ; 9 sont NO_CURRENT_MAPPING (liste exacte vérifiée)', () => {
+test('E9 — 50 clés Kinexus CMJ ont au moins 1 en-tête ForceDecks reconnu (42 + 8 evidence secondaire) ; les 9 mêmes clés restent NO_CURRENT_MAPPING (liste exacte inchangée — aucune des 8 nouvelles clés n\'y figure, cohérent)', () => {
   const t1 = report.table1_dictionnaire_cmj_kinexus;
   const mapped = t1.filter((r) => r.mappingStatus !== 'NO_CURRENT_MAPPING');
   const unmapped = t1.filter((r) => r.mappingStatus === 'NO_CURRENT_MAPPING').map((r) => r.key).sort();
-  assert.strictEqual(mapped.length, 42);
+  assert.strictEqual(mapped.length, 50);
   assert.deepStrictEqual(unmapped, ['braking_eff', 'conc_displacement', 'ecc_decel', 'landing_duration', 'peak_vel', 'post_landing_stability', 'propulsion_eff', 'time_to_stab', 'tto']);
 });
 
@@ -111,8 +111,11 @@ test('E11 — statuts TABLE 3 conformes au vocabulaire de la mission (EXACT/ALIA
   Object.keys(counts).forEach((s) => assert.ok(allowed.has(s), 'statut inattendu : ' + s));
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   assert.strictEqual(total, 283);
-  assert.strictEqual(counts.AMBIGUOUS, 6);
-  assert.strictEqual(counts.NO_CURRENT_EQUIVALENT, 228);
+  // braking_duration résolu (mission ultérieure validée, evidence secondaire) : 6 -> 4 AMBIGUOUS
+  // (height x2, rsi_mod x2). NO_CURRENT_EQUIVALENT diminue d'autant (+ CMJ Stiffness désormais
+  // mappée) : 228 -> 221.
+  assert.strictEqual(counts.AMBIGUOUS, 4);
+  assert.strictEqual(counts.NO_CURRENT_EQUIVALENT, 221);
 });
 test('E12 — aucun header ForceDecks n\'est silencieusement ignoré : union TABLE3 == union des 17 fichiers fixtures réels', () => {
   function parseCsvLine(line) { return line.replace(/^﻿?"/, '').replace(/"$/, '').split('","'); }

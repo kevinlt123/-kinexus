@@ -1,6 +1,6 @@
 {
- "generatedAt": "2026-09-02",
- "note": "Extraction en lecture seule du mapping CMJ ACTUEL (aucune modification de FD_KPI_PATTERNS/TESTS/THRESHOLDS/NORMS_V2/HYP). Compagnon de tests/fixtures/forcedecks_cmj_semantic_mapping_audit.json (non modifie), avec la nomenclature de statut demandee par cette mission (EXACT/ALIAS/VARIANT/AMBIGUOUS/NO_CURRENT_EQUIVALENT).",
+ "generatedAt": "2026-09-03",
+ "note": "Extraction en lecture seule du mapping CMJ ACTUEL (aucune modification de FD_KPI_PATTERNS/TESTS/THRESHOLDS/NORMS_V2/HYP). Compagnon de tests/fixtures/forcedecks_cmj_semantic_mapping_audit.json (non modifie), avec la nomenclature de statut demandee par cette mission (EXACT/ALIAS/VARIANT/AMBIGUOUS/NO_CURRENT_EQUIVALENT). [Mis à jour par la mission evidence secondaire (validée) — 8 nouvelles clés CMJ ajoutées, braking_duration corrigé.]",
  "table1_dictionnaire_cmj_kinexus": [
   {
    "key": "height",
@@ -227,15 +227,14 @@
    "canonical": "cmj_braking_duration",
    "label": "Braking Phase Duration (ms)",
    "type": "source",
-   "phaseKinexus": "unloading",
+   "phaseKinexus": "braking",
    "tier": "master",
    "qualities": null,
    "hypEngines": null,
    "forcedecksHeaders": [
-    "Braking Phase Duration [ms]",
     "Eccentric Deceleration Phase Duration [s]"
    ],
-   "mappingStatus": "AMBIGUOUS"
+   "mappingStatus": "MAPPED"
   },
   {
    "key": "braking_impulse",
@@ -701,6 +700,118 @@
     "Peak Landing Force [N] (R)"
    ],
    "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_duration",
+   "canonical": "cmj_ecc_duration",
+   "label": "Eccentric Duration (ms)",
+   "type": "source",
+   "phaseKinexus": "unloading",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Duration [ms]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "ecc_peak_power",
+   "canonical": "cmj_ecc_peak_power",
+   "label": "Eccentric Peak Power (W/kg)",
+   "type": "source",
+   "phaseKinexus": "braking",
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Eccentric Peak Power / BM [W/kg]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "contraction_time",
+   "canonical": "cmj_contraction_time",
+   "label": "Contraction Time (ms)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Contraction Time [ms]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "leg_stiffness",
+   "canonical": "cmj_leg_stiffness",
+   "label": "CMJ Stiffness (N/m)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": "info",
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "CMJ Stiffness [N/m]"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "leg_stiffness_L",
+   "canonical": "cmj_leg_stiffness_L",
+   "label": "CMJ Stiffness Gauche (N/m)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "CMJ Stiffness [N/m] (L)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "leg_stiffness_R",
+   "canonical": "cmj_leg_stiffness_R",
+   "label": "CMJ Stiffness Droit (N/m)",
+   "type": "source",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "CMJ Stiffness [N/m] (R)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "leg_stiffness_asym",
+   "canonical": "cmj_leg_stiffness_asym",
+   "label": "CMJ Stiffness Asymmetry (%)",
+   "type": "derived",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "CMJ Stiffness % (Asym) (%)"
+   ],
+   "mappingStatus": "MAPPED"
+  },
+  {
+   "key": "conc_impulse_100_asym",
+   "canonical": "cmj_conc_impulse_100_asym",
+   "label": "Concentric Impulse-100ms Asymmetry (%)",
+   "type": "derived",
+   "phaseKinexus": null,
+   "tier": null,
+   "qualities": null,
+   "hypEngines": null,
+   "forcedecksHeaders": [
+    "Concentric Impulse-100ms % (Asym) (%)"
+   ],
+   "mappingStatus": "MAPPED"
   }
  ],
  "table3_forcedecks_vers_kinexus": [
@@ -718,9 +829,9 @@
   },
   {
    "forcedecks": "Braking Phase Duration [ms]",
-   "kinexus": "cmj_braking_duration",
-   "correspondance": "AMBIGUOUS",
-   "commentaire": "braking_duration"
+   "kinexus": null,
+   "correspondance": "NO_CURRENT_EQUIVALENT",
+   "commentaire": ""
   },
   {
    "forcedecks": "Braking Phase Duration:Concentric Duration [%]",
@@ -736,27 +847,27 @@
   },
   {
    "forcedecks": "CMJ Stiffness % (Asym) (%)",
-   "kinexus": null,
-   "correspondance": "NO_CURRENT_EQUIVALENT",
-   "commentaire": ""
+   "kinexus": "cmj_leg_stiffness_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "leg_stiffness_asym"
   },
   {
    "forcedecks": "CMJ Stiffness [N/m]",
-   "kinexus": null,
-   "correspondance": "NO_CURRENT_EQUIVALENT",
-   "commentaire": ""
+   "kinexus": "cmj_leg_stiffness",
+   "correspondance": "ALIAS",
+   "commentaire": "leg_stiffness"
   },
   {
    "forcedecks": "CMJ Stiffness [N/m] (L)",
-   "kinexus": null,
-   "correspondance": "NO_CURRENT_EQUIVALENT",
-   "commentaire": ""
+   "kinexus": "cmj_leg_stiffness_L",
+   "correspondance": "VARIANT",
+   "commentaire": "leg_stiffness_L"
   },
   {
    "forcedecks": "CMJ Stiffness [N/m] (R)",
-   "kinexus": null,
-   "correspondance": "NO_CURRENT_EQUIVALENT",
-   "commentaire": ""
+   "kinexus": "cmj_leg_stiffness_R",
+   "correspondance": "VARIANT",
+   "commentaire": "leg_stiffness_R"
   },
   {
    "forcedecks": "Concentric Duration [ms]",
@@ -796,9 +907,9 @@
   },
   {
    "forcedecks": "Concentric Impulse-100ms % (Asym) (%)",
-   "kinexus": null,
-   "correspondance": "NO_CURRENT_EQUIVALENT",
-   "commentaire": ""
+   "kinexus": "cmj_conc_impulse_100_asym",
+   "correspondance": "VARIANT",
+   "commentaire": "conc_impulse_100_asym"
   },
   {
    "forcedecks": "Concentric Impulse-100ms [N s]",
@@ -1156,9 +1267,9 @@
   },
   {
    "forcedecks": "Contraction Time [ms]",
-   "kinexus": null,
-   "correspondance": "NO_CURRENT_EQUIVALENT",
-   "commentaire": ""
+   "kinexus": "cmj_contraction_time",
+   "correspondance": "EXACT",
+   "commentaire": "contraction_time"
   },
   {
    "forcedecks": "Contraction Time:Eccentric Duration [%]",
@@ -1397,7 +1508,7 @@
   {
    "forcedecks": "Eccentric Deceleration Phase Duration [s]",
    "kinexus": "cmj_braking_duration",
-   "correspondance": "AMBIGUOUS",
+   "correspondance": "EXACT",
    "commentaire": "braking_duration"
   },
   {
@@ -1438,9 +1549,9 @@
   },
   {
    "forcedecks": "Eccentric Duration [ms]",
-   "kinexus": null,
-   "correspondance": "NO_CURRENT_EQUIVALENT",
-   "commentaire": ""
+   "kinexus": "cmj_ecc_duration",
+   "correspondance": "EXACT",
+   "commentaire": "ecc_duration"
   },
   {
    "forcedecks": "Eccentric Mean Braking Force [N]",
@@ -1516,9 +1627,9 @@
   },
   {
    "forcedecks": "Eccentric Peak Power / BM [W/kg]",
-   "kinexus": null,
-   "correspondance": "NO_CURRENT_EQUIVALENT",
-   "commentaire": ""
+   "kinexus": "cmj_ecc_peak_power",
+   "correspondance": "EXACT",
+   "commentaire": "ecc_peak_power"
   },
   {
    "forcedecks": "Eccentric Peak Power [W]",
@@ -2413,6 +2524,7 @@
   "Eccentric Deceleration Peak Force / BW",
   "Eccentric Mean Power [W]",
   "Eccentric Peak Force [N]",
+  "Eccentric Peak Power [W]",
   "Force at Zero Velocity / BM [N/kg]",
   "Peak Landing Force / BM [N/kg]",
   "Peak Landing Force / BW",

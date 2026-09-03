@@ -90,8 +90,8 @@ test('AI5 — Phase 8 (réception) : 11 variables disponibles dans le catalogue 
   assert.strictEqual(phaseMatrix['reception'].consumed.length, 0);
   assert.ok(phaseMatrix['reception'].notConsumed.length, 11);
 });
-test('AI6 — Phase 5 (propulsion concentrique) : 10 variables disponibles, 6 clés uniques consommées (7 entrées, une variable partagée Puissance/Explosivité), toutes non classifiables', () => {
-  assert.strictEqual(phaseMatrix['propulsion_concentrique'].available.length, 10);
+test('AI6 — Phase 5 (propulsion concentrique) : 11 variables disponibles (+1 conc_impulse_100_asym, mission evidence secondaire), 6 clés uniques consommées (7 entrées, une variable partagée Puissance/Explosivité), toutes non classifiables', () => {
+  assert.strictEqual(phaseMatrix['propulsion_concentrique'].available.length, 11);
   assert.strictEqual(phaseMatrix['propulsion_concentrique'].consumed.length, 7);
   assert.strictEqual(phaseMatrix['propulsion_concentrique'].classifiable.length, 0);
 });
