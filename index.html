@@ -1334,7 +1334,7 @@ function validateClinicalConcordance(biomecaLevel,qualiteLevel){
 var BIOMECA_PROFILES_LS_KEY='kinexus_biomeca_profiles';
 var DEFAULT_BIOMECA_PROFILE_ID='default';
 function defaultBiomecaProfilesState(){
-  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,minVariablesPrincipales:1,profileEngineRoleWeights:{}}}]};
+  return{activeId:DEFAULT_BIOMECA_PROFILE_ID,profiles:[{id:DEFAULT_BIOMECA_PROFILE_ID,name:'Par défaut',config:{weights:{},tiers:{},bands:{},missingDataThreshold:0.5,minVariablesPrincipales:1,defaultCmjPhaseAnalysisPopulation:'bball2425_bleague',profileEngineRoleWeights:{}}}]};
 }
 function loadBiomecaProfilesState(){
   try{
@@ -1411,6 +1411,23 @@ function effectiveMinVariablesPrincipales(totalEligible){
   var cfg=activeBiomecaProfile().config||{};
   var configure=cfg.minVariablesPrincipales!=null?cfg.minVariablesPrincipales:1;
   return totalEligible!=null?Math.min(configure,totalEligible):configure;
+}
+// Population automatique du Moteur Biomécanique (analyse par phase CMJ + profils biomécaniques +
+// Moteur d'Asymétrie par Phase — computeMouvementAnalysis dans son ensemble) — DÉCISION DU
+// PRATICIEN (audit de couverture NORMS, conversation dédiée) : bball2425_bleague (Basketball —
+// Japanese B.League 2024/25) est la seule population, parmi les 64 du catalogue, à couvrir les 5
+// phases avec au moins 1 variable normée chacune (cf. NORM_POPULATIONS). Réglage CABINET (un seul
+// pour tous les patients, même mécanisme que minVariablesPrincipales ci-dessus), volontairement
+// DÉCOUPLÉ de la population par test choisie pour un patient (athlete.normSelections.cmj, résolue
+// via resolveNormPopulationForTest) : cette dernière continue de piloter EXCLUSIVEMENT le Moteur
+// des Qualités cliniques (computeMoteur/computeCsmV2, sévérités des 8 qualités HYP-XX-01) — jamais
+// touché par ce réglage. Les 2 moteurs restent deux référentiels normatifs distincts, chacun
+// affiché comme tel, jamais fusionnés implicitement (cf. mission "P0 technique — pont NORMS_V2 ->
+// NORMS" pour la population du Moteur des Qualités, et cette révision pour celle du Moteur
+// Biomécanique).
+function effectiveCmjPhaseAnalysisPopulation(){
+  var cfg=activeBiomecaProfile().config||{};
+  return cfg.defaultCmjPhaseAnalysisPopulation!=null?cfg.defaultCmjPhaseAnalysisPopulation:'bball2425_bleague';
 }
 // Disponibilité de normes fiables (percentiles) pour une variable de phase CMJ, dans la
 // population active — pure question de DONNÉES, indépendante du bilan en cours d'analyse.
@@ -13521,11 +13538,13 @@ function buildSportifReport(athlete,bilan,res){
   // 'principale' (NORMS[pop] introuvable), produisant "0/0 variables principales disponibles" pour
   // les 5 phases CMJ MÊME quand toutes les données ForceDecks réelles sont présentes et correctement
   // importées (vérifié : la phase Braking passe à 3/3 dès qu'une population réelle est résolue).
-  // Correction minimale : réutilise resolveNormPopulationForTest('cmj',...) — fonction DÉJÀ
-  // existante, DÉJÀ utilisée par plusieurs moteurs HYP (Puissance/Force/Iso Belt Squat) pour ce rôle
-  // exact — jamais une nouvelle règle de résolution de population, jamais une norme/un seuil créé.
-  var cmjNormSelectionsForMouvement=effectiveNormSelections(athlete).normSelections;
-  var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,resolveNormPopulationForTest('cmj',effectiveNormPop(athlete),cmjNormSelectionsForMouvement),age,fSc):null;
+  // RÉVISÉ (décision du praticien) : le Moteur Biomécanique (analyse par phase) utilise désormais
+  // sa population automatique cabinet (effectiveCmjPhaseAnalysisPopulation, bball2425_bleague par
+  // défaut — seule population du catalogue couvrant les 5 phases), volontairement DÉCOUPLÉE de la
+  // population par test du patient qui continue de piloter exclusivement le Moteur des Qualités
+  // cliniques (fSc, calculé séparément ci-dessus) — jamais une nouvelle norme/un seuil créé,
+  // seulement un choix de référentiel pour cet usage précis.
+  var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),age,fSc):null;
   // Mission Q, objectif 3 — page patient CSM V2 (langage courant), n'apparaît que si le bilan produit
   // au moins une conclusion présentable (findings non vide) — jamais une page vide.
   var csmV2Patient=res.clinicalSynthesisV2?csmV2PatientNarrative(res.clinicalSynthesisV2.clinicalProfile,res.clinicalSynthesisV2.synthesis):null;
@@ -15441,13 +15460,15 @@ function AnalyseView(props){
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
   var effNormSel=useMemo(function(){return effectiveNormSelections(athlete).normSelections;},[athlete.normSelections,athlete.sport,athlete.niveau,athlete.sexe,athlete.dateNaissance]);
   var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,effNormSel);},[bilan,athlete.normPopulation,effNormSel,athlete.sexe,athleteAge]);
-  // MISSION — BUG CRITIQUE : root cause 1, cf. commentaire buildSportifReport (index.html) —
-  // resolveNormPopulationForTest('cmj',...) au lieu de effectiveNormPop(athlete) seul, pour que la
-  // sélection de population PAR TEST CMJ (déjà calculée ci-dessus dans effNormSel, déjà utilisée
-  // pour res) soit également prise en compte par le Moteur Biomécanique — jamais une nouvelle norme.
+  // RÉVISÉ (décision du praticien, cf. commentaire buildSportifReport index.html) : le Moteur
+  // Biomécanique (analyse par phase) utilise désormais sa population automatique cabinet
+  // (effectiveCmjPhaseAnalysisPopulation, bball2425_bleague par défaut — seule population du
+  // catalogue couvrant les 5 phases), volontairement DÉCOUPLÉE de la sélection de population par
+  // test CMJ du patient (effNormSel, qui continue de piloter exclusivement res/computeMoteur, le
+  // Moteur des Qualités cliniques) — jamais une nouvelle norme créée.
   var mouvementAnalysis=useMemo(function(){
-    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,resolveNormPopulationForTest('cmj',effectiveNormPop(athlete),effNormSel),athleteAge,res.functionScores):null;
-  },[bilan,athlete.normPopulation,effNormSel,athlete.sexe,athleteAge,res]);
+    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),athleteAge,res.functionScores):null;
+  },[bilan,athleteAge,res]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
   var fSc=res.functionScores,sysSc=res.systemScores;
   var pri=res.priorities||[];

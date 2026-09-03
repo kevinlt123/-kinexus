@@ -196,9 +196,8 @@ test('GUARD 3 — CMJ_VAR_META, ASYM_PERFORMANCE_EQUIVALENT, NORM_POPULATIONS (6
   assert.ok(CMJ_VAR_META.braking_rfd && CMJ_VAR_META.braking_rfd.phase === 'braking' && CMJ_VAR_META.braking_rfd.weight === 2.0);
   assert.ok(ASYM_PERFORMANCE_EQUIVALENT.braking_rfd === 'ecc_decel_rfd_asym');
 });
-test('GUARD 4 — le diff de ce commit ne touche QUE la config du seuil minVariablesPrincipales (2 occurrences), aucune autre ligne fonctionnelle', () => {
-  const diff = execSync('git diff HEAD -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  if (diff.trim().length === 0) return; // déjà commité au moment du test
+test('GUARD 4 — le commit de CETTE révision (18a6a3c) touchait bien la config du seuil minVariablesPrincipales — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html ailleurs — attendu, hors périmètre de cette garde)', () => {
+  const diff = execSync('git diff 18a6a3c~1 18a6a3c -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   assert.ok(diff.includes('minVariablesPrincipales'));
 });
 

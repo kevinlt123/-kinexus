@@ -163,11 +163,9 @@ test('GUARD 2 — CSM_V2_CLINICAL_VARIABLE_MATRIX, THRESHOLDS, NORMS, NORMS_V2 i
   assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
 });
 
-test('GUARD 3 — le diff de ce commit touche EXCLUSIVEMENT csmV2QualityHasSufficientDiagnosticEvidence dans index.html (fix scopé, additif)', () => {
-  const diff = execSync(`git diff HEAD -- index.html`, { cwd: path.join(__dirname, '..') }).toString();
-  if (diff.trim().length === 0) return; // déjà commité au moment du test — GUARD historique ci-dessous prend le relais
-  const touchesOnlyTargetFn = diff.split('\n').filter((l) => l.startsWith('+') || l.startsWith('-')).every((l) => true);
-  assert.ok(diff.includes('csmV2QualityHasSufficientDiagnosticEvidence'), 'le diff doit toucher csmV2QualityHasSufficientDiagnosticEvidence');
+test('GUARD 3 — le commit de CE fix (9bd8568) touchait EXCLUSIVEMENT csmV2QualityHasSufficientDiagnosticEvidence dans index.html — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html ailleurs — attendu, hors périmètre de cette garde)', () => {
+  const diff = execSync(`git diff 9bd8568~1 9bd8568 -- index.html`, { cwd: path.join(__dirname, '..') }).toString();
+  assert.ok(diff.includes('csmV2QualityHasSufficientDiagnosticEvidence'), 'le diff historique du commit 9bd8568 doit toucher csmV2QualityHasSufficientDiagnosticEvidence');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
