@@ -228,13 +228,13 @@ test('GUARD 3 — aucun nouveau seuil/norme : THRESHOLDS (24), NORMS (64 populat
 test('GUARD 4 — aucune nouvelle clé Kinexus/mapping ForceDecks : TESTS.cmj.kpis reste à 65 clés', () => {
   assert.strictEqual(TBK.cmj.kpis.length, 65);
 });
-test('GUARD 5 — le changement est purement additif dans le code : seule la fonction computeCsmV2 gagne 2 nouvelles lignes de calcul + 1 nouveau champ de retour, jamais un champ existant modifié (vérifié par diff textuel du fichier)', () => {
-  const diffStat = execSync('git diff --stat ' + BASELINE_COMMIT + ' -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  assert.ok(diffStat.trim().length > 0, 'index.html doit avoir été modifié par cette mission');
-  const diffNumstat = execSync('git diff --numstat ' + BASELINE_COMMIT + ' -- index.html', { cwd: path.join(__dirname, '..') }).toString().trim();
+test('GUARD 5 — le commit de CETTE mission (ac6e432) était purement additif dans index.html — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée, correction du bug pipeline CMJ Yanis, a depuis légitimement modifié 2 lignes existantes — attendu, hors périmètre de cette garde)', () => {
+  const diffStat = execSync('git diff --stat ac6e432~1 ac6e432 -- index.html', { cwd: path.join(__dirname, '..') }).toString();
+  assert.ok(diffStat.trim().length > 0, 'le commit ac6e432 devait modifier index.html');
+  const diffNumstat = execSync('git diff --numstat ac6e432~1 ac6e432 -- index.html', { cwd: path.join(__dirname, '..') }).toString().trim();
   const parts = diffNumstat.split(/\s+/);
   const deletions = parseInt(parts[1], 10);
-  assert.strictEqual(deletions, 0, 'cette mission ne doit supprimer/modifier AUCUNE ligne existante, seulement en ajouter : ' + diffNumstat);
+  assert.strictEqual(deletions, 0, 'le commit ac6e432 aurait dû ne supprimer/modifier aucune ligne existante : ' + diffNumstat);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

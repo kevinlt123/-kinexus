@@ -13438,7 +13438,19 @@ function buildSportifReport(athlete,bilan,res){
   // Section Mouvement (CMJ) — décision du praticien (05/08) : 3e page dédiée, au même niveau de
   // détail que kinexus_rapport_pdf.html (référence UX officielle). N'apparaît que si un CMJ actif
   // existe pour ce bilan ; le nombre total de pages devient donc dynamique (2 ou 3), jamais figé.
-  var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),age,fSc):null;
+  // MISSION — BUG CRITIQUE : root cause 1 (Débogage pipeline CMJ Yanis) : computeMouvementAnalysis
+  // (Moteur Biomécanique) lisait auparavant UNIQUEMENT effectiveNormPop(athlete) (population globale
+  // du patient), en ignorant totalement la sélection de population PAR TEST CMJ
+  // (athlete.normSelections.cmj) déjà utilisée par les moteurs HYP via resolveNormPopulationForTest
+  // (index.html) — sans population résolue, phaseVarCategorie() ne classe JAMAIS une variable
+  // 'principale' (NORMS[pop] introuvable), produisant "0/0 variables principales disponibles" pour
+  // les 5 phases CMJ MÊME quand toutes les données ForceDecks réelles sont présentes et correctement
+  // importées (vérifié : la phase Braking passe à 3/3 dès qu'une population réelle est résolue).
+  // Correction minimale : réutilise resolveNormPopulationForTest('cmj',...) — fonction DÉJÀ
+  // existante, DÉJÀ utilisée par plusieurs moteurs HYP (Puissance/Force/Iso Belt Squat) pour ce rôle
+  // exact — jamais une nouvelle règle de résolution de population, jamais une norme/un seuil créé.
+  var cmjNormSelectionsForMouvement=effectiveNormSelections(athlete).normSelections;
+  var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,resolveNormPopulationForTest('cmj',effectiveNormPop(athlete),cmjNormSelectionsForMouvement),age,fSc):null;
   // Mission Q, objectif 3 — page patient CSM V2 (langage courant), n'apparaît que si le bilan produit
   // au moins une conclusion présentable (findings non vide) — jamais une page vide.
   var csmV2Patient=res.clinicalSynthesisV2?csmV2PatientNarrative(res.clinicalSynthesisV2.clinicalProfile,res.clinicalSynthesisV2.synthesis):null;
@@ -15354,9 +15366,13 @@ function AnalyseView(props){
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
   var effNormSel=useMemo(function(){return effectiveNormSelections(athlete).normSelections;},[athlete.normSelections,athlete.sport,athlete.niveau,athlete.sexe,athlete.dateNaissance]);
   var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,effNormSel);},[bilan,athlete.normPopulation,effNormSel,athlete.sexe,athleteAge]);
+  // MISSION — BUG CRITIQUE : root cause 1, cf. commentaire buildSportifReport (index.html) —
+  // resolveNormPopulationForTest('cmj',...) au lieu de effectiveNormPop(athlete) seul, pour que la
+  // sélection de population PAR TEST CMJ (déjà calculée ci-dessus dans effNormSel, déjà utilisée
+  // pour res) soit également prise en compte par le Moteur Biomécanique — jamais une nouvelle norme.
   var mouvementAnalysis=useMemo(function(){
-    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveNormPop(athlete),athleteAge,res.functionScores):null;
-  },[bilan,athlete.normPopulation,athlete.sexe,athleteAge,res]);
+    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,resolveNormPopulationForTest('cmj',effectiveNormPop(athlete),effNormSel),athleteAge,res.functionScores):null;
+  },[bilan,athlete.normPopulation,effNormSel,athlete.sexe,athleteAge,res]);
   var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
   var fSc=res.functionScores,sysSc=res.systemScores;
   var pri=res.priorities||[];
