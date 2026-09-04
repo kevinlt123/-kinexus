@@ -11241,6 +11241,13 @@ function csmV2DiagnosticVariableV1Status(entry,testData,pop,age,normSelections){
 // Parcourt primary puis fallback, dans l'ordre, et retourne la PREMIÈRE entrée classifiable
 // (status!=='indisponible') — jamais une exigence de 2e preuve. Retourne null si aucune ne l'est
 // (NON_DETERMINABLE, jamais un statut inventé).
+// SCOPE : conçue pour une chaîne fallback à ÉVIDENCE UNIQUE (Force/Puissance/Explosivité/
+// Absorption — la 1ère variable classifiable arrête la recherche). NE PAS l'appeler sur
+// Réactivité pour en déduire "le" diagnostic : ses 2 entrées primary (dj_rsi, sldj_rsi) sont
+// SIMULTANÉMENT diagnostiques (2 tâches distinctes), jamais l'une fallback de l'autre — cette
+// fonction s'arrêterait au premier trouvé (dj_rsi) et ignorerait silencieusement sldj_rsi, ce qui
+// NE reflète PAS la règle de convergence AND-de-2-mécanismes réellement implémentée par
+// HYP-REA-01 LOCKED. Utiliser csmV2ResolveReactivityDualEvidenceV1 ci-dessous pour Réactivité.
 function csmV2ResolveDiagnosticVariableV1(qualityEntry,testData,pop,age,normSelections){
   var ordered=(qualityEntry.primary||[]).concat(qualityEntry.fallback||[]);
   for(var i=0;i<ordered.length;i++){
@@ -11250,6 +11257,27 @@ function csmV2ResolveDiagnosticVariableV1(qualityEntry,testData,pop,age,normSele
     }
   }
   return null;
+}
+// Réactivité est structurellement différente des 4 autres qualités de ce référentiel (cf. note
+// ci-dessus) : évalue les DEUX entrées primary (dj_rsi, sldj_rsi) — jamais en s'arrêtant à la
+// première — et combine leurs statuts avec la MÊME règle que HYP-REA-01 LOCKED (>=2 déficitaires
+// -> retenue, 1 seul -> suspectée, 0 -> absente, aucune classifiable -> non_determinable) — jamais
+// un nouveau seuil, jamais une nouvelle règle clinique inventée, seulement la même lecture que
+// HYP-REA-01 réutilisée pour ce référentiel descriptif. Couche additive pure : jamais utilisée
+// pour piloter fSc['Réactivité'], qui reste exclusivement calculé par computeHypReactivity01.
+function csmV2ResolveReactivityDualEvidenceV1(testData,pop,age,normSelections){
+  var def=QUALITY_DIAGNOSTIC_VARIABLES_V1['Réactivité'];
+  var results=(def.primary||[]).map(function(entry){
+    return{entry:entry,result:csmV2DiagnosticVariableV1Status(entry,testData,pop,age,normSelections)};
+  });
+  var classifiable=results.filter(function(r){return r.result.status!=='indisponible';});
+  var deficient=classifiable.filter(function(r){return r.result.status==='deficitaire';});
+  var combination;
+  if(!classifiable.length)combination='non_determinable';
+  else if(deficient.length>=2)combination='retenue';
+  else if(deficient.length===1)combination='suspectee';
+  else combination='absente';
+  return{results:results,classifiableCount:classifiable.length,deficientCount:deficient.length,combination:combination};
 }
 
 // ══════════════════ MISSION AD — CONSOLIDATION DU RAISONNEMENT CAUSAL CLINIQUE ═══════════════════

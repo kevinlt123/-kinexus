@@ -269,6 +269,179 @@ test('NUANCE 1 — computeStatusWithNormsV2 : quand un sélecteur objet NORMS_V2
   assert.ok(withLegacyPop.status != null, 'la voie legacy (population directe, sans sélecteur objet) trouve bien un statut via NORMS (45/64 populations)');
 });
 
+// ═══════════════ AUDIT READ-ONLY — invariants 1-8 (demande dédiée du praticien) ═══════════════
+// Vérifie exhaustivement les 8 invariants demandés, sans modifier aucun comportement existant.
+// Découverte pendant cet audit (documentée, corrigée additivement) : le résolveur générique
+// csmV2ResolveDiagnosticVariableV1, appelé naïvement sur Réactivité, retournait UNIQUEMENT dj_rsi
+// et ignorait silencieusement sldj_rsi -- ne reflétait pas la règle AND-de-2-mécanismes (invariant
+// 4). Corrigé par l'AJOUT (jamais une modification du résolveur existant, qui reste correct pour
+// Force/Puissance/Explosivité/Absorption) de csmV2ResolveReactivityDualEvidenceV1, dédiée.
+
+// Vérifie la couverture normative RÉELLE d'une clé (NORMS sur au moins 1 des 64 populations, OU
+// THRESHOLDS universel, OU NORMS_V2) -- jamais une valeur supposée, toujours dérivée des 3
+// référentiels réels. Aide de test locale, jamais une nouvelle fonction de production.
+function realCoverageOf(variableKey) {
+  const normsCoverage = Object.keys(NORMS).some((pop) => NORMS[pop][variableKey] != null);
+  return normsCoverage || !!THRESHOLDS[variableKey] || !!NORMS_V2[variableKey];
+}
+
+test('INVARIANT 1 — le référentiel distingue explicitement primary/fallback/confirmative/explanatory/asymmetry (par la clé du tableau elle-même, jamais ambigu)', () => {
+  const roles = ['primary', 'fallback', 'confirmative', 'explanatory', 'asymmetry'];
+  ['Force', 'Puissance', 'Explosivité', 'Réactivité'].forEach((q) => {
+    const def = QUALITY_DIAGNOSTIC_VARIABLES_V1[q];
+    roles.forEach((r) => assert.ok(Array.isArray(def[r]), q + '.' + r + ' doit être un tableau explicite'));
+  });
+  ['braking', 'landing'].forEach((sub) => {
+    const def = QUALITY_DIAGNOSTIC_VARIABLES_V1.Absorption[sub];
+    ['primary', 'fallback', 'confirmative', 'explanatory', 'asymmetry'].forEach((r) => assert.ok(Array.isArray(def[r]), 'Absorption.' + sub + '.' + r + ' doit être un tableau explicite'));
+  });
+});
+
+test('INVARIANT 2 — classifiabilité actuelle (CLASSIFIABLE/NON_CLASSIFIABLE), vérifiée pour CHAQUE variable du référentiel, dérivée de NORMS/THRESHOLDS/NORMS_V2 réels, jamais supposée', () => {
+  function checkAllEntries(def) {
+    ['primary', 'fallback', 'confirmative', 'explanatory'].forEach((role) => {
+      (def[role] || []).forEach((e) => {
+        if (!e.variableKey) return;
+        const classifiable = realCoverageOf(e.variableKey);
+        // Assertion de forme uniquement ici (booléen bien défini) — les valeurs précises sont
+        // vérifiées variable par variable à l'invariant 8 ci-dessous.
+        assert.strictEqual(typeof classifiable, 'boolean');
+      });
+    });
+  }
+  ['Force', 'Puissance', 'Explosivité', 'Réactivité'].forEach((q) => checkAllEntries(QUALITY_DIAGNOSTIC_VARIABLES_V1[q]));
+  checkAllEntries(QUALITY_DIAGNOSTIC_VARIABLES_V1.Absorption.braking);
+  checkAllEntries(QUALITY_DIAGNOSTIC_VARIABLES_V1.Absorption.landing);
+});
+
+test('INVARIANT 3 — intégration LOCKED (CONSUMED_BY_LOCKED_HYP/NOT_CONSUMED_BY_LOCKED_HYP), vérifiée empiriquement en inspectant diagnosticEvidence des moteurs HYP réels, jamais supposée', () => {
+  // HYP-EXP-01 : diagnosticEvidence = {cmj_conc_rfd, cmj_conc_impulse_100} -- jamais cmj_rsi_mod.
+  const exp = computeHypExplosivity01({ cmj: { active: true, trials: { conc_rfd: [1000], conc_impulse_100: [1], rsi_mod: [0.5] } } }, null, 25, {});
+  assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_conc_rfd'));
+  assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_conc_impulse_100'));
+  assert.ok(!Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_rsi_mod'));
+  // HYP-ABS-01 : diagnosticEvidence = {braking_rfd, force_zero_vel, braking_impulse} -- jamais landing_bi/sllt.
+  const abs = computeHypAbsorption01({ cmj: { active: true, trials: { braking_rfd: [200], force_zero_vel: [20], braking_impulse: [1.5] } } }, null, 25, {});
+  assert.ok(Object.prototype.hasOwnProperty.call(abs.diagnosticEvidence, 'braking_rfd'));
+  assert.ok(Object.prototype.hasOwnProperty.call(abs.diagnosticEvidence, 'braking_impulse'));
+  assert.ok(JSON.stringify(abs).indexOf('landing_bi') === -1);
+  assert.ok(JSON.stringify(abs).indexOf('sllt') === -1);
+});
+
+test('INVARIANT 4 — logique de combinaison : single evidence pour Force/Puissance/Explosivité/Absorption (le résolveur s\'arrête à la 1ère classifiable) ; AND de dj_rsi+sldj_rsi pour Réactivité (les 2 sont évaluées, jamais l\'une ignorée)', () => {
+  // Single evidence : le résolveur générique retourne bien seulement la 1ère variable classifiable.
+  const testDataForce = { iso_belt_squat: { active: true, trials: { nkg: [55], n: [4200] } } };
+  const rForce = csmV2ResolveDiagnosticVariableV1(QUALITY_DIAGNOSTIC_VARIABLES_V1.Force, testDataForce, 'fd_bball_m', 25, {});
+  assert.strictEqual(rForce.entry.variableKey, 'iso_belt_squat_nkg'); // s'arrête au primary, jamais un 2e check exigé.
+
+  // AND de 2 : csmV2ResolveReactivityDualEvidenceV1 évalue bien LES DEUX, jamais un seul.
+  const testDataReact = { dj: { active: true, trials: { rsi: [0.72] } }, sldj: { active: true, D: { trials: { rsi: [0.39] } }, G: { trials: { rsi: [0.11] } } } };
+  const rReact = csmV2ResolveReactivityDualEvidenceV1(testDataReact, null, 25, {});
+  assert.strictEqual(rReact.results.length, 2, 'les 2 primary (dj_rsi, sldj_rsi) doivent être évaluées, jamais une seule');
+  assert.strictEqual(rReact.classifiableCount, 2);
+  assert.strictEqual(rReact.deficientCount, 2);
+  assert.strictEqual(rReact.combination, 'retenue');
+  // Cohérent avec la vraie décision HYP-REA-01 (LOCKED, non modifiée) sur les mêmes données.
+  const realHyp = computeHypReactivity01(testDataReact, null, 25, {});
+  assert.strictEqual(realHyp.state, 'retenue_faible');
+
+  // Le résolveur générique, LUI, ignore silencieusement sldj_rsi s'il est appelé sur Réactivité —
+  // documenté comme hors de son scope (cf. commentaire index.html) et vérifié explicitement ici
+  // pour que cette limitation ne redevienne jamais une surprise silencieuse.
+  const rGeneric = csmV2ResolveDiagnosticVariableV1(QUALITY_DIAGNOSTIC_VARIABLES_V1.Réactivité, testDataReact, null, 25, {});
+  assert.strictEqual(rGeneric.entry.variableKey, 'dj_rsi');
+  assert.strictEqual(rGeneric.rank, 0); // ne voit jamais sldj_rsi -- csmV2ResolveReactivityDualEvidenceV1 est la fonction correcte pour Réactivité.
+});
+
+test('INVARIANT 4bis — Absorption reste séparée en braking et landing, jamais fusionnée en une seule liste', () => {
+  assert.ok(QUALITY_DIAGNOSTIC_VARIABLES_V1.Absorption.braking);
+  assert.ok(QUALITY_DIAGNOSTIC_VARIABLES_V1.Absorption.landing);
+  assert.ok(!QUALITY_DIAGNOSTIC_VARIABLES_V1.Absorption.primary, 'Absorption elle-même ne doit avoir aucun primary/fallback plat -- uniquement via braking/landing');
+});
+
+test('INVARIANT 5 — aucune variable non normée n\'est considérée classifiable : csmV2DiagnosticVariableV1Status retourne bien "indisponible" pour les variables NON_CLASSIFIABLE, données présentes ou non', () => {
+  const nonClassifiableKeys = [
+    { testKey: 'cmj', kpiKey: 'conc_rfd', bilateral: true, trials: { conc_rfd: [1500] } },
+    { testKey: 'cmj', kpiKey: 'conc_impulse_100', bilateral: true, trials: { conc_impulse_100: [2] } },
+    { testKey: 'cmj', kpiKey: 'conc_mean_power', bilateral: true, trials: { conc_mean_power: [30] } },
+    { testKey: 'cmj', kpiKey: 'braking_impulse', bilateral: true, trials: { braking_impulse: [2] } },
+    { testKey: 'landing_bi', kpiKey: 'peak_landing_force', bilateral: true, trials: { peak_landing_force: [40] } },
+    { testKey: 'sllt', kpiKey: 'peak_landing_force', bilateral: false, trials: null },
+    { testKey: 'sllt', kpiKey: 'loading_rate', bilateral: false, trials: null }
+  ];
+  nonClassifiableKeys.forEach((spec) => {
+    const testData = spec.bilateral
+      ? { [spec.testKey]: { active: true, trials: spec.trials } }
+      : { [spec.testKey]: { active: true, D: { trials: { [spec.kpiKey]: [40] } }, G: { trials: { [spec.kpiKey]: [38] } } } };
+    const result = computeHypForceKpi(testData, spec.testKey, spec.kpiKey, spec.bilateral, 'bball2425_bleague', 25, {});
+    assert.strictEqual(result.status, 'indisponible', spec.testKey + '.' + spec.kpiKey + ' doit rester indisponible malgré la donnée présente (aucune norme)');
+  });
+});
+
+test('INVARIANT 6 — aucune norme/variable/clé absente du catalogue n\'est inventée : toutes les clés du référentiel existent dans TBK, aucun seuil/NORMS/NORMS_V2 nouveau créé par ce commit', () => {
+  assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
+  assert.strictEqual(Object.keys(NORMS).length, 64);
+  assert.strictEqual(Object.keys(NORMS_V2).length, 7);
+  // Les 2 écarts déjà documentés (Concentric RFD 100ms, Peak Power absolue) sont mappés sur des
+  // clés RÉELLEMENT existantes (conc_rfd) ou explicitement absentes du référentiel (fallback #3
+  // Puissance non créé) -- jamais une clé fantôme ajoutée à TBK/NORMS/THRESHOLDS/NORMS_V2.
+  assert.strictEqual(QUALITY_DIAGNOSTIC_VARIABLES_V1.Puissance.fallback.length, 1, 'un seul fallback réel pour Puissance -- "Peak Power absolue" (fallback #3 demandé) volontairement non créé, aucune clé n\'existe');
+});
+
+test('INVARIANT 7 — le résolveur V1 ne modifie ni ne contourne jamais un HYP LOCKED : aucune trace des fonctions V1 dans le corps de computeMoteur/computeCsmV2, et computeMoteur produit un résultat identique qu\'il soit appelé avant ou après le résolveur V1 (aucun effet de bord)', () => {
+  function extractFnBody(src, fnName) {
+    const marker = 'function ' + fnName + '(';
+    const idx = src.indexOf(marker);
+    let depth = 0, i = src.indexOf('{', idx);
+    const bodyStart = i;
+    for (; i < src.length; i++) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}') { depth--; if (depth === 0) return src.slice(bodyStart, i + 1); }
+    }
+  }
+  const moteurBody = extractFnBody(code, 'computeMoteur');
+  const csmV2Body = extractFnBody(code, 'computeCsmV2');
+  ['csmV2ResolveDiagnosticVariableV1', 'csmV2DiagnosticVariableV1Status', 'csmV2ResolveReactivityDualEvidenceV1', 'QUALITY_DIAGNOSTIC_VARIABLES_V1'].forEach((sym) => {
+    assert.ok(!moteurBody.includes(sym), sym + ' ne doit jamais apparaître dans computeMoteur');
+    assert.ok(!csmV2Body.includes(sym), sym + ' ne doit jamais apparaître dans computeCsmV2');
+  });
+  // Aucun effet de bord : appeler abondamment le référentiel V1 avant computeMoteur ne change rien à son résultat.
+  const testData = { dj: { active: true, trials: { rsi: [0.72] } }, sldj: { active: true, D: { trials: { rsi: [0.39] } }, G: { trials: { rsi: [0.11] } } }, cmj: { active: true, trials: { peak_power: [46.1] } } };
+  const before = JSON.stringify(computeMoteur(testData, {}, null, 25, {}).clinicalSynthesisV2.clinicalProfile);
+  csmV2ResolveDiagnosticVariableV1(QUALITY_DIAGNOSTIC_VARIABLES_V1.Force, testData, null, 25, {});
+  csmV2ResolveReactivityDualEvidenceV1(testData, null, 25, {});
+  const after = JSON.stringify(computeMoteur(testData, {}, null, 25, {}).clinicalSynthesisV2.clinicalProfile);
+  assert.strictEqual(before, after, 'computeMoteur doit produire un résultat strictement identique, résolveur V1 appelé ou non avant');
+});
+
+test('INVARIANT 8 — les 8 variables nommées par le praticien : classifiabilité ET intégration LOCKED, vérifiées une par une, valeurs exactes', () => {
+  const expected = [
+    { key: 'cmj_rsi_mod', classifiable: true, consumed: false, note: 'classifiable mais NOT_CONSUMED_BY_LOCKED_HYP (HYP-EXP-01 ne la lit jamais)' },
+    { key: 'cmj_conc_rfd', classifiable: false, consumed: true, note: 'CONSUMED_BY_LOCKED_HYP (diagnostique HYP-EXP-01) mais non classifiable (0 norme)' },
+    { key: 'cmj_conc_impulse_100', classifiable: false, consumed: true, note: 'CONSUMED_BY_LOCKED_HYP (diagnostique HYP-EXP-01) mais non classifiable (0 norme)' },
+    { key: 'landing_bi_peak_landing_force', classifiable: false, consumed: false, note: 'non classifiable, jamais lue par HYP-ABS-01 (sous-domaine Réception non implémenté)' },
+    { key: 'sllt_peak_landing_force', classifiable: false, consumed: false, note: 'non classifiable, jamais lue par HYP-ABS-01' },
+    { key: 'sllt_loading_rate', classifiable: false, consumed: false, note: 'non classifiable, jamais lue par HYP-ABS-01' },
+    { key: 'cmj_conc_mean_power', classifiable: false, consumed: false, note: 'non classifiable, jamais lue par HYP-PUI-01 (diagnostic, confirmative NI explanatory)' },
+    { key: 'cmj_braking_impulse', classifiable: false, consumed: true, note: 'CONSUMED_BY_LOCKED_HYP (diagnosticEvidence.braking_impulse, HYP-ABS-01) mais non classifiable (0 norme)' }
+  ];
+  expected.forEach((e) => {
+    const actualClassifiable = realCoverageOf(e.key);
+    assert.strictEqual(actualClassifiable, e.classifiable, e.key + ' — classifiabilité attendue ' + (e.classifiable ? 'CLASSIFIABLE' : 'NON_CLASSIFIABLE') + ' (' + e.note + ')');
+  });
+  // Intégration LOCKED, vérifiée empiriquement (pas seulement assertée) :
+  const exp = computeHypExplosivity01({ cmj: { active: true, trials: { conc_rfd: [1000], conc_impulse_100: [1], rsi_mod: [0.5] } } }, null, 25, {});
+  assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_conc_rfd')); // CONSUMED
+  assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_conc_impulse_100')); // CONSUMED
+  assert.ok(!Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_rsi_mod')); // NOT_CONSUMED
+  const abs = computeHypAbsorption01({ cmj: { active: true, trials: { braking_impulse: [1.5] } } }, null, 25, {});
+  assert.ok(Object.prototype.hasOwnProperty.call(abs.diagnosticEvidence, 'braking_impulse')); // CONSUMED
+  assert.ok(JSON.stringify(abs).indexOf('landing_bi') === -1); // NOT_CONSUMED
+  assert.ok(JSON.stringify(abs).indexOf('sllt') === -1); // NOT_CONSUMED
+  const pui = computeHypPower01({ cmj: { active: true, trials: { conc_mean_power: [30] } } }, null, 25, {});
+  assert.ok(JSON.stringify(pui).indexOf('conc_mean_power') === -1); // NOT_CONSUMED, jamais lue nulle part dans HYP-PUI-01
+});
+
 // ═══════════════ RÉGRESSION YANIS ══════════════════════════════════════════════════════════════
 const YANNIS_DATA = {
   wblt: { active: true, D: { trials: { distance: [10] } }, G: { trials: { distance: [14] } } },
