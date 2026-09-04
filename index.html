@@ -11060,6 +11060,198 @@ var CSM_V2_CLINICAL_VARIABLE_MATRIX=(function(){
   };
 })();
 
+// ══════════════ MISSION — VERROUILLAGE DU RÉFÉRENTIEL DES VARIABLES DIAGNOSTIQUES V1 ═══════════
+// Catalogue ADDITIF PUR (documentation + résolution générique), verrouillant une hiérarchie
+// PRIMARY -> FALLBACK -> CONFIRMATIVE -> EXPLANATORY -> ASYMMETRY pour FORCE/PUISSANCE/
+// EXPLOSIVITÉ/RÉACTIVITÉ/ABSORPTION (Iso Belt Squat, CMJ, Single Leg CMJ, Drop Jump, Single Leg
+// Drop Jump, Land & Hold, Single Leg Land & Hold). Principe : UNE SEULE variable diagnostique
+// pertinente ET classifiable suffit à déterminer le statut d'une qualité — jamais une exigence
+// artificielle de 2/3/4 variables quand une seule valide existe.
+//
+// ────────────────────────────────────────────────────────────────────────────────────────────
+// §12 AUDIT PRÉALABLE (résumé — détail complet dans le rapport de mission, jamais supposé) :
+// toutes les clés ci-dessous sont vérifiées existantes dans TESTS.<test>.kpis, et leur
+// classifiabilité RÉELLE aujourd'hui vérifiée empiriquement sur les 64 populations NORMS + 24
+// clés THRESHOLDS + 7 clés NORMS_V2 (jamais supposée, jamais inventée) :
+//   iso_belt_squat_nkg NORMS=19/64 · iso_belt_squat_n NORMS=21/64 · cmj_peak_power NORMS=45/64
+//   +NORMS_V2 · cmj_conc_mean_power/cmj_conc_impulse/cmj_force_peak_power AUCUNE couverture ·
+//   cmj_rsi_mod THRESHOLDS(universel)+NORMS=24/64 · cmj_conc_rfd/cmj_conc_impulse_100 AUCUNE
+//   couverture · dj_rsi THRESHOLDS+NORMS=18/64+NORMS_V2 · sldj_rsi THRESHOLDS+NORMS=3/64+NORMS_V2 ·
+//   cmj_braking_rfd NORMS=19/64 (aucun THRESHOLDS/NORMS_V2) · cmj_force_zero_vel NORMS=7/64 ·
+//   cmj_braking_impulse AUCUNE couverture · landing_bi_peak_landing_force/sllt_peak_landing_force/
+//   sllt_loading_rate/sllt_tts/sllt_ttplf AUCUNE couverture (ni NORMS, ni THRESHOLDS, ni NORMS_V2).
+//
+// ────────────────────────────────────────────────────────────────────────────────────────────
+// §10 INCOMPATIBILITÉS DÉCOUVERTES AVEC LES HYP LOCKED (documentées, JAMAIS résolues en cassant
+// le HYP — le référentiel ci-dessous reste une couche additive/descriptive, il NE PILOTE PAS le
+// calcul réel de fSc[quality], qui reste exclusivement gouverné par les moteurs HYP-XX-01 LOCKED
+// tels quels) :
+//   1. FORCE — HYP-FOR-01 (LOCKED, CLI010) exige ≥2 DES 4 preuves globales (imtp_n, slimtp_n,
+//      iso_belt_squat_n, sl_iso_push_n) déficitaires. Le principe "1 variable suffit" NE
+//      s'applique PAS à la décision réelle de fSc['Force'] — Iso Belt Squat seul, même
+//      classifiable et déficitaire, ne suffit jamais à lui seul dans le moteur LOCKED.
+//   2. PUISSANCE — HYP-PUI-01 (LOCKED) exige 2/2 STRICT (cmj_peak_power ET slcmj_peak_power/
+//      substitut, LES DEUX classifiables) — plus strict encore que Force. Peak Power/BM seul,
+//      même classifiable, ne peut produire au mieux qu'un état non_determinable si la 2e preuve
+//      manque — jamais une "Puissance retenue" sur une seule variable dans le moteur LOCKED.
+//   3. EXPLOSIVITÉ — HYP-EXP-01 (LOCKED) ne lit QUE cmj_conc_rfd et cmj_conc_impulse_100 comme
+//      diagnostiques — jamais cmj_rsi_mod (le primary proposé par cette mission). Or cmj_rsi_mod
+//      EST classifiable aujourd'hui (THRESHOLDS universel + NORMS 24/64), alors que conc_rfd et
+//      conc_impulse_100 n'ont AUCUNE norme nulle part -> HYP-EXP-01 reste structurellement
+//      non_determinable en pratique MÊME SI ce référentiel désignerait un diagnostic réel via
+//      rsi_mod. C'est l'écart le plus actionnable des 5 qualités.
+//   4. EXPLOSIVITÉ — "Concentric RFD 100ms" (fallback #2 demandé) ne correspond à AUCUNE clé
+//      Kinexus réelle : TESTS.cmj.kpis n'a qu'un conc_rfd non fenêtré (déjà documenté ailleurs,
+//      FUTURE_IMPLEMENTATION_CANDIDATE, jamais créé). Mappé ici sur la clé réelle la plus proche
+//      (conc_rfd) avec cet écart documenté explicitement — jamais une clé inventée.
+//   5. PUISSANCE — "Peak Power absolue" (fallback #3 demandé) ne correspond à aucune clé réelle
+//      non plus : peak_power n'existe dans TBK.cmj.kpis qu'en W/kg (déjà relatif au poids), aucune
+//      variante absolue distincte. Fallback #3 non mappé, documenté comme inexistant.
+//   6. ABSORPTION — RÉACTIVITÉ est la SEULE des 5 qualités où le référentiel proposé par cette
+//      mission correspond déjà, presque au mot près, à la règle réellement implémentée par
+//      HYP-REA-01 LOCKED (convergence à 2 tâches distinctes DJ+SLDJ, "un seul déficitaire ->
+//      suspectée, les deux -> retenue") — AUCUNE incompatibilité ici, confirmé positivement.
+//   7. ABSORPTION — RÉCEPTION (Land & Hold / Single Leg Land & Hold) : primary ET les 3 fallbacks
+//      proposés (landing_bi_peak_landing_force, sllt_peak_landing_force, sllt_loading_rate) n'ont
+//      AUCUNE norme nulle part (ni NORMS, ni THRESHOLDS, ni NORMS_V2) — structurellement
+//      non_determinable pour TOUT patient aujourd'hui, indépendamment des données. HYP-ABS-01
+//      LOCKED ne lit d'ailleurs pas du tout ces tests aujourd'hui (sous-domaine E documenté
+//      "non_implemente"). Time To Stabilization (landing_bi_tts/landing_uni_tts), bien que
+//      classifiable (THRESHOLDS universel), n'est délibérément PAS repris ici comme fallback
+//      Absorption — gel déjà en vigueur (HYP-STA-01) : "landing_uni_tts/landing_bi_tts ->
+//      Stabilisation, jamais Absorption", respecté tel quel, jamais réouvert par cette mission.
+//   8. NOMENCLATURE — 3 tests de réception distincts existent, jamais interchangeables :
+//      landing_bi ("Land and Hold", bilatéral, tts+peak_landing_force), landing_uni ("Landing
+//      Unilatéral", tts SEUL, déjà utilisé par HYP-STA-01), sllt ("Single Leg Land and Hold",
+//      peak_landing_force+ttplf+loading_rate+tts+cop_path). La mission n'en nomme que 2
+//      (Land & Hold + Single Leg Land & Hold) ; landing_uni reste hors du périmètre de cette
+//      mission (déjà affecté à Stabilisation).
+//
+// Aucun HYP LOCKED, aucun seuil, aucune norme, aucune clé inventée. CSM_V2_CLINICAL_VARIABLE_MATRIX
+// non modifiée (son champ classifiability ne vérifie que THRESHOLDS+NORMS_V2, jamais NORMS
+// population — limite déjà documentée et corrigée séparément, Mission "audit threshold/percentile",
+// jamais réouverte ici).
+var QUALITY_DIAGNOSTIC_VARIABLES_V1={
+  Force:{
+    quality:'Force',tests:['iso_belt_squat'],
+    primary:[{variableKey:'iso_belt_squat_nkg',testKey:'iso_belt_squat',kpiKey:'nkg',bilateral:true,label:'Peak Force / BM (N/kg)'}],
+    fallback:[{variableKey:'iso_belt_squat_n',testKey:'iso_belt_squat',kpiKey:'n',bilateral:true,label:'Force absolue (N)'}],
+    confirmative:[],
+    explanatory:[
+      {variableKey:'iso_belt_squat_rfd100',testKey:'iso_belt_squat',kpiKey:'rfd100',bilateral:true,label:'RFD 0-100ms (N/s)'},
+      {variableKey:'iso_belt_squat_rfd200',testKey:'iso_belt_squat',kpiKey:'rfd200',bilateral:true,label:'RFD 0-200ms (N/s)'},
+      {variableKey:'iso_belt_squat_ttpf',testKey:'iso_belt_squat',kpiKey:'ttpf',bilateral:true,label:'Time to Peak Force (ms)'}
+    ],
+    asymmetry:[],
+    note:"Iso Belt Squat est bilatéral (pas de comparaison D/G native) -> aucune asymétrie propre à ce test. Les 3 autres tests globaux de Force (imtp/slimtp/sl_iso_push, HYP-FOR-01) restent hors périmètre de cette mission (non nommés dans la demande), non touchés.",
+    lockedHypIncompatibility:"HYP-FOR-01 LOCKED exige >=2 des 4 preuves globales déficitaires (CLI010) -- ce référentiel documente Iso Belt Squat comme test prioritaire, mais ne pilote pas fSc['Force'], resté exclusivement gouverné par HYP-FOR-01 tel quel."
+  },
+  Puissance:{
+    quality:'Puissance',tests:['cmj'],
+    primary:[{variableKey:'cmj_peak_power',testKey:'cmj',kpiKey:'peak_power',bilateral:true,label:'Peak Power / BM (W/kg)'}],
+    fallback:[{variableKey:'cmj_conc_mean_power',testKey:'cmj',kpiKey:'conc_mean_power',bilateral:true,label:'Concentric Mean Power / BM (W/kg)'}],
+    confirmative:[{variableKey:'cmj_height',testKey:'cmj',kpiKey:'height',bilateral:true,label:'Jump Height (cm)',note:"déjà confirmative gelée dans HYP-PUI-01 — jamais une 2e preuve diagnostique, quel que soit son statut."}],
+    explanatory:[],
+    asymmetry:[],
+    note:"'Peak Power absolue' (fallback #3 demandé) ne correspond à aucune clé réelle -- peak_power n'existe dans TBK.cmj.kpis qu'en W/kg (déjà relatif au poids), non mappé. cmj_conc_mean_power (fallback #1 réel restant) n'a aujourd'hui AUCUNE norme (ni NORMS, ni THRESHOLDS, ni NORMS_V2) -- non classifiable en pratique.",
+    lockedHypIncompatibility:"HYP-PUI-01 LOCKED exige 2/2 STRICT (cmj_peak_power ET slcmj_peak_power/substitut) -- le principe '1 variable suffit' ne s'applique jamais à la décision réelle de fSc['Puissance'] : une seule preuve manquante bloque tout à non_determinable, contrairement à ce référentiel."
+  },
+  Explosivité:{
+    quality:'Explosivité',tests:['cmj'],
+    primary:[{variableKey:'cmj_rsi_mod',testKey:'cmj',kpiKey:'rsi_mod',bilateral:true,label:'RSI-modified'}],
+    fallback:[
+      {variableKey:'cmj_conc_rfd',testKey:'cmj',kpiKey:'conc_rfd',bilateral:true,label:'Concentric RFD (non fenêtré)',note:"mission désigne 'Concentric RFD 100ms', fenêtre inexistante comme clé Kinexus (TESTS.cmj.kpis n'a que conc_rfd non fenêtré) -- mappé sur la clé réelle la plus proche, écart documenté."},
+      {variableKey:'cmj_conc_impulse_100',testKey:'cmj',kpiKey:'conc_impulse_100',bilateral:true,label:'Concentric Impulse 100ms'}
+    ],
+    confirmative:[],
+    explanatory:[
+      {variableKey:'cmj_height',testKey:'cmj',kpiKey:'height',bilateral:true,label:'Jump Height (cm)'},
+      {variableKey:'cmj_contraction_time',testKey:'cmj',kpiKey:'contraction_time',bilateral:true,label:'Contraction Time (ms)'},
+      {variableKey:'cmj_conc_rfd',testKey:'cmj',kpiKey:'conc_rfd',bilateral:true,label:'Concentric RFD'},
+      {variableKey:'cmj_conc_impulse_100',testKey:'cmj',kpiKey:'conc_impulse_100',bilateral:true,label:'Concentric Impulse 100ms'},
+      {variableKey:'cmj_conc_impulse',testKey:'cmj',kpiKey:'conc_impulse',bilateral:true,label:'Concentric Impulse total'}
+    ],
+    asymmetry:[],
+    note:"Peak Power/BM appartient à Puissance -- jamais utilisé ici comme fallback (règle explicite de la mission). Jump Height/Contraction Time/FT:CT restent explicatifs de RSI-mod, jamais une 2e preuve indépendante (règle explicite de la mission).",
+    lockedHypIncompatibility:"HYP-EXP-01 LOCKED ne lit QUE cmj_conc_rfd et cmj_conc_impulse_100 (aucune norme nulle part pour les deux) -- jamais cmj_rsi_mod, alors que rsi_mod EST classifiable aujourd'hui (THRESHOLDS universel + NORMS 24/64). fSc['Explosivité'] reste non_determinable dans le moteur LOCKED même quand ce référentiel désignerait un diagnostic réel via rsi_mod -- écart le plus actionnable des 5 qualités, documenté, jamais résolu en modifiant HYP-EXP-01 ici."
+  },
+  Réactivité:{
+    quality:'Réactivité',tests:['dj','sldj'],
+    primary:[
+      {variableKey:'dj_rsi',testKey:'dj',kpiKey:'rsi',bilateral:true,label:'Drop Jump RSI'},
+      {variableKey:'sldj_rsi',testKey:'sldj',kpiKey:'rsi',bilateral:false,label:'Single Leg Drop Jump RSI (pire côté)'}
+    ],
+    fallback:[],
+    confirmative:[],
+    explanatory:[
+      {variableKey:'dj_contact_time',testKey:'dj',kpiKey:'contact_time',bilateral:true,label:'DJ Contact Time'},
+      {variableKey:'dj_height',testKey:'dj',kpiKey:'height',bilateral:true,label:'DJ Jump Height'},
+      {variableKey:'sldj_contact_time',testKey:'sldj',kpiKey:'contact_time',bilateral:false,label:'SLDJ Contact Time'},
+      {variableKey:'sldj_height',testKey:'sldj',kpiKey:'height',bilateral:false,label:'SLDJ Jump Height'}
+    ],
+    asymmetry:[{variableKey:'sldj_rsi_lsi',note:"LSI intrinsèque de sldj_rsi (symmetryEvidence.lsi, déjà exposé par HYP-REA-01 en precision.sldj_lsi) -- pas une clé NORMS séparée."}],
+    note:"DJ et SLDJ restent SIMULTANÉMENT diagnostiques (2 tâches distinctes : réactivité bilatérale vs unilatérale), pas primary/fallback l'un de l'autre -- conformément à la demande explicite de la mission.",
+    lockedHypIncompatibility:"AUCUNE -- HYP-REA-01 LOCKED implémente déjà cette règle de convergence à 2 tâches quasi au mot près (1 déficitaire seul -> suspectée, les 2 -> retenue). Seule des 5 qualités sans écart avec ce référentiel."
+  },
+  Absorption:{
+    quality:'Absorption',
+    braking:{
+      tests:['cmj'],
+      primary:[{variableKey:'cmj_braking_rfd',testKey:'cmj',kpiKey:'braking_rfd',bilateral:true,label:'Eccentric Deceleration RFD / BM'}],
+      fallback:[
+        {variableKey:'cmj_force_zero_vel',testKey:'cmj',kpiKey:'force_zero_vel',bilateral:true,label:'Force at Zero Velocity'},
+        {variableKey:'cmj_braking_impulse',testKey:'cmj',kpiKey:'braking_impulse',bilateral:true,label:'Eccentric Deceleration Impulse'}
+      ],
+      confirmative:[],
+      explanatory:[
+        {variableKey:'cmj_ecc_mean_power',testKey:'cmj',kpiKey:'ecc_mean_power',bilateral:true,label:'Eccentric Mean Power'},
+        {variableKey:'cmj_ecc_peak_power',testKey:'cmj',kpiKey:'ecc_peak_power',bilateral:true,label:'Eccentric Peak Power'},
+        {variableKey:'cmj_ecc_duration',testKey:'cmj',kpiKey:'ecc_duration',bilateral:true,label:'Eccentric Duration'},
+        {variableKey:'cmj_depth',testKey:'cmj',kpiKey:'depth',bilateral:true,label:'Countermovement Depth'},
+        {variableKey:'cmj_ecc_peak_vel',testKey:'cmj',kpiKey:'ecc_peak_vel',bilateral:true,label:'Eccentric Peak Velocity'}
+      ],
+      asymmetry:[{variableKey:'ecc_decel_rfd_asym',testKey:'cmj',kpiKey:'ecc_decel_rfd_asym',bilateral:true,label:'EDRFD Asymmetry',note:"déjà lue par HYP-ABS-01 (computeHypAbsorptionAsymetrie/computeAsymEngine, phase braking)."}]
+    },
+    landing:{
+      tests:['landing_bi','sllt'],
+      primary:[{variableKey:'landing_bi_peak_landing_force',testKey:'landing_bi',kpiKey:'peak_landing_force',bilateral:true,label:'Peak Landing Force / BM (Land and Hold)'}],
+      fallback:[
+        {variableKey:'sllt_peak_landing_force',testKey:'sllt',kpiKey:'peak_landing_force',bilateral:false,label:'Peak Landing Force / BM (Single Leg Land and Hold)'},
+        {variableKey:'sllt_loading_rate',testKey:'sllt',kpiKey:'loading_rate',bilateral:false,label:'Loading Rate'}
+      ],
+      confirmative:[],
+      explanatory:[],
+      asymmetry:[],
+      note:"landing_bi_peak_landing_force ET les 2 fallbacks n'ont AUCUNE norme nulle part (NORMS/THRESHOLDS/NORMS_V2) -- non_determinable structurel aujourd'hui, quelles que soient les données du patient. Time To Stabilization (landing_bi_tts/sllt_tts) est délibérément EXCLU d'ici -- gel HYP-STA-01 déjà en vigueur ('landing_uni_tts/landing_bi_tts -> Stabilisation, jamais Absorption'), respecté tel quel. HYP-ABS-01 LOCKED ne lit d'ailleurs aucun de ces tests aujourd'hui (sous-domaine Réception documenté 'non_implemente')."
+    },
+    lockedHypIncompatibility:"BRAKING : la règle réelle HYP-ABS-01 ('>=2 déficitaires -> déficitaire, 1 seul -> à surveiller') produit déjà un état réel (à surveiller) dès 1 seule variable classifiable+déficitaire -- alignement partiel avec le principe de cette mission, pas un écart total. RÉCEPTION : HYP-ABS-01 ne lit pas ces tests aujourd'hui (aucun écart à documenter au-delà de l'absence de norme elle-même)."
+  }
+};
+// Résolution GÉNÉRIQUE de la classifiabilité réelle d'une entrée du référentiel V1, à partir des
+// données brutes du patient — réutilise EXCLUSIVEMENT computeHypForceKpi (déjà générique : lit
+// n'importe quel testKey/kpi bilatéral OU unilatéral D/G "pire côté" via bestVal + applyThr/
+// computeStatusWithNormsV2, déjà utilisée pour les 4 tests globaux ET les 15 tests segmentaires de
+// Force) — AUCUN nouveau calcul de seuil/norme, AUCUNE duplication de logique. Volontairement
+// INDÉPENDANTE de functionScores[quality].diagnosticEvidence : un moteur HYP LOCKED peut lire des
+// variables différentes de celles de ce référentiel (cf. §10 ci-dessus) — cette fonction répond à
+// "cette variable serait-elle classifiable si on la lisait", jamais "le moteur HYP l'a-t-il retenue".
+function csmV2DiagnosticVariableV1Status(entry,testData,pop,age,normSelections){
+  return computeHypForceKpi(testData,entry.testKey,entry.kpiKey,entry.bilateral,pop,age,normSelections);
+}
+// Parcourt primary puis fallback, dans l'ordre, et retourne la PREMIÈRE entrée classifiable
+// (status!=='indisponible') — jamais une exigence de 2e preuve. Retourne null si aucune ne l'est
+// (NON_DETERMINABLE, jamais un statut inventé).
+function csmV2ResolveDiagnosticVariableV1(qualityEntry,testData,pop,age,normSelections){
+  var ordered=(qualityEntry.primary||[]).concat(qualityEntry.fallback||[]);
+  for(var i=0;i<ordered.length;i++){
+    var result=csmV2DiagnosticVariableV1Status(ordered[i],testData,pop,age,normSelections);
+    if(result.status!=='indisponible'){
+      return{entry:ordered[i],result:result,rank:i,role:i<(qualityEntry.primary||[]).length?'primary':'fallback'};
+    }
+  }
+  return null;
+}
+
 // ══════════════════ MISSION AD — CONSOLIDATION DU RAISONNEMENT CAUSAL CLINIQUE ═══════════════════
 // §1 — Complète CSM_V2_CLINICAL_VARIABLE_MATRIX (Mission AB) avec les variables de "symétrie
 // secondaire" injectées ADDITIVEMENT par computeCsmV2() en dehors des 8 moteurs HYP eux-mêmes (CSM
