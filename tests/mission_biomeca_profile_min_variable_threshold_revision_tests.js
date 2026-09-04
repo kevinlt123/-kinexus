@@ -193,9 +193,8 @@ test('GUARD 3 — THRESHOLDS/NORMS/NORMS_V2/CSM_V2_CLINICAL_VARIABLE_MATRIX/Biom
   assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
   assert.strictEqual(BiomechanicalProfiles.length, 5);
 });
-test('GUARD 4 — le diff de ce commit touche uniquement BiomechanicalProfileEngine.compute (minRequis), aucun autre calcul du moteur', () => {
-  const diff = execSync('git diff HEAD -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  if (diff.trim().length === 0) return; // déjà commité au moment du test
+test('GUARD 4 — le commit de CETTE révision (daa42cc) touchait uniquement BiomechanicalProfileEngine.compute (minRequis), aucun autre calcul du moteur — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html ailleurs — attendu, hors périmètre de cette garde)', () => {
+  const diff = execSync('git diff daa42cc~1 daa42cc -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   assert.ok(diff.includes('minRequis'));
   assert.ok(!diff.includes('function computeMoteur('));
   assert.ok(!diff.includes('function computeCsmV2('));

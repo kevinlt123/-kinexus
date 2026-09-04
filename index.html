@@ -1008,6 +1008,13 @@ var QBK={};QUESTS.forEach(function(q){QBK[q.key]=q;});
 
 // ── MOTEUR ────────────────────────────────────────────────────────────────────
 var FUNCTIONS=['Mobilité','Force','Explosivité','Puissance','Réactivité','Absorption','Stabilisation','Contrôle Frontal','Contrôle Sensoriel','Endurance'];
+// Qualités affichées au praticien (écran + rapports PDF) — décision du praticien (session CMJ par
+// phase) : Contrôle Frontal retiré de l'affichage. FUNCTIONS elle-même n'est jamais modifiée (le
+// scoring TFM interne, les compensations par système, HYPO/ORI et STR_QUAL_DETAIL continuent de la
+// référencer sans changement) — seule la liste présentée au praticien change, à chaque point de
+// consommation qui construit une liste de qualités à afficher (evFns des 2 rapports PDF + de l'écran
+// Analyse, et le calcul des priorités/déficits objectivés dans computeMoteur).
+var DISPLAYED_FUNCTIONS=FUNCTIONS.filter(function(f){return f!=='Contrôle Frontal';});
 var SYSTEMS=['Quadriceps','Ischio-jambiers','Fléchisseurs de hanche','Extenseurs de hanche','Adducteurs','Abducteurs','Rotateurs de hanche','Cheville','Soléaire','Gastrocnémien','Sensoriel'];
 var FN_KEY={'Mobilité':'mobilite','Force':'force','Explosivité':'explosivite','Puissance':'puissance','Réactivité':'reactivite','Absorption':'absorption','Stabilisation':'stabilisation','Contrôle Frontal':'controle_frontal','Contrôle Sensoriel':'controle_sensoriel','Endurance':'endurance'};
 // Poids TFM (test -> fonction) reconstruits à partir du référentiel de raisonnement clinique
@@ -13180,7 +13187,7 @@ function computeMoteur(testData,questData,normPop,normAge,normSelections){
   // classique (0 est falsy), sans lien avec HYP/CSM/TFM. statusPriorityRank() ne dépend jamais de
   // la falsy-ness d'une valeur de rang : rouge=0 reste 0, jamais réinterprété comme "absent".
   function statusPriorityRank(status){if(status==='rouge')return 0;if(status==='orange')return 1;return 2;}
-  var deficits=FUNCTIONS.filter(function(fn){return fSc[fn]&&(fSc[fn].status==='rouge'||fSc[fn].status==='orange');}).sort(function(a,b){return statusPriorityRank(fSc[a].status)-statusPriorityRank(fSc[b].status);}).slice(0,3);
+  var deficits=DISPLAYED_FUNCTIONS.filter(function(fn){return fSc[fn]&&(fSc[fn].status==='rouge'||fSc[fn].status==='orange');}).sort(function(a,b){return statusPriorityRank(fSc[a].status)-statusPriorityRank(fSc[b].status);}).slice(0,3);
   var priorities=deficits.map(function(fn,i){
     var fk=FN_KEY[fn];
     var contrib=SYSTEMS.filter(function(sys){return(SYSTEM_TESTS[sys]||[]).some(function(t){return effectiveTFMWeight(t,fk)>=2&&tSt[t]&&tSt[t]!=='vert';});}).filter(function(s){return sysSc[s]&&sysSc[s]!=='vert';});
@@ -13551,7 +13558,7 @@ function buildSportifReport(athlete,bilan,res){
   var reportOv=bilan.reportOverrides||{};
   if(reportOv.priorities!=null)pri=reportOv.priorities; // tableau vide = le praticien a explicitement supprimé toutes les priorités
   if(reportOv.rtpStatusOverride&&rtp)rtp=Object.assign({},rtp,{status:reportOv.rtpStatusOverride});
-  var evFns=FUNCTIONS.filter(function(f){return fSc[f];});
+  var evFns=DISPLAYED_FUNCTIONS.filter(function(f){return fSc[f];});
   var td=bilan.testData||{};
   var dateStr=new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
   var age=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
@@ -14339,7 +14346,7 @@ function buildSportifReport(athlete,bilan,res){
 function buildExpertReport(athlete,bilan,res){
   var fSc=res.functionScores,sysSc=res.systemScores,tSt=res.testStatuses,pri=res.priorities,rtp=res.rtpStatus;
   var td=bilan.testData||{};
-  var evFns=FUNCTIONS.filter(function(f){return fSc[f];});
+  var evFns=DISPLAYED_FUNCTIONS.filter(function(f){return fSc[f];});
   var dateStr=new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
   var html='<div class="print-page print-page-expert">';
   html+='<div class="print-header"><div><div class="print-logo">KINEXUS</div><div class="print-subtitle">Rapport Expert</div></div><div style="text-align:right;font-size:9pt;color:#666"><div style="font-weight:700">'+athlete.prenom+' '+athlete.nom+'</div><div>'+bilan.type+' · '+bilan.sousType+'</div><div>'+dateStr+'</div></div></div>';
@@ -15498,7 +15505,7 @@ function AnalyseView(props){
   var mouvementAnalysis=useMemo(function(){
     return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),athleteAge,res.functionScores):null;
   },[bilan,athleteAge,res]);
-  var evFns=FUNCTIONS.filter(function(f){return res.functionScores[f];});
+  var evFns=DISPLAYED_FUNCTIONS.filter(function(f){return res.functionScores[f];});
   var fSc=res.functionScores,sysSc=res.systemScores;
   var pri=res.priorities||[];
 
@@ -15513,7 +15520,7 @@ function AnalyseView(props){
   if(priorBilans.length>0){
     var prevBilan=priorBilans[0];
     var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),athleteAge,effNormSel);
-    var commonFns=FUNCTIONS.filter(function(f){return res.functionScores[f]&&prevRes.functionScores[f];});
+    var commonFns=DISPLAYED_FUNCTIONS.filter(function(f){return res.functionScores[f]&&prevRes.functionScores[f];});
     if(commonFns.length>0){
       var curAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[res.functionScores[f].status];},0)/commonFns.length;
       var prevAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[prevRes.functionScores[f].status];},0)/commonFns.length;
@@ -15532,10 +15539,15 @@ function AnalyseView(props){
   var testsFilledCnt=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&testHasAnyTrialValue(td[k]);}).length;
   var canValidate=bilanHasRealData(td);
   var forces=evFns.filter(function(f){return fSc[f].status==='vert';});
-  var limitations=evFns.filter(function(f){return fSc[f].status!=='vert';}).map(function(f){
+  // CORRECTIF (session CMJ par phase) : fSc[f].status!=='vert' incluait aussi status===null (qualité
+  // non évaluée, faute de données), affichant "Mobilité"/"Absorption"/etc. dans Points limitants
+  // comme si un déficit clinique réel avait été observé — jamais le cas pour une qualité non
+  // déterminable. status doit être un statut RÉEL (jaune/orange/rouge) pour compter comme limitant.
+  var limitations=evFns.filter(function(f){return fSc[f].status&&fSc[f].status!=='vert';}).map(function(f){
     var p=pri.filter(function(pp){return pp.fonction===f;})[0];
     return{label:f+(p&&p.contributeurPrincipal?' · '+p.contributeurPrincipal:''),status:fSc[f].status};
   });
+  var nonEvaluees=evFns.filter(function(f){return!fSc[f].status;});
   var hasAsym=false;
   var asymItems=[];
   TESTS.forEach(function(test){
@@ -15651,17 +15663,15 @@ function AnalyseView(props){
         h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1.5fr 1.2fr',gap:16,alignItems:'start'}},
           h('div',null,
             h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'Qualités fonctionnelles'),
+            // Redesign (session CMJ par phase) : FunctionGaugeCard remplace la liste à barre fine —
+            // composant déjà construit et validé (cf. sa définition) mais jamais câblé à l'écran
+            // jusqu'ici. Gère nativement l'état "Non évalué" (jamais un statut inventé quand une
+            // qualité manque de données), plutôt que le vide silencieux de l'ancienne liste.
             evFns.length===0
               ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction évaluée.'))
-              :h(Card,{pad:'6px 14px'},evFns.map(function(f,i){
-                var sc=fSc[f];var status=sc.status;var pct=FN_GAUGE_PCT[status]||0;
-                return h('div',{key:f,style:{display:'flex',alignItems:'center',gap:8,padding:'9px 0',borderTop:i>0?'1px solid '+C.border:'none'}},
-                  h('span',{style:{fontSize:14,flexShrink:0}},FN_ICON[f]||'●'),
-                  h('span',{style:{width:76,flexShrink:0,fontSize:11.5,fontWeight:700,color:C.text}},f),
-                  h('div',{style:{flex:1,height:7,background:C.border,borderRadius:20,overflow:'hidden'}},h('div',{style:{height:'100%',width:pct+'%',background:SC[status],borderRadius:20}})),
-                  h('span',{style:{fontSize:9.5,fontWeight:800,color:SC[status],flexShrink:0,width:66,textAlign:'right'}},SL[status])
-                );
-              }))
+              :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(108px,1fr))',gap:10}},evFns.map(function(f){
+                  return h(FunctionGaugeCard,{key:f,label:f,sc:fSc[f]});
+                }))
           ),
           h('div',null,
             h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'02 · Body Map musculaire'),
@@ -15679,16 +15689,24 @@ function AnalyseView(props){
               h('div',{style:{color:C.orange,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Points limitants'),
               limitations.length===0?h('div',{style:{color:C.muted,fontSize:11}},'Aucun identifié.'):h('div',{style:{display:'flex',flexDirection:'column',gap:7}},limitations.map(function(l){return h('div',{key:l.label,style:{display:'flex',alignItems:'flex-start',gap:6}},h('span',{style:{color:SC[l.status],fontSize:11,flexShrink:0,marginTop:1}},'⚠'),h('span',{style:{color:C.text,fontSize:11}},l.label));}))
             ),
+            // CORRECTIF (session CMJ par phase) : les qualités non évaluées (status null, faute de
+            // données) n'apparaissent plus dans Points limitants (cf. correctif ci-dessus) — elles
+            // ont leur propre carte, jamais confondues avec un déficit clinique réel. N'apparaît que
+            // s'il y en a au moins une (jamais une carte vide).
+            nonEvaluees.length>0&&h(Card,{pad:'12px 13px',style:{marginBottom:10}},
+              h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:800,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:9}},'Non évaluées'),
+              h('div',{style:{display:'flex',flexDirection:'column',gap:7}},nonEvaluees.map(function(f){return h('div',{key:f,style:{display:'flex',alignItems:'flex-start',gap:6}},h('span',{style:{color:C.muted,fontSize:11,flexShrink:0,marginTop:1}},'○'),h('span',{style:{color:C.muted,fontSize:11}},f+' — données insuffisantes'));}))
+            ),
             (function(){
               // Widget "Priorités d'intervention" (mission IMPLEMENTATION_FINAL_PRIORITES_CSM.md) :
               // ni rang numéroté (1/2/3 impliquait un classement clinique que CSM ne détermine
               // jamais entre déficits objectivés), ni "Impact"/"Urgence" (deux heuristiques
               // dérivées, sans base clinique indépendante, du seul statut déjà affiché par la
               // couleur/pastille — Option B de la mission : supprimées plutôt que repositionnées,
-              // car strictement redondantes avec une information déjà montrée). Les qualités TFM
-              // sans moteur HYP (Contrôle Frontal, Contrôle Sensoriel) restent visibles mais jamais
-              // mélangées à une qualité objectivée par HYP — jamais un poids TFM présenté comme une
-              // priorité clinique HYP.
+              // car strictement redondantes avec une information déjà montrée). La qualité TFM sans
+              // moteur HYP encore affichée (Contrôle Sensoriel — Contrôle Frontal retiré de
+              // l'affichage, session CMJ par phase) reste visible mais jamais mélangée à une qualité
+              // objectivée par HYP — jamais un poids TFM présenté comme une priorité clinique HYP.
               var split=priHypObjectifiedSplit(pri,res.clinicalSynthesis);
               if(!split.hyp.length&&!split.tfmOnly.length)return null;
               // Sous-domaines Absorption (Objectif 2) : lecture pure de sousDomaines, jamais
@@ -16084,8 +16102,11 @@ function FunctionGaugeCard(props){
       status&&h('path',{d:'M 12 '+cy+' A '+r+' '+r+' 0 0 1 96 '+cy,fill:'none',stroke:col,strokeWidth:9,strokeLinecap:'round',strokeDasharray:fillLen+' '+(arcLen-fillLen)})
     ),
     h('div',{style:{color:status?col:C.muted,fontWeight:800,fontSize:11,letterSpacing:'0.02em',marginTop:2,marginBottom:7,textAlign:'center'}},status?SL[status]:'Non évalué'),
-    status&&h('div',{style:{display:'flex',gap:4,marginBottom:sc?4:0}},[1,2,3,4].map(function(i){return h('span',{key:i,style:{width:6,height:6,borderRadius:'50%',background:i<=tier?col:C.border}});})),
-    sc&&h('div',{style:{color:C.muted,fontSize:8,marginTop:2,textAlign:'center'}},'Couverture '+sc.coverage+'%')
+    // Retiré (demande du praticien) : le pourcentage de couverture textuel ("Couverture X%")
+    // complexifiait la lecture. Les 4 pastilles de gravité ci-dessous restent le seul indicateur
+    // visuel de robustesse — jamais un nombre à lire, une position/quantité à percevoir d'un coup
+    // d'œil, cohérent avec le reste du panneau (statut = couleur, jamais un chiffre).
+    status&&h('div',{style:{display:'flex',gap:4}},[1,2,3,4].map(function(i){return h('span',{key:i,style:{width:6,height:6,borderRadius:'50%',background:i<=tier?col:C.border}});}))
   );
 }
 // Recherche générique, source-traçable, d'une entrée dans un tableau NORMS_V2_* (ex.
