@@ -100,14 +100,29 @@ test('TEST 7 — computeMoteur : Contrôle Frontal jamais dans priorities, même
 // ═══════════════ TEST 8 — FunctionGaugeCard gère bien "Non évalué" sans invention de statut ════
 // (vérification au niveau du source, pas d'un rendu React réel : h/React ne sont pas chargés dans
 // ce harnais Node minimal, comme pour tous les autres fichiers de tests de cette session.)
-test('TEST 8 — le corps de FunctionGaugeCard affiche explicitement "Non évalué" quand status est null, jamais un statut/couleur inventés', () => {
+function extractFunctionGaugeCardBody() {
   const marker = 'function FunctionGaugeCard(';
   const idx = code.indexOf(marker);
-  const bodyEnd = code.indexOf('\n}\n', idx);
-  const body = code.slice(idx, bodyEnd);
+  let depth = 0, i = code.indexOf('{', idx);
+  const bodyStart = i;
+  for (; i < code.length; i++) {
+    if (code[i] === '{') depth++;
+    else if (code[i] === '}') { depth--; if (depth === 0) return code.slice(bodyStart, i + 1); }
+  }
+  throw new Error('accolade non fermée pour FunctionGaugeCard');
+}
+test('TEST 8 — le corps de FunctionGaugeCard affiche explicitement "Non évalué" quand status est null, jamais un statut/couleur inventés', () => {
+  const body = extractFunctionGaugeCardBody();
   assert.ok(body.includes("'Non évalué'"), 'doit afficher explicitement "Non évalué"');
   assert.ok(body.includes('status?SL[status]:'), 'le libellé ne doit jamais lire SL[null]');
   assert.ok(body.includes('status?col:C.border') || body.includes('status?SC[status]'), 'la couleur ne doit jamais être dérivée d\'un status null');
+});
+test('TEST 8bis — FunctionGaugeCard n\'affiche plus aucun pourcentage textuel (demande du praticien : "je ne veux plus de pourcentage")', () => {
+  const body = extractFunctionGaugeCardBody();
+  assert.ok(!body.includes("'Couverture '+sc.coverage"), 'le rendu textuel "Couverture X%" doit avoir été retiré (le mot peut rester dans un commentaire explicatif, jamais dans le JSX rendu)');
+  assert.ok(!/\+'%'/.test(body), 'aucun pourcentage textuel ne doit être concaténé dans le rendu');
+  // Les 4 pastilles de gravité restent le seul indicateur de robustesse (jamais un nombre à lire).
+  assert.ok(body.includes('[1,2,3,4].map'));
 });
 test('TEST 9 — FunctionGaugeCard existe et est câblée dans le rendu de AnalyseView (recherche source)', () => {
   assert.ok(code.includes("h(FunctionGaugeCard,{key:f,label:f,sc:fSc[f]})"), 'FunctionGaugeCard doit être appelée dans la grille des qualités fonctionnelles');
@@ -184,9 +199,8 @@ test('GUARD 3 — FUNCTIONS/FN_KEY/FN_ICON/HYP_CSM_QUALITIES/THRESHOLDS/NORMS in
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
   assert.strictEqual(Object.keys(NORMS).length, 64);
 });
-test('GUARD 4 — le diff de ce commit introduit bien DISPLAYED_FUNCTIONS ; les fonctions protégées (GUARD 2, comparaison byte-identique) n\'ont, elles, subi aucune ligne +/- réelle', () => {
-  const diff = execSync('git diff HEAD -- index.html', { cwd: path.join(__dirname, '..') }).toString();
-  if (diff.trim().length === 0) return; // déjà commité au moment du test
+test('GUARD 4 — le commit de CETTE mission (800e815) introduisait bien DISPLAYED_FUNCTIONS ; les fonctions protégées (GUARD 2, comparaison byte-identique) n\'ont, elles, subi aucune ligne +/- réelle — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html ailleurs — attendu, hors périmètre de cette garde)', () => {
+  const diff = execSync('git diff 800e815~1 800e815 -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   assert.ok(diff.includes('DISPLAYED_FUNCTIONS'));
   // Seules les lignes +/- comptent — un nom de fonction protégée peut légitimement apparaître dans
   // l'en-tête de hunk "@@ ... @@ function xxx(...)" que git ajoute pour situer le contexte, sans

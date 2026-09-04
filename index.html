@@ -16102,8 +16102,11 @@ function FunctionGaugeCard(props){
       status&&h('path',{d:'M 12 '+cy+' A '+r+' '+r+' 0 0 1 96 '+cy,fill:'none',stroke:col,strokeWidth:9,strokeLinecap:'round',strokeDasharray:fillLen+' '+(arcLen-fillLen)})
     ),
     h('div',{style:{color:status?col:C.muted,fontWeight:800,fontSize:11,letterSpacing:'0.02em',marginTop:2,marginBottom:7,textAlign:'center'}},status?SL[status]:'Non évalué'),
-    status&&h('div',{style:{display:'flex',gap:4,marginBottom:sc?4:0}},[1,2,3,4].map(function(i){return h('span',{key:i,style:{width:6,height:6,borderRadius:'50%',background:i<=tier?col:C.border}});})),
-    sc&&h('div',{style:{color:C.muted,fontSize:8,marginTop:2,textAlign:'center'}},'Couverture '+sc.coverage+'%')
+    // Retiré (demande du praticien) : le pourcentage de couverture textuel ("Couverture X%")
+    // complexifiait la lecture. Les 4 pastilles de gravité ci-dessous restent le seul indicateur
+    // visuel de robustesse — jamais un nombre à lire, une position/quantité à percevoir d'un coup
+    // d'œil, cohérent avec le reste du panneau (statut = couleur, jamais un chiffre).
+    status&&h('div',{style:{display:'flex',gap:4}},[1,2,3,4].map(function(i){return h('span',{key:i,style:{width:6,height:6,borderRadius:'50%',background:i<=tier?col:C.border}});}))
   );
 }
 // Recherche générique, source-traçable, d'une entrée dans un tableau NORMS_V2_* (ex.
