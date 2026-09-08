@@ -81,7 +81,7 @@ function loadEngine() {
   var stub = makeReactStub();
   var wrapped = new Function(
     'localStorage', 'document', 'window', 'React', 'ReactDOM', 'URL', 'navigator',
-    src + '\nreturn {computeMoteur:computeMoteur, buildFullReportHtml:buildFullReportHtml, THRESHOLDS:THRESHOLDS, ReportPreview:ReportPreview, printReport:printReport};'
+    src + '\nreturn {computeMoteur:computeMoteur, buildFullReportHtml:buildFullReportHtml, THRESHOLDS:THRESHOLDS, ReportPreview:ReportPreview, printReport:printReport, effectiveNormPop:effectiveNormPop, effectiveNormSelections:effectiveNormSelections};'
   );
   var mod = wrapped(fakeStorage, fakeDocument, fakeWindow, stub.React, { createRoot: function () { return { render: function () {} }; } }, fakeURL, {});
   mod.renderOnce = stub.renderOnce;
@@ -282,7 +282,15 @@ test('Le PDF obtenu depuis l\'aperçu (sans édition) est cohérent avec le tél
   var mod = loadEngine();
   var athlete = makeAthlete();
   var bilan = makeBilan(mobiliteAbsorptionTd());
-  var res = mod.computeMoteur(bilan.testData, {}, athlete.normPopulation, 26);
+  // RÉVISÉ (synchronisation) : ReportPreview calcule res avec effectiveNormPop(athlete) ET le 5e
+  // argument normSelections=effectiveNormSelections(athlete).normSelections (mission ULTÉRIEURE et
+  // validée "feat: add automatic Kinexus norm selection", commit f7b4fdf, postérieure à ce fichier)
+  // — absent de l'appel direct ci-dessous à l'origine, ce qui désynchronisait délibérément les 2
+  // chemins pour des KPI résolus via un sélecteur de norme. Reproduit ici exactement le même appel
+  // que ReportPreview (index.html) pour que la comparaison porte sur le VRAI bug ciblé par ce
+  // fichier (la carte "Priorité principale" prématurée), pas sur un argument de calcul manquant.
+  var athleteAge = athlete.dateNaissance ? Math.floor((Date.now() - new Date(athlete.dateNaissance)) / (1000 * 60 * 60 * 24 * 365.25)) : null;
+  var res = mod.computeMoteur(bilan.testData, bilan.questData, mod.effectiveNormPop(athlete), athleteAge, mod.effectiveNormSelections(athlete).normSelections);
 
   var tree = renderPreview(mod, athlete, bilan);
   var htmlFromPreviewDownload = findIframeSrcDoc(tree); // == fullHtml utilisé par le vrai handleDownload

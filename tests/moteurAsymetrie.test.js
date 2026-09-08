@@ -7,20 +7,19 @@
 // — elle est désormais DYNAMIQUE, pilotée par la disponibilité réelle de normes d'asymétrie pour
 // la population active (effectiveAsymPhaseVariables(phaseKey,pop) + phaseVarHasNorms), exactement
 // comme le Moteur Biomécanique de performance. Un plancher ADAPTATIF partagé
-// (effectiveMinVariablesPrincipales(totalEligible) = min(2,totalEligible)) protège le score de
-// phase : Braking/Concentric (2 variables biomécaniquement pertinentes chacun) exigent 2
-// principales normées ; Landing (1 seule variable pertinente, structurellement, pour toujours)
-// garde la règle validée le 04/08 "1 principale peut suffire" — jamais une exigence
-// structurellement impossible à satisfaire.
+// (effectiveMinVariablesPrincipales(totalEligible) = min(configuré,totalEligible)) protège le
+// score de phase. RÉVISÉ (synchronisation suite à la révision globale du plancher, 2->1 : cf.
+// effectiveMinVariablesPrincipales() dans index.html — extension explicitement documentée au
+// Moteur d'Asymétrie) : le plancher configuré vaut désormais 1, pas 2. Braking/Concentric (2
+// variables biomécaniquement pertinentes chacun) n'exigent donc plus que 1 principale normée pour
+// être exploitables, comme Landing (1 seule variable pertinente, structurellement, pour toujours).
 //
-// CONSÉQUENCE IMPORTANTE testée explicitement ci-dessous : avec le référentiel actuel
-// (ASYM_PERFORMANCE_EQUIVALENT), computeAsymPhase ne peut plus jamais être "sufficient" avec
-// exactement 1 principale + 1 secondaire simultanément pour Braking/Concentric (soit les 2
-// variables sont normées, soit la phase est insuffisante) — le palier intermédiaire de
-// CONFIANCE_SIGNAUX_ASYMETRIE ("1 principale + secondaire concordante -> confiance augmentée")
-// reste donc en place mais dormant aujourd'hui, testé ici via un contexte fabriqué plutôt que via
-// computeAsymPhase (il s'activera automatiquement si une phase reçoit un 3e équivalent
-// d'asymétrie confirmé).
+// CONSÉQUENCE (mise à jour) : avec le plancher désormais à 1, computeAsymPhase PEUT être
+// "sufficient" pour Braking/Concentric dès 1 seule principale normée disponible (cf. tests
+// ci-dessous) — le palier intermédiaire de CONFIANCE_SIGNAUX_ASYMETRIE ("1 principale + secondaire
+// concordante -> confiance augmentée") est donc lui aussi réellement atteignable via
+// computeAsymPhase (plus seulement via un contexte fabriqué), même si les tests §3-4 le vérifient
+// encore via un contexte fabriqué pour isoler explicitement le calcul de confiance du plancher.
 //
 // Ce fichier vérifie : 1) le référentiel miroir dynamique (nouveau), 2) computeAsymPhase + le
 // plancher adaptatif (nouveau), 3) AsymSpecs (gate à 3 conditions, inchangé), 4)
@@ -110,10 +109,10 @@ test('Landing (1 seule variable biomécaniquement pertinente, pour toujours) : l
   assert.strictEqual(asym.niveau.label, 'Asymétrie importante');
 });
 
-test('Braking (2 variables biomécaniquement pertinentes) : le plancher adaptatif exige 2 -> insuffisant avec 1 seule principale même fortement asymétrique', () => {
+test('Braking (2 variables biomécaniquement pertinentes) : le plancher adaptatif révisé (1) suffit déjà avec 1 seule principale fortement asymétrique', () => {
   const asym = computeAsymPhase('braking', { ecc_decel_rfd_asym: 17 }, 'test_pop', null);
-  assert.strictEqual(asym.sufficient, false);
-  assert.ok(/minimum requis 2/.test(asym.reason), 'attendu: motif citant le plancher de 2, obtenu: ' + asym.reason);
+  assert.strictEqual(asym.sufficient, true, 'avec le plancher révisé (1, cf. effectiveMinVariablesPrincipales), 1 principale normée et renseignée suffit désormais pour Braking');
+  assert.strictEqual(asym.niveau.label, 'Asymétrie importante');
 });
 
 test('Braking : avec ses 2 variables biomécaniquement pertinentes normées et renseignées -> score calculé, aucune secondaire ne subsiste', () => {
@@ -208,12 +207,12 @@ test('cartographie : Braking retenu apparaît "Asymétrie principale", jamais "A
   r.cartographie.forEach(row => assert.ok(ASYM_CARTO_CONCLUSIONS.indexOf(row.conclusion) >= 0));
 });
 
-test('cartographie : Braking avec 1 seule valeur renseignée (couverture normative complète mais donnée manquante pour la 2e) -> "Données insuffisantes", jamais une conclusion inventée', () => {
+test('cartographie : Braking avec 1 seule valeur renseignée (couverture normative complète, donnée manquante pour la 2e) -> "Asymétrie principale" (plancher révisé à 1, la 2e variable manquante n\'empêche plus la conclusion)', () => {
   const cmjValues = { ecc_decel_rfd_asym: 17 };
   const r = computeAsymEngine(cmjValues, 'test_pop', null);
   const byPhase = {};
   r.cartographie.forEach(row => { byPhase[row.phase] = row; });
-  assert.strictEqual(byPhase.braking.conclusion, 'Données insuffisantes');
+  assert.strictEqual(byPhase.braking.conclusion, 'Asymétrie principale');
 });
 
 test("l'asymétrie ne modifie jamais les résultats reçus en entrée (lecture seule)", () => {

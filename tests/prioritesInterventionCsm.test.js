@@ -121,28 +121,37 @@ console.log('CAS 4 — plusieurs qualités avec des sévérités différentes (r
 console.log('');
 console.log('CAS 5 — une qualité HYP rouge + une qualité TFM orange hors HYP');
 (function () {
+  // Contrôle Frontal reste calculé en interne (fSc['Contrôle Frontal'] toujours renseigné, TFM
+  // inchangé) mais n'apparaît plus dans priorities/split/PDF depuis la décision EXPLICITE et
+  // ultérieure du praticien "On enlève Contrôle Frontal" de tout ce qu'il voit — écran Analyse, 2
+  // rapports PDF, ET priorités/déficits objectivés (commit 800e815, DISPLAYED_FUNCTIONS appliqué
+  // à computeMoteur lui-même, cf. index.html ligne ~13410). Ce cas testait auparavant le
+  // comportement PRÉ-800e815 (Contrôle Frontal remonté en "Information complémentaire") ;
+  // synchronisé ici avec la décision qui l'a explicitement remplacé.
   var td = {
     landing_uni: { active: true, D: { trials: { tts: [3.0] } }, G: { trials: { tts: [3.0] } } },
     landing_bi: { active: true, trials: { tts: [2.5] } }
   };
   var res = computeMoteur(td, {}, 'bball2425_ncaa_m', 26);
   var split = priHypObjectifiedSplit(res.priorities, res.clinicalSynthesis);
-  test('Pré-requis : Stabilisation (HYP, rouge) + Contrôle Frontal (TFM seul, orange) coexistent dans priorities', () => {
+  test('Pré-requis : Stabilisation (HYP, rouge) présente dans priorities ; Contrôle Frontal (TFM seul, orange) toujours calculé en interne mais absent de priorities (retiré de l\'affichage, 800e815)', () => {
     assert.ok(names(res.priorities).indexOf('Stabilisation') >= 0);
-    assert.ok(names(res.priorities).indexOf('Contrôle Frontal') >= 0);
+    assert.strictEqual(res.functionScores['Contrôle Frontal'].status, 'orange', 'le scoring TFM interne de Contrôle Frontal reste inchangé (FUNCTIONS non modifiée)');
+    assert.ok(names(res.priorities).indexOf('Contrôle Frontal') === -1, 'Contrôle Frontal ne doit plus apparaître dans priorities depuis 800e815');
   });
-  test('Stabilisation dans split.hyp, Contrôle Frontal dans split.tfmOnly — jamais mélangés', () => {
+  test('Stabilisation dans split.hyp ; split.tfmOnly vide (Contrôle Frontal n\'atteint plus split, filtré en amont dans priorities)', () => {
     assert.deepStrictEqual(names(split.hyp), ['Stabilisation']);
-    assert.deepStrictEqual(names(split.tfmOnly), ['Contrôle Frontal']);
+    assert.deepStrictEqual(names(split.tfmOnly), []);
   });
   var pdf = buildFullReportHtml('sportif', athlete, makeBilan(td), res);
-  test('PDF : Contrôle Frontal apparaît sous "Information complémentaire (hors diagnostic clinique)", pas dans les cartes Déficits à investiguer', () => {
+  test('PDF : aucune carte "Déficits à investiguer" ne mentionne Contrôle Frontal, et la section "Information complémentaire (hors diagnostic clinique)" n\'apparaît pas (split.tfmOnly vide)', () => {
     var idxHyp = pdf.indexOf('Déficits à investiguer');
     var idxTfm = pdf.indexOf('Information complémentaire (hors diagnostic clinique)');
-    assert.ok(idxTfm > idxHyp);
-    var hypSeg = pdf.slice(idxHyp, idxTfm);
-    assert.ok(!hypSeg.includes('Contrôle Frontal'), 'Contrôle Frontal apparaît dans le bloc HYP');
-    assert.ok(pdf.slice(idxTfm, idxTfm + 600).includes('Contrôle Frontal'));
+    assert.strictEqual(idxTfm, -1, 'aucune qualité TFM-seule à afficher dans ce cas depuis 800e815 -> la section ne doit pas être rendue');
+    assert.ok(idxHyp >= 0);
+    var hypSectionEnd = idxTfm >= 0 ? idxTfm : idxHyp + 4000;
+    var hypSeg = pdf.slice(idxHyp, hypSectionEnd);
+    assert.ok(!hypSeg.includes('Contrôle Frontal'), 'Contrôle Frontal ne doit apparaître dans aucune carte de déficit clinique');
   });
 })();
 

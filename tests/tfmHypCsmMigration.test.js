@@ -165,7 +165,11 @@ test('TFM, VAR_REL3, CAPACITES_DATA, SYS_COMPENSATIONS, HYP_QUALITY_RELATIONS no
   assert.strictEqual(Object.keys(VAR_REL3).length, 283);
   assert.strictEqual(Object.keys(CAPACITES_DATA).length, 4);
   assert.strictEqual(Object.keys(SYS_COMPENSATIONS).length > 0, true);
-  assert.strictEqual(HYP_QUALITY_RELATIONS.length, 8);
+  // RÉVISÉ (synchronisation) : HYP_QUALITY_RELATIONS a légitimement grandi de 8 à 9 depuis cette
+  // migration (Réactivité->Explosivité via sldj_rsi, symmetryEvidence D/G réelle — mission CSM V2
+  // consolidation du raisonnement causal, validée et postérieure). Aucune des 8 relations
+  // d'origine n'a été retirée ni modifiée (vérifié ci-dessous), seule une 9e a été ajoutée.
+  assert.strictEqual(HYP_QUALITY_RELATIONS.length, 9);
   // computeQualityStatus elle-même reste un calcul TFM pur, jamais modifié.
   var raw = computeQualityStatus('Puissance', { cmj: { active: true, trials: { peak_power: [1] } } }, POP_CMJ, AGE_CMJ);
   assert.ok(raw === null || ['vert', 'jaune', 'orange', 'rouge'].indexOf(raw) !== -1);

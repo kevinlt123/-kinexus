@@ -88,6 +88,20 @@ console.log('1/2 — Relation explicative Mobilité -> Stabilisation (wblt_dista
   test('PDF sportif — aucun identifiant HYP-XXX-NN dans le rendu', () => {
     assert.ok(!HYP_ID_RE.test(pdfSportif));
   });
+  // ═══ [UNCERTAIN] Non résolu — signalé, non modifié (cf. mission de synchronisation des tests) ═══
+  // Cause exacte identifiée : les sections techniques "Patterns Absolute × Symmetry" et "Clinical
+  // Hypotheses — dissociationId (traçabilité)" du PDF expert (index.html, ~L14720-14743, ajoutées
+  // par les commits 34aa0b2 "Wire CSM V2 into computeMoteur() and add a test block to the expert
+  // report" et 9978572 "Expose CSM V2 in ExpertView as a technical audit tab" — tous deux du
+  // 2026-08-24, POSTÉRIEURS à ce fichier du 2026-08-21) impriment littéralement p.hypId
+  // (ex. "HYP-MOB-01") en police monospace, à des fins de traçabilité/audit technique. Ce mandat
+  // ("jamais un HYP-XXX-NN dans le rendu") a été respecté partout ailleurs (PDF sportif, sections
+  // narratives du PDF expert — cf. tests OK ci-dessus/ci-dessous) et n'a jamais été explicitement
+  // abrogé pour cette section précise. Deux décisions réelles et validées (datées, nommées) entrent
+  // ici en tension directe, sans que je puisse trancher laquelle prévaut pour ce bloc technique
+  // précis : le mandat de productisation clinique, ou l'exposition volontaire du détail technique
+  // pour l'audit. Décision nécessaire du praticien. Laissé ROUGE, INCHANGÉ (cf. le même constat,
+  // plus détaillé, dans tests/hypCsmSynthesisPresentation.test.js).
   test('PDF expert — aucun identifiant HYP-XXX-NN dans le rendu', () => {
     assert.ok(!HYP_ID_RE.test(pdfExpert));
   });
@@ -101,6 +115,9 @@ console.log('1/2 — Relation explicative Mobilité -> Stabilisation (wblt_dista
     assert.ok(pdfSportif.indexOf('Relations explicatives possibles') >= 0);
     assert.ok(pdfSportif.indexOf('wblt_distance') === -1);
   });
+  // ═══ [UNCERTAIN] Non résolu — signalé, non modifié : même cause que ci-dessus (le bloc "Patterns
+  // Absolute × Symmetry" imprime littéralement p.variable, ex. "diagnosticEvidence.wblt_distance").
+  // Laissé ROUGE, INCHANGÉ.
   test('PDF expert — section "Relations explicatives possibles" présente et sans wblt_distance brut', () => {
     assert.ok(pdfExpert.indexOf('Relations explicatives possibles') >= 0);
     assert.ok(pdfExpert.indexOf('wblt_distance') === -1);
@@ -229,21 +246,61 @@ console.log('7 — Non-régression stricte des sorties cliniques (avant/après)'
       {}
     ];
     var POP = 'bball2425_ncaa_m', AGE = 26;
+    // Comparaison stricte de l'arbre complet devenue anachronique : des missions CSM V2
+    // ULTÉRIEURES et explicitement validées par le praticien (symmetryEvidence/sideStatus
+    // généralisés à tous les KPI unilatéraux, nomenclatureNonConfirmee levé pour cmj_braking_rfd —
+    // mission CSM V2.2 Explosivité) enrichissent additivement functionScores/clinicalSynthesis
+    // depuis le commit PRE_MISSION_COMMIT ci-dessus, sans jamais changer un statut/état clinique
+    // réel (vérifié : 0 diff sur status/state/category/confidence/coverage/support/convergence
+    // pour les 5 scénarios de ce fichier). Les 2 signatures ci-dessous isolent le SIGNAL CLINIQUE
+    // de cet enrichissement structurel.
+    function clinicalSignature(functionScores) {
+      var sig = {};
+      Object.keys(functionScores).forEach(function (fn) {
+        var v = functionScores[fn];
+        if (!v) { sig[fn] = null; return; }
+        var hypKey = Object.keys(v).filter(function (k) { return /^hyp[A-Z]/.test(k); })[0];
+        sig[fn] = { status: v.status, confidence: v.confidence, coverage: v.coverage, directStatuses: v.directStatuses, state: hypKey ? v[hypKey].state : undefined };
+      });
+      return sig;
+    }
+    function synthSignature(cs) {
+      var sig = { csmId: cs.csmId, version: cs.version, objectified: (cs.objectified || []).slice().sort(), nonDeterminable: (cs.nonDeterminable || []).slice().sort(), suspected: (cs.suspected || []).slice().sort(), qualities: {} };
+      Object.keys(cs.qualities || {}).forEach(function (fn) {
+        var q = cs.qualities[fn];
+        sig.qualities[fn] = { state: q.state, status: q.status, support: q.support, objectified: q.objectified, nonDeterminable: q.nonDeterminable, suspected: q.suspected, absent: q.absent, convergence: q.convergence };
+      });
+      return sig;
+    }
+    // Décision EXPLICITE et ultérieure du praticien "On enlève Contrôle Frontal" de tout ce qu'il
+    // voit, y compris "priorités/déficits objectivés (computeMoteur)" (commit 800e815,
+    // DISPLAYED_FUNCTIONS appliqué à computeMoteur) : Contrôle Frontal disparaît légitimement de
+    // priorities depuis ce lot (Scénario 2, ex. Contrôle Frontal orange sur landing_uni) — jamais
+    // un autre membre de priorities affecté.
+    function withoutControleFrontal(priorities) {
+      return priorities.filter(function (p) { return p.fonction !== 'Contrôle Frontal'; });
+    }
     scenarios.forEach(function (td, i) {
       var resBefore = sandbox.computeMoteur(td, {}, POP, AGE);
       var resAfter = computeMoteur(td, {}, POP, AGE);
-      test('Scénario ' + (i + 1) + ' — functionScores identique avant/après', () => {
-        assert.deepStrictEqual(resAfter.functionScores, resBefore.functionScores);
+      test('Scénario ' + (i + 1) + ' — signature clinique (status/confidence/coverage/directStatuses/state) de functionScores identique avant/après', () => {
+        assert.deepStrictEqual(clinicalSignature(resAfter.functionScores), clinicalSignature(resBefore.functionScores));
       });
-      test('Scénario ' + (i + 1) + ' — priorities identique avant/après', () => {
-        assert.deepStrictEqual(resAfter.priorities, resBefore.priorities);
+      test('Scénario ' + (i + 1) + ' — priorities identique avant/après (hors Contrôle Frontal, retiré de l\'affichage/des priorités par une décision ultérieure et explicitement validée, commit 800e815)', () => {
+        assert.deepStrictEqual(resAfter.priorities, withoutControleFrontal(resBefore.priorities));
       });
-      test('Scénario ' + (i + 1) + ' — clinicalSynthesis identique avant/après', () => {
-        assert.deepStrictEqual(resAfter.clinicalSynthesis, resBefore.clinicalSynthesis);
+      test('Scénario ' + (i + 1) + ' — signature clinique (state/status/support/objectified/convergence par qualité) de clinicalSynthesis identique avant/après', () => {
+        assert.deepStrictEqual(synthSignature(resAfter.clinicalSynthesis), synthSignature(resBefore.clinicalSynthesis));
       });
     });
-    test('HYP_QUALITY_RELATIONS strictement inchangé (structure de données, non le wording qui en dérive)', () => {
-      assert.deepStrictEqual(HYP_QUALITY_RELATIONS, sandbox.HYP_QUALITY_RELATIONS);
+    // RÉVISÉ : HYP_QUALITY_RELATIONS a légitimement grandi depuis ce lot (Réactivité->Explosivité
+    // via sldj_rsi, symmetryEvidence D/G réelle — mission CSM V2 consolidation du raisonnement
+    // causal). On vérifie qu'aucune relation historique n'a été retirée/altérée.
+    test('HYP_QUALITY_RELATIONS : aucune relation existant à l\'époque de ce lot n\'a été retirée ou modifiée (des relations ont pu être ajoutées depuis, missions ultérieures validées)', () => {
+      var afterStrs = HYP_QUALITY_RELATIONS.map(function (r) { return JSON.stringify(r); });
+      sandbox.HYP_QUALITY_RELATIONS.forEach(function (r) {
+        assert.ok(afterStrs.indexOf(JSON.stringify(r)) >= 0, 'relation disparue ou modifiée : ' + JSON.stringify(r));
+      });
     });
     test('TFM strictement inchangé', () => {
       assert.deepStrictEqual(TFM, sandbox.TFM);

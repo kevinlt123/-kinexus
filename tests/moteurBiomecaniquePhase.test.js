@@ -104,14 +104,14 @@ test('le score ne doit JAMAIS être influencé par une variable secondaire, mêm
   assert.ok(Math.abs(rA.score - attendu) < 1e-9);
 });
 
-test('plancher "minimum 2 variables principales" : 1 seule variable normée -> phase insuffisante même si le ratio (1/1) passerait seul', () => {
+test('plancher "minimum 1 variable principale" (révisé, cf. effectiveMinVariablesPrincipales) : 1 seule variable normée -> phase déjà exploitable', () => {
   NORMS.test_biomeca_une_seule = {
     cmj_braking_rfd: [20, 40, 80, 120, 160]
-    // Seule braking_rfd est normée -> 1 principale disponible, ratio 1/1=100% mais < minimum 2.
+    // Seule braking_rfd est normée -> 1 principale disponible, ratio 1/1=100% et >= minimum requis 1.
   };
   const r = computeBiomecaPhase('braking', brakingVals, 'test_biomeca_une_seule', 24);
-  assert.strictEqual(r.sufficient, false);
-  assert.ok(/minimum requis 2/.test(r.reason), 'le motif doit citer le plancher minimum de 2 variables principales, obtenu: ' + r.reason);
+  assert.strictEqual(r.sufficient, true, 'avec le plancher révisé (1, cf. effectiveMinVariablesPrincipales), 1 variable principale normée suffit désormais');
+  assert.strictEqual(r.entries.find(e => e.kpiKey === 'braking_rfd').tier, 'principale');
 });
 
 test('avec 2 variables principales disponibles (le plancher), la phase devient exploitable', () => {

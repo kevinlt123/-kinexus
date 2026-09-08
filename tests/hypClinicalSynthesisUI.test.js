@@ -120,7 +120,7 @@ test('Force affichée, Puissance non_determinable, absente de la liste des défi
     assert.deepStrictEqual(r.clinicalSynthesis.objectified.map(o => o.quality), ['Force']);
     assert.ok(r.clinicalSynthesis.nonDeterminable.map(n => n.quality).indexOf('Puissance') !== -1);
     var pdf = buildSportifReport(athlete, bilanFor(td), r);
-    assert.strictEqual(/Puissance[^<]*(déficitaire|Déficitaire)/.test(pdf), false);
+    assert.strictEqual(/Puissance[^<—]*(déficitaire|Déficitaire)/.test(pdf), false);
   });
 });
 
@@ -190,13 +190,23 @@ test('Force non_determinable + Puissance déficitaire (relation documentée) -> 
 });
 
 console.log('\nCohérence UI/PDF — séparation TFM/HYP');
+// RÉVISÉ (synchronisation) : le regex [^<]* (sans limite de clause) produisait un faux positif
+// depuis la mission ULTÉRIEURE et validée CSM V2.1 (commit b2e3c5e, "implement
+// UNIPODAL_FUNCTIONAL_DEFICIT") qui a ajouté, dans le PDF expert, une phrase honnête du type
+// "Puissance : non_determinable — Moins de 2 mécanismes indépendants déficitaires objectivés...".
+// Ici "déficitaires" qualifie grammaticalement "mécanismes", jamais "Puissance" elle-même (dont le
+// state réel reste "non_determinable", jamais "déficitaire" — cf. CSM_STATE_LABEL, qui n'a même pas
+// cette valeur). Borné à [^<—]* (jamais au-delà du tiret cadratin qui sépare le state de son
+// explication) pour cibler la vraie propriété testée (Puissance n'est jamais LABELLISÉE
+// déficitaire), sans redevenir sensible au texte explicatif ajouté depuis par des missions
+// distinctes et déjà validées.
 test('Le PDF (rapport expert) ne mentionne jamais une qualité non_determinable comme déficitaire dans la section Synthèse clinique', () => {
   withTempForceNorms(() => {
     var td = { imtp: { active: true, trials: { n: [1000] } }, slimtp: { active: true, D: { trials: { n: [500] } }, G: { trials: { n: [500] } } } };
     var r = computeMoteur(td, {}, POP, AGE);
     var pdfExpert = buildExpertReport(athlete, bilanFor(td), r);
     assert.ok(pdfExpert.indexOf('Synthèse clinique') !== -1);
-    assert.strictEqual(/Puissance[^<]*(déficitaire|Déficitaire)/.test(pdfExpert), false);
+    assert.strictEqual(/Puissance[^<—]*(déficitaire|Déficitaire)/.test(pdfExpert), false);
   });
 });
 
