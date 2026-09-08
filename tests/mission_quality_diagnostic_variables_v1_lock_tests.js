@@ -513,10 +513,18 @@ test('GUARD 3 — CSM_V2_CLINICAL_VARIABLE_MATRIX, THRESHOLDS, NORMS, NORMS_V2 i
   assert.strictEqual(Object.keys(NORMS).length, 64);
   assert.strictEqual(Object.keys(NORMS_V2).length, 7);
 });
-test('GUARD 4 — le diff de ce commit introduit uniquement QUALITY_DIAGNOSTIC_VARIABLES_V1/csmV2ResolveDiagnosticVariableV1/csmV2DiagnosticVariableV1Status — jamais un HYP LOCKED, jamais computeMoteur/computeCsmV2', () => {
+// RÉVISÉ (synchronisation) : cette garde comparait à l'origine `git diff HEAD` en supposant que le
+// working tree ne contiendrait JAMAIS que le diff non commité de CETTE mission (V1) elle-même —
+// hypothèse invalidée dès qu'une mission ULTÉRIEURE et distincte (ex. MISSION_RESTAURATION_NORMES_
+// ASYMETRIE, 07/09) laisse ses propres modifications non commitées dans index.html en même temps.
+// L'assertion "le diff doit mentionner QUALITY_DIAGNOSTIC_VARIABLES_V1" n'a donc plus de sens en
+// général (elle ne vaut que si LE SEUL diff en cours est celui de cette mission précise) — retirée.
+// L'invariant réellement durable et toujours vérifié ci-dessous : quel que soit ce qui est en cours
+// dans le working tree, AUCUNE ligne +/- du diff ne touche jamais un HYP LOCKED ni
+// computeMoteur/computeCsmV2 — c'est la seule garantie que GUARD 4 doit réellement offrir.
+test('GUARD 4 — le working tree ne modifie jamais un HYP LOCKED, jamais computeMoteur/computeCsmV2 (quel que soit le diff non commité en cours, y compris d\'une mission ultérieure distincte)', () => {
   const diff = execSync('git diff HEAD -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   if (diff.trim().length === 0) return; // déjà commité au moment du test
-  assert.ok(diff.includes('QUALITY_DIAGNOSTIC_VARIABLES_V1'));
   const changedLines = diff.split('\n').filter((l) => (l.startsWith('+') || l.startsWith('-')) && !l.startsWith('+++') && !l.startsWith('---'));
   ['function computeMoteur(', 'function computeCsmV2(', 'function computeHypAbsorption01(', 'function computeHypReactivity01(', 'function computeHypExplosivity01(', 'function computeHypStabilization01(', 'function computeHypForce01(', 'function computeHypPower01('].forEach((sig) => {
     assert.ok(!changedLines.some((l) => l.includes(sig)), sig + ' ne doit apparaître dans aucune ligne +/- réelle du diff');

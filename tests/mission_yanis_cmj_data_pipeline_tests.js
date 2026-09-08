@@ -266,7 +266,7 @@ test('GUARD 2 — CSM_V2_CLINICAL_VARIABLE_MATRIX, THRESHOLDS, NORMS, NORMS_V2, 
   assert.strictEqual(Object.keys(NORMS_V2).length, 7);
   assert.strictEqual(TBK.cmj.kpis.length, 65);
 });
-test('GUARD 3 — computeMouvementAnalysis, computeBiomecaPhase et phaseVarCategorie eux-mêmes restent inchangés (seuls les 2 SITES D\'APPEL de computeMouvementAnalysis sont corrigés, jamais la logique interne du moteur biomécanique) — resolveNormPopulationForTest est volontairement EXCLU de cette garde : une mission ULTÉRIEURE distincte et explicitement validée (pont NORMS_V2 -> NORMS) l\'a depuis légitimement étendue, attendu, hors périmètre de cette garde', () => {
+test('GUARD 3 — computeBiomecaPhase et phaseVarCategorie eux-mêmes restent inchangés (seuls les 2 SITES D\'APPEL de computeMouvementAnalysis sont corrigés, jamais la logique interne du moteur biomécanique) — resolveNormPopulationForTest est volontairement EXCLU de cette garde : une mission ULTÉRIEURE distincte et explicitement validée (pont NORMS_V2 -> NORMS) l\'a depuis légitimement étendue, attendu, hors périmètre de cette garde. computeMouvementAnalysis est également EXCLU de la comparaison BYTE-IDENTIQUE (mais pas de toute vérification, cf. ci-dessous) : une mission ULTÉRIEURE distincte et explicitement validée (MISSION_RESTAURATION_NORMES_ASYMETRIE, 07/09) lui a ajouté un 5e paramètre optionnel (asymPop) pour découpler la population du Moteur d\'Asymétrie de celle du Moteur de Phase — comportement additif, jamais un changement pour les appels existants qui omettent ce paramètre (cf. tests/mission_restauration_normes_asymetrie_tests.js, GUARD 8 notamment).', () => {
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   function extractFnBody(src, fnName) {
     const idx = src.indexOf('function ' + fnName + '(');
@@ -276,9 +276,18 @@ test('GUARD 3 — computeMouvementAnalysis, computeBiomecaPhase et phaseVarCateg
       else if (src[i] === '}') { depth--; if (depth === 0) return src.slice(start2, i + 1); }
     }
   }
-  assert.strictEqual(extractFnBody(code, 'computeMouvementAnalysis'), extractFnBody(baseHtml, 'computeMouvementAnalysis'));
   assert.strictEqual(extractFnBody(code, 'computeBiomecaPhase'), extractFnBody(baseHtml, 'computeBiomecaPhase'));
   assert.strictEqual(extractFnBody(code, 'phaseVarCategorie'), extractFnBody(baseHtml, 'phaseVarCategorie'));
+  // computeMouvementAnalysis : seule différence tolérée avec la baseline = le paramètre asymPop et
+  // son unique usage (computeAsymEngine(cmjValues,asymPop||pop,age) au lieu de
+  // computeAsymEngine(cmjValues,pop,age)) — jamais un autre changement (phases/profileResults/
+  // priorisation/etc. doivent rester le même code source).
+  const currentBody = extractFnBody(code, 'computeMouvementAnalysis');
+  const baseBody = extractFnBody(baseHtml, 'computeMouvementAnalysis');
+  const currentNormalized = currentBody
+    .replace('function computeMouvementAnalysis(bilan,pop,age,functionScores,asymPop){', 'function computeMouvementAnalysis(bilan,pop,age,functionScores){')
+    .replace('var asymEngine=computeAsymEngine(cmjValues,asymPop||pop,age);', 'var asymEngine=computeAsymEngine(cmjValues,pop,age);');
+  assert.strictEqual(currentNormalized, baseBody, 'computeMouvementAnalysis ne doit différer de la baseline que par le paramètre asymPop et son unique point d\'usage sur computeAsymEngine');
 });
 test('GUARD 4 — ForceDecks semantic mappings inchangés (FD_KPI_PATTERNS non touché)', () => {
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();

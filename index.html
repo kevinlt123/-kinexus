@@ -4424,7 +4424,26 @@ function resolveCmjValues(bilan){
 // biomécanique qui CONFIRME une qualité déjà déficitaire (déficit confirmé), un constat qui ne
 // trouve aucun écho fonctionnel (signal isolé), ou — quand aucune phase n'est déficitaire — une
 // particularité de profil qui reste une observation de performance.
-function computeMouvementAnalysis(bilan,pop,age,functionScores){
+// asymPop (optionnel, 5e argument, RESTAURATION 07/09) : population transmise à computeAsymEngine
+// (Moteur d'Asymétrie), DÉCOUPLÉE de `pop` (qui reste exclusivement celle du Moteur Biomécanique de
+// phase/profils, jamais touchée ici). Omis (ou null) -> se rabat sur `pop`, comportement strictement
+// inchangé pour tous les appels existants (tests directs, dont ceux qui verrouillent déjà
+// computeAsymEngine/computeAsymPhase). RÉGRESSION CORRIGÉE : dbd93ad (03/09) a fait passer `pop` à
+// effectiveCmjPhaseAnalysisPopulation() (bball2425_bleague) dans les 2 appelants réels
+// (buildSportifReport, AnalyseView) — bball2425_bleague ne couvrant AUCUNE norme d'asymétrie (audit :
+// 0/64 populations du catalogue en couvrent une seule aujourd'hui), computeAsymEngine y retournait
+// "Données insuffisantes" pour les 5 phases, pour TOUT patient, quelle que soit la sévérité réelle —
+// alors qu'avant dbd93ad, `pop` valait effectiveNormPop(athlete) (population réellement assignée au
+// patient), seule à pouvoir un jour porter des normes d'asymétrie. Les 2 appelants transmettent
+// désormais effectiveNormPop(athlete) comme asymPop, restaurant exactement le chemin de données
+// antérieur pour le Moteur d'Asymétrie SEUL — computeAsymEngine/computeAsymPhase/leurs seuils/leur
+// logique de combinaison restent byte-identiques (aucune modification, cf. GUARD dédié), et `pop`
+// (Moteur Biomécanique de phase) continue de valoir bball2425_bleague comme voulu par cette même
+// décision. Aucune norme fictive ajoutée : si effectiveNormPop(athlete) ne couvre elle non plus
+// aucune variable d'asymétrie (cas de tous les patients réels aujourd'hui, faute de norme
+// d'asymétrie dans le catalogue), computeAsymEngine continue honnêtement de répondre "Données
+// insuffisantes" — jamais un statut inventé.
+function computeMouvementAnalysis(bilan,pop,age,functionScores,asymPop){
   var cmjValues=resolveCmjValues(bilan);
   var valuesByTest={cmj:cmjValues};
   var biomeca=computeBiomecaEngine(cmjValues,pop,age);
@@ -4450,7 +4469,7 @@ function computeMouvementAnalysis(bilan,pop,age,functionScores){
   // branché ici jusqu'au 05/08 : phaseEvidence()/phasePresentation() n'avaient donc jamais accès
   // à une conclusion d'asymétrie, y compris pour MouvementView déjà en production. Correction :
   // simple ajout du résultat déjà calculé par ce moteur existant, aucun nouveau calcul.
-  var asymEngine=computeAsymEngine(cmjValues,pop,age);
+  var asymEngine=computeAsymEngine(cmjValues,asymPop||pop,age);
   return{
     cmjValues:cmjValues,phases:phases,coherence:coherence,profileResults:profileResults,signature:signature,
     syntheseBiomecanique:syntheseBiomecanique,raisonnement:raisonnement,priorisation:priorisation,indices:indices,
@@ -4670,6 +4689,32 @@ function resolveNormPopulationForTest(testKey,normPop,normSelections){
 }
 function applyThr(key,val,pop,age){if(pop&&NORMS[pop]&&NORMS[pop][key]!=null){var bands=resolveBands(NORMS[pop][key],age);var ps=pctStatus(bands,val);if(ps)return ps;}var t=THRESHOLDS[key];if(!t||val==null)return null;if(t.dir==='min'){if(val<=t.vert)return'vert';if(val<=t.jaune)return'jaune';if(val<=t.orange)return'orange';return'rouge';}if(val>=t.vert)return'vert';if(val>=t.jaune)return'jaune';if(val>=t.orange)return'orange';return'rouge';}
 function lsiSt(lsi){if(lsi==null)return null;if(lsi>=95)return'vert';if(lsi>=90)return'jaune';if(lsi>=80)return'orange';return'rouge';}
+// Référentiel de classification normative d'asymétrie WBLT (MISSION_NORMES_ASYMETRIE_WBLT, 07/09)
+// — RÉFÉRENTIEL PUR, jamais un moteur : classe l'écart absolu inter-membre WBLT (diffCm, en cm ;
+// jamais un LSI/ratio, décision clinique explicite) en 4 bandes vert/jaune/orange/rouge. Bornes
+// (fermées côté inférieur, ouvertes côté supérieur, sauf la dernière) : <1.5 vert ; [1.5,3) jaune ;
+// [3,5] orange ; >5 rouge. WBLT_ASYM_BANDS_CM documente les bornes elles-mêmes (jamais dupliquées
+// en dur ailleurs) ; wbltAsymmetryBand(diffCm) est la seule fonction qui les applique.
+// PORTÉE : computeAsymEngine/computeAsymPhase (le "Moteur d'Analyse des Asymétries par Phase",
+// déjà verrouillé et testé — tests/moteurAsymetrie.test.js) sont scopés EXCLUSIVEMENT à CMJ_PHASES
+// (CMJ_VAR_META/ASYM_PERFORMANCE_EQUIVALENT) — WBLT (test Mobilité, bilateral:false, hors CMJ)
+// n'entre structurellement dans son périmètre à aucun titre ; l'y intégrer exigerait de modifier
+// le moteur lui-même (étendre CMJ_PHASES/ASYM_PERFORMANCE_EQUIVALENT à un test non-CMJ), ce que
+// cette mission interdit explicitement. Le référentiel ci-dessous est donc un ajout autonome,
+// jamais appelé par computeAsymEngine/computeAsymPhase (byte-identiques, vérifiés inchangés), ni
+// par computeHypMobilityWblt/computeHypMobility01 (HYP-MOB-01 LOCKED, également byte-identiques,
+// vérifiés inchangés — sa propre décision binaire normal/deficient, dérivée du même wbltDiffCm,
+// reste exclusivement gouvernée par le seuil 1.5cm déjà en place, jamais recalculée ici) : prêt à
+// être consommé par une future surface de présentation sans qu'aucun moteur verrouillé n'ait été
+// touché pour cette mission.
+var WBLT_ASYM_BANDS_CM={vert:{max:1.5,inclusive:false},jaune:{max:3,inclusive:false},orange:{max:5,inclusive:true},rouge:{max:Infinity,inclusive:true}};
+function wbltAsymmetryBand(diffCm){
+  if(diffCm==null)return null;
+  if(diffCm<WBLT_ASYM_BANDS_CM.vert.max)return'vert';
+  if(diffCm<WBLT_ASYM_BANDS_CM.jaune.max)return'jaune';
+  if(diffCm<=WBLT_ASYM_BANDS_CM.orange.max)return'orange';
+  return'rouge';
+}
 function normRefValue(testKey,kpiKey,pop,age,normSelections){
   var key=testKey+'_'+kpiKey;
   var selector=normSelections&&normSelections[testKey];
@@ -13769,6 +13814,56 @@ var REPORT_OVERRIDE_FIELDS=[
   {key:'reevaluation',label:'Réévaluation conseillée'},
   {key:'noteMedecin',label:'Note au médecin / chirurgien'}
 ];
+// ── WBLT — Asymétrie (MISSION_BRANCHEMENT_WBLT, 08/09) : couche de PRÉSENTATION pure, additive et
+// STRICTEMENT SÉPARÉE du diagnostic HYP-MOB-01. Consomme exclusivement rawD/rawG déjà résolus et
+// exposés par computeHypMobilityWblt (via fSc['Mobilité'].hypMob01.diagnostic.wblt_distance, jamais
+// modifié) — jamais un recalcul depuis testData, jamais une nouvelle mesure : seule la
+// classification wbltAsymmetryBand() (référentiel WBLT_ASYM_BANDS_CM, mission précédente) est
+// appliquée à l'écart absolu déjà résolu par le moteur LOCKED. fSc['Mobilité'].status (décision
+// HYP-MOB-01, seuil 1.5cm figé, gèle normal/deficient) n'est ni lu comme source de vérité pour ce
+// panneau, ni modifié, ni fusionné : les deux informations restent deux champs distincts partout où
+// elles sont exposées (cf. computeMoteur, HYP-MOB-01, jamais touchés par cette fonction).
+// Donnée manquante (D ou G absent, ou les deux) -> jamais une couleur inventée : statut
+// 'non_determinable' explicite (même convention que symmetryEvidence.status ailleurs dans Kinexus).
+function computeWbltAsymmetryPresentation(fSc){
+  var hypMob01=fSc&&fSc['Mobilité']&&fSc['Mobilité'].hypMob01;
+  var wblt=hypMob01&&hypMob01.diagnostic&&hypMob01.diagnostic.wblt_distance;
+  var rawD=wblt?wblt.rawD:null,rawG=wblt?wblt.rawG:null;
+  var disponible=(rawD!=null&&rawG!=null);
+  var valeur=disponible?Math.round(Math.abs(rawD-rawG)*100)/100:null;
+  return{
+    label:'WBLT asymmetry',
+    disponible:disponible,
+    rawD:rawD,rawG:rawG,
+    valeur:valeur,
+    unite:'cm',
+    statut:disponible?wbltAsymmetryBand(valeur):'non_determinable',
+    source:'WBLT',
+    referentiel:'WBLT_ASYM_BANDS_CM'
+  };
+}
+// Contenu HTML (INNER, sans le cadre "panel" — chaque appelant, buildSportifReport ET
+// buildExpertReport, a sa propre fonction locale panel()/CARD_* et enveloppe ce contenu avec, pour
+// rester visuellement cohérent avec le reste de CE rapport précis) partagé par les deux rapports —
+// jamais deux implémentations divergentes du contenu lui-même. Panneau séparé, jamais fusionné avec
+// l'affichage du statut Mobilité (fSc['Mobilité'].status), qui continue d'être affiché ailleurs
+// exactement comme avant cette mission. Retourne null si WBLT n'a jamais été testé (hypMob01/wblt
+// absent) — jamais un panneau vide inventé ; s'affiche en revanche, avec un statut
+// 'non_determinable' honnête, dès que WBLT est actif mais qu'un seul côté est disponible (donnée
+// manquante != test non réalisé).
+function wbltAsymmetryPanelInnerHtml(fSc){
+  var info=computeWbltAsymmetryPresentation(fSc);
+  if(info.rawD==null&&info.rawG==null)return null;
+  var badgeCol=info.disponible?C[info.statut]:'#94A3B8';
+  var statutLabel=info.disponible?info.statut.toUpperCase():'NON DÉTERMINABLE';
+  var sidesTxt=(info.rawG!=null?info.rawG+' cm G':'G indisponible')+' / '+(info.rawD!=null?info.rawD+' cm D':'D indisponible');
+  var asymTxt=info.disponible?'Asymétrie : '+info.valeur+' cm':'Asymétrie : donnée insuffisante (un côté manquant)';
+  return '<div style="font-size:8pt;font-weight:800;color:#5B7A8C;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">WBLT — Asymétrie</div>'
+    +'<div style="font-size:9.5pt;color:#132B3A;margin-bottom:4px">'+sidesTxt+'</div>'
+    +'<div style="font-size:9.5pt;color:#132B3A;margin-bottom:8px">'+asymTxt+'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:'+badgeCol+';flex-shrink:0"></span><span style="font-size:8.5pt;font-weight:800;letter-spacing:0.04em;color:'+badgeCol+'">Statut asymétrie : '+statutLabel+'</span></div>'
+    +'<div style="font-size:7.5pt;color:#94A3B8;margin-top:8px;font-style:italic">Information de mobilité en charge, distincte du diagnostic Mobilité (HYP-MOB-01) affiché séparément ci-dessus.</div>';
+}
 function buildSportifReport(athlete,bilan,res){
   var fSc=res.functionScores,sysSc=res.systemScores,pri=res.priorities||[],rtp=res.rtpStatus,tSt=res.testStatuses;
   // Surcharges du praticien (aperçu éditable) : priorités éditées/réordonnées, statut RTP forcé
@@ -13800,7 +13895,12 @@ function buildSportifReport(athlete,bilan,res){
   // population par test du patient qui continue de piloter exclusivement le Moteur des Qualités
   // cliniques (fSc, calculé séparément ci-dessus) — jamais une nouvelle norme/un seuil créé,
   // seulement un choix de référentiel pour cet usage précis.
-  var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),age,fSc):null;
+  // RESTAURATION 07/09 (MISSION_RESTAURATION_NORMES_ASYMETRIE.md) : le Moteur d'Asymétrie
+  // (asymPop, 5e argument) redevient piloté par effectiveNormPop(athlete) — population réellement
+  // assignée au patient — comme avant dbd93ad, au lieu d'hériter silencieusement de
+  // effectiveCmjPhaseAnalysisPopulation() (bball2425_bleague, qui ne couvre aucune norme
+  // d'asymétrie dans le catalogue actuel). Cf. commentaire détaillé sur computeMouvementAnalysis.
+  var mouvementAnalysis=(td.cmj&&td.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),age,fSc,effectiveNormPop(athlete)):null;
   // Mission Q, objectif 3 — page patient CSM V2 (langage courant), n'apparaît que si le bilan produit
   // au moins une conclusion présentable (findings non vide) — jamais une page vide.
   var csmV2Patient=res.clinicalSynthesisV2?csmV2PatientNarrative(res.clinicalSynthesisV2.clinicalProfile,res.clinicalSynthesisV2.synthesis):null;
@@ -14255,6 +14355,11 @@ function buildSportifReport(athlete,bilan,res){
   // rangée icône+badge est remplacée par la grille d'anneaux partagée avec buildExpertReport ; même
   // évFns/fSc, même badge de statut (SL[status]), rien d'inventé ni de recalculé.
   html+=panel(qualitiesRingsGridHTML(evFns,fSc,res.clinicalSynthesis),'margin-bottom:26px');
+  // WBLT — Asymétrie (MISSION_BRANCHEMENT_WBLT, 08/09) : panneau additif, séparé du statut Mobilité
+  // ci-dessus (jamais fusionné) — cf. wbltAsymmetryPanelInnerHtml pour le détail de non-modification
+  // de HYP-MOB-01/computeHypMobilityWblt.
+  var wbltPanelInner=wbltAsymmetryPanelInnerHtml(fSc);
+  if(wbltPanelInner)html+=panel(wbltPanelInner,'margin-bottom:16px');
 
   // 2. Sur quoi repose cette analyse ? (les preuves)
   html+=sectionTitle(2,'Les tests réalisés',true);
@@ -14611,6 +14716,14 @@ function buildExpertReport(athlete,bilan,res){
       html+=lsiMirrorBarsHTML(introLsiItems,4)+'<div style="margin-bottom:6px"></div>';
     }
   }
+
+  // WBLT — Asymétrie (MISSION_BRANCHEMENT_WBLT, 08/09) : panneau additif, séparé du statut Mobilité
+  // (fSc['Mobilité'].status, affiché plus bas dans le tableau "Fonctions évaluées") — jamais fusionné.
+  // Rendu indépendant de la présence de clinicalSynthesis (contrairement au bloc ci-dessus), car WBLT
+  // n'a aucun rapport avec CSM V2. Style inline cohérent avec les autres panneaux de ce rapport (ce
+  // fichier n'utilise pas de fonction panel() locale, contrairement à buildSportifReport).
+  var wbltInnerExpert=wbltAsymmetryPanelInnerHtml(fSc);
+  if(wbltInnerExpert)html+='<div style="padding:14px 16px;background:#F8FAFC;border:1px solid #E1E8EE;border-radius:8px;margin-bottom:16px">'+wbltInnerExpert+'</div>';
 
   // Fonctions table
   html+='<div class="print-section-title">Fonctions évaluées</div>';
@@ -15722,9 +15835,12 @@ function AnalyseView(props){
   // catalogue couvrant les 5 phases), volontairement DÉCOUPLÉE de la sélection de population par
   // test CMJ du patient (effNormSel, qui continue de piloter exclusivement res/computeMoteur, le
   // Moteur des Qualités cliniques) — jamais une nouvelle norme créée.
+  // RESTAURATION 07/09 (MISSION_RESTAURATION_NORMES_ASYMETRIE.md) : le Moteur d'Asymétrie (asymPop,
+  // 5e argument) redevient piloté par effectiveNormPop(athlete), comme avant dbd93ad — cf.
+  // commentaire détaillé sur computeMouvementAnalysis et buildSportifReport.
   var mouvementAnalysis=useMemo(function(){
-    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),athleteAge,res.functionScores):null;
-  },[bilan,athleteAge,res]);
+    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),athleteAge,res.functionScores,effectiveNormPop(athlete)):null;
+  },[bilan,athleteAge,res,athlete.normPopulation]);
   var evFns=DISPLAYED_FUNCTIONS.filter(function(f){return res.functionScores[f];});
   var fSc=res.functionScores,sysSc=res.systemScores;
   var pri=res.priorities||[];
