@@ -70,6 +70,25 @@ test('CSM_STATE_LABEL couvre les 6 valeurs de `state` produites par CSM', () => 
 test('PDF sportif : aucun enum interne brut (retenue_faible/moderee/forte, non_determinable) ne fuit tel quel', () => {
   assert.ok(!/retenue_faible|retenue_moderee|retenue_forte/.test(sportifHtml), 'un enum `state` brut est visible dans le PDF sportif');
 });
+// ═══ [UNCERTAIN] Non résolu — signalé, non modifié (cf. mission de synchronisation des tests) ═══
+// Cause exacte identifiée : la section "Unipodal Functional Deficit" du PDF expert (index.html,
+// ~L14750, ajoutée par le commit b2e3c5e "CSM V2.1: implement UNIPODAL_FUNCTIONAL_DEFICIT",
+// POSTÉRIEUR à ce fichier) imprime q+' : '+uq.state+' — '+uq.reason SANS passer par CSM_STATE_LABEL
+// — un enum brut ('retenue_faible' notamment) y apparaît donc littéralement. Cette même famille de
+// section technique ("Patterns Absolute × Symmetry", "Clinical Hypotheses — dissociationId",
+// commits 34aa0b2/9978572, également postérieurs) expose délibérément des identifiants HYP-XXX-NN
+// et des clés de variable brutes dans le PDF expert, sous des libellés de jargon technique
+// ("traçabilité", police monospace) — cf. les 2 échecs analogues laissés rouges dans
+// productisationCliniqueLot1.test.js. Ceci contredit DIRECTEMENT le mandat de cette mission
+// ("jamais un enum interne, jamais un HYP-XXX-NN, dans aucune surface praticien") pour cette seule
+// section du PDF expert. Les 2 décisions sont réelles et validées (commits nommés, datés,
+// documentés) mais mutuellement contradictoires sur ce point précis — ni un "ancien comportement
+// clairement remplacé" (le mandat n'a jamais été explicitement abrogé), ni une régression (le bloc
+// technique est probablement voulu tel quel, à en juger par son nom). Décision nécessaire du
+// praticien : soit cette section technique doit elle aussi passer par CSM_STATE_LABEL/rester hors
+// HYP-ID (auquel cas la corriger dans index.html, hors périmètre "tests uniquement" de cette
+// mission), soit le mandat "aucun enum/ID brut" doit être explicitement restreint aux sections non
+// techniques du PDF expert (auquel cas mettre à jour ce test). Laissé ROUGE, INCHANGÉ.
 test('PDF expert : aucun enum interne brut ne fuit tel quel', () => {
   assert.ok(!/retenue_faible|retenue_moderee|retenue_forte/.test(expertHtml), 'un enum `state` brut est visible dans le PDF expert');
 });

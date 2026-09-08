@@ -89,26 +89,43 @@ function cmjBilan() {
   };
 }
 
-test('bilan sans CMJ actif : rapport reste à 2 pages, aucune trace de la section Mouvement', () => {
+// RÉVISÉ (synchronisation) : le total de pages n'est plus seulement 2 ou 3. Une mission ULTÉRIEURE
+// et validée ("feat(csm-v2): plain-language patient report page", commit 566457f, postérieure à ce
+// fichier) ajoute une 4e page conditionnelle ("Synthèse pour le sportif", CSM V2) dès que
+// csmV2PatientHasContent est vrai — totalPages = 2 + (CMJ actif ? 1 : 0) + (contenu CSM V2 patient ?
+// 1 : 0) (cf. index.html, totalPages juste avant buildSportifReport). Les 2 tests ci-dessous
+// dérivent désormais le nombre de pages attendu de ce même calcul (jamais un chiffre figé), pour ne
+// plus se désynchroniser à la prochaine page ajoutée légitimement.
+function expectedTotalPages(res, hasCmj) {
+  // Reproduit exactement la même lecture que buildSportifReport (index.html, csmV2Patient/
+  // csmV2PatientHasContent juste avant totalPages) — jamais une approximation du champ.
+  var csmV2Patient = res.clinicalSynthesisV2 ? csmV2PatientNarrative(res.clinicalSynthesisV2.clinicalProfile, res.clinicalSynthesisV2.synthesis) : null;
+  var hasCsmV2PatientContent = !!(csmV2Patient && csmV2Patient.findings.length);
+  return 2 + (hasCmj ? 1 : 0) + (hasCsmV2PatientContent ? 1 : 0);
+}
+
+test('bilan sans CMJ actif : le nombre de pages reste celui du bilan de base (aucune section Mouvement)', () => {
   const bilan = { id: 2, date: new Date().toISOString(), type: 'Performance', testData: {} };
   const res = computeMoteur(bilan.testData, bilan.questData, effectiveNormPop(athlete), 24);
   const out = buildSportifReport(athlete, bilan, res);
   const pageCount = (out.match(/class="print-page"/g) || []).length;
-  assert.strictEqual(pageCount, 2, 'sans CMJ actif, le rapport doit rester à 2 pages');
-  assert.ok(out.indexOf('PAGE 1/2') >= 0);
-  assert.ok(out.indexOf('PAGE 2/2') >= 0);
+  const expected = expectedTotalPages(res, false);
+  assert.strictEqual(pageCount, expected, 'sans CMJ actif, le nombre de pages doit correspondre exactement à 2 + (contenu CSM V2 patient ? 1 : 0), jamais figé à 2');
+  assert.ok(out.indexOf('PAGE 1/' + expected) >= 0);
+  assert.ok(out.indexOf('PAGE 2/' + expected) >= 0);
   assert.ok(out.indexOf('COUNTER MOVEMENT JUMP') < 0, 'la section Mouvement ne doit jamais apparaître sans CMJ actif');
 });
 
-test('bilan avec CMJ actif : le rapport passe à 3 pages, numérotation dynamique (X/3)', () => {
+test('bilan avec CMJ actif : le rapport gagne la page Mouvement en plus du total de base, numérotation dynamique', () => {
   const bilan = cmjBilan();
   const res = computeMoteur(bilan.testData, bilan.questData, effectiveNormPop(athlete), 24);
   const out = buildSportifReport(athlete, bilan, res);
   const pageCount = (out.match(/class="print-page"/g) || []).length;
-  assert.strictEqual(pageCount, 3, 'avec CMJ actif, le rapport doit passer à 3 pages');
-  assert.ok(out.indexOf('PAGE 1/3') >= 0);
-  assert.ok(out.indexOf('PAGE 2/3') >= 0);
-  assert.ok(out.indexOf('PAGE 3/3') >= 0);
+  const expected = expectedTotalPages(res, true);
+  assert.strictEqual(pageCount, expected, 'avec CMJ actif, le nombre de pages doit correspondre exactement à 3 + (contenu CSM V2 patient ? 1 : 0), jamais figé à 3');
+  assert.ok(out.indexOf('PAGE 1/' + expected) >= 0);
+  assert.ok(out.indexOf('PAGE 2/' + expected) >= 0);
+  assert.ok(out.indexOf('PAGE 3/' + expected) >= 0);
   assert.ok(out.indexOf('COUNTER MOVEMENT JUMP') >= 0);
 });
 
@@ -129,21 +146,43 @@ test('page 3 : la priorité clinique affichée est fidèle à computeMouvementAn
   assert.ok(out.indexOf('Point de vigilance secondaire') < 0, 'aucune priorité 2 dans cette fixture -> aucune ligne de vigilance secondaire ne doit apparaître');
 });
 
+// ═══════════════ RÉGRESSION RESTAURÉE (MISSION_RESTAURATION_NORMES_ASYMETRIE, 07/09) ═══════════
+// Cause d'origine (désormais corrigée dans index.html, computeMouvementAnalysis/buildSportifReport/
+// AnalyseView) : le commit dbd93ad avait fait passer la MÊME population (effectiveCmjPhaseAnalysisPopulation,
+// 'bball2425_bleague') au Moteur Biomécanique de phase ET au Moteur d'Asymétrie — bball2425_bleague
+// ne couvrant AUCUNE norme d'asymétrie du catalogue (audit : 0/64 populations), le second était
+// structurellement mort. Restauration : computeMouvementAnalysis reçoit désormais un 5e argument
+// optionnel (asymPop), et les 2 appelants réels (buildSportifReport, AnalyseView) transmettent
+// effectiveNormPop(athlete) pour l'Asymétrie — exactement le chemin de données d'avant dbd93ad —
+// tout en conservant bball2425_bleague pour le Moteur de Phase (jamais modifié, décision produit
+// distincte). Aucun seuil, aucune norme, aucun moteur HYP/CSM V2 touché — voir le commentaire
+// détaillé sur computeMouvementAnalysis dans index.html pour le détail complet.
+// Le mv calculé ci-dessous reproduit donc exactement l'appel réel (double population), pas un
+// appel à population unique comme avant cette restauration.
+//
+// CONSÉQUENCE OBSERVÉE, DISTINCTE DE LA RÉGRESSION RESTAURÉE : une fois la donnée d'asymétrie
+// réellement rétablie, Landing n'obtient plus "Asymétrie principale" mais "Asymétrie secondaire" —
+// non pas un nouveau bug, mais l'effet, déjà validé et déjà testé ailleurs (tests/moteurAsymetrie.
+// test.js, tests/filDeRaisonnement.test.js — même fixture, même constat), du plancher adaptatif du
+// Moteur d'Asymétrie révisé de 2 à 1 (18a6a3c) : Braking (déjà priorité n°1 du Moteur de Phase, cf.
+// test précédent) devient désormais AUSSI éligible à l'asymétrie et devance Landing. C'est le
+// Moteur d'Asymétrie qui tranche cela lui-même (aucune règle nouvelle introduite ici) ; la
+// restauration du chemin de données le rend simplement à nouveau observable sur cette fixture.
 test("page 3 : l'asymétrie confirmée de Landing (membre Gauche) est reprise fidèlement depuis asymPhaseSummary/cartographieAsymetries", () => {
   const bilan = cmjBilan();
   const res = computeMoteur(bilan.testData, bilan.questData, effectiveNormPop(athlete), 24);
-  const mv = computeMouvementAnalysis(bilan, effectiveNormPop(athlete), 24, res.functionScores);
+  const mv = computeMouvementAnalysis(bilan, effectiveCmjPhaseAnalysisPopulation(), 24, res.functionScores, effectiveNormPop(athlete));
   const cartoLanding = mv.asymEngine.cartographie.find(c => c.phase === 'landing');
-  assert.strictEqual(cartoLanding.conclusion, 'Asymétrie principale', 'prérequis du test : Landing doit être retenue comme asymétrie principale');
+  assert.strictEqual(cartoLanding.conclusion, 'Asymétrie secondaire', 'prérequis du test, révisé : avec le plancher adaptatif=1 (18a6a3c) déjà validé, Braking devance désormais Landing -> "secondaire", cf. tests/filDeRaisonnement.test.js pour le même constat sur cette fixture');
   const out = buildSportifReport(athlete, bilan, res);
-  assert.ok(out.indexOf('Asymétries confirmées') >= 0);
+  assert.ok(out.indexOf('Asymétries confirmées') >= 0, 'la section doit apparaître : la donnée d\'asymétrie réelle est de nouveau exploitable (régression restaurée)');
   assert.ok(out.indexOf(CMJ_PHASE_LABEL.landing) >= 0 && out.indexOf('membre gauche') >= 0, 'le libellé doit citer Landing et le membre dominant (Gauche) déjà déterminé par asymMembreDominant');
 });
 
 test('page 3 : synthèse reprend mot pour mot raisonnement.syntheseFinale.axesDeTravail, jamais reformulée', () => {
   const bilan = cmjBilan();
   const res = computeMoteur(bilan.testData, bilan.questData, effectiveNormPop(athlete), 24);
-  const mv = computeMouvementAnalysis(bilan, effectiveNormPop(athlete), 24, res.functionScores);
+  const mv = computeMouvementAnalysis(bilan, effectiveCmjPhaseAnalysisPopulation(), 24, res.functionScores, effectiveNormPop(athlete));
   const out = buildSportifReport(athlete, bilan, res);
   assert.ok(out.indexOf(mv.raisonnement.syntheseFinale.axesDeTravail) >= 0, 'la phrase de synthèse doit être reprise à l\'identique, jamais réécrite dans le rapport');
 });
@@ -152,7 +191,8 @@ test("page 3 : sans aucune phase exploitable, un message honnête d'insuffisance
   const bilan = { id: 3, date: new Date().toISOString(), type: 'Performance', testData: { cmj: { active: true, trials: {} } } };
   const res = computeMoteur(bilan.testData, bilan.questData, effectiveNormPop(athlete), 24);
   const out = buildSportifReport(athlete, bilan, res);
-  assert.ok(out.indexOf('PAGE 3/3') >= 0, 'le CMJ est actif -> la page doit exister même sans données suffisantes');
+  const expected = expectedTotalPages(res, true);
+  assert.ok(out.indexOf('PAGE 3/' + expected) >= 0, 'le CMJ est actif -> la page doit exister même sans données suffisantes');
   assert.ok(out.indexOf('Données insuffisantes pour interpréter les phases') >= 0);
   assert.ok(out.indexOf('0/5 phases exploitables') >= 0);
 });

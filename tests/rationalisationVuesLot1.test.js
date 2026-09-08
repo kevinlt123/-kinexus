@@ -238,17 +238,43 @@ console.log('NON-RÉGRESSION — mêmes sorties cliniques avant/après (strict, 
       {}
     ];
     var POP = 'general_m_senior', AGE = 30;
+    // Comparaison stricte de l'arbre complet devenue anachronique : des missions CSM V2
+    // ULTÉRIEURES et explicitement validées par le praticien (symmetryEvidence/sideStatus
+    // généralisés à tous les KPI unilatéraux, nomenclatureNonConfirmee levé pour cmj_braking_rfd —
+    // mission CSM V2.2 Explosivité) enrichissent additivement functionScores/clinicalSynthesis
+    // depuis le commit PRE_MISSION_COMMIT ci-dessus, sans jamais changer un statut/état clinique
+    // réel (vérifié : 0 diff sur status/state/category/confidence/coverage/support/convergence
+    // pour les 5 scénarios de ce fichier). Les 2 signatures ci-dessous isolent le SIGNAL CLINIQUE
+    // (ce que ce lot doit réellement préserver) de cet enrichissement structurel.
+    function clinicalSignature(functionScores) {
+      var sig = {};
+      Object.keys(functionScores).forEach(function (fn) {
+        var v = functionScores[fn];
+        if (!v) { sig[fn] = null; return; }
+        var hypKey = Object.keys(v).filter(function (k) { return /^hyp[A-Z]/.test(k); })[0];
+        sig[fn] = { status: v.status, confidence: v.confidence, coverage: v.coverage, directStatuses: v.directStatuses, state: hypKey ? v[hypKey].state : undefined };
+      });
+      return sig;
+    }
+    function synthSignature(cs) {
+      var sig = { csmId: cs.csmId, version: cs.version, objectified: (cs.objectified || []).slice().sort(), nonDeterminable: (cs.nonDeterminable || []).slice().sort(), suspected: (cs.suspected || []).slice().sort(), qualities: {} };
+      Object.keys(cs.qualities || {}).forEach(function (fn) {
+        var q = cs.qualities[fn];
+        sig.qualities[fn] = { state: q.state, status: q.status, support: q.support, objectified: q.objectified, nonDeterminable: q.nonDeterminable, suspected: q.suspected, absent: q.absent, convergence: q.convergence };
+      });
+      return sig;
+    }
     scenarios.forEach(function (td, i) {
       var resBefore = sandbox.computeMoteur(td, {}, POP, AGE);
       var resAfter = computeMoteur(td, {}, POP, AGE);
-      test('Scénario ' + (i + 1) + ' — functionScores identique avant/après', () => {
-        assert.deepStrictEqual(resAfter.functionScores, resBefore.functionScores);
+      test('Scénario ' + (i + 1) + ' — signature clinique (status/confidence/coverage/directStatuses/state) de functionScores identique avant/après', () => {
+        assert.deepStrictEqual(clinicalSignature(resAfter.functionScores), clinicalSignature(resBefore.functionScores));
       });
       test('Scénario ' + (i + 1) + ' — priorities identique avant/après', () => {
         assert.deepStrictEqual(resAfter.priorities, resBefore.priorities);
       });
-      test('Scénario ' + (i + 1) + ' — clinicalSynthesis identique avant/après', () => {
-        assert.deepStrictEqual(resAfter.clinicalSynthesis, resBefore.clinicalSynthesis);
+      test('Scénario ' + (i + 1) + ' — signature clinique (state/status/support/objectified/convergence par qualité) de clinicalSynthesis identique avant/après', () => {
+        assert.deepStrictEqual(synthSignature(resAfter.clinicalSynthesis), synthSignature(resBefore.clinicalSynthesis));
       });
     });
     test('TFM strictement inchangé (donnée source)', () => {
@@ -260,8 +286,15 @@ console.log('NON-RÉGRESSION — mêmes sorties cliniques avant/après (strict, 
     test('CAPACITES_DATA strictement inchangé (donnée source)', () => {
       assert.deepStrictEqual(CAPACITES_DATA, sandbox.CAPACITES_DATA);
     });
-    test('HYP_QUALITY_RELATIONS strictement inchangé', () => {
-      assert.deepStrictEqual(HYP_QUALITY_RELATIONS, sandbox.HYP_QUALITY_RELATIONS);
+    // RÉVISÉ : HYP_QUALITY_RELATIONS a légitimement grandi depuis ce lot (Réactivité->Explosivité
+    // via sldj_rsi, symmetryEvidence D/G réelle — mission CSM V2 consolidation du raisonnement
+    // causal). On vérifie qu'aucune relation historique n'a été retirée/altérée, pas que le
+    // référentiel soit figé pour toujours.
+    test('HYP_QUALITY_RELATIONS : aucune relation existant à l\'époque de ce lot n\'a été retirée ou modifiée (des relations ont pu être ajoutées depuis, missions ultérieures validées)', () => {
+      var afterStrs = HYP_QUALITY_RELATIONS.map(function (r) { return JSON.stringify(r); });
+      sandbox.HYP_QUALITY_RELATIONS.forEach(function (r) {
+        assert.ok(afterStrs.indexOf(JSON.stringify(r)) >= 0, 'relation disparue ou modifiée : ' + JSON.stringify(r));
+      });
     });
   }
 })();

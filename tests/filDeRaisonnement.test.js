@@ -157,7 +157,15 @@ test('autresObservations : liste les phases exploitables mais non retenues en pr
   const landingObs = board.autresObservations.find(o => o.key === 'landing');
   assert.ok(landingObs, 'Landing est exploitable et hors priorité -> doit apparaître en observation');
   assert.strictEqual(landingObs.niveauLabel, mv.phases.landing.niveau.label);
-  assert.ok(landingObs.note && landingObs.note.indexOf('principale') >= 0, 'la note doit refléter la cartographie d\'asymétrie déjà calculée (Asymétrie principale)');
+  // RÉVISÉ (synchronisation) : le plancher adaptatif du Moteur d'Asymétrie (effectiveMinVariablesPrincipales,
+  // révisé 2->1, cf. tests/moteurAsymetrie.test.js) rend désormais Braking éligible à l'asymétrie
+  // avec cette même fixture (auparavant insuffisant, plancher=2 non atteint) — Braking devient
+  // "Asymétrie principale" (déjà priorité n°1 par ailleurs) et Landing passe donc en "Asymétrie
+  // secondaire" (cf. computeAsymEngine, un seul phase gagne "principale"). Fait vérifié directement
+  // (mv.asymEngine.cartographie), jamais une hypothèse.
+  const landingCarto = mv.asymEngine.cartographie.find(c => c.phase === 'landing');
+  assert.strictEqual(landingCarto.conclusion, 'Asymétrie secondaire', 'prérequis du test, révisé : avec le plancher adaptatif=1, Landing n\'est plus la seule phase asym-éligible -> reléguée à "secondaire" derrière Braking');
+  assert.ok(landingObs.note && landingObs.note.indexOf('secondaire') >= 0, 'la note doit refléter la cartographie d\'asymétrie déjà calculée (Asymétrie secondaire)');
   assert.ok(!board.autresObservations.some(o => o.key === 'braking'), 'Braking est une priorité -> ne doit jamais apparaître aussi en observation (pas de doublon)');
 });
 

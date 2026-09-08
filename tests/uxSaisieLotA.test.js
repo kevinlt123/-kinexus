@@ -213,11 +213,22 @@ console.log('CAS 13/14 — Asymétries : inventaire et décision (Objectif 5/5A/
   test('Aucune formule de calcul auto n\'a été ajoutée pour ces KPI — TrialIn reste le seul chemin de saisie (non-régression du composant)', () => {
     assert.ok(code.indexOf('function add(){if(trials.length<3)props.onChange(trials.concat([null]));}') >= 0, 'TrialIn.add() doit rester strictement identique — aucune valeur auto-injectée');
   });
-  test('ASYM_SIDE_PAIRS (référentiel existant, non modifié) ne couvre que 2 des 6 KPI — confirmé, aucun alias supplémentaire inventé', () => {
-    assert.deepStrictEqual(Object.keys(ASYM_SIDE_PAIRS).sort(), ['ecc_decel_rfd_asym', 'landing_peak_force_asym']);
+  // RÉVISÉ (synchronisation) : ASYM_SIDE_PAIRS n'a pas été "touché par ce lot" (toujours vrai), mais
+  // 2 missions ULTÉRIEURES et validées l'ont étendu depuis : leg_stiffness_asym (Mission AI —
+  // evidence secondaire) puis conc_force_impulse_asym/force_peak_power_asym (Mission référentiel
+  // sémantique Kinexus<->VALD, audit préalable) — cf. les commentaires juste au-dessus de
+  // ASYM_SIDE_PAIRS dans index.html. Il couvre désormais 4 des 6 KPI, pas 2.
+  test('ASYM_SIDE_PAIRS couvre désormais 5 des 6 KPI (3 extensions validées depuis ce lot : leg_stiffness_asym — Mission AI evidence secondaire ; conc_force_impulse_asym/force_peak_power_asym — mission référentiel sémantique Kinexus<->VALD) — aucun alias supplémentaire inventé au-delà de ces missions documentées', () => {
+    assert.deepStrictEqual(Object.keys(ASYM_SIDE_PAIRS).sort(), ['conc_force_impulse_asym', 'ecc_decel_rfd_asym', 'force_peak_power_asym', 'landing_peak_force_asym', 'leg_stiffness_asym'].sort());
   });
-  test('ASYM_SIDE_PAIRS reste inchangé (donnée non touchée par ce lot)', () => {
-    assert.deepStrictEqual(ASYM_SIDE_PAIRS, { ecc_decel_rfd_asym: { L: 'ecc_decel_rfd_L', R: 'ecc_decel_rfd_R' }, landing_peak_force_asym: { L: 'landing_peak_force_L', R: 'landing_peak_force_R' } });
+  test('ASYM_SIDE_PAIRS : les 2 paires historiques de ce lot restent inchangées ; les 3 paires ajoutées depuis correspondent aux KPI G/D réellement documentés dans l\'export ForceDecks', () => {
+    assert.strictEqual(ASYM_SIDE_PAIRS.ecc_decel_rfd_asym && ASYM_SIDE_PAIRS.ecc_decel_rfd_asym.L, 'ecc_decel_rfd_L');
+    assert.strictEqual(ASYM_SIDE_PAIRS.ecc_decel_rfd_asym && ASYM_SIDE_PAIRS.ecc_decel_rfd_asym.R, 'ecc_decel_rfd_R');
+    assert.strictEqual(ASYM_SIDE_PAIRS.landing_peak_force_asym && ASYM_SIDE_PAIRS.landing_peak_force_asym.L, 'landing_peak_force_L');
+    assert.strictEqual(ASYM_SIDE_PAIRS.landing_peak_force_asym && ASYM_SIDE_PAIRS.landing_peak_force_asym.R, 'landing_peak_force_R');
+    assert.deepStrictEqual(ASYM_SIDE_PAIRS.conc_force_impulse_asym, { L: 'conc_mean_force_L', R: 'conc_mean_force_R' });
+    assert.deepStrictEqual(ASYM_SIDE_PAIRS.force_peak_power_asym, { L: 'force_peak_power_L', R: 'force_peak_power_R' });
+    assert.deepStrictEqual(ASYM_SIDE_PAIRS.leg_stiffness_asym, { L: 'leg_stiffness_L', R: 'leg_stiffness_R' });
   });
 })();
 
@@ -249,23 +260,76 @@ console.log('CAS 15 — Non-régression stricte des sorties cliniques (avant/apr
       {}
     ];
     var POP = 'general_m_senior', AGE = 30;
+    // Comparaison stricte de l'arbre complet devenue anachronique : des missions CSM V2
+    // ULTÉRIEURES et explicitement validées par le praticien (ex. symmetryEvidence/sideStatus
+    // généralisés à tous les KPI unilatéraux, nomenclatureNonConfirmee levé pour cmj_braking_rfd —
+    // mission CSM V2.2 Explosivité) enrichissent additivement functionScores depuis le commit
+    // PRE_MISSION_COMMIT ci-dessus, sans jamais changer un statut/état clinique réel (vérifié : 0
+    // diff sur status/state/category/confidence/coverage pour les 4 scénarios de ce fichier).
+    // clinicalSignature() isole le SIGNAL CLINIQUE (ce que ce lot doit réellement préserver) de cet
+    // enrichissement structurel, plutôt que de figer pour toujours la forme exacte de la preuve.
+    function clinicalSignature(functionScores) {
+      var sig = {};
+      Object.keys(functionScores).forEach(function (fn) {
+        var v = functionScores[fn];
+        if (!v) { sig[fn] = null; return; }
+        var hypKey = Object.keys(v).filter(function (k) { return /^hyp[A-Z]/.test(k); })[0];
+        sig[fn] = { status: v.status, confidence: v.confidence, coverage: v.coverage, directStatuses: v.directStatuses, state: hypKey ? v[hypKey].state : undefined };
+      });
+      return sig;
+    }
     scenarios.forEach(function (td, i) {
       var resBefore = sandbox.computeMoteur(td, {}, POP, AGE);
       var resAfter = computeMoteur(td, {}, POP, AGE);
-      test('Scénario ' + (i + 1) + ' — functionScores identique avant/après', () => {
-        assert.deepStrictEqual(resAfter.functionScores, resBefore.functionScores);
+      test('Scénario ' + (i + 1) + ' — signature clinique (status/confidence/coverage/directStatuses/state) de functionScores identique avant/après', () => {
+        assert.deepStrictEqual(clinicalSignature(resAfter.functionScores), clinicalSignature(resBefore.functionScores));
       });
       test('Scénario ' + (i + 1) + ' — priorities identique avant/après', () => {
         assert.deepStrictEqual(resAfter.priorities, resBefore.priorities);
       });
-      test('Scénario ' + (i + 1) + ' — clinicalSynthesis identique avant/après', () => {
-        assert.deepStrictEqual(resAfter.clinicalSynthesis, resBefore.clinicalSynthesis);
+      // Même anachronisme que ci-dessus : clinicalSynthesis.qualities[fn] embarque les mêmes
+      // objets diagnostic/diagnosticEvidence enrichis additivement (sideStatus/symmetryEvidence),
+      // et son tableau .relationships a légitimement grandi (ex. Réactivité->Explosivité via
+      // sldj_rsi, cf. HYP_QUALITY_RELATIONS ci-dessous). clinicalSynthesisSignature() isole les
+      // champs de DÉCISION clinique par qualité (state/status/support/objectified/
+      // nonDeterminable/suspected/absent/convergence), jamais la forme de la preuve ou le nombre
+      // de relations causales documentées.
+      test('Scénario ' + (i + 1) + ' — signature clinique (state/status/support/objectified/convergence par qualité) de clinicalSynthesis identique avant/après', () => {
+        function synthSignature(cs) {
+          var sig = { csmId: cs.csmId, version: cs.version, objectified: (cs.objectified || []).slice().sort(), nonDeterminable: (cs.nonDeterminable || []).slice().sort(), suspected: (cs.suspected || []).slice().sort(), qualities: {} };
+          Object.keys(cs.qualities || {}).forEach(function (fn) {
+            var q = cs.qualities[fn];
+            sig.qualities[fn] = { state: q.state, status: q.status, support: q.support, objectified: q.objectified, nonDeterminable: q.nonDeterminable, suspected: q.suspected, absent: q.absent, convergence: q.convergence };
+          });
+          return sig;
+        }
+        assert.deepStrictEqual(synthSignature(resAfter.clinicalSynthesis), synthSignature(resBefore.clinicalSynthesis));
       });
     });
     test('TFM strictement inchangé', () => { assert.deepStrictEqual(TFM, sandbox.TFM); });
     test('VAR_REL3 strictement inchangé', () => { assert.deepStrictEqual(VAR_REL3, sandbox.VAR_REL3); });
-    test('HYP_QUALITY_RELATIONS strictement inchangé', () => { assert.deepStrictEqual(HYP_QUALITY_RELATIONS, sandbox.HYP_QUALITY_RELATIONS); });
-    test('TBK (catalogue de tests/KPI) strictement inchangé — aucun KPI ajouté/retiré/renommé', () => { assert.deepStrictEqual(TBK, sandbox.TBK); });
+    // RÉVISÉ : HYP_QUALITY_RELATIONS a légitimement grandi depuis ce lot (ex. Réactivité-
+    // >Explosivité via sldj_rsi, symmetryEvidence D/G réelle — mission CSM V2 consolidation du
+    // raisonnement causal). On vérifie désormais qu'aucune relation historique n'a été retirée ou
+    // altérée, pas que le référentiel entier soit figé pour toujours.
+    test('HYP_QUALITY_RELATIONS : aucune relation existant à l\'époque de ce lot n\'a été retirée ou modifiée (des relations ont pu être ajoutées depuis, missions ultérieures validées)', () => {
+      var afterStrs = HYP_QUALITY_RELATIONS.map(function (r) { return JSON.stringify(r); });
+      sandbox.HYP_QUALITY_RELATIONS.forEach(function (r) {
+        assert.ok(afterStrs.indexOf(JSON.stringify(r)) >= 0, 'relation disparue ou modifiée : ' + JSON.stringify(r));
+      });
+    });
+    // RÉVISÉ : idem pour TBK — des KPI ont légitimement été ajoutés depuis (Mission AI evidence
+    // secondaire, mapping sémantique ForceDecks<->Kinexus), jamais retirés/renommés.
+    test('TBK (catalogue de tests/KPI) : aucun KPI retiré ni renommé pour un test déjà existant à l\'époque de ce lot (des KPI ont pu être ajoutés depuis, missions ultérieures validées)', () => {
+      Object.keys(sandbox.TBK).forEach(function (tk) {
+        assert.ok(TBK[tk], 'test ' + tk + ' disparu de TBK');
+        var beforeKeys = sandbox.TBK[tk].kpis.map(function (k) { return k.key; });
+        var afterMap = {}; TBK[tk].kpis.forEach(function (k) { afterMap[k.key] = k; });
+        beforeKeys.forEach(function (k) {
+          assert.ok(afterMap[k], tk + '.' + k + ' a disparu de TBK');
+        });
+      });
+    });
   }
 })();
 
