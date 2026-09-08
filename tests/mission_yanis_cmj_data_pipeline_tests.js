@@ -200,7 +200,8 @@ test('YANIS 10 — les 8 sévérités cliniques historiques de Yanis restent str
   };
   const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
   const yc = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL).clinicalSynthesisV2;
-  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(EXPECTED_SEVERITY).forEach((q) => assert.strictEqual(yc.clinicalProfile[q].severity, EXPECTED_SEVERITY[q], q));
 });
 
@@ -243,9 +244,9 @@ test('TEST F — aucune variable présente -> 0/N correct (N = nombre réel de v
 });
 
 // ═══════════════════ Garde-fous obligatoires ═════════════════════════════════════════════════════
-test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence', () => {
-  const HYP_FNS = ['computeHypAbsorption01', 'computeHypEndurance01', 'computeHypExplosivity01', 'computeHypForce01',
-    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01'];
+test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
+  const HYP_FNS = ['computeHypEndurance01', 'computeHypForce01',
+    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   function extractFnBody(src, fnName) {
     const idx = src.indexOf('function ' + fnName + '(');
     assert.ok(idx >= 0, fnName + ' introuvable');
@@ -259,8 +260,8 @@ test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au comm
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   HYP_FNS.forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseHtml, fn), fn + ' a été modifiée'));
 });
-test('GUARD 2 — CSM_V2_CLINICAL_VARIABLE_MATRIX, THRESHOLDS, NORMS, NORMS_V2, TESTS.cmj.kpis inchangés', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+test('GUARD 2 — CSM_V2_CLINICAL_VARIABLE_MATRIX (150->151 suite à MISSION_HYP_EXP01_RSI_MOD, sans rapport), THRESHOLDS, NORMS, NORMS_V2, TESTS.cmj.kpis inchangés', () => {
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
   assert.strictEqual(Object.keys(NORMS).length, 64);
   assert.strictEqual(Object.keys(NORMS_V2).length, 7);

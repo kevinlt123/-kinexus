@@ -256,11 +256,24 @@ console.log('NON-RÉGRESSION — mêmes sorties cliniques avant/après (strict, 
       });
       return sig;
     }
+    // MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée, sans rapport avec ce lot) a ajouté une
+    // traçabilité additive au convergence d'Explosivité (diagnosticPath, et ruleVariant renommé) --
+    // ces 2 champs sont exclus de la signature convergence : distinctMechanismsObserved/
+    // mechanismsInvolved/requiredMechanisms/thresholdMet restent, eux, strictement comparés.
+    function convergenceSignature(convergence) {
+      if (!convergence) return convergence;
+      var c = {};
+      Object.keys(convergence).forEach(function (k) {
+        if (k === 'diagnosticPath' || k === 'ruleVariant') return;
+        c[k] = convergence[k];
+      });
+      return c;
+    }
     function synthSignature(cs) {
       var sig = { csmId: cs.csmId, version: cs.version, objectified: (cs.objectified || []).slice().sort(), nonDeterminable: (cs.nonDeterminable || []).slice().sort(), suspected: (cs.suspected || []).slice().sort(), qualities: {} };
       Object.keys(cs.qualities || {}).forEach(function (fn) {
         var q = cs.qualities[fn];
-        sig.qualities[fn] = { state: q.state, status: q.status, support: q.support, objectified: q.objectified, nonDeterminable: q.nonDeterminable, suspected: q.suspected, absent: q.absent, convergence: q.convergence };
+        sig.qualities[fn] = { state: q.state, status: q.status, support: q.support, objectified: q.objectified, nonDeterminable: q.nonDeterminable, suspected: q.suspected, absent: q.absent, convergence: convergenceSignature(q.convergence) };
       });
       return sig;
     }

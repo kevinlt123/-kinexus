@@ -41,9 +41,11 @@ const BASELINE_COMMIT = 'b5a38f2'; // dernier commit avant cette mission d'audit
 const audit = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'csm_v2_threshold_percentile_normative_audit.json'), 'utf8'));
 
 // ═══════════════════ 1. Les 150 variables sont présentes ════════════════════════════════════════
-test('TP1 — les 150 variables de CSM_V2_CLINICAL_VARIABLE_MATRIX apparaissent toutes dans variableAudit', () => {
+test('TP1 — les 150 variables de CSM_V2_CLINICAL_VARIABLE_MATRIX apparaissent toutes dans variableAudit (fixture figée à 150, jamais régénérée par cette mission d\'audit ; la matrice LIVE est passée à 151 suite à MISSION_HYP_EXP01_RSI_MOD, sans rapport — cmj_rsi_mod, la seule variable nouvelle, est exclue de cette comparaison)', () => {
   assert.strictEqual(audit.variableAudit.length, 150);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+  const liveExcludingNewRsiMod = CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.filter((v) => v.variablePath !== 'diagnosticEvidence.cmj_rsi_mod');
+  assert.strictEqual(liveExcludingNewRsiMod.length, 150);
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
 });
 
 // ═══════════════════ 2. Les 65 CMJ KPI sont présents ═════════════════════════════════════════════
@@ -82,9 +84,9 @@ test('TP6 — FD_KPI_PATTERNS n\'a reçu aucune nouvelle clé (même nombre de c
 });
 
 // ═══════════════════ 7. HYP LOCKED inchangés ═════════════════════════════════════════════════════
-test('TP7 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence', () => {
-  const HYP_FNS = ['computeHypAbsorption01', 'computeHypEndurance01', 'computeHypExplosivity01', 'computeHypForce01',
-    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01'];
+test('TP7 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
+  const HYP_FNS = ['computeHypEndurance01', 'computeHypForce01',
+    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   function extractFnBody(src, fnName) {
     const idx = src.indexOf('function ' + fnName + '(');
     assert.ok(idx >= 0, fnName + ' introuvable');
@@ -104,9 +106,9 @@ test('TP7bis — le commit de CETTE mission d\'audit (cb619a8) lui-même n\'avai
 });
 
 // ═══════════════════ 8. CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée (byte-identique) ══════════════
-test('TP8 — CSM_V2_CLINICAL_VARIABLE_MATRIX reste à 150 variables, meta.builtFrom inchangé', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
+test('TP8 — CSM_V2_CLINICAL_VARIABLE_MATRIX (150->151 suite à MISSION_HYP_EXP01_RSI_MOD, sans rapport avec cette mission), meta.builtFrom inchangé', () => {
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 151);
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   assert.ok(baseHtml.indexOf('CSM_V2_CLINICAL_VARIABLE_MATRIX') >= 0);
 });
@@ -128,7 +130,8 @@ test('TP9 — les 8 sévérités cliniques de Yannis restent strictement identiq
   };
   const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
   const yc = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL).clinicalSynthesisV2;
-  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(EXPECTED_SEVERITY).forEach((q) => assert.strictEqual(yc.clinicalProfile[q].severity, EXPECTED_SEVERITY[q], q));
 });
 
@@ -147,10 +150,10 @@ test('TP10 — les mappings FD_KPI_PATTERNS des 6 kpis G/D validés récemment r
 });
 
 // ═══════════════════ 11. Les classifications existantes restent inchangées ══════════════════════
-test('TP11 — les classifications de la matrice LOCKED (CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[q].diagnostic[].classifiability) restent EXACTEMENT celles produites par le code actuel — cette mission ne les modifie jamais, seulement les réinterprète', () => {
+test('TP11 — les classifications de la matrice LOCKED (CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[q].diagnostic[].classifiability) restent EXACTEMENT celles produites par le code actuel — cette mission ne les modifie jamais, seulement les réinterprète (cmj_rsi_mod, ajoutée par MISSION_HYP_EXP01_RSI_MOD, sans rapport, est exclue : absente de la fixture d\'audit figée au moment de cette mission)', () => {
   HYP_CSM_QUALITIES.forEach((q) => {
     const bq = CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[q];
-    bq.diagnostic.forEach((d) => {
+    bq.diagnostic.filter((d) => d.variablePath !== 'diagnosticEvidence.cmj_rsi_mod').forEach((d) => {
       const auditRow = audit.variableAudit.find((r) => r.quality === q && r.variableKey === d.variableKey && r.role === 'DIRECT');
       assert.ok(auditRow, d.variableKey + ' absent de l\'audit');
       assert.strictEqual(auditRow.oldClassifiability, d.classifiability, d.variableKey + ' : oldClassifiability doit refléter exactement la matrice LOCKED, jamais réécrite');

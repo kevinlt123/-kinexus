@@ -414,10 +414,12 @@ test('AF45 — HYP_QUALITY_RELATIONS/CLINICAL_HYPOTHESIS_WHITELIST inchangés (9
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.filter(w => w.allowed === false).length, 1);
 });
-test('AF46 — CSM_V2_CLINICAL_VARIABLE_MATRIX.meta inchangée (150/26/28/96/29/121, aucune variable inventée)', () => {
+test('AF46 — CSM_V2_CLINICAL_VARIABLE_MATRIX.meta inchangée (151/27/28/96/30/121, aucune variable inventée par Mission AF)', () => {
+  // 150->151/26->27/29->30 suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AF) :
+  // cmj_rsi_mod apparaît désormais dans diagnosticEvidence d'Explosivité (matrice dérivée).
   const meta = CSM_V2_CLINICAL_VARIABLE_MATRIX.meta;
-  assert.strictEqual(meta.totalVariables, 150);
-  assert.strictEqual(meta.diagnosticCount, 26);
+  assert.strictEqual(meta.totalVariables, 151);
+  assert.strictEqual(meta.diagnosticCount, 27);
   assert.strictEqual(meta.confirmativeCount, 28);
   assert.strictEqual(meta.missingCount, 121);
 });
@@ -430,7 +432,8 @@ test('AF47 — régression : Yannis 8 sévérités inchangées, toutes les struc
   assert.strictEqual(yc.clinicalProfile['Réactivité'].severity, 'majeur');
   assert.strictEqual(yc.clinicalProfile['Absorption'].severity, 'majeur');
   assert.strictEqual(yc.clinicalProfile['Puissance'].severity, 'modere');
-  assert.strictEqual(yc.clinicalProfile['Explosivité'].severity, 'modere');
+  // 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AF).
+  assert.strictEqual(yc.clinicalProfile['Explosivité'].severity, 'majeur');
   assert.strictEqual(yc.clinicalProfile['Stabilisation'].severity, 'majeur');
   assert.strictEqual(yc.clinicalProfile['Endurance'].severity, 'majeur');
   ['clinicalPriorities', 'nextBestTests', 'clinicalDecisionBoard', 'clinicalEvidenceHierarchy', 'clinicalCertainty',

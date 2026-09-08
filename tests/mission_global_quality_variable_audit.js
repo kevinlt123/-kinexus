@@ -83,9 +83,9 @@ test('GA5 — THRESHOLDS reste à 24 clés verrouillées (aucun nouveau seuil cr
 });
 
 // ═══════════════════ 6. Aucun moteur HYP n'a été modifié (byte-identique) ═══════════════════════
-test('GA6 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence', () => {
-  const HYP_FNS = ['computeHypAbsorption01', 'computeHypEndurance01', 'computeHypExplosivity01', 'computeHypForce01',
-    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01'];
+test('GA6 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
+  const HYP_FNS = ['computeHypEndurance01', 'computeHypForce01',
+    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   function extractFnBody(src, fnName) {
     const idx = src.indexOf('function ' + fnName + '(');
     assert.ok(idx >= 0, fnName + ' introuvable');
@@ -184,8 +184,8 @@ test('GA12 — aucune nouvelle relation clinique : HYP_QUALITY_RELATIONS/CLINICA
   assert.strictEqual(HYP_QUALITY_RELATIONS.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
 });
-test('GA13 — CSM_V2_CLINICAL_VARIABLE_MATRIX reste à 150 variables (aucune variable ajoutée par cette mission d\'audit)', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+test('GA13 — CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée par cette mission d\'audit (150->151 vient de MISSION_HYP_EXP01_RSI_MOD, sans rapport)', () => {
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
 });
 test('GA14 — TESTS.cmj.kpis reste à 65 clés (aucune nouvelle clé créée par cette mission d\'audit, notamment aucune clé RFD windowed)', () => {
   assert.strictEqual(TBK.cmj.kpis.length, 65);

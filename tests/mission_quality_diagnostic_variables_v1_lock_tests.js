@@ -315,17 +315,27 @@ test('INVARIANT 2 — classifiabilité actuelle (CLASSIFIABLE/NON_CLASSIFIABLE),
 });
 
 test('INVARIANT 3 — intégration LOCKED (CONSUMED_BY_LOCKED_HYP/NOT_CONSUMED_BY_LOCKED_HYP), vérifiée empiriquement en inspectant diagnosticEvidence des moteurs HYP réels, jamais supposée', () => {
-  // HYP-EXP-01 : diagnosticEvidence = {cmj_conc_rfd, cmj_conc_impulse_100} -- jamais cmj_rsi_mod.
+  // MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée) : cmj_rsi_mod, normée et classifiable,
+  // a été promue preuve diagnostique PRIMARY de HYP-EXP-01 -- elle apparaît donc désormais dans
+  // diagnosticEvidence, aux côtés de cmj_conc_rfd/cmj_conc_impulse_100 (repli secondaire/historique,
+  // conservés à l'identique, toujours structurellement non classifiables aujourd'hui).
   const exp = computeHypExplosivity01({ cmj: { active: true, trials: { conc_rfd: [1000], conc_impulse_100: [1], rsi_mod: [0.5] } } }, null, 25, {});
   assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_conc_rfd'));
   assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_conc_impulse_100'));
-  assert.ok(!Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_rsi_mod'));
-  // HYP-ABS-01 : diagnosticEvidence = {braking_rfd, force_zero_vel, braking_impulse} -- jamais landing_bi/sllt.
+  assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_rsi_mod'));
+  assert.strictEqual(exp.diagnosticEvidence.cmj_rsi_mod.role, 'primary');
+  // HYP-ABS-01 : diagnosticEvidence = {braking_rfd, force_zero_vel, braking_impulse} -- jamais
+  // landing_bi/sllt (MISSION_HYP_ABS01_ABSORPTION_CORRECTION, sans rapport avec cette mission, a
+  // ajouté un champ SIBLING `landing` -- jamais fusionné dans diagnosticEvidence -- qui expose des
+  // valeurs brutes landing_bi/sllt réellement extraites mais jamais classifiables ; la portée de ce
+  // test est donc resserrée à diagnosticEvidence lui-même, seule structure réellement CONSUMED_BY_
+  // LOCKED_HYP au sens de ce test).
   const abs = computeHypAbsorption01({ cmj: { active: true, trials: { braking_rfd: [200], force_zero_vel: [20], braking_impulse: [1.5] } } }, null, 25, {});
   assert.ok(Object.prototype.hasOwnProperty.call(abs.diagnosticEvidence, 'braking_rfd'));
   assert.ok(Object.prototype.hasOwnProperty.call(abs.diagnosticEvidence, 'braking_impulse'));
-  assert.ok(JSON.stringify(abs).indexOf('landing_bi') === -1);
-  assert.ok(JSON.stringify(abs).indexOf('sllt') === -1);
+  assert.ok(JSON.stringify(abs.diagnosticEvidence).indexOf('landing_bi') === -1);
+  assert.strictEqual(abs.landing.state, 'non_determinable', 'landing existe désormais (mission Absorption) mais reste non_determinable, jamais un diagnostic');
+  assert.ok(JSON.stringify(abs.diagnosticEvidence).indexOf('sllt') === -1);
 });
 
 test('INVARIANT 4 — logique de combinaison : single evidence pour Force/Puissance/Explosivité/Absorption (le résolveur s\'arrête à la 1ère classifiable) ; AND de dj_rsi+sldj_rsi pour Réactivité (les 2 sont évaluées, jamais l\'une ignorée)', () => {
@@ -416,7 +426,10 @@ test('INVARIANT 7 — le résolveur V1 ne modifie ni ne contourne jamais un HYP 
 
 test('INVARIANT 8 — les 8 variables nommées par le praticien : classifiabilité ET intégration LOCKED, vérifiées une par une, valeurs exactes', () => {
   const expected = [
-    { key: 'cmj_rsi_mod', classifiable: true, consumed: false, note: 'classifiable mais NOT_CONSUMED_BY_LOCKED_HYP (HYP-EXP-01 ne la lit jamais)' },
+    // MISSION_HYP_EXP01_RSI_MOD : cmj_rsi_mod est désormais CONSUMED_BY_LOCKED_HYP (preuve
+    // diagnostique PRIMARY de HYP-EXP-01, correction clinique ciblée) -- avant cette mission elle
+    // était classifiable mais jamais lue par le moteur (NOT_CONSUMED).
+    { key: 'cmj_rsi_mod', classifiable: true, consumed: true, note: 'classifiable ET CONSUMED_BY_LOCKED_HYP (HYP-EXP-01 la lit en primary depuis MISSION_HYP_EXP01_RSI_MOD)' },
     { key: 'cmj_conc_rfd', classifiable: false, consumed: true, note: 'CONSUMED_BY_LOCKED_HYP (diagnostique HYP-EXP-01) mais non classifiable (0 norme)' },
     { key: 'cmj_conc_impulse_100', classifiable: false, consumed: true, note: 'CONSUMED_BY_LOCKED_HYP (diagnostique HYP-EXP-01) mais non classifiable (0 norme)' },
     { key: 'landing_bi_peak_landing_force', classifiable: false, consumed: false, note: 'non classifiable, jamais lue par HYP-ABS-01 (sous-domaine Réception non implémenté)' },
@@ -433,11 +446,16 @@ test('INVARIANT 8 — les 8 variables nommées par le praticien : classifiabilit
   const exp = computeHypExplosivity01({ cmj: { active: true, trials: { conc_rfd: [1000], conc_impulse_100: [1], rsi_mod: [0.5] } } }, null, 25, {});
   assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_conc_rfd')); // CONSUMED
   assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_conc_impulse_100')); // CONSUMED
-  assert.ok(!Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_rsi_mod')); // NOT_CONSUMED
+  assert.ok(Object.prototype.hasOwnProperty.call(exp.diagnosticEvidence, 'cmj_rsi_mod')); // CONSUMED (MISSION_HYP_EXP01_RSI_MOD)
   const abs = computeHypAbsorption01({ cmj: { active: true, trials: { braking_impulse: [1.5] } } }, null, 25, {});
   assert.ok(Object.prototype.hasOwnProperty.call(abs.diagnosticEvidence, 'braking_impulse')); // CONSUMED
-  assert.ok(JSON.stringify(abs).indexOf('landing_bi') === -1); // NOT_CONSUMED
-  assert.ok(JSON.stringify(abs).indexOf('sllt') === -1); // NOT_CONSUMED
+  // MISSION_HYP_ABS01_ABSORPTION_CORRECTION (sans rapport) a ajouté un champ SIBLING `landing`,
+  // jamais fusionné dans diagnosticEvidence -- landing_bi/sllt restent NOT_CONSUMED au sens de
+  // diagnosticEvidence (jamais une preuve diagnostique), même si leurs valeurs brutes sont
+  // désormais réellement extraites (toujours non_determinable, jamais classifiées).
+  assert.ok(JSON.stringify(abs.diagnosticEvidence).indexOf('landing_bi') === -1); // NOT_CONSUMED (diagnosticEvidence)
+  assert.ok(JSON.stringify(abs.diagnosticEvidence).indexOf('sllt') === -1); // NOT_CONSUMED (diagnosticEvidence)
+  assert.strictEqual(abs.landing.state, 'non_determinable');
   const pui = computeHypPower01({ cmj: { active: true, trials: { conc_mean_power: [30] } } }, null, 25, {});
   assert.ok(JSON.stringify(pui).indexOf('conc_mean_power') === -1); // NOT_CONSUMED, jamais lue nulle part dans HYP-PUI-01
 });
@@ -457,7 +475,12 @@ const YANNIS_DATA = {
   sllt: { active: true, D: { trials: { peak_landing_force: [4.76], loading_rate: [106100] } }, G: { trials: { peak_landing_force: [4.55], loading_rate: [52060] } } }
 };
 const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
-const EXPECTED_SEVERITIES = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+// Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée :
+// cmj_rsi_mod, normée et déficitaire chez Yanis, est désormais preuve diagnostique PRIMARY de
+// HYP-EXP-01 ; avant cette mission ni cmj_conc_rfd ni cmj_conc_impulse_100 n'étaient classifiables,
+// d'où un état non_determinable masqué en 'modere' par le calcul de sévérité). Les 7 autres qualités
+// sont vérifiées byte-identiques par les guards dédiés de la mission (aucun changement ici).
+const EXPECTED_SEVERITIES = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
 
 test('RÉGRESSION — les 8 sévérités cliniques de Yanis restent strictement identiques (référentiel additif, jamais consulté par computeMoteur/computeCsmV2)', () => {
   const moteur = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
@@ -474,9 +497,17 @@ test('RÉGRESSION — le référentiel V1 lui-même, appliqué à Yanis, résout
 });
 
 // ═══════════════ GUARDS (§13.6) ══════════════════════════════════════════════════════════════
-test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence', () => {
+test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD) et computeHypAbsorption01 (MISSION_HYP_ABS01_ABSORPTION_CORRECTION) — 2 corrections cliniques ciblées ultérieures et distinctes, chacune vérifiée par sa propre suite dédiée', () => {
   const BASELINE_COMMIT = 'e75af72';
-  const hypFns = ['computeHypAbsorption01', 'computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypExplosivity01', 'computeHypStabilization01', 'computeHypEndurance01'];
+  // computeHypExplosivity01 exclu ici : modifié intentionnellement par MISSION_HYP_EXP01_RSI_MOD
+  // (cmj_rsi_mod promue preuve diagnostique PRIMARY). Sa propre non-régression (7 autres qualités
+  // inchangées, guards dédiés, Yanis avant/après) est vérifiée par
+  // tests/mission_hyp_exp01_rsi_mod_correction_tests.js -- ne pas dupliquer ici, seulement documenter
+  // le carve-out et confirmer explicitement que la modification a bien eu lieu (pas un oubli).
+  // computeHypAbsorption01 exclu de la même façon : modifié intentionnellement par
+  // MISSION_HYP_ABS01_ABSORPTION_CORRECTION (distinction braking/landing), vérifié par
+  // tests/mission_hyp_abs01_absorption_correction_tests.js.
+  const hypFns = ['computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypStabilization01', 'computeHypEndurance01'];
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   function extractFnBody(src, fnName) {
     const marker = 'function ' + fnName + '(';
@@ -491,6 +522,8 @@ test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au comm
     throw new Error('accolade non fermée pour ' + fnName);
   }
   hypFns.forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseHtml, fn), fn + ' a été modifiée'));
+  assert.notStrictEqual(extractFnBody(code, 'computeHypExplosivity01'), extractFnBody(baseHtml, 'computeHypExplosivity01'), 'computeHypExplosivity01 doit avoir changé (MISSION_HYP_EXP01_RSI_MOD) -- sinon le carve-out ci-dessus serait injustifié');
+  assert.notStrictEqual(extractFnBody(code, 'computeHypAbsorption01'), extractFnBody(baseHtml, 'computeHypAbsorption01'), 'computeHypAbsorption01 doit avoir changé (MISSION_HYP_ABS01_ABSORPTION_CORRECTION) -- sinon le carve-out ci-dessus serait injustifié');
 });
 test('GUARD 2 — computeHypForceKpi (réutilisée par le résolveur) reste BYTE-IDENTIQUE — aucune duplication de logique, aucune modification', () => {
   const BASELINE_COMMIT = 'e75af72';
@@ -507,8 +540,13 @@ test('GUARD 2 — computeHypForceKpi (réutilisée par le résolveur) reste BYTE
   }
   assert.strictEqual(extractFnBody(code, 'computeHypForceKpi'), extractFnBody(baseHtml, 'computeHypForceKpi'));
 });
-test('GUARD 3 — CSM_V2_CLINICAL_VARIABLE_MATRIX, THRESHOLDS, NORMS, NORMS_V2 inchangés', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+test('GUARD 3 — CSM_V2_CLINICAL_VARIABLE_MATRIX (dérivée, 150->151 attendu suite à MISSION_HYP_EXP01_RSI_MOD), THRESHOLDS, NORMS, NORMS_V2 inchangés', () => {
+  // 150 -> 151 : CSM_V2_CLINICAL_VARIABLE_MATRIX est une IIFE qui introspecte la sortie réelle des 8
+  // moteurs HYP-XX-01 (jamais une donnée statique) -- cmj_rsi_mod apparaissant désormais dans
+  // diagnosticEvidence de HYP-EXP-01 (MISSION_HYP_EXP01_RSI_MOD), la matrice dérivée grandit de +1
+  // mécaniquement, sans qu'aucune ligne de la formule de dérivation elle-même n'ait changé (vérifié
+  // par le GUARD dédié de tests/mission_hyp_exp01_rsi_mod_correction_tests.js).
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
   assert.strictEqual(Object.keys(NORMS).length, 64);
   assert.strictEqual(Object.keys(NORMS_V2).length, 7);

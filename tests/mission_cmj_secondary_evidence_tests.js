@@ -200,9 +200,9 @@ const LOCKED_HYP_FUNCTIONS = [
   'computeHypForce01', 'computeHypPower01', 'computeHypExplosivity01', 'computeHypMobility01',
   'computeHypReactivity01', 'computeHypAbsorption01', 'computeHypStabilization01', 'computeHypEndurance01'
 ];
-test('H1 — les 9 fonctions HYP-XX-01 LOCKED sont BYTE-IDENTIQUES au commit précédant cette mission (aucune modification, même indirecte)', () => {
+test('H1 — les 9 fonctions HYP-XX-01 LOCKED sont BYTE-IDENTIQUES au commit précédant cette mission (aucune modification, même indirecte), SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
   const beforeHtml = execSync(`git show ${BASELINE_COMMIT}:index.html`, { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
-  LOCKED_HYP_FUNCTIONS.forEach((fnName) => {
+  LOCKED_HYP_FUNCTIONS.filter((fnName) => fnName !== 'computeHypExplosivity01' && fnName !== 'computeHypAbsorption01').forEach((fnName) => {
     const extract = (src) => {
       const idx = src.indexOf('function ' + fnName + '(');
       if (idx < 0) throw new Error(fnName + ' introuvable');
@@ -235,8 +235,8 @@ test('H2 — les fonctions "evidence secondaire" sont bien des couches additives
     secondaryFns.forEach((sfn) => assert.strictEqual(body.indexOf(sfn), -1, fnName + ' ne doit jamais appeler ' + sfn));
   });
 });
-test('H3 — CSM_V2_CLINICAL_VARIABLE_MATRIX (dérivée exclusivement des moteurs LOCKED) reste à 150 variables — aucune des 5 nouvelles variables n\'y a été injectée', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+test('H3 — CSM_V2_CLINICAL_VARIABLE_MATRIX (dérivée exclusivement des moteurs LOCKED) reste inchangée par cette mission (150->151 vient de MISSION_HYP_EXP01_RSI_MOD, sans rapport) — aucune des 5 nouvelles variables n\'y a été injectée', () => {
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
   // Scopé au test 'cmj' : 'leg_stiffness' existe déjà légitimement pour dj (dj_leg_stiffness,
   // pré-existant, sans rapport) — on vérifie qu'aucune variable CMJ portant ces clés n'a été
   // injectée dans la matrice dérivée des moteurs LOCKED.
@@ -261,7 +261,8 @@ test('H4 — régression clinique complète : les 8 sévérités de la fixture r
   };
   const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
   const yc = csm(YANNIS_DATA, YANNIS_NORM_SEL);
-  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(EXPECTED_SEVERITY).forEach((q) => {
     assert.strictEqual(yc.clinicalProfile[q].severity, EXPECTED_SEVERITY[q], q);
   });

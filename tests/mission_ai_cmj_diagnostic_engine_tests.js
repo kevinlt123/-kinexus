@@ -77,9 +77,11 @@ test('AI2 — les variables "disponibles" par phase proviennent EXCLUSIVEMENT du
   CSM_V2_AH_CMJ_PHASES.forEach(p => phaseMatrix[p].available.forEach(v => assert.ok(catalog.indexOf(v.key) !== -1)));
 });
 test('AI3 — les variables "consommées" par phase correspondent exactement à CSM_V2_CLINICAL_VARIABLE_MATRIX (test==="cmj"), aucune perte', () => {
+  // 16 -> 17 suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission) : la nouvelle entrée
+  // diagnostique diagnosticEvidence.cmj_rsi_mod (test='cmj') est consommée en Phase 6 — Take-off.
   const totalConsumed = CSM_V2_AH_CMJ_PHASES.reduce((s, p) => s + phaseMatrix[p].consumed.length, 0);
   assert.strictEqual(totalConsumed, CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.filter(v => v.test === 'cmj').length);
-  assert.strictEqual(totalConsumed, 16);
+  assert.strictEqual(totalConsumed, 17);
 });
 test('AI4 — Phase 1 (position/initiation) et Phase 4 (transition) : catalogue disponible mais AUCUNE variable consommée aujourd\'hui', () => {
   assert.strictEqual(phaseMatrix['position_initiation'].consumed.length, 0);
@@ -119,7 +121,9 @@ test('AI10 — missingVariables reflète exactement CSM_V2_CLINICAL_VARIABLE_MAT
 test('AI11 — diagnosticStatus est déterministe : classifiable_absolute prime sur classifiable_symmetry qui prime sur blocked', () => {
   assert.strictEqual(chain['Mobilité'].diagnosticStatus, 'classifiable_absolute');
   assert.strictEqual(chain['Absorption'].diagnosticStatus, 'classifiable_symmetry');
-  assert.strictEqual(chain['Explosivité'].diagnosticStatus, 'blocked');
+  // Explosivité : 'blocked' -> 'classifiable_absolute' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport
+  // avec cette mission) : cmj_rsi_mod, classifiable, apparaît désormais dans diagnosticVariables.
+  assert.strictEqual(chain['Explosivité'].diagnosticStatus, 'classifiable_absolute');
 });
 test('AI12 — classifiableDiagnosticVariables n\'est jamais vide quand diagnosticStatus !== "blocked"', () => {
   HYP_CSM_QUALITIES.forEach(q => {
@@ -131,16 +135,16 @@ test('AI13 — les 3 seules valeurs possibles pour diagnosticStatus sont classif
   HYP_CSM_QUALITIES.forEach(q => assert.ok(allowed.indexOf(chain[q].diagnosticStatus) !== -1));
 });
 
-// ═══════════════════════════ EXPLOSIVITÉ (chantier P0) ═══════════════════════════════════════════════
-test('AI14 — Explosivité (Yannis réel) : diagnosticStatus="blocked", phase="propulsion_concentrique" (traçabilité CMJ réelle)', () => {
-  assert.strictEqual(chain['Explosivité'].diagnosticStatus, 'blocked');
-  assert.strictEqual(chain['Explosivité'].phase, 'propulsion_concentrique');
+// ═══════════════════════════ EXPLOSIVITÉ (chantier P0, débloqué depuis par MISSION_HYP_EXP01_RSI_MOD, sans rapport avec cette mission) ═══════════════════════════════════════════════
+test('AI14 — Explosivité (Yannis réel) : diagnosticStatus="classifiable_absolute", phase="take_off" (traçabilité CMJ réelle) — cmj_rsi_mod (Phase 6 — Take-off), classifiable et déficitaire, a débloqué le diagnostic depuis MISSION_HYP_EXP01_RSI_MOD ; cmj_conc_rfd/cmj_conc_impulse_100 (Phase 5 — Propulsion concentrique) restent, eux, structurellement non classifiables (0 seuil)', () => {
+  assert.strictEqual(chain['Explosivité'].diagnosticStatus, 'classifiable_absolute');
+  assert.strictEqual(chain['Explosivité'].phase, 'take_off');
 });
-test('AI15 — Explosivité : diagnosticBlockedReason/missingRequirement/bestNextEvidence tous explicitement renseignés (jamais null quand bloquée)', () => {
+test('AI15 — Explosivité : n\'étant plus bloquée (MISSION_HYP_EXP01_RSI_MOD), diagnosticBlockedReason/missingRequirement/bestNextEvidence sont désormais tous null (jamais renseignés hors état bloqué)', () => {
   const e = chain['Explosivité'];
-  assert.ok(e.diagnosticBlockedReason && typeof e.diagnosticBlockedReason === 'string');
-  assert.ok(e.missingRequirement && typeof e.missingRequirement === 'string');
-  assert.ok(e.bestNextEvidence && typeof e.bestNextEvidence.reason === 'string');
+  assert.strictEqual(e.diagnosticBlockedReason, null);
+  assert.strictEqual(e.missingRequirement, null);
+  assert.strictEqual(e.bestNextEvidence, null);
 });
 test('AI16 — Explosivité : aucun seuil inventé — vérifié que cmj_conc_rfd/cmj_conc_impulse_100 sont absents de THRESHOLDS ET de NORMS_V2', () => {
   assert.strictEqual(THRESHOLDS.cmj_conc_rfd, undefined);
@@ -160,16 +164,19 @@ test('AI18 — Explosivité : les 2 variables diagnostiques sont réellement imp
   assert.ok(code.indexOf("conc_rfd:['Concentric RFD'") !== -1, 'alias CSV conc_rfd absent');
   assert.ok(code.indexOf('conc_impulse_100:[') !== -1, 'alias CSV conc_impulse_100 absent');
 });
-test('AI19 — Explosivité : la relation Réactivité->Explosivité (sldj_rsi, déjà whitelisted) reste HYPOTHESIS/CONTRIBUTING, jamais promue à un diagnostic équivalent (§9 gouvernance)', () => {
+test('AI19 — Explosivité : la relation Réactivité->Explosivité (sldj_rsi, déjà whitelisted) reste HYPOTHESIS/CONTRIBUTING, jamais promue à un diagnostic équivalent (§9 gouvernance) — le déblocage réel du diagnostic (classifiable_absolute depuis MISSION_HYP_EXP01_RSI_MOD, sans rapport) vient exclusivement de cmj_rsi_mod (preuve PROPRE à HYP-EXP-01), jamais de cette relation croisée', () => {
   const explo = yc.variableHypotheses.find(v => v.quality === 'Explosivité');
   const reactiviteEntry = explo.verificationVariables.find(v => v.quality === 'Réactivité');
   assert.ok(reactiviteEntry);
   assert.ok(['HYPOTHESIS', 'CONTRIBUTING', 'ASSOCIATED', 'REFUTED'].indexOf(reactiviteEntry.status) !== -1);
-  assert.strictEqual(chain['Explosivité'].diagnosticStatus, 'blocked', 'la relation existante ne débloque jamais le diagnostic propre');
+  assert.strictEqual(chain['Explosivité'].diagnosticStatus, 'classifiable_absolute');
+  assert.strictEqual(chain['Explosivité'].classifiableDiagnosticVariables.length, 1);
+  assert.strictEqual(chain['Explosivité'].classifiableDiagnosticVariables[0].variableKey, 'cmj_rsi_mod', 'le déblocage vient de cmj_rsi_mod, jamais de la relation Réactivité->Explosivité');
 });
-test('AI20 — Explosivité : completenessStatus reste NOT_DETERMINED — jamais forcée à COMPLETE/PARTIAL sans preuve réelle', () => {
+test('AI20 — Explosivité : completenessStatus reste NOT_DETERMINED — jamais forcée à COMPLETE/PARTIAL sans preuve réelle (computeCsmV2 LOCKED, jamais modifié, ne branche pas cmj_rsi_mod dans clinicalEvidenceHierarchy — cf. AD23 — malgré diagnosticStatus=classifiable_absolute côté chain)', () => {
   assert.strictEqual(chain['Explosivité'].completenessStatus, 'NOT_DETERMINED');
-  assert.strictEqual(yc.clinicalProfile['Explosivité'].severity, 'modere', 'la sévérité (déjà connue, via bridge) reste inchangée par cette mission');
+  // 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  assert.strictEqual(yc.clinicalProfile['Explosivité'].severity, 'majeur');
 });
 
 // ═══════════════════════════ ABSORPTION (chantier P0) ═══════════════════════════════════════════════
@@ -251,7 +258,8 @@ test('AI33 — une qualité non testée reste "blocked" ou correctement non dét
   assert.strictEqual(untested.clinicalCompletenessAudit['Réactivité'].completenessStatus, 'NOT_DETERMINED');
 });
 test('AI34 — les 8 sévérités Yannis restent STRICTEMENT inchangées par cette mission (aucune amélioration non justifiée par une preuve réelle)', () => {
-  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'modere', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(expected).forEach(q => assert.strictEqual(yc.clinicalProfile[q].severity, expected[q], q));
 });
 
@@ -261,9 +269,8 @@ test('AI35 — Endurance : bestNextEvidence n\'est pas nécessaire au niveau cha
   const heelRaise = yc.informationalTests.find(t => t.test === 'Heel Raise' && t.targetQuality === 'Endurance');
   assert.strictEqual(heelRaise.expectedReasoningGain, 'HIGH');
 });
-test('AI36 — Explosivité : bestNextEvidence.test est explicitement null avec une justification honnête (aucun test n\'apporterait de gain aujourd\'hui) — jamais un test recommandé sans valeur réelle', () => {
-  assert.strictEqual(chain['Explosivité'].bestNextEvidence.test, null);
-  assert.ok(/gain exploitable/i.test(chain['Explosivité'].bestNextEvidence.reason));
+test('AI36 — Explosivité : bestNextEvidence est désormais null (n\'est jamais calculée pour une qualité non bloquée, cf. AI15) suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission) — aucun test complémentaire n\'est proposé, cohérent avec l\'absence de gain informationnel', () => {
+  assert.strictEqual(chain['Explosivité'].bestNextEvidence, null);
   assert.strictEqual(yc.informationalTests.filter(t => t.targetQuality === 'Explosivité').length, 0);
 });
 test('AI37 — quand bestNextEvidence.test n\'est pas null, il correspond à un test réellement présent dans informationalTests avec un gain exploitable', () => {
@@ -276,9 +283,10 @@ test('AI37 — quand bestNextEvidence.test n\'est pas null, il correspond à un 
 });
 
 // ═══════════════════════════ DONNÉES RÉELLES YANNIS ═════════════════════════════════════════════════
-test('AI38 — Yannis réel : phase CMJ tracée correctement pour Puissance (take_off, cmj_peak_power) et Explosivité (propulsion_concentrique, cmj_conc_rfd)', () => {
+test('AI38 — Yannis réel : phase CMJ tracée correctement pour Puissance (take_off, cmj_peak_power) et Explosivité (take_off, cmj_rsi_mod depuis MISSION_HYP_EXP01_RSI_MOD, sans rapport avec cette mission — auparavant propulsion_concentrique/cmj_conc_rfd avant que cmj_rsi_mod ne devienne la variable diagnostique classifiable prioritaire)', () => {
   assert.strictEqual(chain['Puissance'].phase, 'take_off');
-  assert.strictEqual(chain['Explosivité'].phase, 'propulsion_concentrique');
+  assert.strictEqual(chain['Explosivité'].phase, 'take_off');
+  assert.strictEqual(chain['Explosivité'].classifiableDiagnosticVariables[0].variableKey, 'cmj_rsi_mod');
 });
 test('AI39 — Yannis réel : les qualités sans diagnostic lié au CMJ ont phase=null (Mobilité, Réactivité, Force, Stabilisation, Endurance)', () => {
   ['Mobilité', 'Réactivité', 'Force', 'Stabilisation', 'Endurance'].forEach(q => assert.strictEqual(chain[q].phase, null, q));
@@ -293,11 +301,11 @@ test('AI40 — Yannis réel : le tableau complet (diagnostiqué/confirmé/explic
 });
 
 // ═══════════════════════════ ABSENCE DE RÉGRESSION ══════════════════════════════════════════════════
-test('AI41 — gouvernance : THRESHOLDS(24)/HYP_QUALITY_RELATIONS(9)/CLINICAL_HYPOTHESIS_WHITELIST(9)/matrix.meta(150) strictement inchangés', () => {
+test('AI41 — gouvernance : THRESHOLDS(24)/HYP_QUALITY_RELATIONS(9)/CLINICAL_HYPOTHESIS_WHITELIST(9)/matrix.meta(151) strictement inchangés (150->151 vient de MISSION_HYP_EXP01_RSI_MOD, sans rapport avec cette mission)', () => {
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
   assert.strictEqual(HYP_QUALITY_RELATIONS.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 151);
 });
 test('AI42 — les 8 moteurs HYP LOCKED restent inchangés (fonctions présentes, jamais modifiées)', () => {
   ['computeHypForce01', 'computeHypMobility01', 'computeHypReactivity01', 'computeHypAbsorption01', 'computeHypPower01', 'computeHypExplosivity01', 'computeHypStabilization01', 'computeHypEndurance01'].forEach(fn => {

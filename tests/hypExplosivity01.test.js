@@ -1,9 +1,17 @@
 // Tests unitaires — HYP-EXP-01, intégration réelle dans computeMoteur() (index.html).
 //
-// Même convention que tests/hypPower01.test.js (situation normative structurellement identique :
-// les deux preuves diagnostiques n'ont aujourd'hui aucun seuil). Couvre les 9 cas mandatés par la
-// mission d'implémentation (§11) + le mécanisme de convergence + la non-régression des 7 autres
-// qualités.
+// Couvre les 9 cas mandatés par la mission d'implémentation d'origine (§11, cmj_conc_rfd/
+// cmj_conc_impulse_100, alors sans aucun seuil réel — même convention que tests/hypPower01.test.js)
+// + le mécanisme de convergence historique + la non-régression des 7 autres qualités.
+//
+// RÉVISÉ (MISSION_HYP_EXP01_RSI_MOD, correction clinique validée par le praticien) : cmj_rsi_mod
+// (seuil universel THRESHOLDS.cmj_rsi_mod + NORMS pour 24 populations) est désormais la preuve
+// diagnostique PRIMARY d'Explosivité ; cmj_conc_rfd/cmj_conc_impulse_100 restent des preuves
+// SECONDARY/historiques, utilisées en repli uniquement si cmj_rsi_mod n'est pas classifiable. Les 9
+// cas ci-dessous, qui ne fournissent jamais rsi_mod, exercent donc TOUJOURS le chemin de repli
+// secondaire (comportement historique inchangé pour ces scénarios précis) — le nouveau chemin
+// PRIMARY (cmj_rsi_mod) est couvert exhaustivement par
+// tests/mission_hyp_exp01_rsi_mod_correction_tests.js (10 cas mandatés + guards + Yanis avant/après).
 //
 // Exécution : node tests/hypExplosivity01.test.js — aucune dépendance externe.
 const fs = require('fs');
@@ -93,8 +101,16 @@ test('7. Les deux preuves non classifiables (aucune donnée) -> non_determinable
   assert.strictEqual(r.functionScores['Explosivité'].status, null);
 });
 
-test('8. Variables explicatives déficitaires + preuves diagnostiques insuffisantes -> aucune hypothèse forcée', () => {
-  var td = { cmj: cmjData({ depth: [5], rsi_mod: [0.01] }) }; // explicatives très déficitaires, aucune preuve diagnostique
+// RÉVISÉ (MISSION_HYP_EXP01_RSI_MOD, correction clinique validée) : cmj_rsi_mod était jusqu'ici
+// purement explicative (jamais diagnostique) — ce test l'utilisait donc comme exemple de variable
+// "explicative très déficitaire, aucune preuve diagnostique". Depuis cette mission, cmj_rsi_mod EST
+// la preuve diagnostique PRIMARY d'Explosivité (validation clinique praticien) : la fournir déclenche
+// désormais légitimement un diagnostic (retenue_faible), ce n'est plus une variable purement
+// explicative. Retiré de ce test pour préserver son intention d'origine (une variable RÉELLEMENT
+// encore explicative-seule, ex. cmj_depth, ne force jamais un diagnostic) ; le nouveau rôle
+// diagnostique de cmj_rsi_mod est couvert par tests/mission_hyp_exp01_rsi_mod_correction_tests.js.
+test('8. Variable explicative déficitaire (cmj_depth) + preuves diagnostiques insuffisantes -> aucune hypothèse forcée', () => {
+  var td = { cmj: cmjData({ depth: [5] }) }; // explicative très déficitaire, aucune preuve diagnostique
   var r = computeMoteur(td, {}, POP, AGE);
   var h = r.functionScores['Explosivité'].hypExp01;
   assert.strictEqual(h.explanatoryEvidence.biomecanique.cmj_depth.status, 'deficitaire');
@@ -135,7 +151,11 @@ test('2bis/3bis. Une seule déficitaire (réellement classifiée) -> suspectee, 
 
 test('9. Les deux réellement déficitaires + confirmative/explicatives disponibles -> diagnostic + explications, support gradué correctement', () => {
   withTemporaryExpNorms(() => {
-    var td = { cmj: cmjData({ conc_rfd: [10], conc_impulse_100: [0.1], peak_power: [30], depth: [22], rsi_mod: [0.2], ecc_peak_vel: [0.5] }) };
+    // RÉVISÉ (MISSION_HYP_EXP01_RSI_MOD) : rsi_mod retiré de la fixture. Depuis cette mission,
+    // cmj_rsi_mod est la preuve diagnostique PRIMARY — la fournir ferait passer ce test par le
+    // chemin RSI-mod (jamais celui, historique, à 2 mécanismes conc_rfd/conc_impulse_100, que ce
+    // test veut réellement exercer). Sans rsi_mod, le fallback secondaire est bien celui exercé.
+    var td = { cmj: cmjData({ conc_rfd: [10], conc_impulse_100: [0.1], peak_power: [30], depth: [22], ecc_peak_vel: [0.5] }) };
     var r = computeMoteur(td, {}, POP, AGE);
     var h = r.functionScores['Explosivité'].hypExp01;
     assert.strictEqual(h.state, 'retenue_faible');

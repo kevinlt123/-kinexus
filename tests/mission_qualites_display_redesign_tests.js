@@ -144,7 +144,9 @@ const YANNIS_DATA = {
   sllt: { active: true, D: { trials: { peak_landing_force: [4.76], loading_rate: [106100] } }, G: { trials: { peak_landing_force: [4.55], loading_rate: [52060] } } }
 };
 const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
-const EXPECTED_SEVERITIES = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+// Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée,
+// sans rapport avec cette mission de présentation) -- les 7 autres qualités restent inchangées.
+const EXPECTED_SEVERITIES = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
 
 test('TEST 10 — régression Yanis : les 8 sévérités cliniques (Moteur des Qualités, HYP_CSM_QUALITIES) restent strictement identiques', () => {
   const moteur = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
@@ -158,9 +160,9 @@ test('TEST 11 — HYP_CSM_QUALITIES (les 8 qualités du modèle HYP V1) ne conti
 });
 
 // ═══════════════ GUARDS ═══════════════════════════════════════════════════════════════════════
-test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence', () => {
+test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
   const BASELINE_COMMIT = 'daa42cc';
-  const hypFns = ['computeHypAbsorption01', 'computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypExplosivity01', 'computeHypStabilization01', 'computeHypEndurance01'];
+  const hypFns = ['computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypStabilization01', 'computeHypEndurance01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   function extractFnBody(src, fnName) {
     const marker = 'function ' + fnName + '(';

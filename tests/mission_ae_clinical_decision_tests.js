@@ -353,7 +353,9 @@ test('AE39 — clinicalDecisionSynthesis cohérente : qualités dominantes refl�
 
 // AE40 — variableMatrix cohérente
 test('AE40 — futureDataValue/clinicalPriorities cohérents avec CSM_V2_CLINICAL_VARIABLE_MATRIX (Mission AB/AD)', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
+  // 150 -> 151 suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AE) : cmj_rsi_mod
+  // apparaît désormais dans diagnosticEvidence d'Explosivité (matrice dérivée).
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 151);
   assert.ok(yc.futureDataValue.A_test_disponible_seuil_existant.some(v => v.variableKey === 'heel_raise_reps'));
 });
 
@@ -416,7 +418,8 @@ test('AE48 — NORMS_V2/HYP_QUALITY_RELATIONS/CLINICAL_HYPOTHESIS_WHITELIST stri
 
 // AE49 — régression complète
 test('AE49 — régression : Yannis 8 sévérités inchangées, structures Q->AD toujours présentes', () => {
-  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'modere', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AE).
+  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(expected).forEach(q => assert.strictEqual(yc.clinicalProfile[q].severity, expected[q], q));
   ['clinicalEvidenceHierarchy', 'clinicalCertainty', 'variableReasoningTrace', 'clinicalFactorClassification', 'chainClassification', 'clinicalQuestions', 'reasoningBoundaries', 'finalClinicalReasoning'].forEach(k => assert.ok(k in yc, k + ' manquant (Mission AD)'));
   ['clinicalPriorities', 'nextBestTests', 'globalNextBestTests', 'qualityDecisionProfiles', 'clinicalBottlenecks', 'clinicalDissociations', 'clinicalLimitationHierarchy', 'clinicalActionPlan', 'futureDataValue', 'clinicalDecisionSynthesis', 'clinicalDecisionBoard'].forEach(k => assert.ok(k in yc, k + ' manquant (Mission AE)'));

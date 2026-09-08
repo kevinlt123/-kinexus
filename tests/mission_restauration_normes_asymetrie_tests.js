@@ -162,8 +162,8 @@ function extractFnBody(src, fnName) {
   throw new Error('accolade non fermée pour ' + fnName);
 }
 
-test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence', () => {
-  const hypFns = ['computeHypAbsorption01', 'computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypExplosivity01', 'computeHypStabilization01', 'computeHypEndurance01'];
+test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
+  const hypFns = ['computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypStabilization01', 'computeHypEndurance01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   hypFns.forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' a été modifiée'));
 });
 test('GUARD 2 — computeHypForceKpi reste BYTE-IDENTIQUE', () => {
@@ -179,8 +179,41 @@ test('GUARD 4 — computeAsymEngine et computeAsymPhase (Moteur d\'Asymétrie LO
 test('GUARD 5 — QUALITY_DIAGNOSTIC_VARIABLES_V1 inchangé (deep-equal)', () => {
   assert.deepStrictEqual(QUALITY_DIAGNOSTIC_VARIABLES_V1, baseSandbox.QUALITY_DIAGNOSTIC_VARIABLES_V1);
 });
-test('GUARD 6 — CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée (deep-equal)', () => {
-  assert.deepStrictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX, baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX);
+test('GUARD 6 — CSM_V2_CLINICAL_VARIABLE_MATRIX : formule de dérivation (IIFE) inchangée ; seul son résultat évolue, exactement à hauteur de MISSION_HYP_EXP01_RSI_MOD (ajout de cmj_rsi_mod au diagnosticEvidence d\'Explosivité, sans rapport avec cette mission)', () => {
+  // CSM_V2_CLINICAL_VARIABLE_MATRIX est une IIFE qui introspecte la sortie réelle des 8 moteurs
+  // HYP-XX-01 (jamais une donnée statique) -- un deep-equal brut contre le baseline est donc
+  // structurellement le mauvais test dès qu'un HYP change légitimement (MISSION_HYP_EXP01_RSI_MOD,
+  // ultérieure et distincte de cette mission). On vérifie ici que la FORMULE elle-même n'a pas
+  // bougé, et que le delta du résultat est exactement celui attendu (localisé à Explosivité).
+  function extractMatrixIIFE(src) {
+    const marker = 'var CSM_V2_CLINICAL_VARIABLE_MATRIX=(function(){';
+    const idx = src.indexOf(marker);
+    assert.ok(idx >= 0, 'IIFE introuvable');
+    const iifeStart = src.indexOf('(function(){', idx);
+    let depth = 0, i = src.indexOf('{', iifeStart), bodyStart = i;
+    for (; i < src.length; i++) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}') { depth--; if (depth === 0) return src.slice(idx, i + 4); }
+    }
+    throw new Error('accolade non fermée pour l\'IIFE de la matrice');
+  }
+  assert.strictEqual(extractMatrixIIFE(code), extractMatrixIIFE(baseCode), 'la formule de dérivation de la matrice ne doit jamais être modifiée par cette mission');
+
+  const before = baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX;
+  const after = CSM_V2_CLINICAL_VARIABLE_MATRIX;
+  Object.keys(before.byQuality || {}).forEach((q) => {
+    if (q === 'Explosivité') return;
+    assert.deepStrictEqual(after.byQuality[q], before.byQuality[q], q + ' n\'aurait jamais dû changer dans la matrice dérivée');
+  });
+  const beforeExpDiag = before.byQuality['Explosivité'].diagnostic.map((e) => e.variableKey).sort();
+  const afterExpDiag = after.byQuality['Explosivité'].diagnostic.map((e) => e.variableKey).sort();
+  assert.deepStrictEqual(afterExpDiag, [...beforeExpDiag, 'cmj_rsi_mod'].sort(), 'le seul ajout attendu au diagnostic d\'Explosivité est cmj_rsi_mod (MISSION_HYP_EXP01_RSI_MOD)');
+  assert.strictEqual(after.meta.diagnosticCount, before.meta.diagnosticCount + 1);
+  assert.strictEqual(after.meta.classifiableCount, before.meta.classifiableCount + 1);
+  assert.strictEqual(after.meta.totalVariables, before.meta.totalVariables + 1);
+  assert.strictEqual(after.meta.confirmativeCount, before.meta.confirmativeCount);
+  assert.strictEqual(after.meta.explanatoryCount, before.meta.explanatoryCount);
+  assert.strictEqual(after.meta.missingCount, before.meta.missingCount);
 });
 test('GUARD 7 — NORMS/THRESHOLDS/NORMS_V2 inchangés (deep-equal, comparés avant l\'ajout des fixtures de test ci-dessus)', () => {
   const currentNormsKeys = Object.keys(NORMS).filter((k) => !['test_restauration_asym_pop', 'test_pop_guard_asym'].includes(k));

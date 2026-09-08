@@ -51,9 +51,9 @@ test('E5 — HYP_QUALITY_RELATIONS et CLINICAL_HYPOTHESIS_WHITELIST inchangés (
   assert.strictEqual(HYP_QUALITY_RELATIONS.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
 });
-test('E6 — CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée (150 variables au total, meta.builtFrom identique)', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
+test('E6 — CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée par cette mission (150->151 vient de MISSION_HYP_EXP01_RSI_MOD, sans rapport)', () => {
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 151);
 });
 test('E7 — le mapping FD_KPI_PATTERNS existant n\'a pas changé : l\'audit déjà commité (forcedecks_cmj_semantic_mapping_audit.json) reste reproductible à l\'identique', () => {
   const committed = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'forcedecks_cmj_semantic_mapping_audit.json'), 'utf8'));

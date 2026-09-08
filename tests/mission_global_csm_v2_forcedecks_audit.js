@@ -111,9 +111,9 @@ test('GC7 — THRESHOLDS reste à 24 clés verrouillées, CMJ_PLAUSIBLE_RANGE in
 });
 
 // ═══════════════════ 8. Aucun HYP LOCKED n'est modifié ══════════════════════════════════════════
-test('GC8 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence', () => {
-  const HYP_FNS = ['computeHypAbsorption01', 'computeHypEndurance01', 'computeHypExplosivity01', 'computeHypForce01',
-    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01'];
+test('GC8 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
+  const HYP_FNS = ['computeHypEndurance01', 'computeHypForce01',
+    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   function extractFnBody(src, fnName) {
     const idx = src.indexOf('function ' + fnName + '(');
     assert.ok(idx >= 0, fnName + ' introuvable');
@@ -133,8 +133,8 @@ test('GC8bis — le commit de CETTE mission d\'audit (b5a38f2) lui-même n\'avai
 });
 
 // ═══════════════════ 9. CSM_V2_CLINICAL_VARIABLE_MATRIX reste inchangée ═════════════════════════
-test('GC9 — CSM_V2_CLINICAL_VARIABLE_MATRIX reste à 150 variables', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+test('GC9 — CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée par cette mission (150->151 vient de MISSION_HYP_EXP01_RSI_MOD, sans rapport)', () => {
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
 });
 
 // ═══════════════════ 10. Yannis conserve exactement ses sévérités actuelles ═════════════════════
@@ -154,7 +154,8 @@ test('GC10 — les 8 sévérités cliniques de Yannis restent strictement identi
   };
   const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
   const yc = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL).clinicalSynthesisV2;
-  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(EXPECTED_SEVERITY).forEach((q) => assert.strictEqual(yc.clinicalProfile[q].severity, EXPECTED_SEVERITY[q], q));
 });
 
