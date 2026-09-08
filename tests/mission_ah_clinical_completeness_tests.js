@@ -73,9 +73,10 @@ test('AH3 — Puissance : 2 variables diagnostiques, toutes deux partiellement e
   assert.strictEqual(audit['Puissance'].diagnostic.length, 2);
   audit['Puissance'].diagnostic.forEach(v => assert.strictEqual(v.classifiability, 'partiellement_exploitable'));
 });
-test('AH4 — Explosivité : 2 variables diagnostiques, AUCUNE classifiable (cmj_conc_rfd/cmj_conc_impulse_100 sans seuil)', () => {
-  assert.strictEqual(audit['Explosivité'].diagnostic.length, 2);
-  assert.ok(audit['Explosivité'].diagnostic.every(v => v.classifiability === 'non_classifiable'));
+test('AH4 — Explosivité : 3 variables diagnostiques -- cmj_rsi_mod exploitable (MISSION_HYP_EXP01_RSI_MOD, sans rapport avec Mission AH), cmj_conc_rfd/cmj_conc_impulse_100 toujours sans seuil', () => {
+  assert.strictEqual(audit['Explosivité'].diagnostic.length, 3);
+  assert.strictEqual(audit['Explosivité'].diagnostic.find(v => v.variableKey === 'cmj_rsi_mod').classifiability, 'exploitable');
+  assert.ok(audit['Explosivité'].diagnostic.filter(v => v.variableKey !== 'cmj_rsi_mod').every(v => v.classifiability === 'non_classifiable'));
 });
 test('AH5 — Mobilité : 1 variable diagnostique exploitable (wblt_distance, seuil réel)', () => {
   assert.strictEqual(audit['Mobilité'].diagnostic.length, 1);
@@ -179,12 +180,15 @@ test('AH22 — GAP 6 (gap de données cliniques) : Stabilisation ET Absorption n
 });
 
 // ═══════════════════════════ AH23-AH28 — CMJ PAR PHASES ═════════════════════════════════════════════
-test('AH23 — CSM_V2_AH_CMJ_PHASE_AUDIT couvre les 8 phases, les 16 variables CMJ réellement consommées sont toutes catégorisées (aucune perdue)', () => {
+test('AH23 — CSM_V2_AH_CMJ_PHASE_AUDIT couvre les 8 phases, les 17 variables CMJ réellement consommées sont toutes catégorisées (aucune perdue)', () => {
+  // 16 -> 17 suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AH) : la nouvelle entrée
+  // diagnostique diagnosticEvidence.cmj_rsi_mod (test='cmj') est catégorisée en Phase 6 — Take-off
+  // (csmV2AhCmjPhaseForKey('rsi_mod') -> 'take_off'), aucune perte.
   assert.strictEqual(Object.keys(CSM_V2_AH_CMJ_PHASE_AUDIT).length, 8);
   const totalCategorized = CSM_V2_AH_CMJ_PHASES.reduce((s, p) => s + CSM_V2_AH_CMJ_PHASE_AUDIT[p].variables.length, 0);
   const totalCmjInMatrix = CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.filter(v => v.test === 'cmj').length;
   assert.strictEqual(totalCategorized, totalCmjInMatrix);
-  assert.strictEqual(totalCmjInMatrix, 16);
+  assert.strictEqual(totalCmjInMatrix, 17);
 });
 test('AH24 — Phase 5 (propulsion concentrique) concentre les 2 variables diagnostiques d\'Explosivité, TOUTES non classifiables — bloque structurellement le diagnostic direct de cette phase', () => {
   const p5 = CSM_V2_AH_CMJ_PHASE_AUDIT['propulsion_concentrique'];
@@ -248,10 +252,10 @@ test('AH35 — Force : completenessStatus COMPLETE, mais P0/P1/P2 structurels ab
   assert.strictEqual(yc.clinicalProfile['Force'].severity, 'preserved');
   assert.strictEqual(csmV2QualityGenuinelyTested('Force', yc.symmetryEvidence), true);
 });
-test('AH36 — Explosivité (Yannis) : NOT_DETERMINED confirmé — pourquoi ? aucune de ses 2 variables diagnostiques (cmj_conc_rfd/cmj_conc_impulse_100) n\'est classifiable ; minimum pour diagnostiquer = un seuil (THRESHOLDS/NORMS_V2) sur l\'une des deux', () => {
+test('AH36 — Explosivité (Yannis) : NOT_DETERMINED confirmé -- pourquoi ? clinicalEvidenceHierarchy/clinicalCertainty (computeCsmV2, LOCKED, jamais modifié) ne branchent pas cmj_rsi_mod pour Explosivité malgré sa promotion en preuve PRIMARY (MISSION_HYP_EXP01_RSI_MOD, sans rapport avec Mission AH -- limitation documentée, cf. AD23) ; le gap P0 (aucune variable diagnostique classifiable) a en revanche disparu, cmj_rsi_mod étant désormais classifiable', () => {
   assert.strictEqual(audit['Explosivité'].completenessStatus, 'NOT_DETERMINED');
   assert.strictEqual(yc.clinicalEvidenceHierarchy['Explosivité'].verdict, 'AUCUNE_PREUVE_DIAGNOSTIQUE');
-  assert.ok(audit['Explosivité'].priorityGaps.some(g => g.level === 'P0'));
+  assert.ok(!audit['Explosivité'].priorityGaps.some(g => g.level === 'P0'), 'le gap P0 doit avoir disparu : cmj_rsi_mod est désormais classifiable');
 });
 test('AH37 — Endurance (Yannis) : NOT_DETERMINED confirmé — Heel Raise (seul classifiable) ne suffit pas seul (données actuelles insuffisantes) ; Repeated Hop (5 variables) n\'apporte AUCUNE valeur classifiable aujourd\'hui', () => {
   assert.strictEqual(audit['Endurance'].completenessStatus, 'NOT_DETERMINED');
@@ -334,19 +338,18 @@ test('AH49 — plusieurs tests candidats (plusieurs qualités) : ordre global d�
     assert.ok(rank[yc.informationalTests[i - 1].expectedReasoningGain] <= rank[yc.informationalTests[i].expectedReasoningGain]);
   }
 });
-test('AH50 — le meilleur test complémentaire par qualité (priorityGaps P0 "diagnostic") coïncide avec un test à gain réellement exploitable quand un tel test existe (Endurance : Heel Raise)', () => {
+test('AH50 — le meilleur test complémentaire par qualité (priorityGaps P0 "diagnostic") coïncide avec un test à gain réellement exploitable quand un tel test existe (Endurance : Heel Raise) ; Explosivité n\'a plus de gap P0 depuis MISSION_HYP_EXP01_RSI_MOD (cmj_rsi_mod désormais classifiable, sans rapport avec Mission AH)', () => {
   const enduranceP0 = audit['Endurance'].priorityGaps.filter(g => g.level === 'P0');
   assert.strictEqual(enduranceP0.length, 0, 'Endurance a déjà 1 variable diagnostique classifiable (heel_raise_reps) -> pas de P0');
   const explosiviteP0 = audit['Explosivité'].priorityGaps.find(g => g.level === 'P0');
-  assert.ok(explosiviteP0);
-  assert.strictEqual(yc.informationalTests.filter(t => t.targetQuality === 'Explosivité').length, 0, 'cohérent : gap P0 structurel ET aucun test exploitable actuellement');
+  assert.ok(!explosiviteP0, 'plus de gap P0 : cmj_rsi_mod est désormais une variable diagnostique classifiable pour Explosivité');
 });
 
 // ═══════════════════════════ Compléments (couverture + gouvernance + régression) ════════════════════
-test('AH51 — gouvernance : HYP_QUALITY_RELATIONS(9)/CLINICAL_HYPOTHESIS_WHITELIST(9)/CSM_V2_CLINICAL_VARIABLE_MATRIX.meta(150) strictement inchangés', () => {
+test('AH51 — gouvernance : HYP_QUALITY_RELATIONS(9)/CLINICAL_HYPOTHESIS_WHITELIST(9)/CSM_V2_CLINICAL_VARIABLE_MATRIX.meta(151) strictement inchangés (150->151 suite à MISSION_HYP_EXP01_RSI_MOD, sans rapport avec Mission AH)', () => {
   assert.strictEqual(HYP_QUALITY_RELATIONS.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 151);
 });
 test('AH52 — gouvernance : THRESHOLDS conserve exactement ses 24 clés (aucun seuil ajouté/modifié/supprimé par cette mission)', () => {
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
@@ -371,7 +374,8 @@ test('AH55 — completenessStatus n\'est JAMAIS un score numérique arbitraire �
   HYP_CSM_QUALITIES.forEach(q => assert.ok(allowed.indexOf(audit[q].completenessStatus) !== -1));
 });
 test('AH56 — régression complète : les 8 sévérités Yannis restent strictement inchangées à travers toutes les couches Q->AH', () => {
-  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'modere', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AH).
+  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(expected).forEach(q => assert.strictEqual(yc.clinicalProfile[q].severity, expected[q], q));
 });
 test('AH57 — csmV2AhCmjPhaseForKey reste une catégorisation AUDIT-ONLY : aucun moteur HYP ni fonction de raisonnement clinique ne la référence (jamais consommée par le moteur)', () => {

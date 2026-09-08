@@ -192,7 +192,8 @@ test('TEST 14 — régression Yannis : les 8 sévérités cliniques restent stri
   const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
   const out = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
   const yc = out.clinicalSynthesisV2;
-  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(EXPECTED_SEVERITY).forEach((q) => assert.strictEqual(yc.clinicalProfile[q].severity, EXPECTED_SEVERITY[q], q));
   // Le nouveau champ additif est bien présent et cohérent (mais ne modifie rien d'existant).
   assert.ok(yc.qualityDiagnosticSufficiency, 'le nouveau champ additif qualityDiagnosticSufficiency doit être exposé');
@@ -200,9 +201,9 @@ test('TEST 14 — régression Yannis : les 8 sévérités cliniques restent stri
 });
 
 // ═══════════════════ Garde-fous supplémentaires (§14 mission) ═══════════════════════════════════
-test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence (aucune ligne touchée)', () => {
-  const HYP_FNS = ['computeHypAbsorption01', 'computeHypEndurance01', 'computeHypExplosivity01', 'computeHypForce01',
-    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01'];
+test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
+  const HYP_FNS = ['computeHypEndurance01', 'computeHypForce01',
+    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   function extractFnBody(src, fnName) {
     const idx = src.indexOf('function ' + fnName + '(');
     assert.ok(idx >= 0, fnName + ' introuvable');
@@ -216,9 +217,9 @@ test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au comm
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   HYP_FNS.forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseHtml, fn), fn + ' a été modifiée'));
 });
-test('GUARD 2 — CSM_V2_CLINICAL_VARIABLE_MATRIX reste à 150 variables, aucun champ recalculé (référence STATIQUE, jamais touchée par cette mission)', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
+test('GUARD 2 — CSM_V2_CLINICAL_VARIABLE_MATRIX reste à 151 variables (150->151 suite à MISSION_HYP_EXP01_RSI_MOD, sans rapport avec cette mission)', () => {
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 151);
 });
 test('GUARD 3 — aucun nouveau seuil/norme : THRESHOLDS (24), NORMS (64 populations), NORMS_V2 (7 clés) inchangés', () => {
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);

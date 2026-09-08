@@ -210,7 +210,8 @@ test('Y18 — questions non résolues : globalFunctionalSynthesis.unresolvedQues
 // Y19 — cas réel Yannis (§15) : profil complet retrouvé sans coder les résultats dans le moteur
 test('Y19 — cas réel Yannis : les 8 sévérités attendues + au moins 3 patterns dominants détectés dynamiquement', () => {
   const csm = run(REAL_DATA).clinicalSynthesisV2;
-  const expected = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  const expected = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(expected).forEach(q => assert.strictEqual(csm.clinicalProfile[q].severity, expected[q], q));
   assert.strictEqual(csm.clinicalFunctionalProfilePatterns.dominantPatterns.length, 3);
   assert.ok(csm.clinicalFunctionalProfilePatterns.patterns.length >= 5);

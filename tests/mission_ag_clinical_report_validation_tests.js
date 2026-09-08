@@ -70,18 +70,20 @@ test('AG2 — Profil global : les 8 qualités apparaissent chacune une seule foi
 test('AG3 — Yannis réel : Force maximale classée "Préservées" (réellement testée)', () => {
   assert.ok(/Préservées[\s\S]{0,80}Force maximale/.test(body.replace(/<[^>]+>/g, '')));
 });
-test('AG4 — Yannis réel : Mobilité/Réactivité/Absorption/Stabilisation/Endurance classées "Déficits majeurs"', () => {
+test('AG4 — Yannis réel : Mobilité/Réactivité/Absorption/Stabilisation/Endurance/Explosivité classées "Déficits majeurs"', () => {
+  // Explosivité rejoint ce groupe suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AG) :
+  // sa sévérité passe de 'modere' à 'majeur' (cmj_rsi_mod, classifiable et déficitaire, désormais
+  // preuve diagnostique PRIMARY de HYP-EXP-01).
   const plain = body.replace(/<[^>]+>/g, ' ');
   const idx = plain.indexOf('Déficits majeurs');
-  const segment = plain.slice(idx, idx + 200);
-  ['Mobilité', 'Réactivité', 'Absorption', 'Stabilisation', 'Endurance'].forEach(q => assert.ok(segment.indexOf(q) !== -1, q + ' absent de Déficits majeurs'));
+  const segment = plain.slice(idx, idx + 250);
+  ['Mobilité', 'Réactivité', 'Absorption', 'Stabilisation', 'Endurance', 'Explosivité'].forEach(q => assert.ok(segment.indexOf(q) !== -1, q + ' absent de Déficits majeurs'));
 });
-test('AG5 — Yannis réel : Puissance/Explosivité classées "Déficits modérés"', () => {
+test('AG5 — Yannis réel : Puissance classée "Déficits modérés" (seule qualité modérée restante)', () => {
   const plain = body.replace(/<[^>]+>/g, ' ');
   const idx = plain.indexOf('Déficits modérés');
   const segment = plain.slice(idx, idx + 100);
   assert.ok(segment.indexOf('Propulsion') !== -1 || segment.indexOf('Puissance') !== -1);
-  assert.ok(segment.indexOf('Explosivité') !== -1);
 });
 test('AG6 — csmV2ReportEffectiveQualityState : qualité jamais testée -> "non_determinable", JAMAIS "preserved"', () => {
   const symmetryEvidenceAllUnavailable = { 'Réactivité': { 'diagnosticEvidence.sldj_rsi': { available: false } } };
@@ -376,7 +378,8 @@ test('AG48 — les entrées CONTRIBUTIF (relation qualité->qualité) n\'affirme
 test('AG49 — Yannis réel : les 8 sévérités exactement attendues par la mission, jamais forcées', () => {
   assert.strictEqual(yc.clinicalProfile['Force'].severity, 'preserved');
   assert.strictEqual(yc.clinicalProfile['Puissance'].severity, 'modere');
-  assert.strictEqual(yc.clinicalProfile['Explosivité'].severity, 'modere');
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AG).
+  assert.strictEqual(yc.clinicalProfile['Explosivité'].severity, 'majeur');
   assert.strictEqual(yc.clinicalProfile['Mobilité'].severity, 'majeur');
   assert.strictEqual(yc.clinicalProfile['Réactivité'].severity, 'majeur');
   assert.strictEqual(yc.clinicalProfile['Absorption'].severity, 'majeur');
@@ -402,7 +405,8 @@ test('AG50 — buildExpertReport (PDF) consomme EXACTEMENT csmV2ClinicalReportBo
 
 // ═══════════════════════════ Compléments (couverture + validation PDF réelle) ══════════════════════
 test('AG51 — régression : les 8 sévérités Yannis restent identiques à travers toutes les couches Q->AG', () => {
-  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'modere', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AG).
+  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(expected).forEach(q => assert.strictEqual(yc.clinicalProfile[q].severity, expected[q], q));
 });
 test('AG52 — csmV2ReportPrincipalDeficitCardHtml ne lève jamais d\'exception pour une qualité totalement sans donnée (défensif)', () => {
@@ -422,7 +426,8 @@ test('AG53 — validation PDF réelle (buildFullReportHtml) : toutes les nouvell
 test('AG54 — gouvernance : HYP_QUALITY_RELATIONS(9)/CLINICAL_HYPOTHESIS_WHITELIST(9)/matrix meta(150) et les 8 moteurs HYP LOCKED restent strictement inchangés', () => {
   assert.strictEqual(HYP_QUALITY_RELATIONS.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
+  // 150 -> 151 suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AG).
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 151);
   assert.strictEqual(typeof computeHypForce01, 'function');
   assert.strictEqual(typeof computeHypMobility01, 'function');
   assert.strictEqual(typeof computeHypReactivity01, 'function');

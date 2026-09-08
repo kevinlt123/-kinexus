@@ -162,9 +162,12 @@ test('AB11 — cohérence matrice statique / graphe réel Yannis : wblt_distance
 });
 
 // AB12 — aucun changement de sévérité inattendu chez Yannis
-test('AB12 — sévérités Yannis inchangées par Mission AB (Force préservée, 6 qualités majeures, 2 modérées)', () => {
+test('AB12 — sévérités Yannis inchangées par Mission AB (Force préservée, 6 qualités majeures, 1 modérée, 1 majeure)', () => {
   const cp = csm().clinicalProfile;
-  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'modere', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée,
+  // sans rapport avec Mission AB) — cmj_rsi_mod, classifiable et déficitaire chez Yannis, est
+  // désormais preuve diagnostique PRIMARY de HYP-EXP-01.
+  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(expected).forEach(q => assert.strictEqual(cp[q].severity, expected[q], q));
 });
 
@@ -242,13 +245,17 @@ test('AB20 — le rapport clinique (sections) est inchangé par Mission AB : "lo
 // tests/mission_ad_clinical_reasoning_tests.js AD33). Comptages mis à jour en conséquence : 141+9=150
 // total, 87+9=96 explicatives (les 9 ajouts sont tous de rôle EXPLANATORY), 112+9=121 manquantes (les
 // 9 ajouts sont tous non_classifiable) — diagnostic/confirmative/classifiable inchangés.
-test('AB21 — comptage global de la matrice : 150 variables auditées (26 diagnostiques/28 confirmatives/96 explicatives, 29 classifiables/121 manquantes)', () => {
+test('AB21 — comptage global de la matrice : 151 variables auditées (27 diagnostiques/28 confirmatives/96 explicatives, 30 classifiables/121 manquantes)', () => {
+  // 150 -> 151 (diagnosticCount 26->27, classifiableCount 29->30) suite à MISSION_HYP_EXP01_RSI_MOD
+  // (correction clinique ciblée, sans rapport avec Mission AB) : cmj_rsi_mod apparaît désormais dans
+  // diagnosticEvidence d'Explosivité (matrice dérivée introspectant la sortie réelle des moteurs
+  // HYP-XX-01). confirmativeCount/explanatoryCount/missingCount inchangés.
   const m = matrix().meta;
-  assert.strictEqual(m.totalVariables, 150);
-  assert.strictEqual(m.diagnosticCount, 26);
+  assert.strictEqual(m.totalVariables, 151);
+  assert.strictEqual(m.diagnosticCount, 27);
   assert.strictEqual(m.confirmativeCount, 28);
   assert.strictEqual(m.explanatoryCount, 96);
-  assert.strictEqual(m.classifiableCount, 29);
+  assert.strictEqual(m.classifiableCount, 30);
   assert.strictEqual(m.missingCount, 121);
 });
 

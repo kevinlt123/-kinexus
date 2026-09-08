@@ -106,9 +106,12 @@ console.log('CSM V2 — non-régression données réelles Yannis Briant');
 
 test('Profil global : 8 qualités présentes avec la sévérité attendue sur données réelles', () => {
   const csm = run();
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée,
+  // sans rapport avec cette mission) : cmj_rsi_mod (classifiable, déficitaire chez Yannis) est
+  // désormais preuve diagnostique PRIMARY de HYP-EXP-01. Les 7 autres qualités restent inchangées.
   const expected = {
     'Mobilité': 'majeur', 'Réactivité': 'majeur', 'Absorption': 'majeur',
-    'Force': 'preserved', 'Puissance': 'modere', 'Explosivité': 'modere',
+    'Force': 'preserved', 'Puissance': 'modere', 'Explosivité': 'majeur',
     'Stabilisation': 'majeur', 'Endurance': 'majeur'
   };
   Object.keys(expected).forEach(q => {

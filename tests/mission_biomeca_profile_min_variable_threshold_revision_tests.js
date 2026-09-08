@@ -116,7 +116,10 @@ const YANNIS_DATA = {
   sllt: { active: true, D: { trials: { peak_landing_force: [4.76], loading_rate: [106100] } }, G: { trials: { peak_landing_force: [4.55], loading_rate: [52060] } } }
 };
 const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
-const EXPECTED_SEVERITIES = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+// Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée,
+// cmj_rsi_mod promue preuve diagnostique PRIMARY de HYP-EXP-01) -- sans rapport avec cette mission
+// (BiomechanicalProfileEngine), les 7 autres qualités restent inchangées.
+const EXPECTED_SEVERITIES = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
 
 test('TEST 5 — Yanis réel + B.League : 4/5 profils biomécaniques deviennent sufficient (Propulsif, Absorbeur, Réactif, Explosif)', () => {
   const moteur = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
@@ -153,9 +156,9 @@ test('TEST 9 — les 5 phases CMJ (Moteur Biomécanique des phases) restent 5/5 
 });
 
 // ═══════════════ GUARDS ═══════════════════════════════════════════════════════════════════════
-test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence', () => {
+test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
   const BASELINE_COMMIT = '8741e01';
-  const hypFns = ['computeHypAbsorption01', 'computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypExplosivity01', 'computeHypStabilization01', 'computeHypEndurance01'];
+  const hypFns = ['computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypStabilization01', 'computeHypEndurance01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
   function extractFnBody(src, fnName) {
     const marker = 'function ' + fnName + '(';
@@ -186,11 +189,14 @@ test('GUARD 2 — computeBiomecaPhase reste BYTE-IDENTIQUE au commit de référe
   }
   assert.strictEqual(extractFnBody(code, 'computeBiomecaPhase'), extractFnBody(baseHtml, 'computeBiomecaPhase'));
 });
-test('GUARD 3 — THRESHOLDS/NORMS/NORMS_V2/CSM_V2_CLINICAL_VARIABLE_MATRIX/BiomechanicalProfiles (référentiel des 5 profils) inchangés', () => {
+test('GUARD 3 — THRESHOLDS/NORMS/NORMS_V2/BiomechanicalProfiles (référentiel des 5 profils) inchangés ; CSM_V2_CLINICAL_VARIABLE_MATRIX (dérivée, 150->151 attendu suite à MISSION_HYP_EXP01_RSI_MOD)', () => {
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
   assert.strictEqual(Object.keys(NORMS).length, 64);
   assert.strictEqual(Object.keys(NORMS_V2).length, 7);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+  // CSM_V2_CLINICAL_VARIABLE_MATRIX introspecte la sortie réelle des 8 moteurs HYP-XX-01 (jamais une
+  // donnée statique) -- cmj_rsi_mod apparaissant désormais dans diagnosticEvidence de HYP-EXP-01
+  // (MISSION_HYP_EXP01_RSI_MOD, sans rapport avec cette mission), la matrice dérivée grandit de +1.
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
   assert.strictEqual(BiomechanicalProfiles.length, 5);
 });
 test('GUARD 4 — le commit de CETTE révision (daa42cc) touchait uniquement BiomechanicalProfileEngine.compute (minRequis), aucun autre calcul du moteur — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html ailleurs — attendu, hors périmètre de cette garde)', () => {

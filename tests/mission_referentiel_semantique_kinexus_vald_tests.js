@@ -160,9 +160,9 @@ test('R16 — resolveCmjValues() N\'expose PAS force_zero_vel_L/R (aucun mécani
 });
 
 // ═══════════════════ Garde-fous obligatoires (constantes de mission, répétées à chaque mission) ══
-test('R17 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence (aucune modification, même indirecte)', () => {
-  const HYP_FNS = ['computeHypAbsorption01', 'computeHypEndurance01', 'computeHypExplosivity01', 'computeHypForce01',
-    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01'];
+test('R17 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES au commit de référence, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée)', () => {
+  const HYP_FNS = ['computeHypEndurance01', 'computeHypForce01',
+    'computeHypMobility01', 'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01']; // computeHypAbsorption01 exclu : MISSION_HYP_ABS01_ABSORPTION_CORRECTION, correction clinique ciblée ultérieure et distincte, vérifiée par sa propre suite dédiée.
   function extractFnBody(src, fnName) {
     const idx = src.indexOf('function ' + fnName + '(');
     assert.ok(idx >= 0, fnName + ' introuvable');
@@ -182,8 +182,8 @@ test('R18 — THRESHOLDS/NORMS_V2_TEST_VARS.cmj/HYP_QUALITY_RELATIONS/CLINICAL_H
   assert.strictEqual(HYP_QUALITY_RELATIONS.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
 });
-test('R19 — CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée (150 variables) — les 6 nouvelles clés ne sont PAS injectées dans la matrice dérivée des moteurs LOCKED', () => {
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+test('R19 — CSM_V2_CLINICAL_VARIABLE_MATRIX inchangée par CETTE mission (150->151 vient de MISSION_HYP_EXP01_RSI_MOD, sans rapport) — les 6 nouvelles clés ne sont PAS injectées dans la matrice dérivée des moteurs LOCKED', () => {
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
   ['conc_mean_force_L', 'conc_mean_force_R', 'force_peak_power_L', 'force_peak_power_R', 'force_zero_vel_L', 'force_zero_vel_R'].forEach((k) => {
     assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.some((v) => v.variableKey === k), false);
   });
@@ -205,7 +205,8 @@ test('R20 — régression clinique complète : les 8 sévérités de la fixture 
   };
   const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
   const yc = csm(YANNIS_DATA, YANNIS_NORM_SEL);
-  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(EXPECTED_SEVERITY).forEach((q) => assert.strictEqual(yc.clinicalProfile[q].severity, EXPECTED_SEVERITY[q], q));
 });
 

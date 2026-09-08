@@ -561,7 +561,8 @@ const YANNIS_DATA = {
 };
 const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
 const yc = csm(YANNIS_DATA, YANNIS_NORM_SEL);
-const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+// Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+const EXPECTED_SEVERITY = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
 test('SM40 — les 8 sévérités cliniques de Yannis (fixture réelle inchangée) sont identiques à la référence documentée avant cette mission', () => {
   Object.keys(EXPECTED_SEVERITY).forEach((q) => {
     const entry = yc.clinicalProfile[q];

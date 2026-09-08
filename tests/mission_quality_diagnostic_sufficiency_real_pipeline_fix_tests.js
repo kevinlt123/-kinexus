@@ -62,14 +62,18 @@ const YANNIS_DATA = {
 };
 const YANNIS_CMJ_SELECTION = { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null };
 const YANNIS_NORM_SEL = { cmj: YANNIS_CMJ_SELECTION, iso_belt_squat: 'belt_netball_super_league_f' };
-const EXPECTED_SEVERITIES = { Force: 'preserved', Puissance: 'modere', Explosivité: 'modere', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
+// Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+const EXPECTED_SEVERITIES = { Force: 'preserved', Puissance: 'modere', Explosivité: 'majeur', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
 
 const moteur = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
 const csm = moteur.clinicalSynthesisV2;
 
 // ═══════════════ TEST 1-8 — les 4 qualités RÉELLEMENT classifiées (absoluteEvidence.status non
 // null) sont désormais correctement détectées comme "sufficient" (avant fix : 0/0 pour les 8) ═════
-['Mobilité', 'Réactivité', 'Force', 'Stabilisation'].forEach((q) => {
+// Explosivité rejoint ce groupe suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission) :
+// cmj_rsi_mod, classifiable et déficitaire chez Yannis, est désormais preuve diagnostique PRIMARY de
+// HYP-EXP-01 -- absoluteEvidence.Explosivité.state passe de 'non_determinable' à 'retenue_faible'.
+['Mobilité', 'Réactivité', 'Force', 'Stabilisation', 'Explosivité'].forEach((q) => {
   test('TEST — ' + q + ' (absoluteEvidence.status=' + csm.absoluteEvidence[q].status + ', non null) -> qualityDiagnosticSufficiency.sufficientDiagnosticEvidence=true', () => {
     assert.strictEqual(csm.absoluteEvidence[q].status !== null, true, 'précondition : ' + q + ' doit avoir un status réel dans absoluteEvidence');
     const s = csm.qualityDiagnosticSufficiency[q];
@@ -83,7 +87,7 @@ const csm = moteur.clinicalSynthesisV2;
 // ═══════════════ TEST 5-8 — les 4 qualités GENUINEMENT non déterminables (absoluteEvidence.state
 // === 'non_determinable') restent correctement à sufficient=false, eligible=0 (limitation de
 // données réelle, pas un bug — jamais transformée en faux positif par le fix) ═══════════════════
-['Absorption', 'Puissance', 'Explosivité', 'Endurance'].forEach((q) => {
+['Absorption', 'Puissance', 'Endurance'].forEach((q) => {
   test('TEST — ' + q + ' (absoluteEvidence.state=non_determinable) -> qualityDiagnosticSufficiency.sufficientDiagnosticEvidence=false, eligible=0 (limitation de données réelle, pas un bug)', () => {
     assert.strictEqual(csm.absoluteEvidence[q].state, 'non_determinable');
     const s = csm.qualityDiagnosticSufficiency[q];
@@ -160,7 +164,8 @@ test('GUARD 2 — CSM_V2_CLINICAL_VARIABLE_MATRIX, THRESHOLDS, NORMS, NORMS_V2 i
   assert.strictEqual(Object.keys(THRESHOLDS).length, 24);
   assert.strictEqual(Object.keys(NORMS).length, 64);
   assert.strictEqual(Object.keys(NORMS_V2).length, 7);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 150);
+  // 150 -> 151 suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.allVariables.length, 151);
 });
 
 test('GUARD 3 — le commit de CE fix (9bd8568) touchait EXCLUSIVEMENT csmV2QualityHasSufficientDiagnosticEvidence dans index.html — fait historique immuable, vérifié sur ce commit précis (une mission ULTÉRIEURE distincte et explicitement validée a depuis modifié index.html ailleurs — attendu, hors périmètre de cette garde)', () => {

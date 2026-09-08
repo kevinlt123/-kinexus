@@ -262,12 +262,18 @@ test('AD22 — Stabilisation Yannis : partiellement expliquée (mécanisme réel
   ['sls', 'eo_surface', 'ef_surface', 'strobo_surface'].forEach(k => assert.ok(unknown.some(u => u.toLowerCase().indexOf(k.replace('_surface', '').replace('eo', 'eyes open').replace('ef', 'eyes closed')) !== -1) || true));
 });
 
-test('AD23 — Explosivité Yannis : diagnostic concentrique non déterminé (aucune variable diagnostique classifiable)', () => {
+test('AD23 — Explosivité Yannis : clinicalEvidenceHierarchy/clinicalCertainty (computeCsmV2, LOCKED, jamais modifié) restent AUCUNE_PREUVE_DIAGNOSTIQUE/not_determined -- MISSION_HYP_EXP01_RSI_MOD a rendu cmj_rsi_mod classifiable dans la matrice dérivée mais computeCsmV2 ne l\'y branche pas (limitation documentée, pas un bug de cette mission-ci)', () => {
   const c = csm(YANNIS_DATA, YANNIS_NORM_SEL);
   assert.strictEqual(c.clinicalEvidenceHierarchy['Explosivité'].verdict, 'AUCUNE_PREUVE_DIAGNOSTIQUE');
   assert.strictEqual(c.clinicalCertainty['Explosivité'], 'not_determined');
+  // MISSION_HYP_EXP01_RSI_MOD (sans rapport avec la mission AD) : cmj_rsi_mod, classifiable et
+  // déficitaire chez Yannis, est désormais preuve diagnostique PRIMARY de HYP-EXP-01 -- la matrice
+  // dérivée (CSM_V2_CLINICAL_VARIABLE_MATRIX) le reflète fidèlement. computeCsmV2 (LOCKED, jamais
+  // modifié) ne consulte cependant pas ce champ pour Explosivité : verdict/certainty ci-dessus
+  // restent donc inchangés, ce qui prouve que l'isolation entre les deux couches est respectée.
   const diag = CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality['Explosivité'].diagnostic;
-  assert.ok(diag.every(v => v.classifiability === 'non_classifiable'));
+  assert.strictEqual(diag.find(v => v.variableKey === 'cmj_rsi_mod').classifiability, 'exploitable');
+  assert.ok(diag.filter(v => v.variableKey !== 'cmj_rsi_mod').every(v => v.classifiability === 'non_classifiable'));
 });
 
 test('AD24 — Réactivité Yannis : objectivée par SLDJ (diagnostic réel)', () => {
@@ -405,7 +411,8 @@ test('AD39 — aucune phrase spécifique à Yannis codée en dur dans les foncti
 // AD40 — régression des missions précédentes
 test('AD40 — régression : Yannis 8 sévérités inchangées, bridges/relations/patterns cohérents avec Q->AC', () => {
   const c = csm(YANNIS_DATA, YANNIS_NORM_SEL);
-  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'modere', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AD).
+  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(expected).forEach(q => assert.strictEqual(c.clinicalProfile[q].severity, expected[q], q));
   assert.strictEqual(c.clinicalBridgeEvidence.length, 8);
   assert.strictEqual(c.variableRelations.length, c.clinicalBridgeEvidence.length);

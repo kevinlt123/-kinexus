@@ -445,7 +445,10 @@ const YANNIS_DATA = {
 const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
 test('AC24 — Yannis réel : sévérités/relations/bridges/patterns inchangés par la mission AC (y compris le correctif)', () => {
   const c = csm(YANNIS_DATA, YANNIS_NORM_SEL);
-  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'modere', Stabilisation: 'majeur', Endurance: 'majeur' };
+  // Explosivité : 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée,
+  // sans rapport avec la mission AC) — cmj_rsi_mod, classifiable et déficitaire chez Yannis, est
+  // désormais preuve diagnostique PRIMARY de HYP-EXP-01.
+  const expected = { Force: 'preserved', Mobilité: 'majeur', Réactivité: 'majeur', Absorption: 'majeur', Puissance: 'modere', Explosivité: 'majeur', Stabilisation: 'majeur', Endurance: 'majeur' };
   Object.keys(expected).forEach(q => assert.strictEqual(c.clinicalProfile[q].severity, expected[q], q));
   assert.strictEqual(c.clinicalBridgeEvidence.length, 8);
   assert.ok(c.clinicalBridgeEvidence.some(b => /wblt_distance/.test(JSON.stringify(b))));
@@ -641,9 +644,10 @@ test('AC-GOV — HYP_QUALITY_RELATIONS/WHITELIST/THRESHOLDS/NORMS_V2/CSM_V2_AXIS
   // Mission AD (§1) a légitimement complété la matrice avec 9 variables de symétrie secondaire
   // réellement injectées additivement (reactiviteSecondaire.*/freinageUnipodal.*/mobiliteSecondaire.*
   // /receptionUnipodale.*, cf. mission_ad_clinical_reasoning_tests.js AD33) — 141->150, jamais une
-  // variable inventée. diagnosticCount reste inchangé (les 9 ajouts sont tous EXPLANATORY).
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 150);
-  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.diagnosticCount, 26);
+  // variable inventée. 150->151 suite à MISSION_HYP_EXP01_RSI_MOD (correction clinique ciblée, sans
+  // rapport avec la mission AC) : cmj_rsi_mod apparaît désormais dans diagnosticEvidence d'Explosivité.
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.totalVariables, 151);
+  assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.meta.diagnosticCount, 27);
 });
 
 console.log('=== TOTAL MISSION AC : ' + passed + ' passed, ' + failed + ' failed ===');

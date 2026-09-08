@@ -5686,13 +5686,39 @@ function computeHypAbsorptionReactive(testData,pop,age,normSelections){
     dj_contact_time:{raw:ctRaw,status:null,classifiable:false} // aucun seuil dj_contact_time dans index.html.
   };
 }
-// Sous-domaine E (Réception/Impact, SLLT/Landing) — NON implémenté : sllt_peak_landing_force/
-// ttplf/loading_rate/tts/cop_path et landing_bi_peak_landing_force n'ont aujourd'hui aucun seuil
-// (ni NORMS ni THRESHOLDS) dans index.html. Plutôt que d'inventer un seuil (interdit
-// explicitement par la mission d'implémentation), ce sous-domaine retourne un statut
-// 'non_implemente' explicite et ne contribue jamais au Niveau 1.
-function computeHypAbsorptionReceptionImpact(){
-  return{available:false,reason:'aucun_seuil_disponible'};
+// Sous-domaine E (Réception/Impact, SLLT/Landing) — RÉVISÉ (MISSION_HYP_ABS01_ABSORPTION_
+// CORRECTION) : les valeurs brutes de Peak Landing Force (landing_bi, primary) et Loading Rate
+// (sllt, fallback) sont désormais réellement EXTRAITES quand elles sont disponibles — jamais
+// inventées auparavant, mais jamais non plus lues (l'ancienne version retournait un objet statique
+// {available:false} sans même consulter testData). AUCUN seuil/norme n'existe pour ces 3 clés
+// (ni NORMS ni THRESHOLDS ni NORMS_V2 — vérifié, cf. guards) : computeStatusWithNormsV2 retourne
+// donc systématiquement status:null ici, quelle que soit la donnée — jamais une classification
+// inventée. Time To Stabilization (landing_bi_tts/sllt_tts) reste délibérément EXCLU (gel
+// HYP-STA-01 : Stabilisation, jamais Absorption) — cette mission ne déplace aucune variable.
+function computeHypAbsorptionReceptionImpact(testData,pop,age,normSelections){
+  var landingBi=(testData||{}).landing_bi,sllt=(testData||{}).sllt;
+  var plfRaw=(landingBi&&landingBi.active)?bestVal((landingBi.trials||{}).peak_landing_force,testKpiDir('landing_bi','peak_landing_force')):null;
+  var plfRes=plfRaw!=null?computeStatusWithNormsV2('landing_bi_peak_landing_force','landing_bi',plfRaw,pop,age,normSelections):null;
+  var slltD=(sllt&&sllt.active)?((sllt.D||{}).trials||{}):null,slltG=(sllt&&sllt.active)?((sllt.G||{}).trials||{}):null;
+  var slltPlfRawD=slltD?bestVal(slltD.peak_landing_force,testKpiDir('sllt','peak_landing_force')):null;
+  var slltPlfRawG=slltG?bestVal(slltG.peak_landing_force,testKpiDir('sllt','peak_landing_force')):null;
+  var slltLrRawD=slltD?bestVal(slltD.loading_rate,testKpiDir('sllt','loading_rate')):null;
+  var slltLrRawG=slltG?bestVal(slltG.loading_rate,testKpiDir('sllt','loading_rate')):null;
+  var slltPlfResD=slltPlfRawD!=null?computeStatusWithNormsV2('sllt_peak_landing_force','sllt',slltPlfRawD,pop,age,normSelections):null;
+  var slltPlfResG=slltPlfRawG!=null?computeStatusWithNormsV2('sllt_peak_landing_force','sllt',slltPlfRawG,pop,age,normSelections):null;
+  var slltLrResD=slltLrRawD!=null?computeStatusWithNormsV2('sllt_loading_rate','sllt',slltLrRawD,pop,age,normSelections):null;
+  var slltLrResG=slltLrRawG!=null?computeStatusWithNormsV2('sllt_loading_rate','sllt',slltLrRawG,pop,age,normSelections):null;
+  var variables={
+    peak_landing_force:{raw:plfRaw,unit:'N/kg',test:'landing_bi',role:'primary',status:plfRes?plfRes.status:null,classifiable:!!(plfRes&&plfRes.status!=null),source:plfRes?plfRes.source:null},
+    sllt_peak_landing_force:{rawD:slltPlfRawD,rawG:slltPlfRawG,unit:'N/kg',test:'sllt',role:'fallback',status:null,classifiable:!!((slltPlfResD&&slltPlfResD.status!=null)||(slltPlfResG&&slltPlfResG.status!=null)),source:(slltPlfResD&&slltPlfResD.source)||(slltPlfResG&&slltPlfResG.source)||null},
+    sllt_loading_rate:{rawD:slltLrRawD,rawG:slltLrRawG,unit:'N/s',test:'sllt',role:'fallback',status:null,classifiable:!!((slltLrResD&&slltLrResD.status!=null)||(slltLrResG&&slltLrResG.status!=null)),source:(slltLrResD&&slltLrResD.source)||(slltLrResG&&slltLrResG.source)||null}
+  };
+  var anyRaw=plfRaw!=null||slltPlfRawD!=null||slltPlfRawG!=null||slltLrRawD!=null||slltLrRawG!=null;
+  // 'available' = au moins une donnée brute a pu être extraite (jamais un jugement de qualité) ;
+  // le statut de la composante reste TOUJOURS non_determinable ici, avec ou sans donnée brute,
+  // faute de tout référentiel classifiable — cf. mission §4/§5 (une donnée disponible sans norme
+  // ne doit jamais devenir preserved/deficient/watch).
+  return{available:anyRaw,state:'non_determinable',status:null,reason:'aucun_seuil_disponible',variables:variables};
 }
 // Asymétrie de freinage — modificateur en lecture seule, jamais générateur (HYP-ABS-01_V2.md §9).
 // Relit computeAsymEngine, déjà figé et déjà utilisé ailleurs (computeMouvementAnalysis) — aucun
@@ -5713,7 +5739,7 @@ function computeHypAbsorption01(testData,normPop,normAge,normSelections){
   var capaciteEcc=computeHypAbsorptionCapaciteEcc(cmjValues,normPop,normAge);
   var strategie=computeHypAbsorptionStrategie(cmjValues,normPop,normAge);
   var reactive=computeHypAbsorptionReactive(testData,normPop,normAge,normSelections);
-  var receptionImpact=computeHypAbsorptionReceptionImpact();
+  var receptionImpact=computeHypAbsorptionReceptionImpact(testData,normPop,normAge,normSelections);
   var asymetrie=cmjActive?computeHypAbsorptionAsymetrie(cmjValues,normPop,normAge):null;
 
   // Normalisation NON CLINIQUE vers le contrat HYP V1 commun (HYP_V1_CONTRACT_AND_SOURCE_OF_
@@ -5727,6 +5753,20 @@ function computeHypAbsorption01(testData,normPop,normAge,normSelections){
   var deficientCats=deficientKeys.map(function(k){return core.variables[k].status;});
   var status=hypStatusFromState(state,deficientCats);
 
+  // RÉVISÉ (MISSION_HYP_ABS01_ABSORPTION_CORRECTION) : Absorption distingue désormais explicitement
+  // ses 2 composantes fonctionnelles — A. FREINAGE CMJ (braking) et B. RÉCEPTION/LANDING (landing) —
+  // sans changer une seule ligne de raisonnement clinique existant. `braking` reprend tel quel
+  // state/status/niveau1 déjà calculés ci-dessus (niveau1 N'A JAMAIS considéré que braking_rfd/
+  // force_zero_vel, braking_impulse n'étant jamais classifiable — c'est déjà, et reste, exactement
+  // la règle "freinage" demandée). `landing` (E_receptionImpact) reste TOUJOURS non_determinable
+  // (aucun référentiel classifiable pour peak_landing_force/loading_rate) et NE CONTRIBUE JAMAIS au
+  // state/status global ci-dessus, qui reste piloté EXCLUSIVEMENT par braking — donc le statut
+  // global "Absorption" est déjà, structurellement, celui du freinage tant que landing reste
+  // non-déterminable (aucune nouvelle règle de fusion inventée, aucune ligne de state/status
+  // modifiée).
+  var braking={state:state,status:status,niveau:core.niveau,variables:core.variables};
+  var landing={state:receptionImpact.state,status:receptionImpact.status,available:receptionImpact.available,reason:receptionImpact.reason,variables:receptionImpact.variables};
+
   return{
     hypId:'HYP-ABS-01',
     version:'HYP-ABS-01 V2',
@@ -5735,6 +5775,10 @@ function computeHypAbsorption01(testData,normPop,normAge,normSelections){
     status:status,
     niveau1:core.niveau, // conservé tel quel — raisonnement clinique HYP-ABS-01 V2 inchangé.
     profilCore:core.profil,
+    // AJOUT (MISSION_HYP_ABS01_ABSORPTION_CORRECTION) : distinction explicite freinage/réception,
+    // jamais consommée par state/status ci-dessus (voir commentaire juste au-dessus de leur calcul).
+    braking:braking,
+    landing:landing,
     // HYP-ABS-01 V2 n'a jamais documenté de mécanisme de support gradué (Faible/Modérée/Forte),
     // contrairement aux 7 autres qualités (cf. HYP-ABS-01_V2.md, sousDomaines B/C/D "jamais
     // générateurs"). Non inventé ici — champ présent pour le contrat commun, toujours null.
@@ -5757,7 +5801,7 @@ function computeHypAbsorption01(testData,normPop,normAge,normSelections){
     precision:asymetrie,
     limitations:[
       "cmj_braking_impulse : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiable, jamais compté dans les candidats évaluables du Niveau 1.",
-      "Sous-domaine E (Réception/Impact, SLLT/Landing) : non implémenté, aucun seuil disponible (E_receptionImpact.reason).",
+      "Sous-domaine E (Réception/Impact, SLLT/Landing) : landing_bi_peak_landing_force/sllt_peak_landing_force/sllt_loading_rate n'ont aucun seuil/norme (ni NORMS ni THRESHOLDS ni NORMS_V2) -> `landing` reste non_determinable même quand les valeurs brutes sont disponibles (MISSION_HYP_ABS01_ABSORPTION_CORRECTION, landing.variables expose les valeurs brutes réellement extraites, jamais une classification inventée).",
       "Aucun mécanisme de support gradué documenté pour cette qualité, contrairement aux 7 autres moteurs HYP."
     ],
     sousDomaines:{
@@ -6467,13 +6511,20 @@ function computeHypForce01(testData,normPop,normAge,normSelections){
 //     segmentaire (11 familles) : AUCUN seuil.
 // Conséquence directe, volontaire : la convergence 2/2 ne peut aujourd'hui jamais être évaluée
 // -> `state:'non_determinable'` explicite, jamais une absence de seuil transformée en 'normal'.
+// AJOUT (MISSION_HYP_EXP01_RSI_MOD, traçabilité) : `source` expose d'où provient la classification
+// déjà calculée par computeStatusWithNormsV2 ('NORMS_V2' | 'legacy' -> NORMS[pop] ou THRESHOLDS
+// universel) — jamais un nouveau calcul, seule la valeur déjà résolue par ce même appel est
+// désormais conservée au lieu d'être jetée. Champ additif : les 6 appelants existants (peak_power,
+// conc_peak_force/mean_force/impulse, depth, conc_duration, rsi_mod, ecc_mean_power, ecc_peak_vel,
+// braking_rfd) ne lisent que status/raw/category et restent inchangés.
 function computeHypExplosivityCmjKpi(testData,kpi,key,pop,age,normSelections){
   var data=(testData||{}).cmj;
-  if(!data||!data.active)return{status:'indisponible',raw:null,category:null};
+  if(!data||!data.active)return{status:'indisponible',raw:null,category:null,source:null};
   var raw=bestVal((data.trials||{})[kpi],testKpiDir('cmj',kpi));
-  var st=raw!=null?computeStatusWithNormsV2(key,'cmj',raw,pop,age,normSelections).status:null;
-  if(!st)return{status:'indisponible',raw:raw,category:null};
-  return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st};
+  var resolved=raw!=null?computeStatusWithNormsV2(key,'cmj',raw,pop,age,normSelections):null;
+  var st=resolved?resolved.status:null;
+  if(!st)return{status:'indisponible',raw:raw,category:null,source:resolved?resolved.source:null};
+  return{status:(st==='orange'||st==='rouge')?'deficitaire':'normal',raw:raw,category:st,source:resolved.source};
 }
 // Confirmatives documentées (jamais une deuxième preuve diagnostique, jamais génératrices).
 function computeHypExplosivityConfirmative(testData,pop,age,normSelections){
@@ -6533,27 +6584,56 @@ function computeHypExplosivityExplanatory(testData,pop,age,normSelections){
     }
   };
 }
-// Point d'entrée. Fonction pure. Modèle d'état standard à 2 mécanismes (comme Puissance) : Absente
-// -> Suspectée -> Retenue/Faible -> Retenue/Modérée -> Retenue/Forte. `non_determinable` dès que
-// l'une des deux preuves n'est pas classifiable — jamais un repli sur 'absente'.
+// Point d'entrée. Fonction pure.
+// RÉVISÉ (MISSION_HYP_EXP01_RSI_MOD, correction clinique ciblée validée par le praticien) :
+// cmj_conc_rfd/cmj_conc_impulse_100 n'ont jamais eu de seuil (ni NORMS ni THRESHOLDS) -> le modèle
+// "standard à 2 mécanismes" d'origine ne pouvait donc JAMAIS être satisfait en pratique, rendant
+// Explosivité structurellement non_determinable pour tout patient réel. cmj_rsi_mod, elle,
+// dispose d'un seuil universel (THRESHOLDS.cmj_rsi_mod) et de NORMS pour 24 populations -> validée
+// par le praticien comme preuve diagnostique PRIMARY d'Explosivité (cmj_conc_rfd/cmj_conc_impulse_100
+// restant des preuves SECONDARY/historiques, jamais retirées). Priorité stricte : cmj_rsi_mod
+// classifiable -> sa classification détermine DIRECTEMENT le statut (jamais un quorum 2/3, jamais
+// un nouveau seuil) ; sinon repli sur la logique historique, mais généralisée aux seules variables
+// secondaires RÉELLEMENT classifiables (une variable non classifiable ne compte jamais comme
+// preuve, ni preserved ni deficient) : 0 classifiable -> non_determinable ; 1 classifiable
+// déficitaire (sur 1 ou 2 réellement classifiables) -> suspectee ; 2 classifiables toutes deux
+// déficitaires -> retenue_faible ; sinon absente. Enums d'état inchangés (non_determinable/absente/
+// suspectee/retenue_faible), support gradué Faible/Modérée/Forte inchangé (confirmative/explanatory
+// non modifiées). cmj_peak_power n'est PAS utilisé comme preuve diagnostique (appartient à
+// Puissance dans QUALITY_DIAGNOSTIC_VARIABLES_V1, jamais à Explosivité).
 function computeHypExplosivity01(testData,normPop,normAge,normSelections){
+  var rsiRes=computeHypExplosivityCmjKpi(testData,'rsi_mod','cmj_rsi_mod',normPop,normAge,normSelections);
   var rfdRes=computeHypExplosivityCmjKpi(testData,'conc_rfd','cmj_conc_rfd',normPop,normAge,normSelections);
   var impulseRes=computeHypExplosivityCmjKpi(testData,'conc_impulse_100','cmj_conc_impulse_100',normPop,normAge,normSelections);
 
+  var rsiClassified=rsiRes.status!=='indisponible';
   var rfdClassified=rfdRes.status!=='indisponible';
   var impulseClassified=impulseRes.status!=='indisponible';
-  var bothClassified=rfdClassified&&impulseClassified;
 
-  var state,mechanisms=[];
-  if(!bothClassified){
-    state='non_determinable';
-  }else{
-    var rfdDeficient=rfdRes.status==='deficitaire',impulseDeficient=impulseRes.status==='deficitaire';
-    if(rfdDeficient)mechanisms.push('cmj_conc_rfd');
-    if(impulseDeficient)mechanisms.push('cmj_conc_impulse_100');
-    if(rfdDeficient&&impulseDeficient)state='retenue_faible';
-    else if(rfdDeficient||impulseDeficient)state='suspectee';
+  var state,mechanisms=[],deficientCategories=[],diagnosticPath,requiredMechanisms;
+  if(rsiClassified){
+    // PRIMARY : cmj_rsi_mod seul détermine le statut, sans quorum (validation clinique praticien).
+    diagnosticPath='cmj_rsi_mod_primary';
+    requiredMechanisms=1;
+    if(rsiRes.status==='deficitaire'){state='retenue_faible';mechanisms.push('cmj_rsi_mod');deficientCategories.push(rsiRes.category);}
     else state='absente';
+  }else{
+    // SECONDARY / historique : n'utilisée que si cmj_rsi_mod n'est réellement pas exploitable.
+    // Compte uniquement parmi les variables réellement classifiables (jamais un quorum figé à 2).
+    diagnosticPath='secondaire_historique_fallback';
+    var classifiableSecondaries=[];
+    if(rfdClassified)classifiableSecondaries.push({key:'cmj_conc_rfd',res:rfdRes});
+    if(impulseClassified)classifiableSecondaries.push({key:'cmj_conc_impulse_100',res:impulseRes});
+    requiredMechanisms=classifiableSecondaries.length||2;
+    if(!classifiableSecondaries.length){
+      state='non_determinable';
+    }else{
+      var deficientSecondaries=classifiableSecondaries.filter(function(e){return e.res.status==='deficitaire';});
+      deficientSecondaries.forEach(function(e){mechanisms.push(e.key);deficientCategories.push(e.res.category);});
+      if(deficientSecondaries.length>=2)state='retenue_faible';
+      else if(deficientSecondaries.length===1)state='suspectee';
+      else state='absente';
+    }
   }
 
   var confirmative=computeHypExplosivityConfirmative(testData,normPop,normAge,normSelections);
@@ -6567,12 +6647,19 @@ function computeHypExplosivity01(testData,normPop,normAge,normSelections){
     support={level:explanatoryConvergent?'forte':(confirmativeConvergent?'moderee':'faible')};
   }
 
+  // Traçabilité par variable (mission, §"TRACEABILITY") : réutilise diagnosticEvidence existant,
+  // enrichi de role/unit/classifiable/justification — jamais une nouvelle structure. `source`
+  // provient de computeHypExplosivityCmjKpi (déjà résolu par computeStatusWithNormsV2, jamais
+  // recalculé). key Kinexus = clé de l'objet ; valeur brute = raw ; statut individuel = status.
+  function tagEvidence(res,role,unit,justification){
+    return Object.assign({},res,{role:role,unit:unit,classifiable:res.status!=='indisponible',justification:justification});
+  }
   var diagnosticEvidence={
-    cmj_conc_rfd:rfdRes,
-    cmj_conc_impulse_100:impulseRes
+    cmj_rsi_mod:tagEvidence(rsiRes,'primary','ratio','Preuve diagnostique PRIMARY (validation clinique praticien) : détermine directement le statut d\'Explosivité dès qu\'elle est classifiable, sans quorum.'),
+    cmj_conc_rfd:tagEvidence(rfdRes,'secondary','N/s','Preuve diagnostique SECONDARY / historique : utilisée uniquement en repli, si cmj_rsi_mod n\'est pas classifiable.'),
+    cmj_conc_impulse_100:tagEvidence(impulseRes,'secondary','Ns/kg','Preuve diagnostique SECONDARY / historique : utilisée uniquement en repli, si cmj_rsi_mod n\'est pas classifiable.')
   };
-  var deficientCats=state==='retenue_faible'?[rfdRes.category,impulseRes.category]:[];
-  var status=hypStatusFromState(state,deficientCats);
+  var status=hypStatusFromState(state,deficientCategories);
 
   return{
     hypId:'HYP-EXP-01',
@@ -6583,11 +6670,12 @@ function computeHypExplosivity01(testData,normPop,normAge,normSelections){
     diagnostic:diagnosticEvidence,
     diagnosticEvidence:diagnosticEvidence,
     convergence:{
-      requiredMechanisms:2,
+      requiredMechanisms:requiredMechanisms,
       distinctMechanismsObserved:mechanisms.length,
       thresholdMet:state==='retenue_faible',
       mechanismsInvolved:mechanisms,
-      ruleVariant:'standard_2_mechanisms_gelee'
+      diagnosticPath:diagnosticPath, // 'cmj_rsi_mod_primary' | 'secondaire_historique_fallback'
+      ruleVariant:'rsi_mod_primary_avec_repli_secondaire_historique'
     },
     confirmative:confirmative,
     confirmativeEvidence:confirmative,
@@ -6597,10 +6685,10 @@ function computeHypExplosivity01(testData,normPop,normAge,normSelections){
       note:"Aucune asymétrie documentée pour Explosivité dans les sources consultées (cmj est un test bilatéral, sans distinction D/G) — aucun mécanisme d'asymétrie propre à cette qualité n'existe dans le code, contrairement à Force (LSI des tests unilatéraux)."
     },
     limitations:[
-      "cmj_conc_rfd, cmj_conc_impulse_100 : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiables aujourd'hui -> non_determinable en pratique.",
+      "cmj_conc_rfd, cmj_conc_impulse_100 : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiables aujourd'hui -> servent uniquement de repli secondaire/historique, jamais de preuve primaire (MISSION_HYP_EXP01_RSI_MOD).",
       "cmj_braking_rfd (explicative biomécanique) : correspondance de nommage (CMJ_ECC_DECEL_RFD) confirmée par le praticien (mission CSM V2.2 Explosivité) — son statut absolu reste 'indisponible' (aucun seuil), seule sa symmetryEvidence (LSI) est désormais utilisable comme preuve diagnostique, et uniquement via CSM_V2_SYMMETRY_DIAGNOSTIC_AUTHORIZATION pour Force→Explosivité et Puissance→Explosivité."
     ],
-    note:"cmj_peak_power, cmj_height, slcmj_height, dj_rsi et sldj_rsi ne sont jamais lus par ce moteur au-delà de cmj_peak_power (confirmative documentée) — aucun rôle documenté pour les autres dans HYP-EXP-01, jamais attribué arbitrairement (mission §6)."
+    note:"cmj_peak_power, cmj_height, slcmj_height, dj_rsi et sldj_rsi ne sont jamais lus par ce moteur au-delà de cmj_peak_power (confirmative documentée) — aucun rôle documenté pour les autres dans HYP-EXP-01, jamais attribué arbitrairement (mission §6). cmj_rsi_mod reste également exposée en explanatory.biomecanique (mission antérieure, inchangée) — son rôle PRIMARY diagnostique ci-dessus s'ajoute, ne remplace rien."
   };
 }
 

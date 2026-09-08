@@ -200,7 +200,14 @@ test('Sans donnée WBLT du tout, aucun panneau "WBLT — Asymétrie" n\'apparaî
 });
 
 // ═══════════════ PARTIE E — Guards : aucun moteur verrouillé modifié, aucune nouvelle norme ══════
-const BASELINE_COMMIT = 'HEAD'; // dernier commit avant les missions WBLT (working tree = leurs seuls diffs)
+// RÉVISÉ (synchronisation) : 'HEAD' supposait que le working tree ne contiendrait jamais que les
+// diffs non commités des missions WBLT -- hypothèse invalidée une fois ces missions commitées
+// (squashées dans 728939f) et qu'une mission ULTÉRIEURE et distincte (MISSION_HYP_EXP01_RSI_MOD)
+// laisse ses propres modifications non commitées en même temps. bbf7390 (déjà identifié en
+// commentaire ci-dessous comme la résolution réelle de 'HEAD' au moment de l'écriture de cette
+// mission) est le dernier commit réellement antérieur aux missions WBLT -- baseline stable et
+// immuable, cohérente avec tests/mission_normes_asymetrie_wblt_tests.js.
+const BASELINE_COMMIT = 'bbf7390';
 const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
 const baseScripts = [...baseHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 const baseCode = baseScripts.filter((s) => !s.includes('cdnjs')).join('\n');
@@ -221,8 +228,8 @@ function extractFnBody(src, fnName) {
   throw new Error('accolade non fermée pour ' + fnName);
 }
 
-test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES', () => {
-  const hypFns = ['computeHypAbsorption01', 'computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypExplosivity01', 'computeHypStabilization01', 'computeHypEndurance01'];
+test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES, SAUF computeHypExplosivity01 (MISSION_HYP_EXP01_RSI_MOD) et computeHypAbsorption01 (MISSION_HYP_ABS01_ABSORPTION_CORRECTION), corrections cliniques ciblées ultérieures et distinctes, chacune vérifiée par sa propre suite dédiée', () => {
+  const hypFns = ['computeHypReactivity01', 'computeHypMobility01', 'computeHypPower01', 'computeHypForce01', 'computeHypStabilization01', 'computeHypEndurance01'];
   hypFns.forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' a été modifiée'));
 });
 test('GUARD 2 — computeHypMobilityWblt reste BYTE-IDENTIQUE (sa formule de wbltDiffCm et sa décision normal/deficient à 1.5cm ne sont ni recalculées ni remplacées)', () => {
@@ -232,9 +239,38 @@ test('GUARD 3 — computeAsymEngine et computeAsymPhase restent BYTE-IDENTIQUES'
   assert.strictEqual(extractFnBody(code, 'computeAsymEngine'), extractFnBody(baseCode, 'computeAsymEngine'));
   assert.strictEqual(extractFnBody(code, 'computeAsymPhase'), extractFnBody(baseCode, 'computeAsymPhase'));
 });
-test('GUARD 4 — QUALITY_DIAGNOSTIC_VARIABLES_V1 et CSM_V2_CLINICAL_VARIABLE_MATRIX inchangés (deep-equal)', () => {
+test('GUARD 4 — QUALITY_DIAGNOSTIC_VARIABLES_V1 inchangé (deep-equal) ; CSM_V2_CLINICAL_VARIABLE_MATRIX : formule de dérivation (IIFE) inchangée, seul son résultat évolue exactement à hauteur de MISSION_HYP_EXP01_RSI_MOD (sans rapport avec ce branchement)', () => {
   assert.deepStrictEqual(QUALITY_DIAGNOSTIC_VARIABLES_V1, baseSandbox.QUALITY_DIAGNOSTIC_VARIABLES_V1);
-  assert.deepStrictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX, baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX);
+
+  function extractMatrixIIFE(src) {
+    const marker = 'var CSM_V2_CLINICAL_VARIABLE_MATRIX=(function(){';
+    const idx = src.indexOf(marker);
+    assert.ok(idx >= 0, 'IIFE introuvable');
+    const iifeStart = src.indexOf('(function(){', idx);
+    let depth = 0, i = src.indexOf('{', iifeStart), bodyStart = i;
+    for (; i < src.length; i++) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}') { depth--; if (depth === 0) return src.slice(idx, i + 4); }
+    }
+    throw new Error('accolade non fermée pour l\'IIFE de la matrice');
+  }
+  assert.strictEqual(extractMatrixIIFE(code), extractMatrixIIFE(baseCode), 'la formule de dérivation de la matrice ne doit jamais être modifiée par cette mission');
+
+  const before = baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX;
+  const after = CSM_V2_CLINICAL_VARIABLE_MATRIX;
+  Object.keys(before.byQuality || {}).forEach((q) => {
+    if (q === 'Explosivité') return;
+    assert.deepStrictEqual(after.byQuality[q], before.byQuality[q], q + ' n\'aurait jamais dû changer dans la matrice dérivée');
+  });
+  const beforeExpDiag = before.byQuality['Explosivité'].diagnostic.map((e) => e.variableKey).sort();
+  const afterExpDiag = after.byQuality['Explosivité'].diagnostic.map((e) => e.variableKey).sort();
+  assert.deepStrictEqual(afterExpDiag, [...beforeExpDiag, 'cmj_rsi_mod'].sort(), 'le seul ajout attendu au diagnostic d\'Explosivité est cmj_rsi_mod (MISSION_HYP_EXP01_RSI_MOD)');
+  assert.strictEqual(after.meta.diagnosticCount, before.meta.diagnosticCount + 1);
+  assert.strictEqual(after.meta.classifiableCount, before.meta.classifiableCount + 1);
+  assert.strictEqual(after.meta.totalVariables, before.meta.totalVariables + 1);
+  assert.strictEqual(after.meta.confirmativeCount, before.meta.confirmativeCount);
+  assert.strictEqual(after.meta.explanatoryCount, before.meta.explanatoryCount);
+  assert.strictEqual(after.meta.missingCount, before.meta.missingCount);
 });
 test('GUARD 5 — NORMS/THRESHOLDS/NORMS_V2 STRICTEMENT inchangés (deep-equal) — aucune nouvelle norme créée pour ce branchement', () => {
   assert.deepStrictEqual(NORMS, baseSandbox.NORMS);
