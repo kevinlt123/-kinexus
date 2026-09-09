@@ -266,7 +266,11 @@ test('H4 — régression clinique complète : les 8 sévérités de la fixture r
   Object.keys(EXPECTED_SEVERITY).forEach((q) => {
     assert.strictEqual(yc.clinicalProfile[q].severity, EXPECTED_SEVERITY[q], q);
   });
-  assert.strictEqual(yc.clinicalCertainty['Explosivité'], 'not_determined');
+  // 'not_determined' -> 'explained' suite à MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE
+  // PREUVE CSM V2.2, sans rapport avec cette mission) : les 8 sévérités elles-mêmes restent
+  // strictement inchangées ci-dessus (severity/state/status), seule la couche certainty/completeness
+  // en aval reconnaît désormais la preuve PRIMARY déjà tranchée par HYP-EXP-01 LOCKED.
+  assert.strictEqual(yc.clinicalCertainty['Explosivité'], 'explained');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

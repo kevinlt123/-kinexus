@@ -65,13 +65,13 @@ test('AF1 — variableHypotheses présent, un tableau par qualité déficitaire 
     assert.ok('variable' in v && 'quality' in v && 'mechanisticHypothesis' in v && 'status' in v && 'verificationVariables' in v);
   });
 });
-test('AF2 — statut DIRECT (Absorption, braking_rfd) et UNDETERMINED (Explosivité, aucune preuve diagnostique propre)', () => {
+test('AF2 — statut DIRECT (Absorption, braking_rfd) et DIRECT (Explosivité, cmj_rsi_mod — MISSION P1, sans rapport avec cette mission AF, a reconnecté la preuve PRIMARY déjà tranchée par HYP-EXP-01 LOCKED)', () => {
   const abs = yc.variableHypotheses.filter(v => v.quality === 'Absorption');
   assert.ok(abs.some(v => v.status === 'DIRECT' && v.variable === 'diagnosticEvidence.braking_rfd'));
   const explo = yc.variableHypotheses.filter(v => v.quality === 'Explosivité');
   assert.strictEqual(explo.length, 1);
-  assert.strictEqual(explo[0].status, 'UNDETERMINED');
-  assert.strictEqual(explo[0].variable, null);
+  assert.strictEqual(explo[0].status, 'DIRECT');
+  assert.strictEqual(explo[0].variable, 'diagnosticEvidence.cmj_rsi_mod');
 });
 test('AF3 — qualité préservée (Force) -> pas de status DIRECT/UNDETERMINED forcé, verificationVariables vide', () => {
   const force = yc.variableHypotheses.filter(v => v.quality === 'Force');
@@ -139,7 +139,10 @@ test('AF6c — régression gouvernance : une qualité "preserved" mais JAMAIS te
 test('AF7 — decisionLevels : PRÉSERVÉE(0)/EXPLIQUÉ(2)/INCONNU(4) tous démontrés sur Yannis réel', () => {
   assert.deepStrictEqual(yc.decisionLevels['Force'], { level: 0, label: 'PRÉSERVÉE' });
   assert.deepStrictEqual(yc.decisionLevels['Stabilisation'], { level: 2, label: 'EXPLIQUÉ' });
-  assert.deepStrictEqual(yc.decisionLevels['Explosivité'], { level: 4, label: 'INCONNU' });
+  // Explosivité : INCONNU(4) -> EXPLIQUÉ(2) suite à MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE
+  // DE PREUVE CSM V2.2, sans rapport avec cette mission AF) — cmj_rsi_mod, déjà preuve diagnostique
+  // PRIMARY de HYP-EXP-01 LOCKED, est désormais reconnue par clinicalEvidenceHierarchy.
+  assert.deepStrictEqual(yc.decisionLevels['Explosivité'], { level: 2, label: 'EXPLIQUÉ' });
   assert.deepStrictEqual(yc.decisionLevels['Endurance'], { level: 4, label: 'INCONNU' });
 });
 test('AF8 — decisionLevels : OBJECTIVÉ(1) et HYPOTHÈSE(3) démontrés via scénarios contrôlés', () => {
@@ -148,13 +151,18 @@ test('AF8 — decisionLevels : OBJECTIVÉ(1) et HYPOTHÈSE(3) démontrés via sc
   const hypothese = csm({ cmj: { active: true, trials: { ecc_decel_rfd_L: [3508], ecc_decel_rfd_R: [3508 * 0.46] } } });
   assert.deepStrictEqual(hypothese.decisionLevels['Absorption'], { level: 3, label: 'HYPOTHÈSE' });
 });
+// Explosivité (exemple historique de ce test) est désormais DIAGNOSTIC_OBJECTIVE/EXPLIQUÉ(2) depuis
+// MISSION P1, sans rapport avec cette mission AF (cf. AF7/AF2) — Endurance reste, elle, un exemple
+// valide et inchangé de niveau 4 (aucune preuve diagnostique propre, cf. mission_ah AH37).
 test('AF9 — niveau 4 (INCONNU) exigé dès que verdict !== DIAGNOSTIC_OBJECTIVE, jamais promu explicative->diagnostique', () => {
-  assert.strictEqual(yc.clinicalEvidenceHierarchy['Explosivité'].verdict, 'AUCUNE_PREUVE_DIAGNOSTIQUE');
-  assert.strictEqual(yc.decisionLevels['Explosivité'].level, 4);
-  // Explosivité a pourtant des variables explicatives (bridge Absorption, relations documentées) —
-  // jamais assez pour atteindre un niveau > 4 sans preuve diagnostique propre.
+  assert.notStrictEqual(yc.clinicalEvidenceHierarchy['Endurance'].verdict, 'DIAGNOSTIC_OBJECTIVE');
+  assert.strictEqual(yc.decisionLevels['Endurance'].level, 4);
+});
+test('AF9bis — Explosivité (MISSION P1) atteint désormais DIAGNOSTIC_OBJECTIVE/EXPLIQUÉ(2), jamais forcé au-delà par les seules variables explicatives (bridge Absorption, relations Force/Puissance/Réactivité) : le niveau reste dérivé exclusivement de la preuve diagnostique propre déjà tranchée par HYP-EXP-01 LOCKED', () => {
+  assert.strictEqual(yc.clinicalEvidenceHierarchy['Explosivité'].verdict, 'DIAGNOSTIC_OBJECTIVE');
+  assert.strictEqual(yc.decisionLevels['Explosivité'].level, 2);
   const explo = yc.variableHypotheses.find(v => v.quality === 'Explosivité');
-  assert.ok(explo.verificationVariables.length > 0, 'des éléments explicatifs existent bien');
+  assert.ok(explo.verificationVariables.length > 0, 'des éléments explicatifs existent bien, en plus de la preuve propre');
 });
 test('AF10 — niveau 3 HYPOTHÈSE (bridge seul) jamais confondu avec niveau 2 EXPLIQUÉ (relation cross-quality réelle)', () => {
   const hypothese = csm({ cmj: { active: true, trials: { ecc_decel_rfd_L: [3508], ecc_decel_rfd_R: [3508 * 0.46] } } });
@@ -342,9 +350,11 @@ test('AF34 — decisionSynthesisDetailed : structure exacte (rank/quality/severi
     ['rank', 'quality', 'severity', 'objectivePar', 'facteursContributifs', 'indetermine', 'testPrioritaire', 'pourquoi'].forEach(k => assert.ok(k in r));
   });
 });
-test('AF35 — decisionSynthesisDetailed : classement par rang croissant, exclut les qualités NON_DETERMINEE (Explosivité/Endurance)', () => {
+test('AF35 — decisionSynthesisDetailed : classement par rang croissant, exclut les qualités NON_DETERMINEE (Endurance) ; Explosivité (MISSION P1, sans rapport avec cette mission AF) y figure désormais, objectivée par cmj_rsi_mod', () => {
   for (let i = 1; i < yc.decisionSynthesisDetailed.length; i++) assert.ok(yc.decisionSynthesisDetailed[i].rank > yc.decisionSynthesisDetailed[i - 1].rank);
-  assert.strictEqual(yc.decisionSynthesisDetailed.some(r => r.quality === 'Explosivité'), false);
+  const explo = yc.decisionSynthesisDetailed.find(r => r.quality === 'Explosivité');
+  assert.ok(explo, 'Explosivité doit désormais figurer dans la synthèse (diagnostic objectivé)');
+  assert.ok(explo.objectivePar.some(l => /RSI/i.test(l)));
   assert.strictEqual(yc.decisionSynthesisDetailed.some(r => r.quality === 'Endurance'), false);
 });
 test('AF36 — decisionSynthesisDetailed (Stabilisation) : testPrioritaire/pourquoi renseignés, facteursContributifs=[Force,Mobilité]', () => {
@@ -414,14 +424,17 @@ test('AF45 — HYP_QUALITY_RELATIONS/CLINICAL_HYPOTHESIS_WHITELIST inchangés (9
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.filter(w => w.allowed === false).length, 1);
 });
-test('AF46 — CSM_V2_CLINICAL_VARIABLE_MATRIX.meta inchangée (151/27/28/96/30/121, aucune variable inventée par Mission AF)', () => {
+test('AF46 — CSM_V2_CLINICAL_VARIABLE_MATRIX.meta inchangée (151/27/28/96/48/103, aucune variable inventée par Mission AF)', () => {
   // 150->151/26->27/29->30 suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AF) :
   // cmj_rsi_mod apparaît désormais dans diagnosticEvidence d'Explosivité (matrice dérivée).
+  // 30->48/121->103 suite à MISSION P0 — RÉPARER LA CLASSIFIABILITÉ CSM V2 VIA NORMS (sans rapport
+  // avec Mission AF) : csmV2VariableMatrixClassifiability() consulte désormais aussi NORMS, en plus
+  // de THRESHOLDS/NORMS_V2 — aucun seuil/norme/moteur HYP modifié.
   const meta = CSM_V2_CLINICAL_VARIABLE_MATRIX.meta;
   assert.strictEqual(meta.totalVariables, 151);
   assert.strictEqual(meta.diagnosticCount, 27);
   assert.strictEqual(meta.confirmativeCount, 28);
-  assert.strictEqual(meta.missingCount, 121);
+  assert.strictEqual(meta.missingCount, 103);
 });
 
 // ── AF47 — régression complète : Yannis, les 8 sévérités + les 9 structures Q->AE toujours présentes,

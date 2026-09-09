@@ -150,10 +150,11 @@ test('TP10 — les mappings FD_KPI_PATTERNS des 6 kpis G/D validés récemment r
 });
 
 // ═══════════════════ 11. Les classifications existantes restent inchangées ══════════════════════
-test('TP11 — les classifications de la matrice LOCKED (CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[q].diagnostic[].classifiability) restent EXACTEMENT celles produites par le code actuel — cette mission ne les modifie jamais, seulement les réinterprète (cmj_rsi_mod, ajoutée par MISSION_HYP_EXP01_RSI_MOD, sans rapport, est exclue : absente de la fixture d\'audit figée au moment de cette mission)', () => {
+test('TP11 — les classifications de la matrice LOCKED (CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[q].diagnostic[].classifiability) restent EXACTEMENT celles produites par le code actuel — cette mission ne les modifie jamais, seulement les réinterprète (cmj_rsi_mod, ajoutée par MISSION_HYP_EXP01_RSI_MOD, sans rapport, est exclue : absente de la fixture d\'audit figée au moment de cette mission ; braking_rfd/force_zero_vel/iso_belt_squat_n/sl_iso_push_n, réparés par MISSION P0 — RÉPARER LA CLASSIFIABILITÉ CSM V2 VIA NORMS, ultérieure et sans rapport, sont exclus pour la même raison : oldClassifiability reflète la matrice AVANT que csmV2VariableMatrixClassifiability() ne consulte aussi NORMS)', () => {
+  const excludedByLaterMissions = ['diagnosticEvidence.cmj_rsi_mod', 'diagnosticEvidence.braking_rfd', 'diagnosticEvidence.force_zero_vel', 'diagnosticEvidence.iso_belt_squat_n', 'diagnosticEvidence.sl_iso_push_n'];
   HYP_CSM_QUALITIES.forEach((q) => {
     const bq = CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality[q];
-    bq.diagnostic.filter((d) => d.variablePath !== 'diagnosticEvidence.cmj_rsi_mod').forEach((d) => {
+    bq.diagnostic.filter((d) => !excludedByLaterMissions.includes(d.variablePath)).forEach((d) => {
       const auditRow = audit.variableAudit.find((r) => r.quality === q && r.variableKey === d.variableKey && r.role === 'DIRECT');
       assert.ok(auditRow, d.variableKey + ' absent de l\'audit');
       assert.strictEqual(auditRow.oldClassifiability, d.classifiability, d.variableKey + ' : oldClassifiability doit refléter exactement la matrice LOCKED, jamais réécrite');

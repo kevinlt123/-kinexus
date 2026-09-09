@@ -335,13 +335,18 @@ test('V28 — Endurance : HYP-END-01 propre reste non_determinable ; la sévéri
 });
 
 // V29 — Explosivité/Propulsion (Puissance) séparées, jamais fusionnées
+// MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec cette
+// mission V) : Explosivité compte désormais 2 preuves propres (cmj_rsi_mod + braking_rfd), donc
+// `directEvidence` (renseigné uniquement si own.length===1, cf. csmV2ClinicalReasoningForQuality)
+// devient null pour Explosivité — on vérifie donc l'absence de contamination croisée via
+// `explanatoryEvidence` (own complet, toujours peuplé), qui couvre exactement la même garantie.
 test('V29 — Explosivité et Puissance restent des évaluations indépendantes (évidences distinctes, non fusionnées)', () => {
   const { csm } = run();
   const exp = csm.clinicalMechanisticReasoning['Explosivité'];
   const pui = csm.clinicalMechanisticReasoning['Puissance'];
   assert.notStrictEqual(exp.reasoningNarrative, pui.reasoningNarrative);
-  assert.strictEqual(exp.directEvidence.variable.indexOf('slcmj_peak_power'), -1, 'Explosivité utilise à tort la preuve directe de Puissance');
-  assert.strictEqual(pui.directEvidence.variable.indexOf('cmj_rsi_mod'), -1, 'Puissance utilise à tort une preuve d\'Explosivité');
+  assert.strictEqual(exp.explanatoryEvidence.some(e => e.variable.indexOf('slcmj_peak_power') !== -1), false, 'Explosivité utilise à tort la preuve propre de Puissance');
+  assert.strictEqual((pui.directEvidence ? [pui.directEvidence] : pui.explanatoryEvidence).some(e => e.variable.indexOf('cmj_rsi_mod') !== -1), false, 'Puissance utilise à tort une preuve d\'Explosivité');
 });
 
 // V30 — régression : pureté (rejouer produit un résultat strictement identique) — la régression

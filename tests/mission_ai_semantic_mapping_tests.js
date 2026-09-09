@@ -570,8 +570,8 @@ test('SM40 — les 8 sévérités cliniques de Yannis (fixture réelle inchangé
     assert.strictEqual(entry.severity, EXPECTED_SEVERITY[q], q + ' : sévérité modifiée par cette mission (ne devrait jamais arriver, import CSV hors chemin de cette fixture)');
   });
 });
-test('SM41 — Explosivité reste NOT_DETERMINED (conc_impulse_100 nouvellement importable ne débloque aucun seuil)', () => {
-  assert.strictEqual(yc.clinicalCertainty['Explosivité'], 'not_determined');
+test('SM41 — Explosivité : certainty devient "explained" — non pas via conc_impulse_100 (toujours sans seuil, n\'importe quoi qu\'il soit désormais importable ne débloque rien), mais via cmj_rsi_mod (preuve PRIMARY LOCKED de HYP-EXP-01) que MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec cette mission de mapping sémantique) a reconnectée à clinicalCertainty', () => {
+  assert.strictEqual(yc.clinicalCertainty['Explosivité'], 'explained');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

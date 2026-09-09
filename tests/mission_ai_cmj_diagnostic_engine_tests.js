@@ -120,7 +120,13 @@ test('AI10 — missingVariables reflète exactement CSM_V2_CLINICAL_VARIABLE_MAT
 // ═══════════════════════════ CLASSIFIABILITÉ ════════════════════════════════════════════════════════
 test('AI11 — diagnosticStatus est déterministe : classifiable_absolute prime sur classifiable_symmetry qui prime sur blocked', () => {
   assert.strictEqual(chain['Mobilité'].diagnosticStatus, 'classifiable_absolute');
-  assert.strictEqual(chain['Absorption'].diagnosticStatus, 'classifiable_symmetry');
+  // Absorption : 'classifiable_symmetry' -> 'classifiable_absolute' suite à MISSION P0 — RÉPARER LA
+  // CLASSIFIABILITÉ CSM V2 VIA NORMS (sans rapport avec cette mission AI) : braking_rfd/
+  // force_zero_vel (rôle DIRECT) sont désormais 'partiellement_exploitable' (NORMS), donc retenus
+  // par absoluteClassifiable (csmV2AiDiagnosticStatus, logique inchangée, filtre uniquement
+  // classifiability!=='non_classifiable') — le diagnostic n'a donc plus besoin de passer par le
+  // pont de symétrie LSI pour être classifiable_absolute.
+  assert.strictEqual(chain['Absorption'].diagnosticStatus, 'classifiable_absolute');
   // Explosivité : 'blocked' -> 'classifiable_absolute' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport
   // avec cette mission) : cmj_rsi_mod, classifiable, apparaît désormais dans diagnosticVariables.
   assert.strictEqual(chain['Explosivité'].diagnosticStatus, 'classifiable_absolute');
@@ -173,16 +179,17 @@ test('AI19 — Explosivité : la relation Réactivité->Explosivité (sldj_rsi, 
   assert.strictEqual(chain['Explosivité'].classifiableDiagnosticVariables.length, 1);
   assert.strictEqual(chain['Explosivité'].classifiableDiagnosticVariables[0].variableKey, 'cmj_rsi_mod', 'le déblocage vient de cmj_rsi_mod, jamais de la relation Réactivité->Explosivité');
 });
-test('AI20 — Explosivité : completenessStatus reste NOT_DETERMINED — jamais forcée à COMPLETE/PARTIAL sans preuve réelle (computeCsmV2 LOCKED, jamais modifié, ne branche pas cmj_rsi_mod dans clinicalEvidenceHierarchy — cf. AD23 — malgré diagnosticStatus=classifiable_absolute côté chain)', () => {
-  assert.strictEqual(chain['Explosivité'].completenessStatus, 'NOT_DETERMINED');
+test('AI20 — Explosivité : completenessStatus devient COMPLETE — MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec cette mission AI) a branché cmj_rsi_mod dans clinicalEvidenceHierarchy (cf. AD23), désormais cohérent avec diagnosticStatus=classifiable_absolute côté chain (les deux couches convergent, plus de désynchronisation)', () => {
+  assert.strictEqual(chain['Explosivité'].completenessStatus, 'COMPLETE');
   // 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
   assert.strictEqual(yc.clinicalProfile['Explosivité'].severity, 'majeur');
 });
 
 // ═══════════════════════════ ABSORPTION (chantier P0) ═══════════════════════════════════════════════
-test('AI21 — Absorption (Yannis réel) : diagnosticStatus="classifiable_symmetry" — diagnostic légitime par LSI, jamais par valeur absolue inventée', () => {
-  assert.strictEqual(chain['Absorption'].diagnosticStatus, 'classifiable_symmetry');
+test('AI21 — Absorption (Yannis réel) : diagnosticStatus="classifiable_absolute" — braking_rfd/force_zero_vel sont désormais reconnues classifiables via NORMS (MISSION P0, sans rapport avec cette mission AI), jamais une valeur absolue inventée', () => {
+  assert.strictEqual(chain['Absorption'].diagnosticStatus, 'classifiable_absolute');
   assert.ok(chain['Absorption'].classifiableDiagnosticVariables.some(v => v.variableKey === 'braking_rfd'));
+  assert.ok(chain['Absorption'].classifiableDiagnosticVariables.some(v => v.variableKey === 'force_zero_vel'));
 });
 test('AI22 — Absorption : diagnosticBlockedReason reste null (non bloquée) — cohérent avec completenessStatus COMPLETE', () => {
   assert.strictEqual(chain['Absorption'].diagnosticBlockedReason, null);

@@ -245,18 +245,25 @@ test('AB20 — le rapport clinique (sections) est inchangé par Mission AB : "lo
 // tests/mission_ad_clinical_reasoning_tests.js AD33). Comptages mis à jour en conséquence : 141+9=150
 // total, 87+9=96 explicatives (les 9 ajouts sont tous de rôle EXPLANATORY), 112+9=121 manquantes (les
 // 9 ajouts sont tous non_classifiable) — diagnostic/confirmative/classifiable inchangés.
-test('AB21 — comptage global de la matrice : 151 variables auditées (27 diagnostiques/28 confirmatives/96 explicatives, 30 classifiables/121 manquantes)', () => {
+test('AB21 — comptage global de la matrice : 151 variables auditées (27 diagnostiques/28 confirmatives/96 explicatives, 48 classifiables/103 manquantes)', () => {
   // 150 -> 151 (diagnosticCount 26->27, classifiableCount 29->30) suite à MISSION_HYP_EXP01_RSI_MOD
   // (correction clinique ciblée, sans rapport avec Mission AB) : cmj_rsi_mod apparaît désormais dans
   // diagnosticEvidence d'Explosivité (matrice dérivée introspectant la sortie réelle des moteurs
-  // HYP-XX-01). confirmativeCount/explanatoryCount/missingCount inchangés.
+  // HYP-XX-01). confirmativeCount/explanatoryCount inchangés.
+  // 30 -> 48 classifiables / 121 -> 103 manquantes suite à MISSION P0 — RÉPARER LA CLASSIFIABILITÉ
+  // CSM V2 VIA NORMS (sans rapport avec Mission AB) : csmV2VariableMatrixClassifiability()
+  // consulte désormais aussi NORMS (le référentiel par population), en plus de THRESHOLDS/NORMS_V2 —
+  // 18 variables réellement classifiables par le moteur clinique (ex. cmj_braking_rfd via
+  // applyThr(key,val,pop,age), déjà utilisées telles quelles par HYP-ABS-01 LOCKED) étaient
+  // jusque-là déclarées à tort 'non_classifiable' par la seule matrice d'audit. Aucun seuil, aucune
+  // norme, aucun moteur HYP modifié.
   const m = matrix().meta;
   assert.strictEqual(m.totalVariables, 151);
   assert.strictEqual(m.diagnosticCount, 27);
   assert.strictEqual(m.confirmativeCount, 28);
   assert.strictEqual(m.explanatoryCount, 96);
-  assert.strictEqual(m.classifiableCount, 30);
-  assert.strictEqual(m.missingCount, 121);
+  assert.strictEqual(m.classifiableCount, 48);
+  assert.strictEqual(m.missingCount, 103);
 });
 
 // AB22 — granularité mixte conservée au sein d'un même rôle. Constat d'audit (Mission AB, §1) : le

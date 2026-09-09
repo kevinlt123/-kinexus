@@ -94,12 +94,26 @@ test('X4 — facteur direct (Puissance) : type DIRECT, confidence high, own evid
 });
 
 // X5 — facteur associé
-test('X5 — facteur associé (Explosivité, own evidence isolée) : rang associe, confidence low', () => {
-  const qr = causal().qualityReasoning['Explosivité'];
+// MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec cette
+// mission X) : Explosivité compte désormais une preuve diagnostique propre (cmj_rsi_mod) combinée à
+// braking_rfd -> son propre facteur devient 'convergent'/rang 'principal' (jamais 'associated'). Le
+// pattern "own evidence sans preuve diagnostique -> associated/associe/low" reste néanmoins
+// démontré, inchangé, par Endurance (soleus_iso_rfd100 + gastro_iso_rfd100, aucune preuve
+// diagnostique propre).
+test('X5 — facteur associé (Endurance, own evidence sans preuve diagnostique) : rang associe, confidence low', () => {
+  const qr = causal().qualityReasoning['Endurance'];
   const own = qr.reasoningChain.find(r => r.type === 'associated');
-  assert.ok(own, 'aucun facteur "associated" trouvé pour Explosivité');
+  assert.ok(own, 'aucun facteur "associated" trouvé pour Endurance');
   assert.strictEqual(own.rank, 'associe');
   assert.strictEqual(own.confidence, 'low');
+});
+test('X5bis — Explosivité (MISSION P1) : own evidence avec preuve diagnostique propre (cmj_rsi_mod) -> convergent/principal/high, jamais associated', () => {
+  const qr = causal().qualityReasoning['Explosivité'];
+  const own = qr.reasoningChain.find(r => r.quality === 'Explosivité' && r.type === 'convergent');
+  assert.ok(own, 'aucun facteur "convergent" trouvé pour Explosivité');
+  assert.strictEqual(own.rank, 'principal');
+  assert.strictEqual(own.confidence, 'high');
+  assert.ok(own.evidence.some(e => e.variable === 'diagnosticEvidence.cmj_rsi_mod'));
 });
 
 // X6 — cross-quality
