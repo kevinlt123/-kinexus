@@ -201,19 +201,25 @@ test('GUARD 6 — CSM_V2_CLINICAL_VARIABLE_MATRIX : formule de dérivation (IIFE
 
   const before = baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX;
   const after = CSM_V2_CLINICAL_VARIABLE_MATRIX;
+  // MISSION P0 — RÉPARER LA CLASSIFIABILITÉ CSM V2 VIA NORMS (ultérieure, sans rapport avec cette
+  // mission de restauration des normes d'asymétrie) : csmV2VariableMatrixClassifiability()
+  // consulte désormais aussi NORMS, en plus de THRESHOLDS/NORMS_V2 — 18 entrées variable/rôle déjà
+  // existantes changent de classifiability, réparties sur Absorption/Force/Puissance/Endurance
+  // (jamais une variable inventée).
+  const qualitiesAffectedByMissionP0 = ['Absorption', 'Force', 'Puissance', 'Endurance'];
   Object.keys(before.byQuality || {}).forEach((q) => {
-    if (q === 'Explosivité') return;
+    if (q === 'Explosivité' || qualitiesAffectedByMissionP0.includes(q)) return;
     assert.deepStrictEqual(after.byQuality[q], before.byQuality[q], q + ' n\'aurait jamais dû changer dans la matrice dérivée');
   });
   const beforeExpDiag = before.byQuality['Explosivité'].diagnostic.map((e) => e.variableKey).sort();
   const afterExpDiag = after.byQuality['Explosivité'].diagnostic.map((e) => e.variableKey).sort();
   assert.deepStrictEqual(afterExpDiag, [...beforeExpDiag, 'cmj_rsi_mod'].sort(), 'le seul ajout attendu au diagnostic d\'Explosivité est cmj_rsi_mod (MISSION_HYP_EXP01_RSI_MOD)');
   assert.strictEqual(after.meta.diagnosticCount, before.meta.diagnosticCount + 1);
-  assert.strictEqual(after.meta.classifiableCount, before.meta.classifiableCount + 1);
+  assert.strictEqual(after.meta.classifiableCount, before.meta.classifiableCount + 1 + 18);
   assert.strictEqual(after.meta.totalVariables, before.meta.totalVariables + 1);
   assert.strictEqual(after.meta.confirmativeCount, before.meta.confirmativeCount);
   assert.strictEqual(after.meta.explanatoryCount, before.meta.explanatoryCount);
-  assert.strictEqual(after.meta.missingCount, before.meta.missingCount);
+  assert.strictEqual(after.meta.missingCount, before.meta.missingCount - 18);
 });
 test('GUARD 7 — NORMS/THRESHOLDS/NORMS_V2 inchangés (deep-equal, comparés avant l\'ajout des fixtures de test ci-dessus)', () => {
   const currentNormsKeys = Object.keys(NORMS).filter((k) => !['test_restauration_asym_pop', 'test_pop_guard_asym'].includes(k));

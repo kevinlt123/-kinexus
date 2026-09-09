@@ -63,11 +63,12 @@ test('AH1 — clinicalCompletenessAudit présent pour les 8 qualités, structure
   const expectedKeys = ['diagnostic', 'confirmatory', 'explanatory', 'consequences', 'missing', 'unclassifiable', 'unused', 'relationships', 'causalGaps', 'priorityGaps', 'completenessStatus'];
   HYP_CSM_QUALITIES.forEach(q => expectedKeys.forEach(k => assert.ok(k in audit[q], q + '.' + k + ' manquant')));
 });
-test('AH2 — Force : 4 variables diagnostiques réelles, 1 seule partiellement classifiable (imtp_n, NORMS_V2)', () => {
+test('AH2 — Force : 4 variables diagnostiques réelles, 3 partiellement classifiables (imtp_n/NORMS_V2 ; iso_belt_squat_n/sl_iso_push_n/NORMS, MISSION P0, sans rapport avec Mission AH)', () => {
   assert.strictEqual(audit['Force'].diagnostic.length, 4);
   const classifiable = audit['Force'].diagnostic.filter(v => v.classifiability !== 'non_classifiable');
-  assert.strictEqual(classifiable.length, 1);
-  assert.strictEqual(classifiable[0].variableKey, 'imtp_n');
+  assert.strictEqual(classifiable.length, 3);
+  assert.deepStrictEqual(classifiable.map(v => v.variableKey).sort(), ['imtp_n', 'iso_belt_squat_n', 'sl_iso_push_n']);
+  assert.strictEqual(audit['Force'].diagnostic.find(v => v.variableKey === 'slimtp_n').classifiability, 'non_classifiable');
 });
 test('AH3 — Puissance : 2 variables diagnostiques, toutes deux partiellement exploitables (NORMS_V2, population requise)', () => {
   assert.strictEqual(audit['Puissance'].diagnostic.length, 2);
@@ -86,9 +87,11 @@ test('AH6 — Réactivité : 2 variables diagnostiques exploitables (dj_rsi, sld
   assert.strictEqual(audit['Réactivité'].diagnostic.length, 2);
   assert.ok(audit['Réactivité'].diagnostic.every(v => v.classifiability === 'exploitable'));
 });
-test('AH7 — Absorption : 3 variables diagnostiques, ZÉRO classifiable ET zéro confirmative (aucune couche de confirmation actuelle)', () => {
+test('AH7 — Absorption : 3 variables diagnostiques, 2 désormais classifiables (braking_rfd/force_zero_vel via NORMS, MISSION P0, sans rapport avec Mission AH) ; zéro confirmative (aucune couche de confirmation actuelle)', () => {
   assert.strictEqual(audit['Absorption'].diagnostic.length, 3);
-  assert.ok(audit['Absorption'].diagnostic.every(v => v.classifiability === 'non_classifiable'));
+  const classifiable = audit['Absorption'].diagnostic.filter(v => v.classifiability !== 'non_classifiable');
+  assert.deepStrictEqual(classifiable.map(v => v.variableKey).sort(), ['braking_rfd', 'force_zero_vel']);
+  assert.strictEqual(audit['Absorption'].diagnostic.find(v => v.variableKey === 'braking_impulse').classifiability, 'non_classifiable');
   assert.strictEqual(audit['Absorption'].confirmatory.length, 0);
 });
 test('AH8 — Stabilisation : 6 variables diagnostiques (dont SLS/EO/EF/Strobo, proprioceptives), 2 seulement classifiables ; Endurance : 6 variables diagnostiques, 1 seule classifiable (heel_raise_reps)', () => {
@@ -157,9 +160,10 @@ test('AH17 — GAP 1 (donnée manquante) : Réactivité a un test exploitable ex
   const dj = minimal.clinicalCompletenessAudit['Réactivité'].diagnostic.find(v => v.variableKey === 'dj_rsi');
   assert.ok(dj && dj.classifiability === 'exploitable');
 });
-test('AH18 — GAP 2 (variable disponible mais non classifiable) : les 3 diagnostiques Absorption existent réellement mais aucune n\'a de seuil', () => {
+test('AH18 — GAP 2 (variable disponible mais non classifiable) : braking_impulse (Absorption) existe réellement mais n\'a aucun seuil/norme nulle part (braking_rfd/force_zero_vel, illustrant historiquement le même GAP, sont désormais classifiables via NORMS, MISSION P0, sans rapport avec Mission AH)', () => {
   assert.strictEqual(audit['Absorption'].diagnostic.length, 3);
-  assert.strictEqual(audit['Absorption'].diagnostic.filter(v => v.classifiability === 'non_classifiable').length, 3);
+  assert.strictEqual(audit['Absorption'].diagnostic.filter(v => v.classifiability === 'non_classifiable').length, 1);
+  assert.strictEqual(audit['Absorption'].diagnostic.find(v => v.variableKey === 'braking_impulse').classifiability, 'non_classifiable');
 });
 test('AH19 — GAP 3 (variable classifiable mais non consommée) : slcmj_height a un seuil réel (THRESHOLDS) mais n\'est lu par aucun moteur HYP', () => {
   assert.ok(THRESHOLDS.slcmj_height);
@@ -209,10 +213,10 @@ test('AH27 — Phases 1 (position/initiation) et 4 (transition) : aucune variabl
   assert.strictEqual(CSM_V2_AH_CMJ_PHASE_AUDIT['position_initiation'].variables.length, 0);
   assert.strictEqual(CSM_V2_AH_CMJ_PHASE_AUDIT['transition'].variables.length, 0);
 });
-test('AH28 — Phase 3 (freinage excentrique) : 3 variables explicatives (Explosivité) toutes non classifiables — la RFD de freinage CMJ (ecc_decel_rfd_L/R) alimente en réalité Force.rapidForceDeficit via un chemin LOCKED séparé, non capturé par cette catégorisation matricielle (limite documentée)', () => {
+test('AH28 — Phase 3 (freinage excentrique) : 3 variables explicatives (Explosivité), désormais toutes partiellement classifiables via NORMS (cmj_ecc_mean_power/cmj_ecc_peak_vel/cmj_braking_rfd, MISSION P0, sans rapport avec Mission AH) — la RFD de freinage CMJ (ecc_decel_rfd_L/R) alimente en réalité Force.rapidForceDeficit via un chemin LOCKED séparé, non capturé par cette catégorisation matricielle (limite documentée)', () => {
   const p3 = CSM_V2_AH_CMJ_PHASE_AUDIT['freinage_excentrique'];
   assert.strictEqual(p3.variables.length, 3);
-  assert.ok(p3.variables.every(v => v.classifiability === 'non_classifiable'));
+  assert.ok(p3.variables.every(v => v.classifiability === 'partiellement_exploitable'));
   assert.strictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality['Force'].diagnostic.concat(CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality['Force'].confirmative, CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality['Force'].explicative).some(v => /cmj|ecc_decel/.test(v.variableKey)), false);
 });
 

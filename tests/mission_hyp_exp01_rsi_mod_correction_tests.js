@@ -335,9 +335,14 @@ test('GUARD 7 — la FORMULE qui dérive CSM_V2_CLINICAL_VARIABLE_MATRIX (l\'IIF
   const before = baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX;
   const after = CSM_V2_CLINICAL_VARIABLE_MATRIX;
   // Toutes les qualités AUTRES qu'Explosivité restent identiques dans byQuality (le delta est
-  // strictement localisé).
+  // strictement localisé), À L'EXCEPTION d'Absorption/Force/Puissance/Endurance : MISSION P0 —
+  // RÉPARER LA CLASSIFIABILITÉ CSM V2 VIA NORMS (ultérieure et sans rapport avec cette mission
+  // Explosivité), qui fait consulter NORMS en plus de THRESHOLDS/NORMS_V2 par
+  // csmV2VariableMatrixClassifiability() — 18 entrées variable/rôle déjà existantes changent de
+  // classifiability (jamais une variable inventée, jamais un moteur HYP modifié).
+  const qualitiesAffectedByMissionP0 = ['Absorption', 'Force', 'Puissance', 'Endurance'];
   Object.keys(before.byQuality || {}).forEach((q) => {
-    if (q === 'Explosivité') return;
+    if (q === 'Explosivité' || qualitiesAffectedByMissionP0.includes(q)) return;
     assert.deepStrictEqual(after.byQuality[q], before.byQuality[q], q + ' n\'aurait jamais dû changer dans la matrice dérivée');
   });
   // Pour Explosivité : le seul delta attendu est l'apparition de cmj_rsi_mod en diagnostic DIRECT
@@ -353,14 +358,16 @@ test('GUARD 7 — la FORMULE qui dérive CSM_V2_CLINICAL_VARIABLE_MATRIX (l\'IIF
     const a = after.byQuality['Explosivité'].diagnostic.find((e) => e.variableKey === k);
     assert.deepStrictEqual(a, b, k + ' ne doit pas changer dans la matrice dérivée');
   });
-  // Compteurs globaux : +1 sur diagnosticCount/classifiableCount/totalVariables, tout le reste
-  // (confirmativeCount/explanatoryCount/missingCount) strictement inchangé.
+  // Compteurs globaux : +1 sur diagnosticCount/totalVariables (cette mission Explosivité) ; le
+  // classifiableCount/missingCount portent EN PLUS le delta de MISSION P0 — RÉPARER LA
+  // CLASSIFIABILITÉ CSM V2 VIA NORMS (+18/-18, sans rapport, ultérieure) ; confirmativeCount/
+  // explanatoryCount strictement inchangés.
   assert.strictEqual(after.meta.diagnosticCount, before.meta.diagnosticCount + 1);
-  assert.strictEqual(after.meta.classifiableCount, before.meta.classifiableCount + 1);
+  assert.strictEqual(after.meta.classifiableCount, before.meta.classifiableCount + 1 + 18);
   assert.strictEqual(after.meta.totalVariables, before.meta.totalVariables + 1);
   assert.strictEqual(after.meta.confirmativeCount, before.meta.confirmativeCount);
   assert.strictEqual(after.meta.explanatoryCount, before.meta.explanatoryCount);
-  assert.strictEqual(after.meta.missingCount, before.meta.missingCount);
+  assert.strictEqual(after.meta.missingCount, before.meta.missingCount - 18);
 });
 test('GUARD 8 — le diff fonctionnel de cette mission se limite à computeHypExplosivity01 et computeHypExplosivityCmjKpi (ajout additif du champ `source`) — jamais un autre moteur', () => {
   assert.notStrictEqual(extractFnBody(code, 'computeHypExplosivityCmjKpi'), extractFnBody(baseCode, 'computeHypExplosivityCmjKpi'), 'computeHypExplosivityCmjKpi doit avoir changé (ajout additif de `source`)');

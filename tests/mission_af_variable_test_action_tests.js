@@ -414,14 +414,17 @@ test('AF45 — HYP_QUALITY_RELATIONS/CLINICAL_HYPOTHESIS_WHITELIST inchangés (9
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.length, 9);
   assert.strictEqual(CLINICAL_HYPOTHESIS_WHITELIST.filter(w => w.allowed === false).length, 1);
 });
-test('AF46 — CSM_V2_CLINICAL_VARIABLE_MATRIX.meta inchangée (151/27/28/96/30/121, aucune variable inventée par Mission AF)', () => {
+test('AF46 — CSM_V2_CLINICAL_VARIABLE_MATRIX.meta inchangée (151/27/28/96/48/103, aucune variable inventée par Mission AF)', () => {
   // 150->151/26->27/29->30 suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec Mission AF) :
   // cmj_rsi_mod apparaît désormais dans diagnosticEvidence d'Explosivité (matrice dérivée).
+  // 30->48/121->103 suite à MISSION P0 — RÉPARER LA CLASSIFIABILITÉ CSM V2 VIA NORMS (sans rapport
+  // avec Mission AF) : csmV2VariableMatrixClassifiability() consulte désormais aussi NORMS, en plus
+  // de THRESHOLDS/NORMS_V2 — aucun seuil/norme/moteur HYP modifié.
   const meta = CSM_V2_CLINICAL_VARIABLE_MATRIX.meta;
   assert.strictEqual(meta.totalVariables, 151);
   assert.strictEqual(meta.diagnosticCount, 27);
   assert.strictEqual(meta.confirmativeCount, 28);
-  assert.strictEqual(meta.missingCount, 121);
+  assert.strictEqual(meta.missingCount, 103);
 });
 
 // ── AF47 — régression complète : Yannis, les 8 sévérités + les 9 structures Q->AE toujours présentes,

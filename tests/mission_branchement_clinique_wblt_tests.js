@@ -258,19 +258,26 @@ test('GUARD 4 — QUALITY_DIAGNOSTIC_VARIABLES_V1 inchangé (deep-equal) ; CSM_V
 
   const before = baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX;
   const after = CSM_V2_CLINICAL_VARIABLE_MATRIX;
+  // MISSION P0 — RÉPARER LA CLASSIFIABILITÉ CSM V2 VIA NORMS (sans rapport avec ce branchement WBLT) :
+  // csmV2VariableMatrixClassifiability() consulte désormais aussi NORMS, en plus de
+  // THRESHOLDS/NORMS_V2. Conséquence strictement confinée à la classifiability de 18 entrées
+  // variable/rôle déjà existantes (jamais une variable inventée, jamais un moteur HYP modifié),
+  // réparties sur Absorption/Force/Puissance/Explosivité/Endurance (une même clé — ex. cmj_depth,
+  // iso_belt_squat_n — apparaît légitimement dans plusieurs qualités, en DIRECT ou en EXPLANATORY).
+  const qualitiesAffectedByMissionP0 = ['Absorption', 'Force', 'Puissance', 'Endurance'];
   Object.keys(before.byQuality || {}).forEach((q) => {
-    if (q === 'Explosivité') return;
+    if (q === 'Explosivité' || qualitiesAffectedByMissionP0.includes(q)) return;
     assert.deepStrictEqual(after.byQuality[q], before.byQuality[q], q + ' n\'aurait jamais dû changer dans la matrice dérivée');
   });
   const beforeExpDiag = before.byQuality['Explosivité'].diagnostic.map((e) => e.variableKey).sort();
   const afterExpDiag = after.byQuality['Explosivité'].diagnostic.map((e) => e.variableKey).sort();
   assert.deepStrictEqual(afterExpDiag, [...beforeExpDiag, 'cmj_rsi_mod'].sort(), 'le seul ajout attendu au diagnostic d\'Explosivité est cmj_rsi_mod (MISSION_HYP_EXP01_RSI_MOD)');
   assert.strictEqual(after.meta.diagnosticCount, before.meta.diagnosticCount + 1);
-  assert.strictEqual(after.meta.classifiableCount, before.meta.classifiableCount + 1);
+  assert.strictEqual(after.meta.classifiableCount, before.meta.classifiableCount + 1 + 18);
   assert.strictEqual(after.meta.totalVariables, before.meta.totalVariables + 1);
   assert.strictEqual(after.meta.confirmativeCount, before.meta.confirmativeCount);
   assert.strictEqual(after.meta.explanatoryCount, before.meta.explanatoryCount);
-  assert.strictEqual(after.meta.missingCount, before.meta.missingCount);
+  assert.strictEqual(after.meta.missingCount, before.meta.missingCount - 18);
 });
 test('GUARD 5 — NORMS/THRESHOLDS/NORMS_V2 STRICTEMENT inchangés (deep-equal) — aucune nouvelle norme créée pour ce branchement', () => {
   assert.deepStrictEqual(NORMS, baseSandbox.NORMS);

@@ -11090,12 +11090,43 @@ function csmV2VariableMatrixTestKey(variablePath){
 // si une population est sélectionnée) / 'non_classifiable' (aucune des deux tables) — dérivé
 // exclusivement des deux tables déjà existantes, jamais un nouveau seuil créé ni une distinction
 // inventée (même normalisation de clé que csmV2MissingEvidenceHasThreshold, Mission Z).
-function csmV2VariableMatrixClassifiability(variablePath){
+// MISSION P0 — RÉPARER LA CLASSIFIABILITÉ CSM V2 VIA NORMS (audit post-corrections CSM V2.2,
+// §5) : cette fonction ne consultait jusqu'ici que THRESHOLDS/NORMS_V2, jamais NORMS (le
+// référentiel par population) — des variables réellement classifiables par le moteur clinique
+// (ex. cmj_braking_rfd/cmj_force_zero_vel via applyThr(key,val,pop,age), déjà utilisées telles
+// quelles par HYP-ABS-01 LOCKED, jamais modifié ici) étaient donc déclarées à tort
+// 'non_classifiable' par la matrice d'audit. Réutilise exclusivement la convention déjà existante
+// (lookup plat NORMS[pop][key], identique à applyThr/resolveNormPopulationForTest — aucun nouveau
+// système de sélection de population inventé) :
+//  - `pop` fourni ET couvert par NORMS -> 'exploitable' (classifiabilité réelle pour CETTE
+//    population, au même titre qu'un seuil universel).
+//  - NORMS couvre la clé pour AU MOINS UNE population (que `pop` soit fourni et non couvert, ou
+//    omis comme c'est le cas des 2 seuls appelants actuels, la matrice statique n'ayant aucun
+//    contexte patient) -> 'partiellement_exploitable', exactement le même niveau que NORMS_V2 : la
+//    classifiabilité réelle dépend alors du choix de population du bilan, jamais garantie a priori
+//    (jamais "if(NORMS[key])return'exploitable'" — une seule entrée ne suffit pas à elle seule).
+//  - Aucune couverture nulle part -> 'non_classifiable' (statut prudent inchangé).
+function csmV2VariableMatrixHasAnyNormsCoverage(key){
+  return Object.keys(NORMS).some(function(p){return NORMS[p]&&NORMS[p][key]!=null;});
+}
+// Alias de clé HYP-ABS-01 (§4) : diagnosticEvidence expose ces 3 variables sous un nom court
+// (braking_rfd/force_zero_vel/braking_impulse) alors que computeHypAbsorptionCore les seuille en
+// interne via applyThr('cmj_braking_rfd'|'cmj_force_zero_vel'|'cmj_braking_impulse', ...) — donc
+// sous les clés préfixées `cmj_` réellement présentes dans NORMS/THRESHOLDS. Table explicite et
+// restreinte (jamais un préfixage générique 'cmj_'+key, pour ne prendre aucun risque de collision
+// ailleurs) : ce sont exactement les 3 littéraux déjà utilisés par le moteur LOCKED lui-même,
+// jamais une clé inventée. N'affecte que la résolution de `key` avant les lookups ci-dessous —
+// HYP-ABS-01 n'est ni lu ni modifié ici.
+var CSM_V2_VARIABLE_MATRIX_KEY_ALIASES={braking_rfd:'cmj_braking_rfd',force_zero_vel:'cmj_force_zero_vel',braking_impulse:'cmj_braking_impulse'};
+function csmV2VariableMatrixClassifiability(variablePath,pop){
   var key=(variablePath||'').replace(/^diagnosticEvidence\./,'').replace(/^confirmativeEvidence\./,'').replace(/^explanatoryEvidence\.[a-zA-Z]+\./,'');
   var nested=key.match(/^(\w+)\.kpis\.(\w+)$/);
   if(nested)key=nested[1]+'_'+nested[2];
+  if(CSM_V2_VARIABLE_MATRIX_KEY_ALIASES[key])key=CSM_V2_VARIABLE_MATRIX_KEY_ALIASES[key];
   if(THRESHOLDS[key])return'exploitable';
   if(NORMS_V2[key])return'partiellement_exploitable';
+  if(pop&&NORMS[pop]&&NORMS[pop][key]!=null)return'exploitable';
+  if(csmV2VariableMatrixHasAnyNormsCoverage(key))return'partiellement_exploitable';
   return'non_classifiable';
 }
 // Niveau de support du mécanisme (§2E) : distingue mécanisme réellement supporté / facteur associé /

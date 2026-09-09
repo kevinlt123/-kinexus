@@ -211,11 +211,22 @@ test('GA16 — priorityGapsByQuality couvre les 8 qualités, niveaux uniquement 
     audit.priorityGapsByQuality[q].forEach((g) => assert.ok(allowed.has(g.level), 'niveau inattendu : ' + g.level));
   });
 });
-test('GA17 — Absorption et Explosivité sont bien identifiées P0 (aucune variable diagnostique classifiable) — constat factuel, pas une invention', () => {
+test('GA17 — Absorption et Explosivité étaient bien identifiées P0 au moment de cette mission (aucune variable diagnostique classifiable) — constat factuel figé, pas une invention', () => {
+  // Fixture figée (csm_v2_global_quality_variable_audit.json), jamais modifiée : reflète l'état
+  // RÉEL au moment de cette mission, où Absorption comptait 0/3 variable diagnostique classifiable.
   assert.ok(audit.priorityGapsByQuality['Absorption'].some((g) => g.level === 'P0'));
   assert.ok(audit.priorityGapsByQuality['Explosivité'].some((g) => g.level === 'P0'));
+  // MISSION P0 — RÉPARER LA CLASSIFIABILITÉ CSM V2 VIA NORMS (ultérieure, sans rapport avec cette
+  // mission d'audit) : csmV2VariableMatrixClassifiability() consulte désormais aussi NORMS, en
+  // plus de THRESHOLDS/NORMS_V2 — Absorption passe légitimement de 0/3 à 2/3 variables
+  // diagnostiques classifiables (braking_rfd/force_zero_vel, déjà utilisées par HYP-ABS-01 LOCKED
+  // via applyThr(key,val,pop,age) ; braking_impulse reste non_classifiable, aucune norme nulle
+  // part). Le constat GA17 reste donc vrai comme photographie historique (fixture figée
+  // ci-dessus) ; la matrice LIVE n'est plus à 0/3 par construction, c'est le résultat attendu.
   const bqAbs = CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality['Absorption'];
-  assert.strictEqual(bqAbs.diagnostic.some((d) => d.classifiability === 'exploitable' || d.classifiability === 'partiellement_exploitable'), false);
+  const classifiableNow = bqAbs.diagnostic.filter((d) => d.classifiability === 'exploitable' || d.classifiability === 'partiellement_exploitable');
+  assert.strictEqual(classifiableNow.length, 2, 'Absorption doit désormais compter 2/3 variables diagnostiques classifiables (MISSION P0)');
+  assert.deepStrictEqual(classifiableNow.map((d) => d.variableKey).sort(), ['braking_rfd', 'force_zero_vel']);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
