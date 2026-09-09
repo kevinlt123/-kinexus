@@ -162,10 +162,21 @@ const baseSandbox = new Function('localStorage', baseSlice + '\nreturn {computeM
 test('TEST 16 — YANIS : aucun verdict HYP (state/status/severity des 8 qualités) ne change entre avant (HEAD) et après cette mission', () => {
   const before = baseSandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
   const after = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
-  ['Force', 'Puissance', 'Explosivité', 'Absorption', 'Mobilité', 'Réactivité', 'Stabilisation', 'Endurance'].forEach((q) => {
+  // MISSION P1 BIS — INTÉGRATION LOCALE DE cmj_landing_peak_force (ultérieure, sans rapport avec
+  // cette mission P0 NORMS) : ajoute un texte de motif ('landing.reason') au sous-domaine E
+  // (Réception/Impact) de HYP-ABS-01 — Yanis n'a jamais fourni cmj.trials.landing_peak_force,
+  // donc seul ce texte diagnostique change ('aucun_seuil_disponible' -> 'cmj_landing_peak_force_
+  // indisponible'), jamais state/status/severity. Exclue du deep-equal strict ci-dessous ;
+  // vérifiée séparément (state/status/severity/braking inchangés).
+  ['Force', 'Puissance', 'Explosivité', 'Mobilité', 'Réactivité', 'Stabilisation', 'Endurance'].forEach((q) => {
     assert.deepStrictEqual(after.functionScores[q], before.functionScores[q], q + ' : sortie HYP ne doit pas changer (le fix ne touche que la couche audit/classifiabilité)');
     assert.strictEqual(after.clinicalSynthesisV2.clinicalProfile[q].severity, before.clinicalSynthesisV2.clinicalProfile[q].severity, q);
   });
+  const absBefore = before.functionScores['Absorption'].hypAbs01, absAfter = after.functionScores['Absorption'].hypAbs01;
+  assert.strictEqual(absAfter.state, absBefore.state, 'Absorption state ne doit pas changer');
+  assert.strictEqual(absAfter.status, absBefore.status, 'Absorption status ne doit pas changer');
+  assert.deepStrictEqual(absAfter.braking, absBefore.braking, 'Absorption braking ne doit pas changer');
+  assert.strictEqual(after.clinicalSynthesisV2.clinicalProfile['Absorption'].severity, before.clinicalSynthesisV2.clinicalProfile['Absorption'].severity, 'Absorption severity ne doit pas changer');
 });
 test('TEST 17 — GUARD : NORMS/NORMS_V2/THRESHOLDS/QUALITY_DIAGNOSTIC_VARIABLES_V1 restent deep-equal à HEAD (aucun seuil, aucune norme, aucune clé inventée)', () => {
   assert.deepStrictEqual(NORMS, baseSandbox.NORMS);
@@ -174,7 +185,12 @@ test('TEST 17 — GUARD : NORMS/NORMS_V2/THRESHOLDS/QUALITY_DIAGNOSTIC_VARIABLES
   assert.deepStrictEqual(QUALITY_DIAGNOSTIC_VARIABLES_V1, baseSandbox.QUALITY_DIAGNOSTIC_VARIABLES_V1);
 });
 test('TEST 18 — GUARD : les 8 moteurs HYP-XX-01 + computeCsmV2 + computeHypForceKpi restent BYTE-IDENTIQUES à HEAD', () => {
-  const fns = ['computeHypExplosivity01', 'computeHypAbsorption01', 'computeHypForce01', 'computeHypMobility01',
+  // computeHypAbsorption01 exclue : MISSION P1 BIS (ultérieure, sans rapport avec cette mission P0
+  // NORMS) modifie légitimement son sous-domaine E (Réception/Impact, cf. computeHypAbsorption
+  // ReceptionImpact) pour intégrer cmj_landing_peak_force — les 4 autres sous-domaines (braking/
+  // capaciteEcc/strategie/reactive/asymetrie) restent byte-identiques, vérifiés par la suite dédiée
+  // de cette mission ultérieure (mission_cmj_landing_peak_force_absorption_tests.js GUARD 3).
+  const fns = ['computeHypExplosivity01', 'computeHypForce01', 'computeHypMobility01',
     'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01', 'computeHypEndurance01',
     'computeHypForceKpi', 'computeCsmV2'];
   fns.forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' a été modifiée par cette mission — interdit'));
