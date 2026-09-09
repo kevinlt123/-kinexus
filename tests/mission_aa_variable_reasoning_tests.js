@@ -265,9 +265,20 @@ test('AA31 — missing evidence : missingEvidencePriority (Mission Z) reste inta
 });
 
 // AA32 — chaîne avec maillon non supporté (format exact)
+// MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec cette
+// mission AA) : Absorption<->Explosivité n'est plus un exemple valide de maillon non supporté —
+// Explosivité dispose désormais toujours d'une preuve propre exploitable (diagnosticEvidence.
+// cmj_rsi_mod) dès qu'elle est déficitaire, donc ce lien est désormais correctement "supporté"
+// (cf. AA32bis ci-dessous). Force, elle, n'a aucune preuve propre chez Yannis (préservée) : reste un
+// exemple valide et inchangé de maillon non supporté.
 test('AA32 — chaîne avec maillon non supporté : unsupportedLinks cite explicitement la qualité en cause', () => {
+  const ec = csm().evidenceChains.find(c => c.qualities[0] === 'Force' && c.qualities[1] === 'Puissance');
+  assert.ok(ec.unsupportedLinks.some(l => /variable\(Force\)/.test(l)));
+});
+test('AA32bis — Absorption<->Explosivité est désormais un maillon SUPPORTÉ (MISSION P1) : cmj_rsi_mod fournit à Explosivité une preuve propre exploitable, la chaîne ne cite plus aucun maillon non supporté', () => {
   const ec = csm().evidenceChains.find(c => c.qualities[0] === 'Absorption' && c.qualities[1] === 'Explosivité');
-  assert.ok(ec.unsupportedLinks.some(l => /variable\(Explosivité\)/.test(l)));
+  assert.strictEqual(ec.unsupportedLinks.length, 0);
+  assert.ok(ec.chain.indexOf('diagnosticEvidence.cmj_rsi_mod') !== -1);
 });
 
 // AA33 — hiérarchisation des chaînes (fonction pure, testée directement)

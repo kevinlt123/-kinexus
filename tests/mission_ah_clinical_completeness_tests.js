@@ -256,9 +256,9 @@ test('AH35 — Force : completenessStatus COMPLETE, mais P0/P1/P2 structurels ab
   assert.strictEqual(yc.clinicalProfile['Force'].severity, 'preserved');
   assert.strictEqual(csmV2QualityGenuinelyTested('Force', yc.symmetryEvidence), true);
 });
-test('AH36 — Explosivité (Yannis) : NOT_DETERMINED confirmé -- pourquoi ? clinicalEvidenceHierarchy/clinicalCertainty (computeCsmV2, LOCKED, jamais modifié) ne branchent pas cmj_rsi_mod pour Explosivité malgré sa promotion en preuve PRIMARY (MISSION_HYP_EXP01_RSI_MOD, sans rapport avec Mission AH -- limitation documentée, cf. AD23) ; le gap P0 (aucune variable diagnostique classifiable) a en revanche disparu, cmj_rsi_mod étant désormais classifiable', () => {
-  assert.strictEqual(audit['Explosivité'].completenessStatus, 'NOT_DETERMINED');
-  assert.strictEqual(yc.clinicalEvidenceHierarchy['Explosivité'].verdict, 'AUCUNE_PREUVE_DIAGNOSTIQUE');
+test('AH36 — Explosivité (Yannis) : COMPLETE désormais confirmé -- MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec Mission AH) a comblé la limitation documentée en AD23 (clinicalEvidenceHierarchy/clinicalCertainty ne branchaient pas cmj_rsi_mod pour Explosivité malgré sa promotion en preuve PRIMARY) ; le gap P0 (aucune variable diagnostique classifiable) avait déjà disparu depuis MISSION_HYP_EXP01_RSI_MOD, cmj_rsi_mod étant classifiable', () => {
+  assert.strictEqual(audit['Explosivité'].completenessStatus, 'COMPLETE');
+  assert.strictEqual(yc.clinicalEvidenceHierarchy['Explosivité'].verdict, 'DIAGNOSTIC_OBJECTIVE');
   assert.ok(!audit['Explosivité'].priorityGaps.some(g => g.level === 'P0'), 'le gap P0 doit avoir disparu : cmj_rsi_mod est désormais classifiable');
 });
 test('AH37 — Endurance (Yannis) : NOT_DETERMINED confirmé — Heel Raise (seul classifiable) ne suffit pas seul (données actuelles insuffisantes) ; Repeated Hop (5 variables) n\'apporte AUCUNE valeur classifiable aujourd\'hui', () => {

@@ -275,7 +275,10 @@ test('AG35 — csmV2ReportInformationalTestsHtml renvoie une chaîne vide si tou
 
 // ═══════════════════════════ AG36-AG40 — PRIORITÉS ══════════════════════════════════════════════════
 test('AG36 — "Ce que je ferais ensuite" affiche exactement min(3, clinicalActionPlan.length) priorités numérotées', () => {
-  assert.strictEqual(yc.clinicalActionPlan.length, 4);
+  // 4 -> 5 suite à MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport
+  // avec cette mission AG) : Explosivité, désormais 'explained' (cmj_rsi_mod reconnecté), rejoint
+  // légitimement le plan d'action au même titre que les autres qualités déjà expliquées.
+  assert.strictEqual(yc.clinicalActionPlan.length, 5);
   const section = csmV2ReportNextStepsHtml(yc.clinicalActionPlan);
   ['Priorité 1', 'Priorité 2', 'Priorité 3'].forEach(p => assert.ok(section.indexOf(p) !== -1));
   assert.strictEqual(section.indexOf('Priorité 4'), -1);

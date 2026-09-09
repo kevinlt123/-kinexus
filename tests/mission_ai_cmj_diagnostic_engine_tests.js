@@ -179,8 +179,8 @@ test('AI19 — Explosivité : la relation Réactivité->Explosivité (sldj_rsi, 
   assert.strictEqual(chain['Explosivité'].classifiableDiagnosticVariables.length, 1);
   assert.strictEqual(chain['Explosivité'].classifiableDiagnosticVariables[0].variableKey, 'cmj_rsi_mod', 'le déblocage vient de cmj_rsi_mod, jamais de la relation Réactivité->Explosivité');
 });
-test('AI20 — Explosivité : completenessStatus reste NOT_DETERMINED — jamais forcée à COMPLETE/PARTIAL sans preuve réelle (computeCsmV2 LOCKED, jamais modifié, ne branche pas cmj_rsi_mod dans clinicalEvidenceHierarchy — cf. AD23 — malgré diagnosticStatus=classifiable_absolute côté chain)', () => {
-  assert.strictEqual(chain['Explosivité'].completenessStatus, 'NOT_DETERMINED');
+test('AI20 — Explosivité : completenessStatus devient COMPLETE — MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec cette mission AI) a branché cmj_rsi_mod dans clinicalEvidenceHierarchy (cf. AD23), désormais cohérent avec diagnosticStatus=classifiable_absolute côté chain (les deux couches convergent, plus de désynchronisation)', () => {
+  assert.strictEqual(chain['Explosivité'].completenessStatus, 'COMPLETE');
   // 'modere' -> 'majeur' suite à MISSION_HYP_EXP01_RSI_MOD (sans rapport avec cette mission).
   assert.strictEqual(yc.clinicalProfile['Explosivité'].severity, 'majeur');
 });

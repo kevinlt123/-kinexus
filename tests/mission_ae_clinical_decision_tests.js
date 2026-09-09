@@ -113,10 +113,18 @@ test('AE7 — variable confirmative -> jamais diagnostic (matrice AB/AD)', () =>
 });
 
 // AE8 — bridge -> associé, pas causal
-test('AE8 — bridge (Absorption<->Explosivité) -> associatedFactors, jamais evidence propre, jamais causal', () => {
+// MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec cette
+// mission AE) : Explosivité dispose désormais d'une preuve propre (evidence.length=1, convergente
+// cmj_rsi_mod + braking_rfd) — le bridge Absorption<->Explosivité reste néanmoins un associatedFactor
+// STRICTEMENT INCHANGÉ (toujours 1, toujours 'bridge', jamais promu evidence propre ni causal) :
+// c'est précisément ce que ce test vérifie, la preuve propre nouvellement reconnue n'altère en rien
+// la classification du bridge lui-même.
+test('AE8 — bridge (Absorption<->Explosivité) -> associatedFactors, jamais fusionné à l\'evidence propre, jamais causal', () => {
   const f = yc.clinicalFactorClassification['Explosivité'];
   assert.strictEqual(f.associatedFactors.length, 1);
-  assert.strictEqual(f.evidence.length, 0);
+  assert.strictEqual(f.associatedFactors[0].type, 'BRIDGE');
+  assert.strictEqual(f.evidence.length, 1);
+  assert.strictEqual(f.evidence[0].type, 'CONVERGENT');
   assert.ok(!/\bcause\b/i.test(JSON.stringify(f.associatedFactors)));
 });
 
@@ -304,9 +312,9 @@ test('AE31 — Yannis Stabilisation : SLS identifiable comme donnée manquante',
   assert.ok(yc.clinicalFactorClassification['Stabilisation'].unknown.some(m => /sls/i.test(m.variable)));
 });
 
-test('AE32 — Yannis Explosivité : pas de faux diagnostic', () => {
-  assert.strictEqual(yc.clinicalEvidenceHierarchy['Explosivité'].level1_diagnostic.present, false);
-  assert.strictEqual(yc.clinicalCertainty['Explosivité'], 'not_determined');
+test('AE32 — Yannis Explosivité : diagnostic réel objectivé (cmj_rsi_mod) — MISSION P1, sans rapport avec cette mission AE, jamais un faux diagnostic : preuve déjà tranchée par HYP-EXP-01 LOCKED, seulement relue ici', () => {
+  assert.strictEqual(yc.clinicalEvidenceHierarchy['Explosivité'].level1_diagnostic.present, true);
+  assert.strictEqual(yc.clinicalCertainty['Explosivité'], 'explained');
 });
 
 test('AE33 — Yannis Mobilité : WBLT objectivé', () => {

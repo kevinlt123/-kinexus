@@ -8470,6 +8470,32 @@ function computeCsmV2ClinicalProfile(absoluteEvidence,symmetryEvidence,fusedDiss
       hypId:hyp?hyp.hypId:null
     };
     if(q==='Force')profile[q].rapidForceDeficit=csmV2ForceRapidDeficit(symmetryEvidence['Force']);
+    // MISSION P1 — RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2 : keyFindings n'est
+    // alimenté ci-dessus QUE par symmetryEvidence (axe LSI D/G) — structurellement vide pour
+    // Explosivité quand le déficit est porté par cmj_rsi_mod (CMJ bilatéral, "aucune asymétrie
+    // documentée", cf. HYP-EXP-01 `precision.note`, jamais modifiée ici). HYP-EXP-01 a pourtant déjà
+    // classifié cmj_rsi_mod comme preuve diagnostique PRIMARY (diagnosticEvidence.cmj_rsi_mod,
+    // role:'primary', LOCKED, jamais recalculé ici) : on relit ce statut déjà tranché tel quel — ni
+    // seuil, ni norme, ni classification nouvelle — pour combler le seul chaînon manquant
+    // (keyFindings -> explanatoryEvidence -> directEvidence -> clinicalEvidenceHierarchy/
+    // clinicalCertainty/completenessStatus, tous des relectures pures en aval, jamais modifiées).
+    // Ciblé exclusivement sur Explosivité (mission §5 : "ne pas généraliser à toutes les variables") ;
+    // n'ajoute une entrée que si HYP-EXP-01 a RÉELLEMENT classifié cmj_rsi_mod déficitaire (jamais si
+    // 'indisponible'/'normal' — cas B/C/D de la mission restent donc `non_classifiable`/'preservee'
+    // exactement comme avant, aucune fausse preuve). `lsi:null` (aucune asymétrie réelle, contrairement
+    // aux autres entrées de keyFindings) — cf. guard dédié dans les 2 narrations "asymétries D/G"
+    // (Profil E / Grande Synthèse) qui filtrent désormais explicitement sur lsi!=null pour ne jamais
+    // compter à tort cette preuve absolue parmi des asymétries D/G.
+    if(q==='Explosivité'){
+      var rsiEvidence=hyp&&hyp.diagnosticEvidence&&hyp.diagnosticEvidence.cmj_rsi_mod;
+      if(rsiEvidence&&rsiEvidence.status==='deficitaire'){
+        profile[q].keyFindings=profile[q].keyFindings.concat([{
+          variable:'diagnosticEvidence.cmj_rsi_mod',
+          left:rsiEvidence.raw,right:null,lsi:null,asymmetryPercent:null,
+          status:'deficient',source:rsiEvidence.source
+        }]);
+      }
+    }
   });
   return profile;
 }
@@ -8944,7 +8970,11 @@ function csmV2ReportTransversaleProfiles(clinicalProfile,mobilityYbt,symmetryEvi
   if(mobilityYbt&&mobilityYbt.supported){
     profiles.push({id:'D',sentence:mobilityYbt.sentence});
   }
-  var unipodalQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].keyFindings&&clinicalProfile[q].keyFindings.length>0;});
+  // MISSION P1 : keyFindings peut désormais contenir une preuve ABSOLUE sans axe D/G (Explosivité /
+  // diagnosticEvidence.cmj_rsi_mod, lsi:null, cf. computeCsmV2ClinicalProfile) — ce texte affirme
+  // explicitement une "asymétrie D/G objectivée" : ne compter qu'une qualité ayant RÉELLEMENT au
+  // moins une entrée avec un LSI (lsi!=null), jamais une preuve absolue sans asymétrie.
+  var unipodalQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].keyFindings&&clinicalProfile[q].keyFindings.some(function(k){return k.lsi!=null;});});
   if(unipodalQualities.length>=3){
     profiles.push({id:'E',sentence:"Plusieurs qualités présentent des asymétries D/G objectivées ("+csmV2JoinList(unipodalQualities.map(csmV2QualityDisplayLabel))+"), ce qui souligne le caractère préférentiellement unipodal des déficits observés."});
   }
@@ -8988,7 +9018,11 @@ function csmV2ReportGrandeSynthese(clinicalProfile,synthesis){
   if(!rapidLabels.length)return null;
   var parts=["La force maximale apparaît relativement préservée.",
     "Les déficits deviennent en revanche nettement plus importants lorsque la tâche impose "+csmV2JoinList(rapidLabels)+"."];
-  var unipodalQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].keyFindings&&clinicalProfile[q].keyFindings.length>0;});
+  // MISSION P1 : keyFindings peut désormais contenir une preuve ABSOLUE sans axe D/G (Explosivité /
+  // diagnosticEvidence.cmj_rsi_mod, lsi:null, cf. computeCsmV2ClinicalProfile) — ce texte affirme
+  // explicitement une "asymétrie D/G objectivée" : ne compter qu'une qualité ayant RÉELLEMENT au
+  // moins une entrée avec un LSI (lsi!=null), jamais une preuve absolue sans asymétrie.
+  var unipodalQualities=HYP_CSM_QUALITIES.filter(function(q){return clinicalProfile[q].keyFindings&&clinicalProfile[q].keyFindings.some(function(k){return k.lsi!=null;});});
   if(unipodalQualities.length>=3)parts.push("Ce profil est particulièrement marqué lors des tâches unipodales.");
   return parts.join(' ');
 }

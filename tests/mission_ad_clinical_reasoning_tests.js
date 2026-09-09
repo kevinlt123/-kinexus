@@ -262,15 +262,16 @@ test('AD22 — Stabilisation Yannis : partiellement expliquée (mécanisme réel
   ['sls', 'eo_surface', 'ef_surface', 'strobo_surface'].forEach(k => assert.ok(unknown.some(u => u.toLowerCase().indexOf(k.replace('_surface', '').replace('eo', 'eyes open').replace('ef', 'eyes closed')) !== -1) || true));
 });
 
-test('AD23 — Explosivité Yannis : clinicalEvidenceHierarchy/clinicalCertainty (computeCsmV2, LOCKED, jamais modifié) restent AUCUNE_PREUVE_DIAGNOSTIQUE/not_determined -- MISSION_HYP_EXP01_RSI_MOD a rendu cmj_rsi_mod classifiable dans la matrice dérivée mais computeCsmV2 ne l\'y branche pas (limitation documentée, pas un bug de cette mission-ci)', () => {
+test('AD23 — Explosivité Yannis : clinicalEvidenceHierarchy/clinicalCertainty reconnaissent désormais cmj_rsi_mod (DIAGNOSTIC_OBJECTIVE/explained) -- MISSION P1 (RECONNECTER cmj_rsi_mod À LA CHAÎNE DE PREUVE CSM V2.2, sans rapport avec la mission AD) a comblé exactement la limitation documentée ci-dessous : computeCsmV2ClinicalProfile relit désormais hyp.diagnosticEvidence.cmj_rsi_mod.status (LOCKED, jamais recalculé) pour alimenter keyFindings quand HYP-EXP-01 le classe déjà déficitaire', () => {
   const c = csm(YANNIS_DATA, YANNIS_NORM_SEL);
-  assert.strictEqual(c.clinicalEvidenceHierarchy['Explosivité'].verdict, 'AUCUNE_PREUVE_DIAGNOSTIQUE');
-  assert.strictEqual(c.clinicalCertainty['Explosivité'], 'not_determined');
-  // MISSION_HYP_EXP01_RSI_MOD (sans rapport avec la mission AD) : cmj_rsi_mod, classifiable et
-  // déficitaire chez Yannis, est désormais preuve diagnostique PRIMARY de HYP-EXP-01 -- la matrice
-  // dérivée (CSM_V2_CLINICAL_VARIABLE_MATRIX) le reflète fidèlement. computeCsmV2 (LOCKED, jamais
-  // modifié) ne consulte cependant pas ce champ pour Explosivité : verdict/certainty ci-dessus
-  // restent donc inchangés, ce qui prouve que l'isolation entre les deux couches est respectée.
+  // AVANT MISSION P1 (limitation historique, désormais corrigée) : cmj_rsi_mod, classifiable et
+  // déficitaire chez Yannis, était déjà preuve diagnostique PRIMARY de HYP-EXP-01 et la matrice
+  // dérivée (CSM_V2_CLINICAL_VARIABLE_MATRIX) le reflétait fidèlement, mais computeCsmV2 ne
+  // consultait pas ce champ pour Explosivité (verdict AUCUNE_PREUVE_DIAGNOSTIQUE/certainty
+  // not_determined malgré un diagnostic HYP déjà objectivé). MISSION P1 relit ce champ déjà
+  // tranché, sans jamais recalculer de nouvelle classification.
+  assert.strictEqual(c.clinicalEvidenceHierarchy['Explosivité'].verdict, 'DIAGNOSTIC_OBJECTIVE');
+  assert.strictEqual(c.clinicalCertainty['Explosivité'], 'explained');
   const diag = CSM_V2_CLINICAL_VARIABLE_MATRIX.byQuality['Explosivité'].diagnostic;
   assert.strictEqual(diag.find(v => v.variableKey === 'cmj_rsi_mod').classifiability, 'exploitable');
   assert.ok(diag.filter(v => v.variableKey !== 'cmj_rsi_mod').every(v => v.classifiability === 'non_classifiable'));
