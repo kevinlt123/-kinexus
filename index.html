@@ -5686,16 +5686,48 @@ function computeHypAbsorptionReactive(testData,pop,age,normSelections){
     dj_contact_time:{raw:ctRaw,status:null,classifiable:false} // aucun seuil dj_contact_time dans index.html.
   };
 }
-// Sous-domaine E (Réception/Impact, SLLT/Landing) — RÉVISÉ (MISSION_HYP_ABS01_ABSORPTION_
-// CORRECTION) : les valeurs brutes de Peak Landing Force (landing_bi, primary) et Loading Rate
-// (sllt, fallback) sont désormais réellement EXTRAITES quand elles sont disponibles — jamais
-// inventées auparavant, mais jamais non plus lues (l'ancienne version retournait un objet statique
-// {available:false} sans même consulter testData). AUCUN seuil/norme n'existe pour ces 3 clés
-// (ni NORMS ni THRESHOLDS ni NORMS_V2 — vérifié, cf. guards) : computeStatusWithNormsV2 retourne
-// donc systématiquement status:null ici, quelle que soit la donnée — jamais une classification
-// inventée. Time To Stabilization (landing_bi_tts/sllt_tts) reste délibérément EXCLU (gel
-// HYP-STA-01 : Stabilisation, jamais Absorption) — cette mission ne déplace aucune variable.
+// MISSION P1 BIS — INTÉGRATION LOCALE DE cmj_landing_peak_force DANS LANDING/ABSORPTION.
+// pctStatus()/applyThr() (LOCKED, jamais touchés ici) supposent systématiquement "valeur
+// ascendante des bandes NORMS = meilleure" — correct pour cmj_braking_rfd/cmj_depth/cmj_rsi_mod/etc.
+// (tous dir:'max'), mais cmj_landing_peak_force est dir:'min' (TBK.cmj.kpis, LOCKED, jamais
+// modifié) : une force de réception PLUS FAIBLE est cliniquement MEILLEURE. Utiliser applyThr() tel
+// quel inverserait la classification (le pire atterrissage serait déclaré 'vert'). Plutôt que de
+// généraliser pctStatus()/applyThr() (interdit, mission P1 STOP précédente), ce classificateur
+// LOCAL, strictement scopé à cette seule variable, reproduit EXACTEMENT le même principe déjà
+// utilisé par la branche THRESHOLDS/dir==='min' de applyThr() (jamais une invention), appliqué
+// cette fois aux 3 mêmes points de coupure internes (P25/P50/P75) que pctStatus() utilise déjà pour
+// TOUTES les variables NORMS (P10/P90 déjà non consultés par pctStatus() lui-même) — seul le sens
+// de comparaison est inversé. Aucun nouveau seuil, aucune nouvelle norme : relit exclusivement
+// NORMS[pop].cmj_landing_peak_force déjà existant, via resolveBands() déjà existant.
+function csmAbsorptionCmjLandingPeakForceStatus(bands,val){
+  if(val==null||typeof val!=='number'||!isFinite(val)||!bands)return null;
+  if(val<=bands[1])return'vert';
+  if(val<=bands[2])return'jaune';
+  if(val<=bands[3])return'orange';
+  return'rouge';
+}
+// Sous-domaine E (Réception/Impact) — RÉVISÉ (MISSION_HYP_ABS01_ABSORPTION_CORRECTION puis MISSION
+// P1 BIS) : les valeurs brutes de Peak Landing Force (landing_bi)/Peak Landing Force+Loading Rate
+// (sllt) restent réellement EXTRAITES mais NON CLASSIFIABLES (aucun seuil/norme pour ces 3 clés —
+// inchangé, vérifié par guard). cmj_landing_peak_force (phase 'landing' du CMJ lui-même, VALD
+// "Peak Landing Force", clé TBK distincte de landing_bi.peak_landing_force et
+// sllt.peak_landing_force — AUCUN alias créé entre elles, cf. mission §6) dispose de NORMS réelles
+// dans 4 populations (bball2425_ncaa_m/nbl/euroleague/bleague) : elle devient donc la preuve
+// diagnostique PRIMARY de `landing`, seule variable à déterminer state/status de cette composante.
+// Time To Stabilization (landing_bi_tts/sllt_tts) reste délibérément EXCLU (gel HYP-STA-01 :
+// Stabilisation, jamais Absorption).
 function computeHypAbsorptionReceptionImpact(testData,pop,age,normSelections){
+  var cmjData=(testData||{}).cmj;
+  var cmjPlfExtracted=(cmjData&&cmjData.active)?bestVal((cmjData.trials||{}).landing_peak_force,testKpiDir('cmj','landing_peak_force')):null;
+  // Donnée invalide (non numérique/non finie, ex. Number('abc')=NaN via bestVal) : jamais exposée
+  // comme `raw` (NaN n'est pas JSON-safe et serait indistinguable d'une valeur réellement absente)
+  // — traitée comme une valeur non disponible, avec un motif dédié (mission §5/§15.5, "comportement
+  // prudent").
+  var cmjPlfInvalid=cmjPlfExtracted!=null&&(typeof cmjPlfExtracted!=='number'||!isFinite(cmjPlfExtracted));
+  var cmjPlfRaw=cmjPlfInvalid?null:cmjPlfExtracted;
+  var cmjPlfBands=(pop&&NORMS[pop]&&NORMS[pop].cmj_landing_peak_force!=null)?resolveBands(NORMS[pop].cmj_landing_peak_force,age):null;
+  var cmjPlfSt=csmAbsorptionCmjLandingPeakForceStatus(cmjPlfBands,cmjPlfRaw);
+
   var landingBi=(testData||{}).landing_bi,sllt=(testData||{}).sllt;
   var plfRaw=(landingBi&&landingBi.active)?bestVal((landingBi.trials||{}).peak_landing_force,testKpiDir('landing_bi','peak_landing_force')):null;
   var plfRes=plfRaw!=null?computeStatusWithNormsV2('landing_bi_peak_landing_force','landing_bi',plfRaw,pop,age,normSelections):null;
@@ -5709,16 +5741,26 @@ function computeHypAbsorptionReceptionImpact(testData,pop,age,normSelections){
   var slltLrResD=slltLrRawD!=null?computeStatusWithNormsV2('sllt_loading_rate','sllt',slltLrRawD,pop,age,normSelections):null;
   var slltLrResG=slltLrRawG!=null?computeStatusWithNormsV2('sllt_loading_rate','sllt',slltLrRawG,pop,age,normSelections):null;
   var variables={
-    peak_landing_force:{raw:plfRaw,unit:'N/kg',test:'landing_bi',role:'primary',status:plfRes?plfRes.status:null,classifiable:!!(plfRes&&plfRes.status!=null),source:plfRes?plfRes.source:null},
-    sllt_peak_landing_force:{rawD:slltPlfRawD,rawG:slltPlfRawG,unit:'N/kg',test:'sllt',role:'fallback',status:null,classifiable:!!((slltPlfResD&&slltPlfResD.status!=null)||(slltPlfResG&&slltPlfResG.status!=null)),source:(slltPlfResD&&slltPlfResD.source)||(slltPlfResG&&slltPlfResG.source)||null},
-    sllt_loading_rate:{rawD:slltLrRawD,rawG:slltLrRawG,unit:'N/s',test:'sllt',role:'fallback',status:null,classifiable:!!((slltLrResD&&slltLrResD.status!=null)||(slltLrResG&&slltLrResG.status!=null)),source:(slltLrResD&&slltLrResD.source)||(slltLrResG&&slltLrResG.source)||null}
+    cmj_landing_peak_force:{raw:cmjPlfRaw,value:cmjPlfRaw,unit:'N/kg',dir:'min',test:'cmj',component:'landing',role:'primary',status:cmjPlfSt,classifiable:cmjPlfSt!=null,available:cmjPlfRaw!=null,source:cmjPlfBands?'NORMS':null,normPopulation:cmjPlfBands?pop:null,normValues:cmjPlfBands},
+    peak_landing_force:{raw:plfRaw,unit:'N/kg',test:'landing_bi',role:'secondary',status:plfRes?plfRes.status:null,classifiable:!!(plfRes&&plfRes.status!=null),source:plfRes?plfRes.source:null},
+    sllt_peak_landing_force:{rawD:slltPlfRawD,rawG:slltPlfRawG,unit:'N/kg',test:'sllt',role:'secondary',status:null,classifiable:!!((slltPlfResD&&slltPlfResD.status!=null)||(slltPlfResG&&slltPlfResG.status!=null)),source:(slltPlfResD&&slltPlfResD.source)||(slltPlfResG&&slltPlfResG.source)||null},
+    sllt_loading_rate:{rawD:slltLrRawD,rawG:slltLrRawG,unit:'N/s',test:'sllt',role:'secondary',status:null,classifiable:!!((slltLrResD&&slltLrResD.status!=null)||(slltLrResG&&slltLrResG.status!=null)),source:(slltLrResD&&slltLrResD.source)||(slltLrResG&&slltLrResG.source)||null}
   };
-  var anyRaw=plfRaw!=null||slltPlfRawD!=null||slltPlfRawG!=null||slltLrRawD!=null||slltLrRawG!=null;
-  // 'available' = au moins une donnée brute a pu être extraite (jamais un jugement de qualité) ;
-  // le statut de la composante reste TOUJOURS non_determinable ici, avec ou sans donnée brute,
-  // faute de tout référentiel classifiable — cf. mission §4/§5 (une donnée disponible sans norme
-  // ne doit jamais devenir preserved/deficient/watch).
-  return{available:anyRaw,state:'non_determinable',status:null,reason:'aucun_seuil_disponible',variables:variables};
+  var anyRaw=cmjPlfRaw!=null||plfRaw!=null||slltPlfRawD!=null||slltPlfRawG!=null||slltLrRawD!=null||slltLrRawG!=null;
+  // state/status de `landing` : PILOTÉS EXCLUSIVEMENT par cmj_landing_peak_force (seule variable
+  // classifiable de la composante, primary sans quorum — même principe déjà validé pour cmj_rsi_mod
+  // dans HYP-EXP-01). Aucune autre variable (peak_landing_force/sllt_*) ne peut jamais influencer ce
+  // statut tant qu'elle reste non classifiable (mission §9/§10 : "ne pas créer de quorum").
+  var landingState,landingReason;
+  if(cmjPlfSt!=null){
+    landingState=(cmjPlfSt==='orange'||cmjPlfSt==='rouge')?'retenue_faible':'absente';
+    landingReason=null;
+  }else{
+    landingState='non_determinable';
+    landingReason=cmjPlfInvalid?'cmj_landing_peak_force_valeur_invalide':(cmjPlfRaw==null?'cmj_landing_peak_force_indisponible':(cmjPlfBands==null?'population_non_couverte':'aucun_seuil_disponible'));
+  }
+  var landingStatus=hypStatusFromState(landingState,(cmjPlfSt==='orange'||cmjPlfSt==='rouge')?[cmjPlfSt]:[]);
+  return{available:anyRaw,state:landingState,status:landingStatus,reason:landingReason,variables:variables};
 }
 // Asymétrie de freinage — modificateur en lecture seule, jamais générateur (HYP-ABS-01_V2.md §9).
 // Relit computeAsymEngine, déjà figé et déjà utilisé ailleurs (computeMouvementAnalysis) — aucun
@@ -5801,7 +5843,7 @@ function computeHypAbsorption01(testData,normPop,normAge,normSelections){
     precision:asymetrie,
     limitations:[
       "cmj_braking_impulse : aucun seuil (ni NORMS ni THRESHOLDS) -> jamais classifiable, jamais compté dans les candidats évaluables du Niveau 1.",
-      "Sous-domaine E (Réception/Impact, SLLT/Landing) : landing_bi_peak_landing_force/sllt_peak_landing_force/sllt_loading_rate n'ont aucun seuil/norme (ni NORMS ni THRESHOLDS ni NORMS_V2) -> `landing` reste non_determinable même quand les valeurs brutes sont disponibles (MISSION_HYP_ABS01_ABSORPTION_CORRECTION, landing.variables expose les valeurs brutes réellement extraites, jamais une classification inventée).",
+      "Sous-domaine E (Réception/Impact) : landing_bi_peak_landing_force/sllt_peak_landing_force/sllt_loading_rate n'ont toujours aucun seuil/norme (ni NORMS ni THRESHOLDS ni NORMS_V2) -> jamais classifiables, jamais un quorum créé avec cmj_landing_peak_force (MISSION P1 BIS). cmj_landing_peak_force (NORMS réelles, 4 populations bball2425) est désormais la SEULE variable qui détermine `landing` : classification locale dir-aware (dir:'min', csmAbsorptionCmjLandingPeakForceStatus) car applyThr()/pctStatus() (LOCKED, non modifiés) supposent une classification ascendante incompatible avec cette variable en l'état.",
       "Aucun mécanisme de support gradué documenté pour cette qualité, contrairement aux 7 autres moteurs HYP."
     ],
     sousDomaines:{
