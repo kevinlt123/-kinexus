@@ -16428,7 +16428,7 @@ function AnalyseView(props){
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
         (mouvementAnalysis?[['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
-      view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge}),
+      view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
       // "Fil de Raisonnement" (05/08) : moteur d'explication générique de Kinexus — CMJ est son
       // premier cas d'usage, via l'adaptateur buildRaisonnementBoardCMJ (formatage pur, aucune
@@ -17112,6 +17112,14 @@ function ExpertView(props){
   var res=props.res,evFns=props.evFns,td=props.testData||{},qd=props.questData||{};
   var fSc=res.functionScores,sysSc=res.systemScores,tSt=res.testStatuses,pri=res.priorities;
   var athlete=props.athlete||{},athleteAge=props.athleteAge;
+  // FIX câblage UI (Mission UX/UI V1) : normSelections n'était jamais transmis à ExpertView ni
+  // calculé ici, alors que le sous-onglet Variables l'utilise déjà (kpiStatus(...,normSelections)
+  // plus bas) — ReferenceError non intercepté (pas d'ErrorBoundary) qui démontait tout l'écran
+  // d'Analyse au clic sur Variables. Reçu tel quel depuis AnalyseView (qui le calcule déjà pour
+  // computeMoteur via effectiveNormSelections), comme le fait ResultsBrowser pour le sous-onglet
+  // Résultats. Aucun recalcul, aucune nouvelle règle de sélection normative : simple câblage de
+  // prop manquante.
+  var normSelections=props.normSelections;
   var varRelKpis=[];
   Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).forEach(function(tk){
     var test=TBK[tk];if(!test)return;
