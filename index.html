@@ -15716,8 +15716,12 @@ function AthleteForm(props){
 function AthleteProfile(props){
   var a=props.athlete;var [confirmDel,setConfirmDel]=useState(null);
   var age=a.dateNaissance?Math.floor((Date.now()-new Date(a.dateNaissance))/(1000*60*60*24*365.25)):null;
+  // Dernier bilan (Mission UX/UI V1, Phase 2 — §1) : simple lecture du dernier élément déjà
+  // présent dans a.bilans (même ordre que la liste ci-dessous), aucune nouvelle donnée.
+  var lastBilan=a.bilans&&a.bilans.length?a.bilans[a.bilans.length-1]:null;
   return h('div',null,
-    h('div',{style:{display:'flex',alignItems:'center',gap:14,marginBottom:20}},
+    props.onBack&&h('button',{onClick:props.onBack,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0,marginBottom:14,display:'flex',alignItems:'center',gap:4}},'← Retour aux athlètes'),
+    h('div',{style:{display:'flex',alignItems:'center',gap:14,marginBottom:8}},
       h('div',{style:{width:52,height:52,borderRadius:'50%',background:'linear-gradient(135deg,'+C.teal+'40,'+C.petrol+'60)',border:'2px solid '+C.teal+'50',display:'flex',alignItems:'center',justifyContent:'center',color:C.teal,fontWeight:800,fontSize:18}},a.prenom[0]+a.nom[0]),
       h('div',{style:{flex:1}},
         h('h2',{style:{margin:'0 0 2px',fontSize:20,fontWeight:800,color:C.text}},a.prenom+' '+a.nom),
@@ -15747,8 +15751,9 @@ function AthleteProfile(props){
           })
         )
       ),
-      h('div',{style:{display:'flex',gap:8}},h(Btn,{small:true,onClick:props.onEdit},'✎'),h(Btn,{primary:true,small:true,onClick:props.onNewBilan},'+ Bilan'))
+      h('div',{style:{display:'flex',gap:8}},h(Btn,{small:true,onClick:props.onEdit},'✎'),h(Btn,{primary:true,small:true,onClick:props.onNewBilan},'+ Nouveau bilan'))
     ),
+    lastBilan&&h('div',{style:{color:C.muted,fontSize:12,marginBottom:18}},'Dernier bilan : '+new Date(lastBilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+' · '+lastBilan.type+' — '+lastBilan.sousType),
     (!a.bilans||!a.bilans.length)
       ?h(Card,{pad:'36px 24px',style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:13,marginBottom:14}},'Aucun bilan réalisé.'),h(Btn,{primary:true,onClick:props.onNewBilan},'Démarrer un bilan'))
       :h('div',null,
@@ -16119,7 +16124,12 @@ function TestEntry(props){
 
 function AnalyseView(props){
   var bilan=props.bilan,athlete=props.athlete;
-  var [view,setView]=useState('expert');
+  // initialView/initialExpertTab (Mission UX/UI V1, Phase 2) : seed d'affichage uniquement, fournis
+  // par la barre secondaire persistante de App() pour faire atterrir l'utilisateur sur la vue
+  // demandée à l'ouverture du bilan — aucun recalcul, aucune nouvelle donnée : ce sont exactement
+  // les mêmes `view`/`tab` internes qui existaient déjà, seulement pré-remplis. AnalyseView reste
+  // parfaitement utilisable sans ces props (comportement identique à avant : 'expert' par défaut).
+  var [view,setView]=useState(props.initialView||'expert');
   var [validated,setValidated]=useState(bilan.statut==='Validé');
   var [showPrintMenu,setShowPrintMenu]=useState(false);
   var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
@@ -16211,7 +16221,7 @@ function AnalyseView(props){
   var normLbl=athlete.normPopulation?((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):null;
 
   return h('div',{style:{display:'flex',alignItems:'flex-start'}},
-    h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 96px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:96,color:'#fff'}},
+    h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 136px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:136,color:'#fff'}},
       h('div',{style:{display:'flex',alignItems:'center',gap:7,marginBottom:24}},
         h('div',{style:{width:22,height:22,borderRadius:6,background:'linear-gradient(135deg,'+C.teal+',#fff2)',display:'flex',alignItems:'center',justifyContent:'center'}},h('span',{style:{color:'#fff',fontSize:11,fontWeight:900}},'K')),
         h('span',{style:{fontWeight:900,fontSize:12.5,letterSpacing:'-0.02em',color:'#fff'}},'KINEXUS')
@@ -16428,7 +16438,7 @@ function AnalyseView(props){
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
         (mouvementAnalysis?[['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
-      view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel}),
+      view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:props.initialExpertTab}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
       // "Fil de Raisonnement" (05/08) : moteur d'explication générique de Kinexus — CMJ est son
       // premier cas d'usage, via l'adaptateur buildRaisonnementBoardCMJ (formatage pur, aucune
@@ -17105,7 +17115,11 @@ function BilansGlobalView(props){
 }
 
 function ExpertView(props){
-  var [tab,setTab]=useState('fonctions');
+  // initialTab (Mission UX/UI V1, Phase 2) : seed d'affichage fourni par la barre secondaire
+  // persistante (App()), pour faire atterrir sur le sous-onglet correspondant à la vue demandée
+  // (ex. "Qualités" -> 'fonctions', "Tests" -> 'kpi'). Aucun recalcul : mêmes onglets, mêmes
+  // composants, simplement présélectionnés. Comportement inchangé si non fourni ('fonctions').
+  var [tab,setTab]=useState(props.initialTab||'fonctions');
   // Filtre par qualité de l'onglet Variables (mission IMPLEMENTATION_UX_UI_LOT1.md, Objectif 4) —
   // regroupement visuel pur, relit VAR_REL3.measures/estimates déjà existant, ne recalcule rien.
   var [varFilter,setVarFilter]=useState('Toutes');
@@ -17472,6 +17486,17 @@ function App(){
   var [curBilan,setCurBilan]=useState(null);
   var [draft,setDraft]=useState(null);
   var [editAth,setEditAth]=useState(null);
+  // Barre secondaire du bilan (Mission UX/UI V1, Phase 2) : `secondaryView` identifie laquelle des
+  // 7 destinations est active pendant la consultation d'un bilan (screen 'analyse'/'reportPreview').
+  // `navNonce` force un remount de AnalyseView (via sa prop `key` au site de rendu) à chaque clic
+  // sur la barre secondaire, même en recliquant sur la destination déjà active, pour que la vue
+  // interne (view/tab d'AnalyseView/ExpertView, sinon non contrôlée depuis App()) revienne bien à
+  // l'état attendu — sans introduire de deuxième state machine parallèle à `screen` : ce sont deux
+  // informations complémentaires (quel écran, quelle sous-vue de cet écran), pas deux routages
+  // concurrents. Ni l'un ni l'autre ne touche athletes/curId/curBilan ni ne relit/recalcule quoi
+  // que ce soit côté moteur clinique.
+  var [secondaryView,setSecondaryView]=useState('synthese');
+  var [navNonce,setNavNonce]=useState(0);
 
   // Load from Supabase on login
   useEffect(function(){
@@ -17599,6 +17624,29 @@ function App(){
     {key:'analyse',icon:'🧠',label:'Analyse',onClick:function(){setScreen(curBilan&&ca?'analyse':'analyseEmptyState');}},
     {key:'donnees',icon:'⚙',label:'Données',onClick:function(){setScreen('qualityConfig');}}
   ];
+  // Barre secondaire du bilan (Mission UX/UI V1, Phase 2, §2/§3) : 7 destinations, toutes
+  // rattachées aux écrans/vues internes déjà existants (`screen==='analyse'` -> AnalyseView, dont
+  // le sélecteur haut ('expert'/'mouvement'/...) et les 11 sous-onglets d'ExpertView existent déjà
+  // — cette phase ne fait qu'y seeder un point d'atterrissage, jamais de nouvel écran). "Synthèse"
+  // -> onglet 'synthese' ("Synthèse clinique"), "Qualités" -> 'fonctions' (qualités fonctionnelles
+  // déjà affichées là), "Biomécanique" -> vue 'mouvement' existante, "Tests" -> onglet 'kpi'
+  // (Résultats, déjà un tableau de résultats lecture seule), "Body Map" -> onglet 'systemes' (vue
+  // par système musculaire, la plus proche du Body Map tant que la Phase 6 n'a pas fait de la
+  // carte elle-même une vue dédiée — limitation connue, documentée dans le rapport de phase),
+  // "Analyse Expert" -> atterrissage par défaut d'ExpertView (identique à l'ouverture actuelle
+  // d'un bilan, non régroupé avant la Phase 9), "Rapport" -> écran reportPreview déjà existant.
+  var SECONDARY_NAV=[
+    {key:'synthese',label:'Synthèse',target:{screen:'analyse',view:'expert',tab:'synthese'}},
+    {key:'qualites',label:'Qualités',target:{screen:'analyse',view:'expert',tab:'fonctions'}},
+    {key:'biomecanique',label:'Biomécanique',target:{screen:'analyse',view:'mouvement'}},
+    {key:'tests',label:'Tests',target:{screen:'analyse',view:'expert',tab:'kpi'}},
+    {key:'bodymap',label:'Body Map',target:{screen:'analyse',view:'expert',tab:'systemes'}},
+    {key:'rapport',label:'Rapport',target:{screen:'reportPreview'}},
+    {key:'analyseexpert',label:'Analyse Expert',target:{screen:'analyse',view:'expert',tab:null}}
+  ];
+  function goSecondary(item){setSecondaryView(item.key);setNavNonce(function(n){return n+1;});setScreen(item.target.screen);}
+  var secondaryTarget=(SECONDARY_NAV.filter(function(it){return it.key===secondaryView;})[0]||SECONDARY_NAV[0]).target;
+  var showSecondaryNav=(screen==='analyse'||screen==='reportPreview')&&ca&&liveBilan;
   return h('div',{style:{minHeight:'100vh',background:C.bg}},
     h('div',{className:'no-print',style:{background:C.surface,borderBottom:'1px solid '+C.border,padding:'0 18px',display:'flex',alignItems:'center',height:52,position:'sticky',top:0,zIndex:100,gap:8}},
       h('div',{style:{display:'flex',alignItems:'center',gap:8,cursor:'pointer'},onClick:function(){setScreen('home');}},h('div',{style:{width:26,height:26,borderRadius:6,background:'linear-gradient(135deg,'+C.teal+','+C.petrol+')',display:'flex',alignItems:'center',justifyContent:'center'}},h('span',{style:{color:'#fff',fontSize:12,fontWeight:900}},'K')),h('span',{style:{fontWeight:900,fontSize:15,letterSpacing:'-0.02em',color:C.text}},'KINEXUS'),h('span',{style:{color:C.muted,fontSize:9,letterSpacing:'0.1em'}},'Expert')),
@@ -17627,9 +17675,19 @@ function App(){
         );
       })
     ),
+    // Barre secondaire persistante du bilan (Mission UX/UI V1, Phase 2). Visible uniquement en
+    // consultation d'un bilan (Analyse ou Aperçu du rapport), pour un athlète/bilan réellement
+    // sélectionnés — jamais affichée sur les écrans de premier niveau (Accueil/Athlètes/Bilans/
+    // Données), qui n'ont pas de bilan ouvert.
+    showSecondaryNav&&h('div',{className:'no-print',style:{background:C.card,borderBottom:'1px solid '+C.border,padding:'0 18px',display:'flex',alignItems:'center',height:40,position:'sticky',top:96,zIndex:98,gap:2,overflowX:'auto',WebkitOverflowScrolling:'touch'}},
+      SECONDARY_NAV.map(function(it){
+        var active=secondaryView===it.key;
+        return h('button',{key:it.key,onClick:function(){goSecondary(it);},style:{padding:'6px 11px',borderRadius:7,border:'none',background:active?C.petrol+'15':'transparent',color:active?C.petrol:C.muted,fontWeight:active?700:600,fontSize:12,cursor:'pointer',whiteSpace:'nowrap'}},it.label);
+      })
+    ),
     h('div',{style:(screen==='analyse'||screen==='reportPreview')?{maxWidth:1400,margin:'0 auto',padding:'0 0 60px'}:screen==='qualityConfig'?{maxWidth:1100,margin:'0 auto',padding:'0 0 60px'}:screen==='bilansGlobal'?{maxWidth:1000,margin:'0 auto',padding:'22px 16px 80px'}:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
-      screen==='home'&&h(Home,{athletes:athletes,onGoAthletes:function(){setScreen('dashboard');},onGoBilans:function(){setScreen('bilansGlobal');},onNewAthlete:function(){setScreen('newAthlete');},onSelectBilan:function(athleteId,b){setCurId(athleteId);setCurBilan(b);setScreen('analyse');}}),
-      screen==='bilansGlobal'&&h(BilansGlobalView,{athletes:athletes,onSelectBilan:function(athleteId,b){setCurId(athleteId);setCurBilan(b);setScreen('analyse');}}),
+      screen==='home'&&h(Home,{athletes:athletes,onGoAthletes:function(){setScreen('dashboard');},onGoBilans:function(){setScreen('bilansGlobal');},onNewAthlete:function(){setScreen('newAthlete');},onSelectBilan:function(athleteId,b){setCurId(athleteId);setCurBilan(b);setSecondaryView('synthese');setNavNonce(function(n){return n+1;});setScreen('analyse');}}),
+      screen==='bilansGlobal'&&h(BilansGlobalView,{athletes:athletes,onSelectBilan:function(athleteId,b){setCurId(athleteId);setCurBilan(b);setSecondaryView('synthese');setNavNonce(function(n){return n+1;});setScreen('analyse');}}),
       screen==='analyseEmptyState'&&h(Card,{pad:'40px 24px',style:{textAlign:'center',maxWidth:480,margin:'40px auto'}},
         h('div',{style:{fontSize:28,marginBottom:12}},'🧠'),
         h('div',{style:{color:C.text,fontSize:15,fontWeight:700,marginBottom:8}},'Aucun bilan ouvert'),
@@ -17639,10 +17697,10 @@ function App(){
       screen==='dashboard'&&h(Dashboard,{athletes:athletes,onSelect:function(a){setCurId(a.id);setScreen('athlete');},onNew:function(){setScreen('newAthlete');},onDelete:delAth,onOpenConfig:function(){setScreen('qualityConfig');}}),
       screen==='qualityConfig'&&h(QualityConfigView,{onClose:function(){setScreen('home');}}),
       (screen==='newAthlete'||screen==='editAthlete')&&h(AthleteForm,{initial:screen==='editAthlete'?editAth:null,onSave:saveAth,onCancel:function(){setScreen(editAth?'athlete':'dashboard');}}),
-      screen==='athlete'&&ca&&h(AthleteProfile,{athlete:ca,onNewBilan:function(){setScreen('newBilan');},onSelectBilan:function(b){setCurBilan(b);setScreen('analyse');},onDeleteBilan:delBilan,onEdit:function(){setEditAth(ca);setScreen('editAthlete');},onDuplicate:dupBilan}),
+      screen==='athlete'&&ca&&h(AthleteProfile,{athlete:ca,onBack:function(){setScreen('dashboard');},onNewBilan:function(){setScreen('newBilan');},onSelectBilan:function(b){setCurBilan(b);setSecondaryView('synthese');setNavNonce(function(n){return n+1;});setScreen('analyse');},onDeleteBilan:delBilan,onEdit:function(){setEditAth(ca);setScreen('editAthlete');},onDuplicate:dupBilan}),
       screen==='newBilan'&&h(BilanForm,{onSave:function(b){setDraft(b);setScreen('testEntry');},onCancel:function(){setScreen('athlete');}}),
       screen==='testEntry'&&draft&&h(TestEntry,{bilan:draft,athlete:ca,onSave:saveTests,onCancel:function(){setScreen('athlete');}}),
-      screen==='analyse'&&liveBilan&&ca&&h(AnalyseView,{bilan:liveBilan,athlete:ca,onValidate:validateBilan,onEdit:function(){setDraft(liveBilan);setScreen('testEntry');},onPreview:function(){setScreen('reportPreview');}}),
+      screen==='analyse'&&liveBilan&&ca&&h(AnalyseView,{key:liveBilan.id+'_'+secondaryView+'_'+navNonce,bilan:liveBilan,athlete:ca,onValidate:validateBilan,onEdit:function(){setDraft(liveBilan);setScreen('testEntry');},onPreview:function(){setScreen('reportPreview');},initialView:secondaryTarget.view,initialExpertTab:secondaryTarget.tab}),
       screen==='reportPreview'&&liveBilan&&ca&&h(ReportPreview,{bilan:liveBilan,athlete:ca,onClose:function(){setScreen('analyse');},onSave:function(overrides){upBilans(curId,function(bil){return bil.map(function(b){return b.id===liveBilan.id?Object.assign({},b,{reportOverrides:overrides}):b;});});setCurBilan(Object.assign({},liveBilan,{reportOverrides:overrides}));}})
     )
   );
