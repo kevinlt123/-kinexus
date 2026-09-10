@@ -76,10 +76,23 @@ test('Y3 — Réactivité convergente : pattern C détecté (SLDJ x3)', () => {
 });
 
 // Y4 — bilatéral modéré + unilatéral majeur
-test('Y4 — bilatéral (DJ orange) + unilatéral (SLDJ rouge) : pattern D détecté ; absent si les deux sont égaux', () => {
+// RÉVISÉ (mission ULTÉRIEURE et distincte P6) : dj_rsi (0.72, orange) est désormais correctement
+// remonté dans keyFindings (chaînon manquant corrigé pour Réactivité) — csmV2PatternReactivite
+// ('restitution_rapide', Pattern C) dispose donc maintenant de 2 preuves convergentes (dj_rsi +
+// sldj_rsi) au lieu d'1 seule (sldj_rsi via LSI natif), ce qui augmente son priorityScore
+// (evidence.length*3, §12 mission Y) au point de dépasser 'bilateral_vs_unipodal' pour ce même
+// jeu de qualités (['Réactivité']) — la déduplication §12 ("jamais une même conclusion répétée")
+// ne conserve alors que le pattern au meilleur score. Le pattern 'bilateral_vs_unipodal' N'A PAS
+// disparu du calcul (csmV2PatternBilateralUnipodal, non modifiée, toujours déclenchée) — il est
+// seulement évincé par la déduplication au profit d'une caractérisation plus complète du MÊME
+// déficit, déjà démontré ci-dessus (mission_p6_reactivity_evidence_chain_tests.js).
+test('Y4 — bilatéral (DJ orange) + unilatéral (SLDJ rouge) : pattern C (restitution_rapide, convergence dj_rsi+sldj_rsi) l\'emporte désormais sur le pattern D par déduplication (§12) ; absent si les deux sont égaux', () => {
   const data = { dj: { active: true, trials: { rsi: [0.72] } }, sldj: { active: true, D: { trials: { rsi: [0.11] } }, G: { trials: { rsi: [0.39] } } } };
-  const p = byKey(patternsOf(data), 'bilateral_vs_unipodal');
-  assert.ok(p);
+  const patterns = patternsOf(data);
+  const pC = byKey(patterns, 'restitution_rapide');
+  assert.ok(pC, 'le pattern de convergence Réactivité (dj_rsi + sldj_rsi) doit être détecté');
+  assert.strictEqual(pC.evidence.length, 2, 'les 2 preuves (dj_rsi et sldj_rsi) doivent converger, jamais 1 seule');
+  assert.strictEqual(byKey(patterns, 'bilateral_vs_unipodal'), null, 'évincé par déduplication (§12) au profit du pattern C, meilleur score — jamais les deux répétant la même conclusion pour la même qualité');
   const dataEqual = { dj: { active: true, trials: { rsi: [1.6] } }, sldj: { active: true, D: { trials: { rsi: [1.6] } }, G: { trials: { rsi: [1.65] } } } };
   const p2 = byKey(patternsOf(dataEqual), 'bilateral_vs_unipodal');
   assert.strictEqual(p2, null, 'pattern D fabriqué alors que bilatéral et unilatéral sont dans la même catégorie');

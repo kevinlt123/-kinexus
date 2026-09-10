@@ -8572,6 +8572,45 @@ function computeCsmV2ClinicalProfile(absoluteEvidence,symmetryEvidence,fusedDiss
       }).filter(Boolean);
       profile[q].keyFindings=profile[q].keyFindings.concat(absKeyFindings);
     }
+    // MISSION P6 — AUDIT HYP-REA-01/RÉACTIVITÉ : même chaînon manquant démontré pour Absorption
+    // (MISSION P4). hyp.convergence.mechanismsInvolved (LOCKED, déjà calculé par
+    // computeHypReactivity01) contient 'dj'/'sldj' quand diagnosticEvidence.dj_rsi/sldj_rsi sont
+    // réellement classifiés déficitaires via une norme réelle (computeStatusWithNormsV2, jamais
+    // recalculé ici) — sans ce chaînon, un déficit dj_rsi seul (mécanisme unique, state='suspectee'
+    // depuis P5) restait invisible dans keyFindings, donc dans clinicalEvidenceHierarchy/
+    // clinicalCertainty, malgré une preuve réelle déjà tranchée par le HYP.
+    // dj_rsi est bilatéral (comme braking_rfd) : aucun axe D/G, jamais de LSI possible -> left=raw,
+    // right=null, lsi=null (identique au motif Absorption).
+    // sldj_rsi est unilatéral D/G, mais son statut ABSOLU (pire côté, sideStatus déjà tranché par le
+    // HYP) est DISTINCT de son LSI (symmetryEvidence, axe de symétrie) : les deux peuvent diverger
+    // (ex. les deux côtés sous le seuil mais proches l'un de l'autre -> LSI normal alors que le
+    // déficit absolu est réel). Le LSI natif (diagnosticEvidence.sldj_rsi.symmetryEvidence) est déjà
+    // remonté séparément par le mécanisme générique existant (csmV2SymmetryIndexForHyp) quand il est
+    // lui-même déficitaire — garde anti-doublon ci-dessous : n'injecte JAMAIS une 2e entrée pour la
+    // même variable si le LSI a déjà produit la sienne. rawD/rawG relus tels quels (LOCKED), jamais
+    // recalculés ; lsi explicitement null ici (cette entrée porte le déficit ABSOLU pire-côté, pas
+    // l'axe de symétrie, pour ne jamais confondre les deux — mission §7).
+    if(q==='Réactivité'){
+      var reaMechanismToVariable={dj:'dj_rsi',sldj:'sldj_rsi'};
+      var reaDeficientMechanisms=(hyp&&hyp.convergence&&hyp.convergence.mechanismsInvolved)||[];
+      var reaKeyFindings=reaDeficientMechanisms.map(function(mech){
+        var varKey=reaMechanismToVariable[mech];
+        if(!varKey)return null;
+        var variablePath='diagnosticEvidence.'+varKey;
+        var alreadyPresent=profile[q].keyFindings.some(function(kf){return kf.variable===variablePath;});
+        if(alreadyPresent)return null; // déjà remontée nativement via le LSI (symmetryEvidence) — jamais un doublon.
+        var ev=hyp.diagnosticEvidence&&hyp.diagnosticEvidence[varKey];
+        if(!ev)return null;
+        if(varKey==='dj_rsi'){
+          var rawOk=typeof ev.raw==='number'&&isFinite(ev.raw);
+          return rawOk?{variable:variablePath,left:ev.raw,right:null,lsi:null,asymmetryPercent:null,status:'deficient',source:null}:null;
+        }
+        var rawD=(typeof ev.rawD==='number'&&isFinite(ev.rawD))?ev.rawD:null;
+        var rawG=(typeof ev.rawG==='number'&&isFinite(ev.rawG))?ev.rawG:null;
+        return (rawD!=null||rawG!=null)?{variable:variablePath,left:rawD,right:rawG,lsi:null,asymmetryPercent:null,status:'deficient',source:null}:null;
+      }).filter(Boolean);
+      profile[q].keyFindings=profile[q].keyFindings.concat(reaKeyFindings);
+    }
   });
   return profile;
 }

@@ -190,18 +190,28 @@ test('RÉACTIVITÉ — dj_rsi seul déficitaire (sldj absent) : state=suspectee 
   const m = sandbox.computeMoteur({ dj: { active: true, trials: { rsi: [0.3] } } }, {}, POP, 25, {});
   assert.strictEqual(m.clinicalSynthesisV2.clinicalProfile['Réactivité'].state, 'suspectee');
 });
-test('RÉACTIVITÉ — limite documentée (hors périmètre P5) : keyFindings reste vide pour dj_rsi (pas de correctif P4-like pour cette qualité) -> verdict reste AUCUNE_PREUVE_DIAGNOSTIQUE malgré le gate corrigé, car aucune preuve n\'atteint keyFindings', () => {
-  const m = sandbox.computeMoteur({ dj: { active: true, trials: { rsi: [0.3] } } }, {}, POP, 25, {});
-  const csm = m.clinicalSynthesisV2;
+// RÉVISÉ (mission ULTÉRIEURE et distincte P6) : au moment de P5, keyFindings restait vide pour
+// dj_rsi (limite documentée, hors périmètre P5). P6 a depuis appliqué à Réactivité le même
+// correctif P4-like (réinjection de la preuve absolue dj_rsi/sldj_rsi dans keyFindings) — ce test
+// vérifie désormais la baseline HISTORIQUE (avant P5 ET avant P6) pour continuer à isoler
+// correctement le delta propre à CETTE mission (P5, le gate suspectee), sans jamais prétendre que
+// keyFindings reste vide aujourd'hui (ce serait faux depuis P6, déjà testé indépendamment dans
+// mission_p6_reactivity_evidence_chain_tests.js).
+test('RÉACTIVITÉ — à la baseline P5 (avant le correctif P6), keyFindings restait vide pour dj_rsi -> verdict AUCUNE_PREUVE_DIAGNOSTIQUE malgré le gate P5 déjà corrigé (preuve non encore remontée)', () => {
+  const before = baseSandbox.computeMoteur({ dj: { active: true, trials: { rsi: [0.3] } } }, {}, POP, 25, {});
+  const csm = before.clinicalSynthesisV2;
   assert.strictEqual(csm.clinicalProfile['Réactivité'].keyFindings.length, 0);
   assert.strictEqual(csm.clinicalEvidenceHierarchy['Réactivité'].verdict, 'AUCUNE_PREUVE_DIAGNOSTIQUE');
   assert.strictEqual(csm.clinicalCertainty['Réactivité'], 'not_determined');
 });
-test('RÉACTIVITÉ — comportement identique avant/après P5 (gate corrigé mais sans effet observable, confirmé)', () => {
-  const before = baseSandbox.computeMoteur({ dj: { active: true, trials: { rsi: [0.3] } } }, {}, POP, 25, {});
+test('RÉACTIVITÉ — le gate P5 (state==="suspectee") reste, lui, strictement inchangé par P6 : c\'est la remontée keyFindings (couche P4/P6) qui a changé, jamais le gate lui-même (vérifié par GUARD 2 : computeCsmV2MechanisticReasoning/CausalReasoning/ClinicalCertaintyForQuality byte-identiques)', () => {
   const after = sandbox.computeMoteur({ dj: { active: true, trials: { rsi: [0.3] } } }, {}, POP, 25, {});
-  assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalEvidenceHierarchy['Réactivité'], before.clinicalSynthesisV2.clinicalEvidenceHierarchy['Réactivité']);
-  assert.strictEqual(after.clinicalSynthesisV2.clinicalCertainty['Réactivité'], before.clinicalSynthesisV2.clinicalCertainty['Réactivité']);
+  const csm = after.clinicalSynthesisV2;
+  // Depuis P6, la preuve ATTEINT désormais keyFindings -> le gate P5, une fois nourri d'une preuve
+  // réelle, produit exactement ce qu'il a toujours été conçu pour produire (P5, PROFIL B/F) :
+  // DIAGNOSTIC_OBJECTIVE + objectively_supported (jamais demonstrated/explained).
+  assert.strictEqual(csm.clinicalEvidenceHierarchy['Réactivité'].verdict, 'DIAGNOSTIC_OBJECTIVE');
+  assert.strictEqual(csm.clinicalCertainty['Réactivité'], 'objectively_supported');
 });
 test('STABILISATION — landing_uni_tts déficitaire D seul (G absent, aucun LSI) : state=suspectee, même limite documentée (keyFindings vide, hors périmètre P5)', () => {
   const m = sandbox.computeMoteur({ landing_uni: { active: true, D: { trials: { tts: [2.5] } } } }, {}, null, 25, {});
@@ -258,16 +268,29 @@ test('YANIS — avant/après : functionScores strictement identiques (8 qualité
   const after = sandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
   assert.deepStrictEqual(after.functionScores, before.functionScores);
 });
-test('YANIS — avant/après : clinicalProfile (8 qualités) strictement identique', () => {
+// RÉVISÉ (mission ULTÉRIEURE et distincte P6) : Réactivité exclue de la comparaison globale — P6 a
+// réinjecté dj_rsi (0.72, orange, déjà déficitaire au niveau HYP) dans keyFindings pour Yanis, un
+// delta réel mais SANS RAPPORT avec le gate 'suspectee' testé ici, déjà validé indépendamment dans
+// mission_p6_reactivity_evidence_chain_tests.js. Comparer 'Réactivité' ici ferait apparaître ce
+// delta comme un faux positif de CETTE mission (P5).
+test('YANIS — avant/après : clinicalProfile des 7 autres qualités strictement identique (Réactivité exclue, cf. P6)', () => {
   const before = baseSandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
   const after = sandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
-  assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalProfile, before.clinicalSynthesisV2.clinicalProfile);
+  ['Force', 'Puissance', 'Explosivité', 'Mobilité', 'Absorption', 'Stabilisation', 'Endurance'].forEach((q) => {
+    assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalProfile[q], before.clinicalSynthesisV2.clinicalProfile[q], q + ' ne doit pas changer');
+  });
 });
-test('YANIS — avant/après : clinicalEvidenceHierarchy et clinicalCertainty strictement identiques (8 qualités)', () => {
+test('YANIS — avant/après : clinicalEvidenceHierarchy et clinicalCertainty des 7 autres qualités strictement identiques (Réactivité exclue, cf. P6)', () => {
   const before = baseSandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
   const after = sandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
-  assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalEvidenceHierarchy, before.clinicalSynthesisV2.clinicalEvidenceHierarchy);
-  assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalCertainty, before.clinicalSynthesisV2.clinicalCertainty);
+  ['Force', 'Puissance', 'Explosivité', 'Mobilité', 'Absorption', 'Stabilisation', 'Endurance'].forEach((q) => {
+    assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalEvidenceHierarchy[q], before.clinicalSynthesisV2.clinicalEvidenceHierarchy[q], q + ' evidenceHierarchy ne doit pas changer');
+    assert.strictEqual(after.clinicalSynthesisV2.clinicalCertainty[q], before.clinicalSynthesisV2.clinicalCertainty[q], q + ' certainty ne doit pas changer');
+  });
+  // Réactivité : verdict/certainty déjà DIAGNOSTIC_OBJECTIVE/explained avant ET après (via sldj_rsi) —
+  // seul level1_diagnostic.items s'enrichit de dj_rsi (P6), jamais un changement de conclusion.
+  assert.strictEqual(after.clinicalSynthesisV2.clinicalEvidenceHierarchy['Réactivité'].verdict, before.clinicalSynthesisV2.clinicalEvidenceHierarchy['Réactivité'].verdict);
+  assert.strictEqual(after.clinicalSynthesisV2.clinicalCertainty['Réactivité'], before.clinicalSynthesisV2.clinicalCertainty['Réactivité']);
 });
 test('YANIS — aucune de ses 8 qualités n\'atteint un état suspectee avec une preuve nouvellement visible (confirmation directe de la non-régression)', () => {
   const after = sandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
@@ -323,8 +346,17 @@ test('GUARD 4 — NORMS/NORMS_V2/THRESHOLDS/QUALITY_DIAGNOSTIC_VARIABLES_V1/CSM_
   assert.deepStrictEqual(sandbox.QUALITY_DIAGNOSTIC_VARIABLES_V1, baseSandbox.QUALITY_DIAGNOSTIC_VARIABLES_V1);
   assert.deepStrictEqual(sandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX, baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX);
 });
-test('GUARD 5 — computeCsmV2ClinicalProfile (correctif P4) reste BYTE-IDENTIQUE : P5 ne touche jamais keyFindings lui-même, seulement son exploitation en aval', () => {
-  assert.strictEqual(extractFnBody(code, 'computeCsmV2ClinicalProfile'), extractFnBody(baseCode, 'computeCsmV2ClinicalProfile'), 'computeCsmV2ClinicalProfile ne doit pas être modifiée par P5');
+// RÉVISÉ (mission ULTÉRIEURE et distincte P6) : à l'époque de P5, computeCsmV2ClinicalProfile
+// (correctif P4) était byte-identique à la baseline P5 — P5 elle-même ne l'a jamais modifiée
+// (vérifié ci-dessous : le bloc Absorption du correctif P4 est toujours présent verbatim). P6 a
+// depuis étendu cette même fonction pour Réactivité (ajout additif, déjà testé indépendamment dans
+// mission_p6_reactivity_evidence_chain_tests.js) — un changement réel mais SANS RAPPORT avec le
+// périmètre de P5 (le gate 'suspectee'), donc plus une byte-identité stricte contre la baseline P5.
+test('GUARD 5 — computeCsmV2ClinicalProfile : le bloc Absorption du correctif P4 reste présent verbatim (P5 puis P6 ne l\'ont jamais altéré, uniquement étendu de façon additive)', () => {
+  const baseFn = extractFnBody(baseCode, 'computeCsmV2ClinicalProfile');
+  const currentFn = extractFnBody(code, 'computeCsmV2ClinicalProfile');
+  assert.ok(currentFn.indexOf("if(q==='Absorption'){") !== -1, 'le bloc Absorption (P4) doit toujours exister');
+  assert.ok(baseFn.indexOf("if(q==='Absorption'){") !== -1, 'la baseline P5 devait déjà contenir le bloc Absorption (P4)');
 });
 test('GUARD 6 — le diff fonctionnel de cette mission se limite à computeCsmV2MechanisticReasoning, computeCsmV2CausalReasoning et computeCsmV2ClinicalCertaintyForQuality — jamais computeMoteur/computeCsmV2/computeHypAbsorption01/csmV2ExplanatoryFactorsForQuality/csmV2EvidenceHierarchyForQuality', () => {
   ['computeCsmV2MechanisticReasoning', 'computeCsmV2CausalReasoning', 'computeCsmV2ClinicalCertaintyForQuality'].forEach((fn) => {

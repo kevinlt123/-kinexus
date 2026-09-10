@@ -200,10 +200,10 @@ test('TEST 12 — YANIS : verdict HYP-EXP-01 (state/status/severity/support) str
   assert.strictEqual(after.clinicalSynthesisV2.clinicalProfile['Explosivité'].state, before.clinicalSynthesisV2.clinicalProfile['Explosivité'].state);
   assert.strictEqual(after.clinicalSynthesisV2.clinicalProfile['Explosivité'].status, before.clinicalSynthesisV2.clinicalProfile['Explosivité'].status);
 });
-test('TEST 13 — YANIS : les 6 autres qualités restent byte-identiques (functionScores + clinicalProfile + clinicalCompletenessAudit) — Absorption exclue (cf. commentaire BASELINE_COMMIT : delta réel mais dû à la mission ULTÉRIEURE et distincte P1BIS, 64caaaf, déjà testée à part)', () => {
+test('TEST 13 — YANIS : les 5 autres qualités restent byte-identiques (functionScores + clinicalProfile + clinicalCompletenessAudit) — Absorption et Réactivité exclues (cf. commentaire BASELINE_COMMIT : deltas réels mais dus aux missions ULTÉRIEURES et distinctes P1BIS/64caaaf et P6/dj_rsi, déjà testées à part)', () => {
   const before = baseSandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
   const after = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
-  ['Force', 'Puissance', 'Réactivité', 'Mobilité', 'Stabilisation', 'Endurance'].forEach((q) => {
+  ['Force', 'Puissance', 'Mobilité', 'Stabilisation', 'Endurance'].forEach((q) => {
     assert.deepStrictEqual(after.functionScores[q], before.functionScores[q], q + ' functionScores ne doit pas changer');
     assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalProfile[q], before.clinicalSynthesisV2.clinicalProfile[q], q + ' clinicalProfile ne doit pas changer');
     assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalCompletenessAudit[q], before.clinicalSynthesisV2.clinicalCompletenessAudit[q], q + ' clinicalCompletenessAudit ne doit pas changer');

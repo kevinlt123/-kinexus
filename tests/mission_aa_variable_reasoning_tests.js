@@ -216,9 +216,14 @@ test('AA24 — Yannis Explosivité : reçoit le bridge Absorption sans jamais di
 });
 
 // AA25 — Yannis Réactivité
-test('AA25 — Yannis Réactivité : 3 variables propres (RSI/hauteur/contact time), aucune relation CROSS_QUALITY entrante', () => {
+// RÉVISÉ (mission ULTÉRIEURE et distincte P6) : dj_rsi (0.72, orange) était déjà déficitaire au
+// niveau HYP-REA-01 mais jamais remonté dans keyFindings avant P6 (chaînon manquant identique à
+// celui corrigé pour Absorption en P4) — P6 ajoute donc une 4e arête "variable propre" légitime,
+// déjà testée indépendamment dans mission_p6_reactivity_evidence_chain_tests.js. Ce delta réel est
+// SANS RAPPORT avec le graphe variable->qualité lui-même (Mission AA, non modifiée).
+test('AA25 — Yannis Réactivité : 4 variables propres (dj_rsi + sldj_rsi/hauteur/contact time), aucune relation CROSS_QUALITY entrante', () => {
   const own = csm().variableQualityGraph.edges.filter(e => e.target === 'quality:Réactivité' && ['DIRECT', 'CONFIRMATIVE', 'EXPLANATORY'].indexOf(e.type) !== -1);
-  assert.strictEqual(own.length, 3);
+  assert.strictEqual(own.length, 4);
   assert.strictEqual(edgesOfType('CROSS_QUALITY').filter(e => e.target === 'quality:Réactivité').length, 0);
 });
 
