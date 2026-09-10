@@ -15759,7 +15759,7 @@ function AthleteProfile(props){
               return h(Card,{key:b.id,pad:'12px 16px'},
                 h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
                   h('div',{style:{cursor:'pointer',flex:1},onClick:function(){props.onSelectBilan(b);}},
-                    h('div',{style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{color:C.text,fontWeight:600,fontSize:13}},b.type+' — '+b.sousType),b.statut==='Validé'&&h(Badge,{status:'vert',small:true}),b.statut==='Brouillon'&&h('span',{style:{color:C.muted,fontSize:10}},'Brouillon')),
+                    h('div',{style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{color:C.text,fontWeight:600,fontSize:13}},b.type+' — '+b.sousType),b.statut==='Validé'&&h(Badge,{status:'vert',small:true,text:'Validé'}),b.statut==='Brouillon'&&h('span',{style:{color:C.muted,fontSize:10}},'Brouillon')),
                     h('div',{style:{color:C.muted,fontSize:11,marginTop:2}},new Date(b.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+' · '+cnt+' test'+(cnt>1?'s':''))
                   ),
                   h('div',{style:{display:'flex',gap:6,alignItems:'center'}},
@@ -16211,7 +16211,7 @@ function AnalyseView(props){
   var normLbl=athlete.normPopulation?((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):null;
 
   return h('div',{style:{display:'flex',alignItems:'flex-start'}},
-    h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 52px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:52,color:'#fff'}},
+    h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 96px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:96,color:'#fff'}},
       h('div',{style:{display:'flex',alignItems:'center',gap:7,marginBottom:24}},
         h('div',{style:{width:22,height:22,borderRadius:6,background:'linear-gradient(135deg,'+C.teal+',#fff2)',display:'flex',alignItems:'center',justifyContent:'center'}},h('span',{style:{color:'#fff',fontSize:11,fontWeight:900}},'K')),
         h('span',{style:{fontWeight:900,fontSize:12.5,letterSpacing:'-0.02em',color:'#fff'}},'KINEXUS')
@@ -17013,6 +17013,97 @@ function ResultsBrowser(props){
     )
   );
 }
+// ── AGRÉGATION MULTI-ATHLÈTE (Mission UX/UI V1 — navigation globale) ────────────────────────────
+// Pure agrégation/tri des bilans déjà chargés (athletes[].bilans[]), pour les nouveaux écrans
+// Accueil et Bilans. Aucun nouveau calcul clinique, aucune donnée inventée : on relit exactement
+// les mêmes objets bilan que AthleteProfile affiche déjà, uniquement regroupés tous athlètes
+// confondus.
+function aggregateBilans(athletes){
+  var rows=[];
+  (athletes||[]).forEach(function(a){
+    (a.bilans||[]).forEach(function(b){rows.push({bilan:b,athlete:a});});
+  });
+  rows.sort(function(x,y){return new Date(y.bilan.date)-new Date(x.bilan.date);});
+  return rows;
+}
+
+function BilanRow(props){
+  var b=props.bilan,a=props.athlete;
+  var cnt=Object.keys(b.testData||{}).filter(function(k){return b.testData[k]&&b.testData[k].active;}).length;
+  return h(Card,{pad:'12px 16px',onClick:function(){props.onSelect(a.id,b);}},
+    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}},
+      h('div',{style:{minWidth:0}},
+        h('div',{style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}},
+          h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},a.prenom+' '+a.nom),
+          h('span',{style:{color:C.muted,fontSize:12}},'· '+b.type+' — '+b.sousType),
+          b.statut==='Validé'?h(Badge,{status:'vert',small:true,text:'Validé'}):h('span',{style:{color:C.muted,fontSize:10}},'Brouillon')
+        ),
+        h('div',{style:{color:C.muted,fontSize:11,marginTop:2}},new Date(b.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+' · '+cnt+' test'+(cnt>1?'s':''))
+      ),
+      h('span',{style:{color:C.teal,fontSize:13,fontWeight:600,flexShrink:0}},'→')
+    )
+  );
+}
+
+// ── ACCUEIL (Mission UX/UI V1 — Phase 1 : nouvel espace de premier niveau) ──────────────────────
+// Contenu strictement dérivé des données déjà chargées (compteurs, 5 derniers bilans) : aucune
+// nouvelle donnée clinique, aucun score inventé. Sert de point d'entrée avant sélection d'un
+// athlète/bilan.
+function Home(props){
+  var athletes=props.athletes||[];
+  var all=aggregateBilans(athletes);
+  var recent=all.slice(0,5);
+  return h('div',{style:{paddingBottom:40}},
+    h('div',{style:{marginBottom:22}},
+      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Accueil'),
+      h('h1',{style:{margin:0,fontSize:24,fontWeight:800,color:C.text}},'Bonjour 👋'),
+      h('div',{style:{color:C.muted,fontSize:13,marginTop:4}},athletes.length+' sportif'+(athletes.length>1?'s':'')+' suivi'+(athletes.length>1?'s':'')+' · '+all.length+' bilan'+(all.length>1?'s':'')+' au total')
+    ),
+    h('div',{className:'g3',style:{marginBottom:26}},
+      h(Card,{pad:16,onClick:props.onGoAthletes},h('div',{style:{fontSize:20,marginBottom:6}},'👤'),h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:2}},'Athlètes'),h('div',{style:{color:C.muted,fontSize:11}},'Voir tous les sportifs suivis')),
+      h(Card,{pad:16,onClick:props.onGoBilans},h('div',{style:{fontSize:20,marginBottom:6}},'📊'),h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:2}},'Bilans'),h('div',{style:{color:C.muted,fontSize:11}},'Retrouver un bilan, tous athlètes confondus')),
+      h(Card,{pad:16,onClick:props.onNewAthlete},h('div',{style:{fontSize:20,marginBottom:6}},'+'),h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:2}},'Nouveau sportif'),h('div',{style:{color:C.muted,fontSize:11}},'Créer un nouveau profil athlète'))
+    ),
+    h('div',null,
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
+        h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase'}},'Bilans récents'),
+        recent.length>0&&h('span',{style:{color:C.teal,fontSize:11,fontWeight:600,cursor:'pointer'},onClick:props.onGoBilans},'Tout voir →')
+      ),
+      recent.length===0
+        ?h(Card,{pad:'28px 20px',style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:12}},'Aucun bilan enregistré pour le moment.'))
+        :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},recent.map(function(r){return h(BilanRow,{key:r.athlete.id+'_'+r.bilan.id,bilan:r.bilan,athlete:r.athlete,onSelect:props.onSelectBilan});}))
+    )
+  );
+}
+
+// ── BILANS (Mission UX/UI V1 — Phase 1 : vue globale tous athlètes) ─────────────────────────────
+function BilansGlobalView(props){
+  var athletes=props.athletes||[];
+  var st=useState(''),search=st[0],setSearch=st[1];
+  var st2=useState(''),fStatut=st2[0],setFStatut=st2[1];
+  var all=aggregateBilans(athletes);
+  var filtered=all.filter(function(r){
+    var q=search.toLowerCase();
+    var hay=(r.athlete.prenom+r.athlete.nom+r.bilan.type+r.bilan.sousType).toLowerCase();
+    return(!q||hay.includes(q))&&(!fStatut||r.bilan.statut===fStatut);
+  });
+  return h('div',{style:{paddingBottom:40}},
+    h('div',{style:{marginBottom:18}},
+      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Tous les bilans'),
+      h('h1',{style:{margin:0,fontSize:24,fontWeight:800,color:C.text}},'Bilans ',h('span',{style:{color:C.muted,fontSize:16,fontWeight:400}},'('+filtered.length+')'))
+    ),
+    h('div',{style:{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}},
+      h('input',{value:search,onChange:function(e){setSearch(e.target.value);},placeholder:'🔍 Rechercher un athlète ou un type de bilan…',style:{flex:'1 1 220px',background:C.surface,border:'1px solid '+C.border,borderRadius:8,padding:'9px 12px',color:C.text,fontSize:13,minWidth:0}}),
+      h('select',{value:fStatut,onChange:function(e){setFStatut(e.target.value);},style:{background:C.surface,border:'1px solid '+C.border,borderRadius:8,padding:'9px 10px',color:fStatut?C.text:C.muted,fontSize:12}},h('option',{value:''},'Tous statuts'),h('option',{value:'Validé'},'Validé'),h('option',{value:'Brouillon'},'Brouillon'))
+    ),
+    all.length===0
+      ?h(Card,{pad:48,style:{textAlign:'center'}},h('div',{style:{fontSize:32,marginBottom:10}},'📊'),h('div',{style:{color:C.text,fontSize:14,fontWeight:600,marginBottom:6}},'Aucun bilan enregistré'),h('div',{style:{color:C.muted,fontSize:12}},'Les bilans réalisés pour vos athlètes apparaîtront ici.'))
+      :filtered.length===0
+        ?h(Card,{pad:36,style:{textAlign:'center'}},h('div',{style:{color:C.muted,fontSize:13}},'Aucun résultat.'))
+        :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},filtered.map(function(r){return h(BilanRow,{key:r.athlete.id+'_'+r.bilan.id,bilan:r.bilan,athlete:r.athlete,onSelect:props.onSelectBilan});}))
+  );
+}
+
 function ExpertView(props){
   var [tab,setTab]=useState('fonctions');
   // Filtre par qualité de l'onglet Variables (mission IMPLEMENTATION_UX_UI_LOT1.md, Objectif 4) —
@@ -17368,7 +17459,7 @@ function App(){
 
   // App state
   var [athletes,setAthletes]=useState(function(){return loadData();});
-  var [screen,setScreen]=useState('dashboard');
+  var [screen,setScreen]=useState('home');
   var [curId,setCurId]=useState(null);
   var [curBilan,setCurBilan]=useState(null);
   var [draft,setDraft]=useState(null);
@@ -17485,11 +17576,25 @@ function App(){
   function delBilan(id){upBilans(curId,function(bil){return bil.filter(function(b){return b.id!==id;});});if(curBilan&&curBilan.id===id)setCurBilan(null);setScreen('athlete');}
   function dupBilan(b){var dup=Object.assign({},b,{id:Date.now(),date:new Date().toISOString(),statut:'Brouillon'});upBilans(curId,function(bil){return bil.concat([dup]);});setDraft(dup);setScreen('testEntry');}
   var liveBilan=null;if(curBilan&&ca){var found=ca.bilans&&ca.bilans.find(function(b){return b.id===curBilan.id;});liveBilan=found||curBilan;}
-  var LABELS={newAthlete:'Nouveau sportif',editAthlete:'Modifier sportif',newBilan:'Nouveau bilan',testEntry:'Saisie tests',analyse:'Analyse'};
+  var LABELS={newAthlete:'Nouveau sportif',editAthlete:'Modifier sportif',newBilan:'Nouveau bilan',testEntry:'Saisie tests',analyse:'Analyse',bilansGlobal:'Bilans',analyseEmptyState:'Analyse',qualityConfig:'Données'};
+  // Navigation globale (Mission UX/UI V1, §4) : 5 espaces de premier niveau. Chaque `screen`
+  // existant appartient à exactement une section — aucun écran retiré, uniquement regroupé.
+  // Athlète-scopé : sert à masquer le fil d'Ariane "› Prénom Nom" sur les écrans qui ne portent
+  // pas sur un athlète précis (Accueil, Bilans, Données), même si curId reste en mémoire.
+  var athleteScoped=['athlete','editAthlete','newBilan','testEntry','analyse','reportPreview'].indexOf(screen)>=0;
+  var NAV_SECTIONS={home:'home',dashboard:'athletes',newAthlete:'athletes',editAthlete:'athletes',athlete:'athletes',newBilan:'bilans',testEntry:'bilans',bilansGlobal:'bilans',analyse:'analyse',reportPreview:'analyse',analyseEmptyState:'analyse',qualityConfig:'donnees'};
+  var curSection=NAV_SECTIONS[screen]||'home';
+  var NAV_ITEMS=[
+    {key:'home',icon:'🏠',label:'Accueil',onClick:function(){setScreen('home');}},
+    {key:'athletes',icon:'👤',label:'Athlètes',onClick:function(){setScreen('dashboard');}},
+    {key:'bilans',icon:'📊',label:'Bilans',onClick:function(){setScreen('bilansGlobal');}},
+    {key:'analyse',icon:'🧠',label:'Analyse',onClick:function(){setScreen(curBilan&&ca?'analyse':'analyseEmptyState');}},
+    {key:'donnees',icon:'⚙',label:'Données',onClick:function(){setScreen('qualityConfig');}}
+  ];
   return h('div',{style:{minHeight:'100vh',background:C.bg}},
     h('div',{className:'no-print',style:{background:C.surface,borderBottom:'1px solid '+C.border,padding:'0 18px',display:'flex',alignItems:'center',height:52,position:'sticky',top:0,zIndex:100,gap:8}},
-      h('div',{style:{display:'flex',alignItems:'center',gap:8,cursor:'pointer'},onClick:function(){setScreen('dashboard');}},h('div',{style:{width:26,height:26,borderRadius:6,background:'linear-gradient(135deg,'+C.teal+','+C.petrol+')',display:'flex',alignItems:'center',justifyContent:'center'}},h('span',{style:{color:'#fff',fontSize:12,fontWeight:900}},'K')),h('span',{style:{fontWeight:900,fontSize:15,letterSpacing:'-0.02em',color:C.text}},'KINEXUS'),h('span',{style:{color:C.muted,fontSize:9,letterSpacing:'0.1em'}},'Expert')),
-      screen!=='dashboard'&&ca&&h('div',{style:{display:'flex',alignItems:'center',gap:5,overflow:'hidden'}},h('span',{style:{color:C.border}},'›'),h('span',{style:{color:C.teal,fontSize:12,cursor:'pointer'},onClick:function(){setScreen('athlete');}},ca.prenom+' '+ca.nom),screen!=='athlete'&&h('span',null,h('span',{style:{color:C.border,margin:'0 4px'}},'›'),h('span',{style:{color:C.muted,fontSize:11}},LABELS[screen]||screen))),
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,cursor:'pointer'},onClick:function(){setScreen('home');}},h('div',{style:{width:26,height:26,borderRadius:6,background:'linear-gradient(135deg,'+C.teal+','+C.petrol+')',display:'flex',alignItems:'center',justifyContent:'center'}},h('span',{style:{color:'#fff',fontSize:12,fontWeight:900}},'K')),h('span',{style:{fontWeight:900,fontSize:15,letterSpacing:'-0.02em',color:C.text}},'KINEXUS'),h('span',{style:{color:C.muted,fontSize:9,letterSpacing:'0.1em'}},'Expert')),
+      athleteScoped&&ca&&h('div',{style:{display:'flex',alignItems:'center',gap:5,overflow:'hidden'}},h('span',{style:{color:C.border}},'›'),h('span',{style:{color:C.teal,fontSize:12,cursor:'pointer'},onClick:function(){setScreen('athlete');}},ca.prenom+' '+ca.nom),screen!=='athlete'&&h('span',null,h('span',{style:{color:C.border,margin:'0 4px'}},'›'),h('span',{style:{color:C.muted,fontSize:11}},LABELS[screen]||screen))),
       h('div',{style:{marginLeft:'auto',display:'flex',alignItems:'center',gap:12}},
         syncing&&h('div',{style:{color:C.teal,fontSize:9,display:'flex',alignItems:'center',gap:4}},
           h('span',{style:{width:6,height:6,borderRadius:'50%',background:C.teal,animation:'pulse 1s infinite'}}),
@@ -17503,9 +17608,28 @@ function App(){
         )
       )
     ),
-    h('div',{style:(screen==='analyse'||screen==='reportPreview')?{maxWidth:1400,margin:'0 auto',padding:'0 0 60px'}:screen==='qualityConfig'?{maxWidth:1100,margin:'0 auto',padding:'0 0 60px'}:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
+    // Navigation globale (Mission UX/UI V1, §4) : 5 espaces persistants, toujours visibles. Ne
+    // supprime aucune destination existante — CSM V2/KPI/Variables/Capacités/Systèmes/Couverture/
+    // Relations/Hypothèses restent dans Analyse (Analyse Expert), jamais exposés ici.
+    h('div',{className:'no-print',style:{background:C.card,borderBottom:'1px solid '+C.border,padding:'0 18px',display:'flex',alignItems:'center',height:44,position:'sticky',top:52,zIndex:99,gap:4,overflowX:'auto',WebkitOverflowScrolling:'touch'}},
+      NAV_ITEMS.map(function(it){
+        var active=curSection===it.key;
+        return h('button',{key:it.key,onClick:it.onClick,style:{display:'flex',alignItems:'center',gap:6,padding:'7px 12px',borderRadius:8,border:'none',background:active?C.teal+'15':'transparent',color:active?C.teal:C.muted,fontWeight:active?700:600,fontSize:12.5,cursor:'pointer',whiteSpace:'nowrap'}},
+          h('span',null,it.icon),it.label
+        );
+      })
+    ),
+    h('div',{style:(screen==='analyse'||screen==='reportPreview')?{maxWidth:1400,margin:'0 auto',padding:'0 0 60px'}:screen==='qualityConfig'?{maxWidth:1100,margin:'0 auto',padding:'0 0 60px'}:screen==='bilansGlobal'?{maxWidth:1000,margin:'0 auto',padding:'22px 16px 80px'}:{maxWidth:880,margin:'0 auto',padding:'22px 16px 80px'}},
+      screen==='home'&&h(Home,{athletes:athletes,onGoAthletes:function(){setScreen('dashboard');},onGoBilans:function(){setScreen('bilansGlobal');},onNewAthlete:function(){setScreen('newAthlete');},onSelectBilan:function(athleteId,b){setCurId(athleteId);setCurBilan(b);setScreen('analyse');}}),
+      screen==='bilansGlobal'&&h(BilansGlobalView,{athletes:athletes,onSelectBilan:function(athleteId,b){setCurId(athleteId);setCurBilan(b);setScreen('analyse');}}),
+      screen==='analyseEmptyState'&&h(Card,{pad:'40px 24px',style:{textAlign:'center',maxWidth:480,margin:'40px auto'}},
+        h('div',{style:{fontSize:28,marginBottom:12}},'🧠'),
+        h('div',{style:{color:C.text,fontSize:15,fontWeight:700,marginBottom:8}},'Aucun bilan ouvert'),
+        h('div',{style:{color:C.muted,fontSize:12.5,marginBottom:18,lineHeight:1.5}},"Sélectionnez un athlète puis un bilan pour accéder à l'Analyse."),
+        h('div',{style:{display:'flex',gap:8,justifyContent:'center'}},h(Btn,{onClick:function(){setScreen('dashboard');}},'👤 Athlètes'),h(Btn,{primary:true,onClick:function(){setScreen('bilansGlobal');}},'📊 Bilans'))
+      ),
       screen==='dashboard'&&h(Dashboard,{athletes:athletes,onSelect:function(a){setCurId(a.id);setScreen('athlete');},onNew:function(){setScreen('newAthlete');},onDelete:delAth,onOpenConfig:function(){setScreen('qualityConfig');}}),
-      screen==='qualityConfig'&&h(QualityConfigView,{onClose:function(){setScreen('dashboard');}}),
+      screen==='qualityConfig'&&h(QualityConfigView,{onClose:function(){setScreen('home');}}),
       (screen==='newAthlete'||screen==='editAthlete')&&h(AthleteForm,{initial:screen==='editAthlete'?editAth:null,onSave:saveAth,onCancel:function(){setScreen(editAth?'athlete':'dashboard');}}),
       screen==='athlete'&&ca&&h(AthleteProfile,{athlete:ca,onNewBilan:function(){setScreen('newBilan');},onSelectBilan:function(b){setCurBilan(b);setScreen('analyse');},onDeleteBilan:delBilan,onEdit:function(){setEditAth(ca);setScreen('editAthlete');},onDuplicate:dupBilan}),
       screen==='newBilan'&&h(BilanForm,{onSave:function(b){setDraft(b);setScreen('testEntry');},onCancel:function(){setScreen('athlete');}}),
