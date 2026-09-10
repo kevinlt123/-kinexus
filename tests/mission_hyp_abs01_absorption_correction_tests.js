@@ -182,14 +182,19 @@ const YANNIS_DATA = {
 };
 const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
 
-// RÉVISÉ (synchronisation) : BASELINE_COMMIT='HEAD' (728939f) prédate ÉGALEMENT la mission
-// ULTÉRIEURE et distincte MISSION_HYP_EXP01_RSI_MOD (encore non commitée) — un baseline "HEAD brut"
-// ferait donc apparaître le delta d'Explosivité comme un faux positif de CETTE mission-ci. Le
-// baseline correct isole la SEULE modification de cette mission (HYP-ABS-01) : on part du code
-// ACTUEL (qui inclut déjà, légitimement, le fix Explosivité) et on y RÉINJECTE, par substitution de
-// texte, les corps de computeHypAbsorption01/computeHypAbsorptionReceptionImpact tels qu'ils
-// existaient à HEAD (avant CETTE mission) — aucune autre fonction n'est touchée par la substitution.
-const BASELINE_COMMIT = 'HEAD';
+// MISSION P2BIS (correction méthodologie BASELINE_COMMIT) : 'HEAD' était correct au moment de la
+// rédaction initiale, mais est devenu trivial dès la fusion du commit de cette mission dans main
+// (HEAD == code courant == "avant" == "après"). Baseline historique vérifiée : 728939f est le
+// commit immédiatement PARENT de faccab2 (le commit qui contient cette mission HYP-ABS-01),
+// confirmé via `git show -s --format='%P' faccab2` -> 728939f. 728939f prédate ÉGALEMENT la
+// mission ULTÉRIEURE et distincte MISSION_HYP_EXP01_RSI_MOD — un baseline "728939f brut" ferait
+// donc apparaître le delta d'Explosivité comme un faux positif de CETTE mission-ci. Le baseline
+// correct isole la SEULE modification de cette mission (HYP-ABS-01) : on part du code ACTUEL (qui
+// inclut déjà, légitimement, le fix Explosivité et les missions ultérieures) et on y RÉINJECTE, par
+// substitution de texte, les corps de computeHypAbsorption01/computeHypAbsorptionReceptionImpact
+// tels qu'ils existaient à 728939f (avant CETTE mission) — aucune autre fonction n'est touchée par
+// la substitution (isolation via replaceFnBody, cf. plus bas).
+const BASELINE_COMMIT = '728939f';
 const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
 const baseScripts = [...baseHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 const baseCode = baseScripts.filter((s) => !s.includes('cdnjs')).join('\n');
@@ -306,6 +311,17 @@ test('GUARD 13 — le diff fonctionnel de cette mission se limite à computeHypA
 test('GUARD 14 — git diff --check passe (vérifié séparément par le rapport de mission ; ici, contrôle qu\'aucun conflit de fusion n\'est présent dans index.html)', () => {
   assert.strictEqual(code.indexOf('<<<<<<<'), -1);
   assert.strictEqual(code.indexOf('>>>>>>>'), -1);
+});
+// MISSION P2BIS §7 — méthodologie : BASELINE_COMMIT doit être un ancêtre historique FIXE de HEAD,
+// jamais HEAD lui-même. Ce test reste vrai indéfiniment : BASELINE_COMMIT est un SHA immuable, et
+// HEAD ne peut jamais redevenir égal à un ancêtre strict au fil de l'évolution normale du dépôt.
+test('MÉTHODOLOGIE — BASELINE_COMMIT est un ancêtre historique fixe de HEAD, jamais HEAD lui-même (garantit une comparaison avant/après réelle, non triviale, y compris après fusion dans main)', () => {
+  const headSha = execSync('git rev-parse HEAD', { cwd: path.join(__dirname, '..') }).toString().trim();
+  const baselineSha = execSync('git rev-parse ' + BASELINE_COMMIT, { cwd: path.join(__dirname, '..') }).toString().trim();
+  assert.notStrictEqual(baselineSha, headSha, 'BASELINE_COMMIT ne doit jamais résoudre au commit HEAD courant (sinon avant===après, comparaison triviale)');
+  let isAncestor = false;
+  try { execSync('git merge-base --is-ancestor ' + baselineSha + ' HEAD', { cwd: path.join(__dirname, '..') }); isAncestor = true; } catch (e) { isAncestor = false; }
+  assert.strictEqual(isAncestor, true, 'BASELINE_COMMIT doit être un ancêtre strict de HEAD (état réellement PRÉ-mission, jamais un commit hors branche)');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

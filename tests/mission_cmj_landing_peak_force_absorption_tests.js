@@ -278,7 +278,14 @@ const YANNIS_DATA = {
 };
 const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
 
-const BASELINE_COMMIT = 'HEAD';
+// MISSION P2BIS (correction méthodologie BASELINE_COMMIT) : 'HEAD' était correct au moment de la
+// rédaction initiale, mais est devenu trivial dès la fusion du commit de cette mission dans main
+// (HEAD == code courant). Baseline = commit pré-mission P1BIS : a8f02bd est le commit immédiatement
+// PARENT de 64caaaf (le commit qui contient cette mission cmj_landing_peak_force), confirmé via
+// `git show -s --format='%P' 64caaaf` -> a8f02bd (MISSION P1 Explosivité, fonction distincte).
+// Aucun commit n'a modifié index.html entre a8f02bd et 64caaaf : ce fichier étant la plus récente
+// des 3 missions concernées par P2BIS, sa baseline n'est contaminée par aucune mission ultérieure.
+const BASELINE_COMMIT = 'a8f02bd';
 const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
 const baseScripts = [...baseHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 const baseCode = baseScripts.filter((s) => !s.includes('cdnjs')).join('\n');
@@ -390,6 +397,17 @@ test('GUARD 5 — NORMS/NORMS_V2/THRESHOLDS/QUALITY_DIAGNOSTIC_VARIABLES_V1/CSM_
 test('GUARD 6 — git diff --check ne signale aucun conflit de fusion dans index.html', () => {
   const out = execSync('git diff --check -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   assert.strictEqual(out.trim(), '');
+});
+// MISSION P2BIS §7 — méthodologie : BASELINE_COMMIT doit être un ancêtre historique FIXE de HEAD,
+// jamais HEAD lui-même. Ce test reste vrai indéfiniment : BASELINE_COMMIT est un SHA immuable, et
+// HEAD ne peut jamais redevenir égal à un ancêtre strict au fil de l'évolution normale du dépôt.
+test('MÉTHODOLOGIE — BASELINE_COMMIT est un ancêtre historique fixe de HEAD, jamais HEAD lui-même (garantit une comparaison avant/après réelle, non triviale, y compris après fusion dans main)', () => {
+  const headSha = execSync('git rev-parse HEAD', { cwd: path.join(__dirname, '..') }).toString().trim();
+  const baselineSha = execSync('git rev-parse ' + BASELINE_COMMIT, { cwd: path.join(__dirname, '..') }).toString().trim();
+  assert.notStrictEqual(baselineSha, headSha, 'BASELINE_COMMIT ne doit jamais résoudre au commit HEAD courant (sinon avant===après, comparaison triviale)');
+  let isAncestor = false;
+  try { execSync('git merge-base --is-ancestor ' + baselineSha + ' HEAD', { cwd: path.join(__dirname, '..') }); isAncestor = true; } catch (e) { isAncestor = false; }
+  assert.strictEqual(isAncestor, true, 'BASELINE_COMMIT doit être un ancêtre strict de HEAD (état réellement PRÉ-mission, jamais un commit hors branche)');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

@@ -60,7 +60,20 @@ const YANNIS_DATA = {
 };
 const YANNIS_NORM_SEL = { cmj: { population_vald: "College - Men's Swimming", source_id: 'S001', sexe: 'Unknown', age_band: null }, iso_belt_squat: 'belt_netball_super_league_f' };
 
-const BASELINE_COMMIT = 'HEAD'; // dernier commit avant cette mission (1705d63, MISSION P0 NORMS) — cette mission ne touche pas la même fonction que P0.
+// MISSION P2BIS (correction méthodologie BASELINE_COMMIT) : 'HEAD' était correct au moment de la
+// rédaction initiale, mais est devenu trivial dès la fusion du commit de cette mission dans main
+// (HEAD == code courant). Baseline historique vérifiée : 1705d63 est le commit immédiatement
+// PARENT de a8f02bd (le commit qui contient cette mission Explosivité), confirmé via
+// `git show -s --format='%P' a8f02bd` -> 1705d63 (MISSION P0 NORMS, fonction distincte).
+// Ce fichier utilise une comparaison DIRECTE (baseSlice brut, sans isolation) : baseSandbox
+// représente donc l'intégralité du code à 1705d63, y compris pour les qualités non concernées par
+// cette mission. TEST 13 exclut désormais 'Absorption' de la liste : 1705d63 prédate aussi la
+// mission ULTÉRIEURE et distincte P1BIS (commit 64caaaf, intégration de cmj_landing_peak_force dans
+// Absorption/Landing) qui modifie légitimement computeHypAbsorptionReceptionImpact — cette mission
+// P1BIS est déjà testée et validée indépendamment dans son propre fichier de tests dédié
+// (mission_cmj_landing_peak_force_absorption_tests.js). Comparer 'Absorption' ici ferait apparaître
+// ce delta, réel mais SANS RAPPORT avec Explosivité, comme un faux positif de CETTE mission-ci.
+const BASELINE_COMMIT = '1705d63';
 const baseHtml = execSync('git show ' + BASELINE_COMMIT + ':index.html', { cwd: path.join(__dirname, '..'), maxBuffer: 64 * 1024 * 1024 }).toString();
 const baseScripts = [...baseHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 const baseCode = baseScripts.filter((s) => !s.includes('cdnjs')).join('\n');
@@ -187,10 +200,10 @@ test('TEST 12 — YANIS : verdict HYP-EXP-01 (state/status/severity/support) str
   assert.strictEqual(after.clinicalSynthesisV2.clinicalProfile['Explosivité'].state, before.clinicalSynthesisV2.clinicalProfile['Explosivité'].state);
   assert.strictEqual(after.clinicalSynthesisV2.clinicalProfile['Explosivité'].status, before.clinicalSynthesisV2.clinicalProfile['Explosivité'].status);
 });
-test('TEST 13 — YANIS : les 7 autres qualités restent byte-identiques (functionScores + clinicalProfile + clinicalCompletenessAudit)', () => {
+test('TEST 13 — YANIS : les 6 autres qualités restent byte-identiques (functionScores + clinicalProfile + clinicalCompletenessAudit) — Absorption exclue (cf. commentaire BASELINE_COMMIT : delta réel mais dû à la mission ULTÉRIEURE et distincte P1BIS, 64caaaf, déjà testée à part)', () => {
   const before = baseSandbox.computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
   const after = computeMoteur(YANNIS_DATA, {}, null, 25, YANNIS_NORM_SEL);
-  ['Force', 'Puissance', 'Réactivité', 'Absorption', 'Mobilité', 'Stabilisation', 'Endurance'].forEach((q) => {
+  ['Force', 'Puissance', 'Réactivité', 'Mobilité', 'Stabilisation', 'Endurance'].forEach((q) => {
     assert.deepStrictEqual(after.functionScores[q], before.functionScores[q], q + ' functionScores ne doit pas changer');
     assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalProfile[q], before.clinicalSynthesisV2.clinicalProfile[q], q + ' clinicalProfile ne doit pas changer');
     assert.deepStrictEqual(after.clinicalSynthesisV2.clinicalCompletenessAudit[q], before.clinicalSynthesisV2.clinicalCompletenessAudit[q], q + ' clinicalCompletenessAudit ne doit pas changer');
@@ -231,8 +244,8 @@ function extractFnBody(src, fnName) {
   }
   throw new Error('accolade non fermée pour ' + fnName);
 }
-test('GUARD 1 — les 8 moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES (y compris HYP-EXP-01 : cette mission ne modifie que la couche CSM, jamais le moteur)', () => {
-  ['computeHypExplosivity01', 'computeHypAbsorption01', 'computeHypForce01', 'computeHypMobility01',
+test('GUARD 1 — les 7 autres moteurs HYP-XX-01 LOCKED restent BYTE-IDENTIQUES (y compris HYP-EXP-01 : cette mission ne modifie que la couche CSM, jamais le moteur) — computeHypAbsorption01 exclu (cf. commentaire BASELINE_COMMIT : la mission ULTÉRIEURE et distincte P1BIS, 64caaaf, modifie légitimement ce moteur ; ce delta réel est déjà couvert par mission_cmj_landing_peak_force_absorption_tests.js, hors périmètre de CETTE mission Explosivité)', () => {
+  ['computeHypExplosivity01', 'computeHypForce01', 'computeHypMobility01',
     'computeHypPower01', 'computeHypReactivity01', 'computeHypStabilization01', 'computeHypEndurance01']
     .forEach((fn) => assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' a été modifiée — interdit'));
 });
@@ -255,6 +268,17 @@ test('GUARD 4 — le diff fonctionnel de cette mission se limite à computeCsmV2
 test('GUARD 5 — git diff --check ne signale aucun conflit de fusion dans index.html', () => {
   const out = execSync('git diff --check -- index.html', { cwd: path.join(__dirname, '..') }).toString();
   assert.strictEqual(out.trim(), '');
+});
+// MISSION P2BIS §7 — méthodologie : BASELINE_COMMIT doit être un ancêtre historique FIXE de HEAD,
+// jamais HEAD lui-même. Ce test reste vrai indéfiniment : BASELINE_COMMIT est un SHA immuable, et
+// HEAD ne peut jamais redevenir égal à un ancêtre strict au fil de l'évolution normale du dépôt.
+test('MÉTHODOLOGIE — BASELINE_COMMIT est un ancêtre historique fixe de HEAD, jamais HEAD lui-même (garantit une comparaison avant/après réelle, non triviale, y compris après fusion dans main)', () => {
+  const headSha = execSync('git rev-parse HEAD', { cwd: path.join(__dirname, '..') }).toString().trim();
+  const baselineSha = execSync('git rev-parse ' + BASELINE_COMMIT, { cwd: path.join(__dirname, '..') }).toString().trim();
+  assert.notStrictEqual(baselineSha, headSha, 'BASELINE_COMMIT ne doit jamais résoudre au commit HEAD courant (sinon avant===après, comparaison triviale)');
+  let isAncestor = false;
+  try { execSync('git merge-base --is-ancestor ' + baselineSha + ' HEAD', { cwd: path.join(__dirname, '..') }); isAncestor = true; } catch (e) { isAncestor = false; }
+  assert.strictEqual(isAncestor, true, 'BASELINE_COMMIT doit être un ancêtre strict de HEAD (état réellement PRÉ-mission, jamais un commit hors branche)');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
