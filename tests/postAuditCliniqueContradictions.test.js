@@ -68,13 +68,19 @@ console.log('=== CAS A — SUSPECTÉE ===');
     assert.ok(/convergence diagnostique/.test(note));
     assert.ok(!/normal/i.test(note));
   });
-  test('ExpertView (source) : bloc "Qualités suspectées" lit bien csm.suspected (jamais csm.objectified/nonDeterminable pour cette section)', () => {
-    var tabStart = code.indexOf("tab==='synthese'&&(function(){");
-    var tabEnd = code.indexOf("tab==='fonctions'&&", tabStart);
-    assert.ok(tabStart >= 0 && tabEnd > tabStart, 'bloc onglet Synthèse clinique introuvable dans ExpertView');
+  test('CsmSuspectedCard (source) : bloc "Qualités suspectées" lit bien csm.suspected (jamais csm.objectified/nonDeterminable pour cette section)', () => {
+    // Mission UX/UI V1, Phase 3 : ce bloc a été extrait d'ExpertView vers un composant partagé
+    // CsmSuspectedCard (réutilisé à l'identique par la nouvelle SyntheseView) — même rendu, même
+    // lecture de csm.suspected, seulement déplacé hors du corps d'ExpertView lui-même.
+    var tabStart = code.indexOf('function CsmSuspectedCard(props){');
+    var tabEnd = code.indexOf('function CsmNonDeterminableCard(props){', tabStart);
+    assert.ok(tabStart >= 0 && tabEnd > tabStart, 'CsmSuspectedCard introuvable dans index.html');
     var block = code.slice(tabStart, tabEnd);
-    assert.ok(block.includes('Qualités suspectées'), 'bloc "Qualités suspectées" introuvable dans ExpertView');
+    assert.ok(block.includes('Qualités suspectées'), 'bloc "Qualités suspectées" introuvable dans CsmSuspectedCard');
     assert.ok(block.includes('csm.suspected'), 'le bloc ne lit pas csm.suspected');
+    assert.ok(!/csm\.objectified|csm\.nonDeterminable/.test(block), 'CsmSuspectedCard ne doit jamais lire csm.objectified/nonDeterminable');
+    // Confirme aussi qu'ExpertView continue bien à afficher ce bloc (délégation, pas suppression).
+    assert.ok(/tab==='synthese'&&[\s\S]{0,400}?h\(CsmSuspectedCard,\{res:res\}\)/.test(code), "ExpertView ne délègue plus l'onglet Synthèse clinique à CsmSuspectedCard");
   });
 
   var sportifHtml = buildFullReportHtml('sportif', athlete, makeBilan(td), res);

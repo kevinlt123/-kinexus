@@ -16122,34 +16122,16 @@ function TestEntry(props){
   );
 }
 
-function AnalyseView(props){
-  var bilan=props.bilan,athlete=props.athlete;
-  // initialView/initialExpertTab (Mission UX/UI V1, Phase 2) : seed d'affichage uniquement, fournis
-  // par la barre secondaire persistante de App() pour faire atterrir l'utilisateur sur la vue
-  // demandée à l'ouverture du bilan — aucun recalcul, aucune nouvelle donnée : ce sont exactement
-  // les mêmes `view`/`tab` internes qui existaient déjà, seulement pré-remplis. AnalyseView reste
-  // parfaitement utilisable sans ces props (comportement identique à avant : 'expert' par défaut).
-  var [view,setView]=useState(props.initialView||'expert');
-  var [validated,setValidated]=useState(bilan.statut==='Validé');
-  var [showPrintMenu,setShowPrintMenu]=useState(false);
-  var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
-  var effNormSel=useMemo(function(){return effectiveNormSelections(athlete).normSelections;},[athlete.normSelections,athlete.sport,athlete.niveau,athlete.sexe,athlete.dateNaissance]);
-  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,effNormSel);},[bilan,athlete.normPopulation,effNormSel,athlete.sexe,athleteAge]);
-  // RÉVISÉ (décision du praticien, cf. commentaire buildSportifReport index.html) : le Moteur
-  // Biomécanique (analyse par phase) utilise désormais sa population automatique cabinet
-  // (effectiveCmjPhaseAnalysisPopulation, bball2425_bleague par défaut — seule population du
-  // catalogue couvrant les 5 phases), volontairement DÉCOUPLÉE de la sélection de population par
-  // test CMJ du patient (effNormSel, qui continue de piloter exclusivement res/computeMoteur, le
-  // Moteur des Qualités cliniques) — jamais une nouvelle norme créée.
-  // RESTAURATION 07/09 (MISSION_RESTAURATION_NORMES_ASYMETRIE.md) : le Moteur d'Asymétrie (asymPop,
-  // 5e argument) redevient piloté par effectiveNormPop(athlete), comme avant dbd93ad — cf.
-  // commentaire détaillé sur computeMouvementAnalysis et buildSportifReport.
-  var mouvementAnalysis=useMemo(function(){
-    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),athleteAge,res.functionScores,effectiveNormPop(athlete)):null;
-  },[bilan,athleteAge,res,athlete.normPopulation]);
-  var evFns=DISPLAYED_FUNCTIONS.filter(function(f){return res.functionScores[f];});
-  var fSc=res.functionScores,sysSc=res.systemScores;
+// ── DÉRIVATION DE PRÉSENTATION DU BILAN (Mission UX/UI V1, Phase 3) ─────────────────────────────
+// Extraction pure (aucun changement de comportement) du bloc de calcul de présentation qui vivait
+// jusqu'ici en tête d'AnalyseView — jamais un recalcul clinique : mêmes expressions, mêmes
+// fonctions déjà existantes (buildMultiQualityNarrative, bilanHasRealData, autoLSI, lsiSt...),
+// simplement nommées pour être réutilisées à l'identique par AnalyseView ET la nouvelle SyntheseView
+// (Phase 3) sans dupliquer cette logique de dérivation dans les deux composants.
+function computeAnalysePresentation(bilan,athlete,athleteAge,res){
+  var fSc=res.functionScores;
   var pri=res.priorities||[];
+  var evFns=DISPLAYED_FUNCTIONS.filter(function(f){return res.functionScores[f];});
 
   // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).
   var riskLevel=pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':pri.length?'FAIBLE':'FAIBLE';
@@ -16161,7 +16143,7 @@ function AnalyseView(props){
   var priorBilans=(athlete.bilans||[]).filter(function(b){return b.id!==bilan.id&&new Date(b.date)<new Date(bilan.date);}).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
   if(priorBilans.length>0){
     var prevBilan=priorBilans[0];
-    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),athleteAge,effNormSel);
+    var prevRes=computeMoteur(prevBilan.testData,prevBilan.questData,effectiveNormPop(athlete),athleteAge,effectiveNormSelections(athlete).normSelections);
     var commonFns=DISPLAYED_FUNCTIONS.filter(function(f){return res.functionScores[f]&&prevRes.functionScores[f];});
     if(commonFns.length>0){
       var curAvg=commonFns.reduce(function(s,f){return s+FN_GAUGE_PCT[res.functionScores[f].status];},0)/commonFns.length;
@@ -16214,11 +16196,195 @@ function AnalyseView(props){
   // le rapport PDF — jamais « Répercussion sur »/« entraîne » sans relation HYP documentée.
   var causalSteps=buildMultiQualityNarrative(pri).causalSteps;
 
-  function doPrint(type){setShowPrintMenu(false);printReport(type,athlete,bilan,res);}
-
   var objectifs={Performance:'Optimiser les qualités physiques et prévenir les blessures.',RTP:'Évaluer les critères de retour au sport en sécurité.',Screening:'Dépister les facteurs de risque de blessure.',Suivi:"Suivre l'évolution du profil fonctionnel."};
   var objectifTxt=bilan.commentaire||objectifs[bilan.type]||'Évaluer le profil fonctionnel du sportif.';
   var normLbl=athlete.normPopulation?((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):null;
+
+  return{evFns:evFns,riskLevel:riskLevel,riskCol:riskCol,riskSub:riskSub,evolution:evolution,testsCnt:testsCnt,testsFilledCnt:testsFilledCnt,canValidate:canValidate,forces:forces,limitations:limitations,nonEvaluees:nonEvaluees,hasAsym:hasAsym,asymItems:asymItems,risques:risques,causalSteps:causalSteps,objectifTxt:objectifTxt,normLbl:normLbl};
+}
+
+// BilanStatusCards — les 4 cartes "01 · Synthèse globale" (Retour au sport / Risque global /
+// Déficits objectivés / Évolution), extraites d'AnalyseView pour être réutilisées à l'identique par
+// SyntheseView (Phase 3) sans dupliquer ce rendu dans les deux composants. Lecture pure de res/pres
+// déjà calculés, aucun recalcul.
+function BilanStatusCards(props){
+  var res=props.res,pres=props.pres,bilan=props.bilan;
+  var pri=res.priorities||[];
+  return h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}},
+    h(Card,{pad:14},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+        h('span',{style:{fontSize:16}},'🏃'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Retour au sport')
+      ),
+      h('div',{style:{fontSize:26,fontWeight:900,color:res.rtpStatus?SC[res.rtpStatus.status]:C.muted}},res.rtpStatus?res.rtpStatus.ratio+'%':'—'),
+      h('div',{style:{fontSize:10.5,fontWeight:800,letterSpacing:'0.04em',color:res.rtpStatus?SC[res.rtpStatus.status]:C.muted,marginTop:1}},res.rtpStatus?(res.rtpStatus.status==='vert'?'PRÊT':res.rtpStatus.status==='jaune'?'À SURVEILLER':'NON PRÊT'):'NON ÉVALUÉ'),
+      h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6}},res.rtpStatus?'Tests RTP : '+res.rtpStatus.passCount+'/'+res.rtpStatus.totalCount:'Aucun test RTP actif')
+    ),
+    h(Card,{pad:14},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+        h('span',{style:{fontSize:16}},'⚠️'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Risque global')
+      ),
+      h('div',{style:{fontSize:20,fontWeight:900,color:pres.riskCol,marginTop:5}},pres.riskLevel),
+      h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6}},pres.riskSub)
+    ),
+    (function(){
+      // Problème 3 (IMPLEMENTATION_POST_AUDIT_CLINIQUE_V1.md) : CSM ne détermine jamais de
+      // hiérarchie entre déficits — remplace la carte "Priorité principale" (un seul élément
+      // désigné) par "Déficits objectivés", qui affiche TOUT le groupe à égalité de sévérité
+      // (topSeverityGroup, tri par sévérité déjà correct via statusPriorityRank, non modifié)
+      // plutôt que d'en choisir arbitrairement un seul. Problème 2 : le sous-titre n'utilise
+      // plus le texte causal legacy `hypothese`, remplacé par csmSafeQualityNote().
+      var topGroup=topSeverityGroup(pri);
+      var label=topGroup.length===0?'AUCUNE':topGroup.map(function(p){return p.contributeurPrincipal||p.fonction;}).join(' · ');
+      var subtitle=topGroup.length===0?'Profil équilibré, aucun déficit majeur.'
+        :topGroup.length===1?csmSafeQualityNote(topGroup[0].fonction,res.clinicalSynthesis)
+        :'Plusieurs qualités présentent le même niveau de sévérité — voir la Synthèse clinique pour le détail de chacune.';
+      return h(Card,{pad:14},
+        h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+          h('span',{style:{fontSize:16}},'🎯'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Déficits objectivés')
+        ),
+        h('div',{style:{fontSize:topGroup.length>1?14:18,fontWeight:900,color:topGroup[0]?SC[topGroup[0].status]:C.vert,marginTop:5,textTransform:'uppercase'}},label),
+        h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6,lineHeight:1.4}},subtitle)
+      );
+    })(),
+    h(Card,{pad:14},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:10}},
+        h('span',{style:{fontSize:16}},pres.evolution&&pres.evolution.delta<0?'📉':'📈'),h('span',{style:{color:C.muted,fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}},'Évolution vs dernier bilan')
+      ),
+      h('div',{style:{fontSize:26,fontWeight:900,color:!pres.evolution||pres.evolution.delta===0?C.muted:pres.evolution.delta>0?C.vert:C.rouge}},pres.evolution?(pres.evolution.delta>0?'+':'')+pres.evolution.delta+'%':'—'),
+      h('div',{style:{fontSize:10.5,color:C.muted,marginTop:6}},pres.evolution?new Date(pres.evolution.prevDate).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' → '+new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'Premier bilan enregistré')
+    )
+  );
+}
+
+// AsymmetryTable — le tableau "04 · Asymétries majeures", extrait pour être réutilisé à l'identique
+// par SyntheseView. Lecture pure de asymItems déjà calculé (computeAnalysePresentation), aucun
+// recalcul de LSI/asymétrie.
+function AsymmetryTable(props){
+  var asymItems=props.asymItems;
+  return asymItems.length===0
+    ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucun test unipodal actif.'))
+    :h(Card,{pad:'10px 13px'},
+        h('div',{style:{display:'grid',gridTemplateColumns:'1.5fr 0.7fr 0.7fr 0.6fr',gap:4,fontSize:8,fontWeight:800,letterSpacing:'0.04em',textTransform:'uppercase',color:C.muted,paddingBottom:6,borderBottom:'1px solid '+C.border}},
+          h('span',null,'Test'),h('span',{style:{textAlign:'right'}},'G / D'),h('span',{style:{textAlign:'right'}},'LSI'),h('span',{style:{textAlign:'center'}},'Statut')
+        ),
+        asymItems.slice(0,6).map(function(a,i){return h('div',{key:i,style:{display:'grid',gridTemplateColumns:'1.5fr 0.7fr 0.7fr 0.6fr',gap:4,alignItems:'center',padding:'7px 0',borderTop:'1px solid '+C.border}},
+          h('span',{style:{fontSize:10.5,color:C.text,fontWeight:600}},a.label),
+          h('span',{style:{fontSize:9.5,color:C.muted,textAlign:'right'}},a.gV+' / '+a.dV),
+          h('span',{style:{fontSize:10.5,fontWeight:800,color:SC[a.status],textAlign:'right'}},a.lsi+'%'),
+          h('span',{style:{display:'flex',justifyContent:'center'}},h('span',{style:{width:8,height:8,borderRadius:'50%',background:SC[a.status],display:'inline-block'}}))
+        );})
+      );
+}
+
+// ── SYNTHÈSE CLINIQUE — nouvel écran principal du bilan (Mission UX/UI V1, Phase 3) ─────────────
+// Couche de présentation uniquement : reçoit bilan/athlete/res/pres/pri déjà calculés par
+// AnalyseView (aucun second appel à computeMoteur, aucun recalcul). Recompose des blocs déjà
+// existants (BilanStatusCards, AsymmetryTable, les cartes CSM, PriorityOrientationCards,
+// FunctionGaugeCard) selon la hiérarchie demandée : 1) Profil global, 2) Ce qui ressort,
+// 3) Priorités, 5) Relations/Cohérences, 6) Limites/Données manquantes (numérotation de la mission ;
+// la Section 4 "Preuves/Pourquoi" n'est pas un bloc séparé mais les boutons "Voir les preuves"
+// intégrés aux sections 2/3, en attendant la vraie vue "Pourquoi ?" de la Phase 5).
+function SyntheseSectionTitle(props){
+  return h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,letterSpacing:'0.01em',marginBottom:12,marginTop:28,display:'flex',alignItems:'center',justifyContent:'space-between'}},
+    h('span',null,props.children),
+    props.onAction&&h('button',{onClick:props.onAction,style:{background:'transparent',border:'none',color:C.teal,fontSize:11.5,fontWeight:600,cursor:'pointer'}},props.actionLabel||'Voir les preuves →')
+  );
+}
+function SyntheseView(props){
+  var bilan=props.bilan,athlete=props.athlete,res=props.res,pres=props.pres,pri=props.pri;
+  var csm=res.clinicalSynthesis;
+  return h('div',{style:{maxWidth:980}},
+    h('div',{style:{marginBottom:22}},
+      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Synthèse clinique'),
+      h('h1',{style:{margin:0,fontSize:22,fontWeight:800,color:C.text}},'Bilan du '+new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}))
+    ),
+    h(BilanStatusCards,{res:res,pres:pres,bilan:bilan}),
+
+    h(SyntheseSectionTitle,null,'Profil global'),
+    pres.evFns.length===0
+      ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction évaluée.'))
+      :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(108px,1fr))',gap:10}},pres.evFns.map(function(f){
+          return h(FunctionGaugeCard,{key:f,label:f,sc:res.functionScores[f]});
+        })),
+
+    h(SyntheseSectionTitle,{onAction:props.onGotoExpertTab&&function(){props.onGotoExpertTab('synthese');}},'Ce qui ressort'),
+    !csm
+      ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Synthèse non disponible.'))
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+          h(CsmObjectifiedCard,{res:res}),
+          h(CsmSuspectedCard,{res:res})
+        ),
+    pres.asymItems.length>0&&h('div',{style:{marginTop:14}},
+      h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Asymétries majeures'),
+      h(AsymmetryTable,{asymItems:pres.asymItems})
+    ),
+
+    h(SyntheseSectionTitle,{onAction:props.onGotoExpertTab&&function(){props.onGotoExpertTab('orientations');},actionLabel:'Voir le détail →'},'Priorités'),
+    h(PriorityOrientationCards,{pri:pri,res:res}),
+
+    csm&&h(React.Fragment,null,
+      h(SyntheseSectionTitle,null,'Relations / cohérences'),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:10}},h(CsmRelationsCards,{res:res}))
+    ),
+
+    csm&&h(React.Fragment,null,
+      h(SyntheseSectionTitle,null,'Limites / données manquantes'),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+        h(CsmNonDeterminableCard,{res:res}),
+        h(CsmLimitationsCard,{res:res})
+      )
+    ),
+
+    h('div',{style:{marginTop:28,paddingTop:18,borderTop:'1px solid '+C.border,display:'flex',gap:10,flexWrap:'wrap'}},
+      h(Btn,{onClick:function(){props.onGotoExpertTab&&props.onGotoExpertTab(null);}},'🧠 Analyse Expert'),
+      h(Btn,{onClick:props.onGotoRapport},'📋 Voir le rapport')
+    )
+  );
+}
+
+function AnalyseView(props){
+  var bilan=props.bilan,athlete=props.athlete;
+  // initialView/initialExpertTab (Mission UX/UI V1, Phase 2) : seed d'affichage uniquement, fournis
+  // par la barre secondaire persistante de App() pour faire atterrir l'utilisateur sur la vue
+  // demandée à l'ouverture du bilan — aucun recalcul, aucune nouvelle donnée : ce sont exactement
+  // les mêmes `view`/`tab` internes qui existaient déjà, seulement pré-remplis. AnalyseView reste
+  // parfaitement utilisable sans ces props (comportement identique à avant : 'expert' par défaut).
+  var [view,setView]=useState(props.initialView||'expert');
+  var [validated,setValidated]=useState(bilan.statut==='Validé');
+  var [showPrintMenu,setShowPrintMenu]=useState(false);
+  var athleteAge=athlete.dateNaissance?Math.floor((Date.now()-new Date(athlete.dateNaissance))/(1000*60*60*24*365.25)):null;
+  var effNormSel=useMemo(function(){return effectiveNormSelections(athlete).normSelections;},[athlete.normSelections,athlete.sport,athlete.niveau,athlete.sexe,athlete.dateNaissance]);
+  var res=useMemo(function(){return computeMoteur(bilan.testData,bilan.questData,effectiveNormPop(athlete),athleteAge,effNormSel);},[bilan,athlete.normPopulation,effNormSel,athlete.sexe,athleteAge]);
+  // RÉVISÉ (décision du praticien, cf. commentaire buildSportifReport index.html) : le Moteur
+  // Biomécanique (analyse par phase) utilise désormais sa population automatique cabinet
+  // (effectiveCmjPhaseAnalysisPopulation, bball2425_bleague par défaut — seule population du
+  // catalogue couvrant les 5 phases), volontairement DÉCOUPLÉE de la sélection de population par
+  // test CMJ du patient (effNormSel, qui continue de piloter exclusivement res/computeMoteur, le
+  // Moteur des Qualités cliniques) — jamais une nouvelle norme créée.
+  // RESTAURATION 07/09 (MISSION_RESTAURATION_NORMES_ASYMETRIE.md) : le Moteur d'Asymétrie (asymPop,
+  // 5e argument) redevient piloté par effectiveNormPop(athlete), comme avant dbd93ad — cf.
+  // commentaire détaillé sur computeMouvementAnalysis et buildSportifReport.
+  var mouvementAnalysis=useMemo(function(){
+    return(bilan.testData&&bilan.testData.cmj&&bilan.testData.cmj.active)?computeMouvementAnalysis(bilan,effectiveCmjPhaseAnalysisPopulation(),athleteAge,res.functionScores,effectiveNormPop(athlete)):null;
+  },[bilan,athleteAge,res,athlete.normPopulation]);
+  var fSc=res.functionScores,sysSc=res.systemScores;
+  var pri=res.priorities||[];
+  // computeAnalysePresentation (Mission UX/UI V1, Phase 3) : extraction pure du bloc de dérivation
+  // de présentation qui vivait ici même — mêmes expressions, réutilisées à l'identique par la
+  // nouvelle SyntheseView (view==='synthese' ci-dessous), aucun recalcul clinique.
+  var pres=computeAnalysePresentation(bilan,athlete,athleteAge,res);
+  var evFns=pres.evFns,riskCol=pres.riskCol,riskLevel=pres.riskLevel,riskSub=pres.riskSub,evolution=pres.evolution;
+  var testsCnt=pres.testsCnt,testsFilledCnt=pres.testsFilledCnt,canValidate=pres.canValidate;
+  var forces=pres.forces,limitations=pres.limitations,nonEvaluees=pres.nonEvaluees,hasAsym=pres.hasAsym,asymItems=pres.asymItems,causalSteps=pres.causalSteps;
+  var objectifTxt=pres.objectifTxt,normLbl=pres.normLbl;
+
+  function doPrint(type){setShowPrintMenu(false);printReport(type,athlete,bilan,res);}
+
+  // expertTabTarget (Mission UX/UI V1, Phase 3) : seed d'onglet Expert, distinct d'initialExpertTab
+  // (figé au montage) — permet à SyntheseView de rediriger vers un onglet Expert précis (ex.
+  // "Voir les preuves" -> 'synthese') en passant par setView('expert'), qui remonte ExpertView avec
+  // ce nouvel onglet initial. Aucun recalcul : seulement quel onglet déjà existant s'affiche.
+  var [expertTabTarget,setExpertTabTarget]=useState(props.initialExpertTab);
 
   return h('div',{style:{display:'flex',alignItems:'flex-start'}},
     h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 136px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:136,color:'#fff'}},
@@ -16254,6 +16420,12 @@ function AnalyseView(props){
       )
     ),
     h('div',{style:{flex:1,minWidth:0,padding:'22px 24px 60px',boxSizing:'border-box'}},
+      // Blocs 01-06 (Mission UX/UI V1, Phase 3) : masqués pour view==='synthese' — leur contenu vit
+      // désormais dans SyntheseView (extrait via computeAnalysePresentation/BilanStatusCards/
+      // AsymmetryTable, ci-dessus), pour éviter d'afficher deux fois les mêmes informations quand
+      // l'utilisateur consulte spécifiquement la Synthèse. Comportement inchangé pour les autres
+      // vues (Expert/Mouvement/Fil de Raisonnement/Historique), qui continuent de les voir.
+      view!=='synthese'&&h('div',null,
       h('div',{style:{marginBottom:20}},
         h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Synthèse globale'),
         h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}},
@@ -16434,11 +16606,20 @@ function AnalyseView(props){
             })()
           )
         )
+      )
       ),
+      // SyntheseView (Mission UX/UI V1, Phase 3) : nouvel écran principal du bilan, seule
+      // destination affichée pour view==='synthese' — reçoit res/pres/pri déjà calculés (aucun
+      // recalcul), et deux callbacks de navigation qui restent internes à AnalyseView (aucune
+      // nouvelle route App() nécessaire) : onGotoExpertTab bascule vers Expert avec l'onglet
+      // demandé, onGotoRapport réutilise le même onPreview déjà câblé pour le bouton sidebar.
+      view==='synthese'&&h(SyntheseView,{bilan:bilan,athlete:athlete,res:res,pres:pres,pri:pri,
+        onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
+        onGotoRapport:props.onPreview}),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
-        (mouvementAnalysis?[['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        (mouvementAnalysis?[['synthese','Synthèse'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
-      view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:props.initialExpertTab}),
+      view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:expertTabTarget}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
       // "Fil de Raisonnement" (05/08) : moteur d'explication générique de Kinexus — CMJ est son
       // premier cas d'usage, via l'adaptateur buildRaisonnementBoardCMJ (formatage pur, aucune
@@ -17114,6 +17295,100 @@ function BilansGlobalView(props){
   );
 }
 
+// ── CARTES DE SYNTHÈSE CLINIQUE CSM (Mission UX/UI V1, Phase 3) ─────────────────────────────────
+// Extraites de l'onglet "Synthèse clinique" d'ExpertView pour être réutilisées à l'identique par
+// SyntheseView, sans dupliquer ce rendu dans les deux composants. Lecture pure de
+// res.clinicalSynthesis (HYP-CSM-01, déjà calculé une seule fois par computeMoteur), mêmes
+// fonctions d'affichage déjà existantes (csmSuspectedNote, csmNonDeterminableHasPartialEvidence,
+// csmCleanExplanatoryText, csmSafeText, CSM_STATE_LABEL) — aucun recalcul, aucune nouvelle règle.
+function CsmObjectifiedCard(props){
+  var csm=props.res.clinicalSynthesis;
+  if(!csm)return null;
+  return h(Card,{pad:14},
+    h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités objectivement déficitaires'),
+    csm.objectified.length===0
+      ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — aucun déficit n\'est objectivé avec les données actuellement disponibles.')
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.objectified.map(function(o){return h('div',{key:o.quality,style:{display:'flex',alignItems:'center',gap:8}},h(Badge,{status:o.status,small:true}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},o.quality),h('span',{style:{color:C.muted,fontSize:11}},CSM_STATE_LABEL[o.state]||o.state));}))
+  );
+}
+function CsmSuspectedCard(props){
+  var csm=props.res.clinicalSynthesis;
+  if(!csm)return null;
+  return h(Card,{pad:14},
+    h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités suspectées (preuve partielle)'),
+    h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Un signal existe, mais la convergence diagnostique n\'est pas suffisante pour retenir le déficit — ni normal, ni confirmé, ni non déterminable.'),
+    csm.suspected.length===0
+      ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune.')
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.suspected.map(function(s){return h('div',{key:s.quality,style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{width:8,height:8,borderRadius:'50%',background:C.jaune,flexShrink:0}}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},s.quality),h('span',{style:{color:C.muted,fontSize:11}},csmSuspectedNote(s.quality)));}))
+  );
+}
+function CsmNonDeterminableCard(props){
+  var csm=props.res.clinicalSynthesis;
+  if(!csm)return null;
+  return h(Card,{pad:14},
+    h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités non déterminables'),
+    h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Non déterminable n\'équivaut jamais à normal.'),
+    csm.nonDeterminable.length===0
+      ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — toutes les qualités couvertes par le diagnostic clinique ont pu être évaluées.')
+      :h('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},csm.nonDeterminable.map(function(n){return h('span',{key:n.quality,style:{padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:11}},n.quality+(csmNonDeterminableHasPartialEvidence(n.quality,csm)?' · données normatives insuffisantes':''));}))
+  );
+}
+function CsmRelationsCards(props){
+  var csm=props.res.clinicalSynthesis;
+  if(!csm)return null;
+  // Concordance (aucune relation documentée) et hypothèse explicative (relation documentée, deux
+  // qualités objectivées) restent deux registres de preuve distincts (mission
+  // AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md, Partie 3) — ne jamais les fusionner visuellement.
+  var concordances=csm.relationships.filter(function(r){return r.level==='concordant_no_relation';});
+  return h(React.Fragment,null,
+    h(Card,{pad:14},
+      h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Relations explicatives possibles'),
+      csm.explanatoryHypotheses.length===0
+        ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — pas de relation documentée activable entre les qualités actuellement objectivées.')
+        :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},csm.explanatoryHypotheses.map(function(rel,i){return h('div',{key:i,style:{fontSize:12,color:C.text,lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid '+C.teal}},csmCleanExplanatoryText(rel));}))
+    ),
+    h(Card,{pad:14},
+      h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Concordances (sans relation documentée)'),
+      concordances.length===0
+        ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune.')
+        :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},concordances.map(function(r,i){return h('div',{key:i,style:{fontSize:12,color:C.muted,lineHeight:1.6}},r.narrative);}))
+    )
+  );
+}
+function CsmLimitationsCard(props){
+  var csm=props.res.clinicalSynthesis;
+  if(!csm)return null;
+  return h(Card,{pad:14,style:{background:C.surface}},
+    h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limites de cette synthèse'),
+    h('ul',{style:{margin:0,paddingLeft:16,color:C.muted,fontSize:11,lineHeight:1.6}},csm.limitations.map(function(l,i){return h('li',{key:i},csmSafeText(l));}))
+  );
+}
+
+// PriorityOrientationCards — extrait de l'onglet "Orientations" d'ExpertView pour être réutilisé à
+// l'identique par SyntheseView (Section 3 — Priorités). Respecte exactement l'ordre déjà calculé
+// (priHypObjectifiedSplit), aucun nouveau système de ranking.
+function PriorityOrientationCards(props){
+  var pri=props.pri,res=props.res;
+  // Même principe que "Déficits à investiguer" (mission IMPLEMENTATION_FINAL_PRIORITES_CSM.md) :
+  // plus de rang numéroté (impliquait un classement clinique inexistant dans CSM), qualités
+  // TFM seules jamais mêlées aux qualités objectivées par HYP.
+  var split=priHypObjectifiedSplit(pri,res.clinicalSynthesis);
+  if(!split.hyp.length&&!split.tfmOnly.length)return h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.');
+  function card(p){
+    var absSd=p.fonction==='Absorption'?absorptionSousDomainesSummary(res.functionScores):null;
+    return h(Card,{key:p.fonction,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h('span',{style:{width:9,height:9,borderRadius:'50%',background:SC[p.status],flexShrink:0}}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),
+      absSd&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:8}},absSd.map(function(sd){return h('span',{key:sd.key,style:{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,fontSize:10,color:sd.status?C.text:C.muted}},sd.status&&h('span',{style:{width:6,height:6,borderRadius:'50%',background:SC[sd.status],flexShrink:0}}),sd.label+(sd.status?'':' · '+CSM_STATE_LABEL.non_determinable));})),
+      h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},p.orientation)
+    );
+  }
+  return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+    split.hyp.map(card),
+    split.tfmOnly.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:split.hyp.length?4:0}},'Information complémentaire (hors diagnostic clinique)'),
+    split.tfmOnly.map(card)
+  );
+}
+
 function ExpertView(props){
   // initialTab (Mission UX/UI V1, Phase 2) : seed d'affichage fourni par la barre secondaire
   // persistante (App()), pour faire atterrir sur le sous-onglet correspondant à la vue demandée
@@ -17145,54 +17420,16 @@ function ExpertView(props){
     // Lit exclusivement res.clinicalSynthesis (déjà calculé une seule fois par computeMoteur()) —
     // ne recalcule rien, ne remplace aucun onglet existant (Fonctions/Capacités/Hypothèses restent
     // inchangés). Vocabulaire volontairement clinique (aucun hypId/csmId/poids TFM exposé ici).
-    tab==='synthese'&&(function(){
-      var csm=res.clinicalSynthesis;
-      if(!csm)return h('div',{style:{color:C.muted,fontSize:13}},'Synthèse non disponible.');
-      // Concordance (aucune relation documentée) et hypothèse explicative (relation documentée,
-      // deux qualités objectivées) restent deux registres de preuve distincts (mission
-      // AUDIT_OPTIMISATION_SYNTHESE_CLINIQUE.md, Partie 3) — ne jamais les fusionner visuellement.
-      // Lecture pure de champs déjà produits par CSM (explanatoryHypotheses/relationships), aucun
-      // recalcul.
-      var concordances=csm.relationships.filter(function(r){return r.level==='concordant_no_relation';});
-      return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
-        h(Card,{pad:14},
-          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités objectivement déficitaires'),
-          csm.objectified.length===0
-            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — aucun déficit n\'est objectivé avec les données actuellement disponibles.')
-            :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.objectified.map(function(o){return h('div',{key:o.quality,style:{display:'flex',alignItems:'center',gap:8}},h(Badge,{status:o.status,small:true}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},o.quality),h('span',{style:{color:C.muted,fontSize:11}},CSM_STATE_LABEL[o.state]||o.state));}))
-        ),
-        h(Card,{pad:14},
-          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités suspectées (preuve partielle)'),
-          h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Un signal existe, mais la convergence diagnostique n\'est pas suffisante pour retenir le déficit — ni normal, ni confirmé, ni non déterminable.'),
-          csm.suspected.length===0
-            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune.')
-            :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.suspected.map(function(s){return h('div',{key:s.quality,style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{width:8,height:8,borderRadius:'50%',background:C.jaune,flexShrink:0}}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},s.quality),h('span',{style:{color:C.muted,fontSize:11}},csmSuspectedNote(s.quality)));}))
-        ),
-        h(Card,{pad:14},
-          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités non déterminables'),
-          h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Non déterminable n\'équivaut jamais à normal.'),
-          csm.nonDeterminable.length===0
-            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — toutes les qualités couvertes par le diagnostic clinique ont pu être évaluées.')
-            :h('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},csm.nonDeterminable.map(function(n){return h('span',{key:n.quality,style:{padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:11}},n.quality+(csmNonDeterminableHasPartialEvidence(n.quality,csm)?' · données normatives insuffisantes':''));}))
-        ),
-        h(Card,{pad:14},
-          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Relations explicatives possibles'),
-          csm.explanatoryHypotheses.length===0
-            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — pas de relation documentée activable entre les qualités actuellement objectivées.')
-            :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},csm.explanatoryHypotheses.map(function(rel,i){return h('div',{key:i,style:{fontSize:12,color:C.text,lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid '+C.teal}},csmCleanExplanatoryText(rel));}))
-        ),
-        h(Card,{pad:14},
-          h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Concordances (sans relation documentée)'),
-          concordances.length===0
-            ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune.')
-            :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},concordances.map(function(r,i){return h('div',{key:i,style:{fontSize:12,color:C.muted,lineHeight:1.6}},r.narrative);}))
-        ),
-        h(Card,{pad:14,style:{background:C.surface}},
-          h('div',{style:{color:C.muted,fontWeight:700,fontSize:11,marginBottom:6,textTransform:'uppercase',letterSpacing:'0.04em'}},'Limites de cette synthèse'),
-          h('ul',{style:{margin:0,paddingLeft:16,color:C.muted,fontSize:11,lineHeight:1.6}},csm.limitations.map(function(l,i){return h('li',{key:i},csmSafeText(l));}))
-        )
-      );
-    })(),
+    // Délègue à CsmObjectifiedCard/CsmSuspectedCard/CsmNonDeterminableCard/CsmRelationsCards/
+    // CsmLimitationsCard (Mission UX/UI V1, Phase 3 — extraites ci-dessus, réutilisées à l'identique
+    // par SyntheseView) : rendu strictement identique à avant cette phase, aucun recalcul.
+    tab==='synthese'&&(!res.clinicalSynthesis?h('div',{style:{color:C.muted,fontSize:13}},'Synthèse non disponible.'):h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+      h(CsmObjectifiedCard,{res:res}),
+      h(CsmSuspectedCard,{res:res}),
+      h(CsmNonDeterminableCard,{res:res}),
+      h(CsmRelationsCards,{res:res}),
+      h(CsmLimitationsCard,{res:res})
+    )),
     // CSM V2 — Compte rendu clinique (mission Q, objectif 1). Lit EXCLUSIVEMENT
     // res.clinicalSynthesisV2.clinicalReport, déjà calculé une seule fois par computeMoteur() —
     // aucun recalcul, aucune nouvelle règle clinique. csmV2ClinicalReportBodyHtml est la SEULE
@@ -17374,26 +17611,9 @@ function ExpertView(props){
       // ce que HYP/CSM autorise pour la qualité concernée.
       pri.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontStyle:'italic',marginBottom:2}},'Formulations alignées sur la Synthèse clinique.'),
       pri.length===0&&h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.'),pri.map(function(p){return h(Card,{key:p.rang,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h(Badge,{status:p.status,small:true}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},'« '+csmSafeQualityNote(p.fonction,res.clinicalSynthesis)+' »'),p.contributeurPrincipal&&h('div',{style:{color:C.muted,fontSize:11,marginTop:6}},'Contributeur : ',h('span',{style:{color:C.tealLight}},p.contributeurPrincipal),p.contributeurSecondaire&&h('span',{style:{color:C.muted}},' · '+p.contributeurSecondaire)));})),
-    tab==='orientations'&&(function(){
-      // Même principe que "Déficits à investiguer" (mission IMPLEMENTATION_FINAL_PRIORITES_CSM.md) :
-      // plus de rang numéroté (impliquait un classement clinique inexistant dans CSM), qualités
-      // TFM seules jamais mêlées aux qualités objectivées par HYP.
-      var split=priHypObjectifiedSplit(pri,res.clinicalSynthesis);
-      if(!split.hyp.length&&!split.tfmOnly.length)return h('div',{style:{color:C.muted,fontSize:13}},'Aucun déficit identifié.');
-      function card(p){
-        var absSd=p.fonction==='Absorption'?absorptionSousDomainesSummary(res.functionScores):null;
-        return h(Card,{key:p.fonction,pad:14,style:{borderLeft:'3px solid '+SC[p.status]}},
-          h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:6}},h('span',{style:{width:9,height:9,borderRadius:'50%',background:SC[p.status],flexShrink:0}}),h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},p.fonction)),
-          absSd&&h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginBottom:8}},absSd.map(function(sd){return h('span',{key:sd.key,style:{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,fontSize:10,color:sd.status?C.text:C.muted}},sd.status&&h('span',{style:{width:6,height:6,borderRadius:'50%',background:SC[sd.status],flexShrink:0}}),sd.label+(sd.status?'':' · '+CSM_STATE_LABEL.non_determinable));})),
-          h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},p.orientation)
-        );
-      }
-      return h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
-        split.hyp.map(card),
-        split.tfmOnly.length>0&&h('div',{style:{color:C.muted,fontSize:10.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em',marginTop:split.hyp.length?4:0}},'Information complémentaire (hors diagnostic clinique)'),
-        split.tfmOnly.map(card)
-      );
-    })(),
+    // Délègue à PriorityOrientationCards (Mission UX/UI V1, Phase 3 — extraite ci-dessus, réutilisée
+    // à l'identique par SyntheseView, Section 3 Priorités) : rendu strictement identique à avant.
+    tab==='orientations'&&h(PriorityOrientationCards,{pri:pri,res:res}),
     tab==='couverture'&&h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}},FUNCTIONS.map(function(f){var sc=fSc[f];return h('div',{key:f,style:{background:C.card,border:'1px solid '+C.border,borderRadius:8,padding:'10px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}},h('span',{style:{color:C.text,fontSize:12}},f),sc?h('div',{style:{display:'flex',alignItems:'center',gap:6}},h('div',{style:{height:4,width:40,background:C.surface,borderRadius:2,overflow:'hidden'}},h('div',{style:{height:'100%',width:sc.coverage+'%',background:sc.coverage>=75?C.vert:sc.coverage>=50?C.jaune:C.orange,borderRadius:2}})),h('span',{style:{color:C.muted,fontSize:10}},sc.coverage+'%')):h('span',{style:{color:C.muted,fontSize:10}},'—'));})),
     tab==='raisonnement'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
       h('div',{style:{color:C.muted,fontSize:11,lineHeight:1.5,marginBottom:4}},'Relations structure → qualité issues du référentiel de raisonnement clinique KINEXUS. Les champs Contribution / Confiance / Spécificité sont des valeurs proposées par KINEXUS à partir du référentiel (non renseignées dans le document source) — il s\'agit d\'estimations, pas de mesures brutes.'),
@@ -17624,11 +17844,11 @@ function App(){
     {key:'analyse',icon:'🧠',label:'Analyse',onClick:function(){setScreen(curBilan&&ca?'analyse':'analyseEmptyState');}},
     {key:'donnees',icon:'⚙',label:'Données',onClick:function(){setScreen('qualityConfig');}}
   ];
-  // Barre secondaire du bilan (Mission UX/UI V1, Phase 2, §2/§3) : 7 destinations, toutes
-  // rattachées aux écrans/vues internes déjà existants (`screen==='analyse'` -> AnalyseView, dont
-  // le sélecteur haut ('expert'/'mouvement'/...) et les 11 sous-onglets d'ExpertView existent déjà
-  // — cette phase ne fait qu'y seeder un point d'atterrissage, jamais de nouvel écran). "Synthèse"
-  // -> onglet 'synthese' ("Synthèse clinique"), "Qualités" -> 'fonctions' (qualités fonctionnelles
+  // Barre secondaire du bilan (Mission UX/UI V1, Phase 2 puis 3) : 7 destinations. "Synthèse" ->
+  // vue 'synthese' d'AnalyseView (SyntheseView, nouvel écran principal du bilan depuis la Phase 3 —
+  // reçoit res/pres/pri déjà calculés par AnalyseView, aucun recalcul). Les 6 autres destinations
+  // restent rattachées aux vues/onglets internes déjà existants d'AnalyseView/ExpertView, seedés en
+  // Phase 2, inchangés par la Phase 3 : "Qualités" -> onglet 'fonctions' (qualités fonctionnelles
   // déjà affichées là), "Biomécanique" -> vue 'mouvement' existante, "Tests" -> onglet 'kpi'
   // (Résultats, déjà un tableau de résultats lecture seule), "Body Map" -> onglet 'systemes' (vue
   // par système musculaire, la plus proche du Body Map tant que la Phase 6 n'a pas fait de la
@@ -17636,7 +17856,7 @@ function App(){
   // "Analyse Expert" -> atterrissage par défaut d'ExpertView (identique à l'ouverture actuelle
   // d'un bilan, non régroupé avant la Phase 9), "Rapport" -> écran reportPreview déjà existant.
   var SECONDARY_NAV=[
-    {key:'synthese',label:'Synthèse',target:{screen:'analyse',view:'expert',tab:'synthese'}},
+    {key:'synthese',label:'Synthèse',target:{screen:'analyse',view:'synthese'}},
     {key:'qualites',label:'Qualités',target:{screen:'analyse',view:'expert',tab:'fonctions'}},
     {key:'biomecanique',label:'Biomécanique',target:{screen:'analyse',view:'mouvement'}},
     {key:'tests',label:'Tests',target:{screen:'analyse',view:'expert',tab:'kpi'}},
