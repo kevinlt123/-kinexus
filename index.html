@@ -10285,16 +10285,34 @@ function csmV2ExplanatoryFactorsForQuality(quality,r,clinicalBridgeEvidence,clin
   });
   return factors;
 }
+// MISSION P5 — AUDIT TRANSVERSAL : le gate littéral state==='deficitaire' excluait state==='suspectee'
+// (exactement 1 mécanisme diagnostique déficitaire sur ≥2 requis, ex. HYP-ABS-01/braking_rfd seul,
+// HYP-PUI-01, HYP-FOR-01, HYP-REA-01, HYP-STA-01, HYP-END-01 — 6 des 8 qualités partagent ce modèle
+// à mécanismes multiples). Décision B de l'audit : ce gate était trop strict, mais un niveau
+// intermédiaire EXISTE DÉJÀ dans le modèle (jamais inventé ici) — csmV2ExplanatoryFactorsForQuality
+// distingue déjà 'direct' (1 seule preuve propre) de 'convergent' (≥2), et
+// computeCsmV2ClinicalCertaintyForQuality distingue déjà 'objectively_supported' (direct seul) de
+// 'objectively_demonstrated' (convergent) — ce chemin est DÉJÀ emprunté aujourd'hui par les qualités
+// à mécanisme UNIQUE (Explosivité/cmj_rsi_mod, Mobilité/wblt_distance, ADR-005) dont l'état passe
+// directement à 'deficitaire' dès leur seul mécanisme déficitaire. 'suspectee' porte exactement la
+// même information (1 mécanisme diagnostique réellement déficitaire, via une norme réelle) pour les
+// qualités à mécanismes multiples — la bloquer ici la traitait différemment sans justification
+// clinique démontrée. Élargir le gate ne change RIEN à la sémantique de state='suspectee' (jamais
+// transformé en 'deficitaire', jamais promu à 'objectively_demonstrated' sans une 2e preuve propre
+// réelle — csmV2ExplanatoryFactorsForQuality exige déjà own.length>=2 pour 'convergent', aucune
+// modification apportée ici) : `state` continue de refléter la sévérité HYP telle quelle,
+// uniquement la VISIBILITÉ de la preuve déjà tranchée est corrigée.
 function computeCsmV2MechanisticReasoning(clinicalReasoning,symmetryEvidence,clinicalBridgeEvidence,clinicalFunctionalChains){
   var out={};
   HYP_CSM_QUALITIES.forEach(function(q){
     var r=Object.assign({},clinicalReasoning[q]);
     r.mechanism=csmV2QualityMechanism(q);
-    r.explanatoryFactors=r.state==='deficitaire'?csmV2ExplanatoryFactorsForQuality(q,r,clinicalBridgeEvidence,clinicalFunctionalChains):[];
+    var hasRealDiagnosticEvidence=r.state==='deficitaire'||r.state==='suspectee';
+    r.explanatoryFactors=hasRealDiagnosticEvidence?csmV2ExplanatoryFactorsForQuality(q,r,clinicalBridgeEvidence,clinicalFunctionalChains):[];
     r.mechanisms=r.mechanism?[{mechanism:r.mechanism,status:r.state,evidence:r.explanatoryEvidence||[],support:r.supportLevel,
       confidence:r.supportLevel==='convergent'?'élevée':(r.supportLevel==='direct'?'modérée':(r.supportLevel==='none'?'non déterminée':'limitée'))}]:[];
     r.convergence=(r.explanatoryEvidence&&r.explanatoryEvidence.length>=2)?{factors:r.explanatoryEvidence,evidence:r.explanatoryEvidence,support:'convergent'}:null;
-    r.missingEvidence=r.state==='deficitaire'?csmV2MissingEvidenceForQuality(q,symmetryEvidence):[];
+    r.missingEvidence=hasRealDiagnosticEvidence?csmV2MissingEvidenceForQuality(q,symmetryEvidence):[];
     out[q]=r;
   });
   return out;
@@ -10348,7 +10366,10 @@ function computeCsmV2CausalReasoning(clinicalProfile,clinicalMechanisticReasonin
     var prof=clinicalProfile[q]||{};
     var mr=clinicalMechanisticReasoning[q]||{};
     var factors=mr.explanatoryFactors||[];
-    var deficient=mr.state==='deficitaire';
+    // MISSION P5 : même élargissement que computeCsmV2MechanisticReasoning ci-dessus, pour cohérence
+    // interne immédiate (explanationStatus/unresolvedQuestion doivent refléter le même chaînon que
+    // explanatoryFactors, jamais un état intermédiaire incohérent au sein de cette même fonction).
+    var deficient=mr.state==='deficitaire'||mr.state==='suspectee';
 
     var directEvidence=factors.filter(function(f){return f.type==='direct'||f.type==='convergent';});
     var contributing=factors.filter(function(f){return f.type==='cross_quality';});
@@ -11654,7 +11675,14 @@ function computeCsmV2ClinicalCertaintyForQuality(profile,qr){
   if(!profile)return null;
   if(profile.severity==='preserved')return'preserved';
   if(profile.state==='non_determinable')return'not_determined';
-  if(!qr||qr.state!=='deficitaire')return'not_determined';
+  // MISSION P5 : même élargissement que computeCsmV2MechanisticReasoning/CausalReasoning ci-dessus
+  // — sans lui, qr.directEvidence restait non-vide (corrigé en amont) mais cette fonction retombait
+  // quand même sur 'not_determined' pour 'suspectee', un 3e gate indépendant et incohérent avec le
+  // verdict DIAGNOSTIC_OBJECTIVE désormais correctement produit par csmV2EvidenceHierarchyForQuality.
+  // Le reste de la fonction (inchangé) continue de distinguer correctement 'objectively_supported'
+  // (1 preuve directe) de 'objectively_demonstrated' (convergence réelle, ≥2 preuves) — jamais promu
+  // au-delà sans qu'un mécanisme explicatif/croisé réel existe déjà (lignes suivantes, inchangées).
+  if(!qr||(qr.state!=='deficitaire'&&qr.state!=='suspectee'))return'not_determined';
   if(qr.explanationStatus==='not_determined')return'not_determined';
   if(!qr.directEvidence.length)return'not_determined'; // aucune preuve diagnostique propre (correctif AC)
   var ownNonDiag=qr.explanatoryEvidence.filter(function(e){return e.variable.indexOf('diagnosticEvidence.')!==0;});
