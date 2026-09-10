@@ -8538,6 +8538,40 @@ function computeCsmV2ClinicalProfile(absoluteEvidence,symmetryEvidence,fusedDiss
         }]);
       }
     }
+    // MISSION P4 — AUDIT HYP-ABS-01/ABSORPTION : même chaînon manquant que cmj_rsi_mod (Mission P1)
+    // ci-dessus, démontré empiriquement pour braking_rfd/force_zero_vel. keyFindings n'est alimenté
+    // que par symmetryEvidence (axe LSI D/G) — structurellement vide pour braking_rfd/force_zero_vel
+    // quand le déficit est porté par la valeur ABSOLUE du CMJ (bilatéral, jamais un axe D/G comme
+    // WBLT/SLCMJ), même quand HYP-ABS-01 a déjà classifié la variable déficitaire via applyThr()
+    // (core.niveau/state/status, LOCKED, jamais recalculés ici) : sans ce chaînon, completenessStatus/
+    // clinicalEvidenceHierarchy.verdict/clinicalCertainty restaient bloqués sur NOT_DETERMINED/
+    // AUCUNE_PREUVE_DIAGNOSTIQUE/not_determined pour un déficit pourtant déjà objectivé par une
+    // norme réelle (vérifié empiriquement : braking_rfd=70 chez foot_f_senior -> status='orange',
+    // hyp.state='suspectee', hyp.status='jaune', mais keyFindings=[] avant ce correctif). Relit
+    // hyp.convergence.mechanismsInvolved (LOCKED, déjà calculé par computeHypAbsorption01 pour son
+    // propre convergence.mechanismsInvolved — jamais recalculé ici) pour savoir EXACTEMENT lesquelles
+    // de braking_rfd/force_zero_vel sont réellement déficitaires : ni seuil, ni classification, ni
+    // nouvelle règle de convergence — une pure réinjection d'un statut déjà tranché, ciblée
+    // exclusivement sur Absorption (mission §5 : "ne pas généraliser à toutes les variables").
+    // `landing` (cmj_landing_peak_force, MISSION P1 BIS) est délibérément EXCLU de ce correctif :
+    // contrairement à braking, `landing` ne pilote jamais severity/state d'Absorption (choix P1 BIS
+    // déjà validé, conservé tel quel) — y ajouter une entrée keyFindings créerait une incohérence
+    // (une "preuve" visible alors que severity resterait 'preserved'), jamais démontrée nécessaire ici
+    // et documentée comme question distincte dans le rapport d'audit P4, non traitée par cette mission.
+    if(q==='Absorption'){
+      var absDeficientKeys=(hyp&&hyp.convergence&&hyp.convergence.mechanismsInvolved)||[];
+      var absKeyFindings=absDeficientKeys.map(function(k){
+        var ev=hyp.diagnosticEvidence&&hyp.diagnosticEvidence[k];
+        // Garde défensive (audit P4) : computeHypAbsorptionCore (LOCKED, non modifiée ici) peut
+        // classifier une entrée non-numérique/non-finie comme déficitaire (rfdRaw!=null est vrai
+        // pour NaN) — même prudence que celle déjà appliquée à cmj_landing_peak_force (MISSION P1
+        // BIS) : jamais exposer une valeur non-finie comme preuve dans keyFindings, jamais un
+        // recalcul/correctif du moteur HYP-ABS-01 lui-même (hors périmètre de cette mission).
+        var rawOk=ev&&typeof ev.raw==='number'&&isFinite(ev.raw);
+        return rawOk?{variable:'diagnosticEvidence.'+k,left:ev.raw,right:null,lsi:null,asymmetryPercent:null,status:'deficient',source:null}:null;
+      }).filter(Boolean);
+      profile[q].keyFindings=profile[q].keyFindings.concat(absKeyFindings);
+    }
   });
   return profile;
 }
