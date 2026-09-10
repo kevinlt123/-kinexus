@@ -259,9 +259,9 @@ test('GUARD 3 — NORMS/NORMS_V2/THRESHOLDS/QUALITY_DIAGNOSTIC_VARIABLES_V1/CSM_
   assert.deepStrictEqual(QUALITY_DIAGNOSTIC_VARIABLES_V1, baseSandbox.QUALITY_DIAGNOSTIC_VARIABLES_V1);
   assert.deepStrictEqual(CSM_V2_CLINICAL_VARIABLE_MATRIX, baseSandbox.CSM_V2_CLINICAL_VARIABLE_MATRIX);
 });
-test('GUARD 4 — le diff fonctionnel de cette mission se limite à computeCsmV2ClinicalProfile (keyFindings additif Explosivité) et aux 2 narrations "asymétries D/G" (filtre lsi!=null) — jamais computeMoteur/computeCsmV2/computeHypXxx01/CSM_V2_CLINICAL_VARIABLE_MATRIX', () => {
+test('GUARD 4 — le diff fonctionnel de cette mission se limite à computeCsmV2ClinicalProfile (keyFindings additif Explosivité) et aux 2 narrations "asymétries D/G" (filtre lsi!=null) — jamais computeMoteur/computeCsmV2/computeHypXxx01/CSM_V2_CLINICAL_VARIABLE_MATRIX — computeCsmV2ClinicalCertaintyForQuality exclu (cf. mission ULTÉRIEURE et distincte P5, qui élargit son gate d\'entrée à state===\'suspectee\' pour toutes les qualités ; ce delta réel est déjà couvert par mission_p5_csm_mechanistic_reasoning_suspectee_tests.js, hors périmètre de CETTE mission Explosivité)', () => {
   assert.strictEqual(extractFnBody(code, 'computeCsmV2ClinicalProfile') === extractFnBody(baseCode, 'computeCsmV2ClinicalProfile'), false, 'computeCsmV2ClinicalProfile doit avoir changé (cette mission)');
-  ['computeMoteur', 'computeCsmV2', 'csmV2QualitySeverity', 'csmV2ClinicalReasoningForQuality', 'csmV2ExplanatoryFactorsForQuality', 'csmV2EvidenceHierarchyForQuality', 'computeCsmV2ClinicalCertaintyForQuality', 'csmV2AhCompletenessStatus'].forEach((fn) => {
+  ['computeMoteur', 'computeCsmV2', 'csmV2QualitySeverity', 'csmV2ClinicalReasoningForQuality', 'csmV2ExplanatoryFactorsForQuality', 'csmV2EvidenceHierarchyForQuality', 'csmV2AhCompletenessStatus'].forEach((fn) => {
     assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' ne doit pas être modifiée — cette mission ne fait que réinjecter une preuve déjà calculée dans keyFindings, jamais recalculer la logique en aval');
   });
 });
