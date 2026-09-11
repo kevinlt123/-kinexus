@@ -18,6 +18,9 @@ input[type=number]::-webkit-inner-spin-button{opacity:.6;}
 .g3{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:14px;}
 .gh{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 @media(max-width:600px){.g2,.gh{grid-template-columns:1fr!important;}}
+/* Body Map interactif (Mission UX/UI V1, Phase 6) : Body Map à gauche / détail à droite en
+   desktop, empilé (Body Map en haut, détail en dessous) dès la tablette (§11 mission, 834px). */
+@media(max-width:900px){.bodymap-layout{flex-direction:column!important;}.bodymap-layout>div{flex-basis:auto!important;width:100%!important;}}
 /* ── PRINT STYLES ─────────────────────────────────────────── */
 @media print{
   body{background:#fff!important;color:#111!important;font-size:11pt;}
@@ -16660,7 +16663,9 @@ function AnalyseView(props){
       // AsymmetryTable, ci-dessus), pour éviter d'afficher deux fois les mêmes informations quand
       // l'utilisateur consulte spécifiquement la Synthèse. Comportement inchangé pour les autres
       // vues (Expert/Mouvement/Fil de Raisonnement/Historique), qui continuent de les voir.
-      view!=='synthese'&&h('div',null,
+      // 'bodymap' (Mission UX/UI V1, Phase 6) masqué au même titre que 'synthese' : le Body Map y a
+      // désormais sa propre vue dédiée (BodyMapView ci-dessous), pour ne jamais l'afficher deux fois.
+      view!=='synthese'&&view!=='bodymap'&&h('div',null,
       h('div',{style:{marginBottom:20}},
         h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Synthèse globale'),
         h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}},
@@ -16868,8 +16873,16 @@ function AnalyseView(props){
       pourquoiQuality&&h(PourquoiView,{f:pourquoiQuality,res:res,pres:pres,bilan:bilan,athlete:athlete,
         onBack:function(){setPourquoiQuality(null);},
         onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');}}),
-      h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
-        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+      // BodyMapView (Mission UX/UI V1, Phase 6) : Body Map devenu une vraie vue de navigation, au
+      // même niveau que Synthèse/Qualités (pas un encart secondaire des blocs 01-06 ci-dessus).
+      !pourquoiQuality&&view==='bodymap'&&h(BodyMapView,{res:res,pres:pres,bilan:bilan,athlete:athlete,
+        onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
+        onOpenQuality:function(f){setOpenQuality(f);setView('qualites');},
+        onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
+        hasMouvement:!!mouvementAnalysis,onGotoMouvement:function(){setView('mouvement');},
+        onGotoRapport:props.onPreview}),
+      h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content',flexWrap:'wrap'}},
+        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:expertTabTarget}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
@@ -17000,6 +17013,133 @@ function BodyMap(props) {
     h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Body Map musculaire'),
     h('div',{style:{width:'100%'},dangerouslySetInnerHTML:{__html:muscleMapHTML(systemScores,{width:size})}}),
     h('div',{style:{width:'100%'},dangerouslySetInnerHTML:{__html:muscleMapChipsHTML(systemScores)}})
+  );
+}
+
+// ── BODY MAP INTERACTIF — vraie vue de navigation clinique (Mission UX/UI V1, Phase 6) ────────────
+// Couche de présentation pure. Encapsule BodyMap/muscleMapHTML/muscleMapChipsHTML tels quels (visuel
+// inchangé, jamais supprimé ni modifié) et ajoute par-dessus une couche de sélection réellement
+// interactive : une liste de structures cliquables (boutons natifs <button>, donc focusables/
+// activables au clavier par défaut), pilotée exclusivement par res.systemScores déjà calculé (aucun
+// recalcul de statut/seuil/norme). Le panneau de détail relit exclusivement des données déjà
+// calculées : pres.asymItems (D/G/LSI par test, Mission UX/UI V1 Phase 4 — jamais recalculé),
+// STR_QUAL_DETAIL (référentiel structure -> qualité déjà existant, jamais modifié ni étendu) pour les
+// relations, SYSTEM_TESTS pour les tests réellement associés. Aucune nouvelle association anatomie ->
+// qualité n'est inventée ici : uniquement celles déjà présentes dans STR_QUAL_DETAIL.
+//
+// Structures représentées (§3 mission) = MM_SYSTEM_ORDER (10 entrées, déjà utilisé par
+// muscleMapChipsHTML) : Quadriceps, Ischio-jambiers, Fléchisseurs de hanche, Extenseurs de hanche,
+// Adducteurs, Abducteurs, Rotateurs de hanche, Cheville, Soléaire, Gastrocnémien. 'Sensoriel' existe
+// dans SYSTEMS mais n'est jamais dessiné dans le Body Map actuel (ni photo, ni chip) : volontairement
+// exclu, jamais ajouté de force.
+function bodyMapStatusLabel(status){return status?SL[status]:'Pas de donnée disponible';}
+function BodyMapStructureButton(props){
+  var sys=props.sys,status=props.status,selected=props.selected,onSelect=props.onSelect;
+  var label=MM_SYSTEM_DISPLAY[sys]||sys;
+  return h('button',{
+    onClick:function(){onSelect(sys);},
+    'aria-pressed':selected,
+    'aria-label':label+' — '+bodyMapStatusLabel(status),
+    style:{display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left',padding:'9px 12px',borderRadius:8,cursor:'pointer',
+      border:'1px solid '+(selected?C.teal:C.border),background:selected?C.teal+'14':C.card}
+  },
+    h('span',{'aria-hidden':'true',style:{width:9,height:9,borderRadius:'50%',flexShrink:0,background:status?SC[status]:'transparent',border:status?'none':'1px solid '+C.muted}}),
+    h('span',{style:{fontSize:12.5,fontWeight:selected?800:600,color:C.text,flex:1}},label),
+    h('span',{style:{fontSize:10.5,fontWeight:700,color:status?SC[status]:C.muted}},bodyMapStatusLabel(status))
+  );
+}
+function BodyMapStructureList(props){
+  var systemScores=props.systemScores,selected=props.selected,onSelect=props.onSelect;
+  return h('div',{style:{display:'flex',flexDirection:'column',gap:6,marginTop:14,width:'100%'}},
+    MM_SYSTEM_ORDER.map(function(sys){
+      return h(BodyMapStructureButton,{key:sys,sys:sys,status:systemScores[sys],selected:selected===sys,onSelect:onSelect});
+    })
+  );
+}
+// STR_QUAL_DETAIL[sys][qualityKey].specificite vaut 'Directe' ou 'Indirecte' (référentiel existant,
+// jamais un nouvel enum DIRECT/ASSOCIATED inventé ici) : Directe -> présentée telle quelle,
+// Indirecte -> formulation prudente (§9 mission), jamais reformulée en lien causal.
+function BodyMapStructureDetail(props){
+  var sys=props.sys,res=props.res,pres=props.pres,bilan=props.bilan;
+  var onGotoTests=props.onGotoTests,onOpenQuality=props.onOpenQuality,onClose=props.onClose;
+  var td=bilan.testData||{};
+  var status=res.systemScores[sys];
+  var label=MM_SYSTEM_DISPLAY[sys]||sys;
+  var testKeys=SYSTEM_TESTS[sys]||[];
+  var dataRows=testKeys.map(function(tk){return pres.asymItems.filter(function(a){return a.testKey===tk;})[0];}).filter(Boolean);
+  var activeTests=testKeys.filter(function(tk){return td[tk]&&td[tk].active;});
+  var qualRel=STR_QUAL_DETAIL[sys]||null;
+  var qualKeys=qualRel?Object.keys(qualRel):[];
+  return h(Card,{pad:18},
+    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}},
+      h('h2',{style:{margin:0,fontSize:16,fontWeight:800,color:C.text,textTransform:'uppercase'}},label),
+      onClose&&h('button',{onClick:onClose,'aria-label':'Fermer le détail',style:{background:'transparent',border:'none',color:C.muted,fontSize:16,cursor:'pointer',padding:0}},'✕')
+    ),
+
+    h('div',{style:{color:C.petrol,fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6}},'Statut'),
+    h('div',{style:{marginBottom:18}},status?h(Badge,{status:status}):h('span',{style:{color:C.muted,fontSize:12,fontWeight:700,padding:'4px 11px',borderRadius:20,border:'1px solid '+C.border}},'Pas de donnée disponible')),
+
+    h('div',{style:{color:C.petrol,fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}},'Données (D/G/LSI)'),
+    dataRows.length===0
+      ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:18}},'Pas de donnée disponible pour cette structure.')
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:8,marginBottom:18}},dataRows.map(function(a){
+          return h(Card,{key:a.testKey,pad:'10px 12px',style:{background:C.surface}},
+            h('div',{style:{fontSize:12,fontWeight:700,color:C.text,marginBottom:4}},a.label),
+            h('div',{style:{fontSize:11.5,color:C.muted}},'D '+a.dV+' '+a.unit+' · G '+a.gV+' '+a.unit),
+            h('div',{style:{fontSize:11.5,fontWeight:700,color:SC[a.status],marginTop:2}},'LSI '+a.lsi+'%')
+          );
+        })),
+
+    h('div',{style:{color:C.petrol,fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}},'Qualités associées'),
+    qualKeys.length===0
+      ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:18}},'Aucune relation documentée pour cette structure.')
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:6,marginBottom:18}},qualKeys.map(function(qk){
+          var qLabel=FN_LABEL_BY_KEY[qk]||qk;
+          var rel=qualRel[qk];
+          var navigable=!!onOpenQuality&&pres.evFns.indexOf(qLabel)>=0;
+          var text='→ '+qLabel+(rel.specificite==='Directe'?' (relation directe)':' (association indirecte — prudence)');
+          return navigable
+            ?h('button',{key:qk,onClick:function(){onOpenQuality(qLabel);},style:{background:'transparent',border:'none',color:C.teal,fontSize:12.5,fontWeight:600,cursor:'pointer',padding:0,textAlign:'left'}},text+' →')
+            :h('div',{key:qk,style:{color:C.text,fontSize:12.5}},text);
+        })),
+
+    h('div',{style:{color:C.petrol,fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}},'Tests associés'),
+    activeTests.length===0
+      ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:14}},'Aucun test actif pour cette structure.')
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:4,marginBottom:14}},activeTests.map(function(tk){
+          return h('div',{key:tk,style:{color:C.text,fontSize:12}},TBK[tk]?TBK[tk].label:tk);
+        })),
+    onGotoTests&&activeTests.length>0&&h(Btn,{onClick:onGotoTests},'📊 Voir les tests')
+  );
+}
+function BodyMapView(props){
+  var res=props.res,pres=props.pres,bilan=props.bilan;
+  var sysSc=res.systemScores||{};
+  var [selected,setSelected]=useState(null);
+  return h('div',{style:{maxWidth:1100}},
+    h('div',{style:{marginBottom:22}},
+      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Body Map'),
+      h('h1',{style:{margin:0,fontSize:22,fontWeight:800,color:C.text}},'Anatomie fonctionnelle du bilan')
+    ),
+    h('div',{className:'bodymap-layout',style:{display:'flex',gap:20,alignItems:'flex-start',flexWrap:'wrap'}},
+      h('div',{style:{flex:'1 1 380px',minWidth:300}},
+        h(BodyMap,{systemScores:sysSc,size:340}),
+        h(BodyMapStructureList,{systemScores:sysSc,selected:selected,onSelect:setSelected})
+      ),
+      h('div',{style:{flex:'1 1 320px',minWidth:280}},
+        selected
+          ?h(BodyMapStructureDetail,{sys:selected,res:res,pres:pres,bilan:bilan,onClose:function(){setSelected(null);},
+              onGotoTests:props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');},
+              onOpenQuality:props.onOpenQuality})
+          :h(Card,{pad:20},h('div',{style:{color:C.muted,fontSize:12.5,lineHeight:1.6}},'Sélectionnez une structure dans la liste pour afficher son détail (statut, données D/G/LSI, qualités et tests associés).'))
+      )
+    ),
+    h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginTop:24,paddingTop:18,borderTop:'1px solid '+C.border}},
+      props.onGotoSynthese&&h(Btn,{onClick:props.onGotoSynthese},'📋 Synthèse'),
+      props.onGotoQualites&&h(Btn,{onClick:props.onGotoQualites},'🧩 Qualités'),
+      props.hasMouvement&&props.onGotoMouvement&&h(Btn,{onClick:props.onGotoMouvement},'🦵 Biomécanique'),
+      props.onGotoRapport&&h(Btn,{onClick:props.onGotoRapport},'📄 Rapport')
+    )
   );
 }
 
@@ -18136,7 +18276,7 @@ function App(){
     {key:'qualites',label:'Qualités',target:{screen:'analyse',view:'qualites'}},
     {key:'biomecanique',label:'Biomécanique',target:{screen:'analyse',view:'mouvement'}},
     {key:'tests',label:'Tests',target:{screen:'analyse',view:'expert',tab:'kpi'}},
-    {key:'bodymap',label:'Body Map',target:{screen:'analyse',view:'expert',tab:'systemes'}},
+    {key:'bodymap',label:'Body Map',target:{screen:'analyse',view:'bodymap'}},
     {key:'rapport',label:'Rapport',target:{screen:'reportPreview'}},
     {key:'analyseexpert',label:'Analyse Expert',target:{screen:'analyse',view:'expert',tab:null}}
   ];

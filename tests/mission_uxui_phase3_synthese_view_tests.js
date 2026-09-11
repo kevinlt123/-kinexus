@@ -172,8 +172,11 @@ test('12 — SyntheseView expose des boutons de navigation vers Analyse Expert e
 
 // ── 8. Aucune duplication critique ───────────────────────────────────────────────────────────────
 test('13 — Les blocs 01-06 d\'AnalyseView sont masqués pour view===\'synthese\' (pas de double affichage avec SyntheseView)', () => {
+  // Regex assouplie (Mission UX/UI V1, Phase 6) : les blocs 01-06 sont désormais AUSSI masqués pour
+  // view==='bodymap' (Body Map a sa propre vue dédiée, BodyMapView) — même exigence pour 'synthese'
+  // (jamais affiché deux fois), condition supplémentaire tolérée.
   const analyseBody = extractFnBody(code, 'AnalyseView');
-  assert.ok(/view!=='synthese'&&h\('div',null,/.test(analyseBody), 'Les blocs 01-06 doivent être conditionnés à view!==\'synthese\'.');
+  assert.ok(/view!=='synthese'&&(view!=='bodymap'&&)?h\('div',null,/.test(analyseBody), 'Les blocs 01-06 doivent être conditionnés à view!==\'synthese\'.');
 });
 
 test('14 — ExpertView délègue (ne duplique pas) le rendu de l\'onglet Synthèse clinique/Orientations aux composants partagés réutilisés par SyntheseView', () => {
