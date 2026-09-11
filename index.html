@@ -16184,7 +16184,10 @@ function computeAnalysePresentation(bilan,athlete,athleteAge,res){
     if(lsi!=null&&dV!=null&&gV!=null){
       if(lsiSt(lsi)!=='vert')hasAsym=true;
       var unitM=kpi.label.match(/\(([^)]+)\)/);
-      asymItems.push({label:test.label.replace(/^Single Leg /,''),gV:roundStep(gV,kpi.step),dV:roundStep(dV,kpi.step),unit:unitM?unitM[1]:'',lsi:lsi,status:lsiSt(lsi)});
+      // testKey (Mission UX/UI V1, Phase 4) : ajout non clinique, pour permettre à QualiteDetailView
+      // de retrouver le D/G/LSI déjà calculé d'un test précis parmi les preuves d'une qualité —
+      // jamais utilisé pour recalculer quoi que ce soit, seulement pour l'associer à son libellé.
+      asymItems.push({testKey:test.key,label:test.label.replace(/^Single Leg /,''),gV:roundStep(gV,kpi.step),dV:roundStep(dV,kpi.step),unit:unitM?unitM[1]:'',lsi:lsi,status:lsiSt(lsi)});
     }
   });
   asymItems.sort(function(a,b){return a.lsi-b.lsi;});
@@ -16342,6 +16345,113 @@ function SyntheseView(props){
   );
 }
 
+// ── QUALITÉS — vue grille + détail (Mission UX/UI V1, Phase 4) ──────────────────────────────────
+// Couche de présentation uniquement : lit res/pres/pri déjà calculés (aucun second appel à
+// computeMoteur, aucun recalcul de statut/seuil/LSI/relation). Réutilise les mêmes helpers que
+// SyntheseView (Phase 3 : csmSafeQualityNote, csmSuspectedNote, csmNonDeterminableHasPartialEvidence,
+// CsmRelationsCards-style filtrage) et ExpertView (Phase 4 : functionRelTests/FunctionEvidenceChips)
+// pour éviter une troisième logique de présentation.
+function QualityCard(props){
+  var f=props.f,res=props.res,bilan=props.bilan,onOpen=props.onOpen;
+  var sc=res.functionScores[f]||null;
+  var status=sc?sc.status:null;
+  var note=csmSafeQualityNote(f,res.clinicalSynthesis);
+  var relCount=functionRelTests(f,bilan.testData||{}).length;
+  return h(Card,{pad:16,style:{borderLeft:'3px solid '+(status?SC[status]:C.border),cursor:'pointer'},onClick:function(){onOpen(f);}},
+    h('div',{style:{display:'flex',alignItems:'center',gap:9,marginBottom:8}},
+      h('div',{style:{width:30,height:30,borderRadius:'50%',background:C.surface,display:'flex',alignItems:'center',justifyContent:'center',fontSize:15,flexShrink:0}},FN_ICON[f]||'●'),
+      h('div',{style:{color:C.text,fontWeight:800,fontSize:14,textTransform:'uppercase',letterSpacing:'0.01em'}},f)
+    ),
+    h('div',{style:{color:status?SC[status]:C.muted,fontWeight:800,fontSize:13,marginBottom:8}},status?SL[status]:'Non déterminable'),
+    h('div',{style:{color:C.muted,fontSize:12,lineHeight:1.5,marginBottom:10}},note),
+    status&&relCount>0&&h('div',{style:{color:C.muted,fontSize:11,marginBottom:10}},relCount+' preuve'+(relCount>1?'s':'')+' principale'+(relCount>1?'s':'')),
+    h('button',{onClick:function(e){e.stopPropagation();onOpen(f);},style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0}},status?'Voir les preuves →':'Voir les données →')
+  );
+}
+function QualitesView(props){
+  var res=props.res,pres=props.pres,bilan=props.bilan,onOpenQuality=props.onOpenQuality;
+  return h('div',{style:{maxWidth:980}},
+    h('div',{style:{marginBottom:22}},
+      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Qualités fonctionnelles'),
+      h('h1',{style:{margin:0,fontSize:22,fontWeight:800,color:C.text}},'Les 8 qualités du bilan')
+    ),
+    pres.evFns.length===0
+      ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune fonction évaluée.'))
+      :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:14}},pres.evFns.map(function(f){
+          return h(QualityCard,{key:f,f:f,res:res,bilan:bilan,onOpen:onOpenQuality});
+        }))
+  );
+}
+
+function QualiteDetailView(props){
+  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onBack=props.onBack;
+  var td=bilan.testData||{};
+  var sc=res.functionScores[f]||null;
+  var status=sc?sc.status:null;
+  var csm=res.clinicalSynthesis;
+  var relTests=functionRelTests(f,td);
+  var relatedExplan=csm?(csm.explanatoryHypotheses||[]).filter(function(rel){return rel.explains===f||rel.explained===f;}):[];
+  var relatedConcord=csm?(csm.relationships||[]).filter(function(r){return r.level==='concordant_no_relation'&&(r.qualityA===f||r.qualityB===f);}):[];
+  var isNonDeterminable=csm&&(csm.nonDeterminable||[]).some(function(n){return n.quality===f;});
+  var isSuspected=csm&&(csm.suspected||[]).some(function(s){return s.quality===f;});
+  return h('div',{style:{maxWidth:900}},
+    h('button',{onClick:onBack,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0,marginBottom:16}},'← Retour aux qualités'),
+    h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:20}},
+      h('div',{style:{width:40,height:40,borderRadius:'50%',background:C.surface,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0}},FN_ICON[f]||'●'),
+      h('h1',{style:{margin:0,fontSize:21,fontWeight:800,color:C.text,textTransform:'uppercase',flex:1}},f),
+      status?h(Badge,{status:status}):h('span',{style:{color:C.muted,fontSize:12,fontWeight:700,padding:'4px 11px',borderRadius:20,border:'1px solid '+C.border}},'Non déterminable')
+    ),
+
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Synthèse'),
+    h(Card,{pad:14,style:{marginBottom:22}},h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},csmSafeQualityNote(f,csm))),
+
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Preuves principales'),
+    relTests.length===0
+      ?h(Card,{pad:16,style:{marginBottom:22}},h('div',{style:{color:C.muted,fontSize:12}},'Aucune preuve — test complémentaire à envisager pour cette qualité.'))
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:8,marginBottom:22}},relTests.map(function(tk){
+          var fk=FN_KEY[f];var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';
+          var testStatus=res.testStatuses[tk];
+          var asym=pres.asymItems.filter(function(a){return a.testKey===tk;})[0];
+          return h(Card,{key:tk,pad:'12px 14px'},
+            h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}},
+              h('div',null,
+                h('div',{style:{display:'flex',alignItems:'center',gap:8}},
+                  h('span',{style:{color:C.text,fontWeight:700,fontSize:13}},TBK[tk]?TBK[tk].label:tk),
+                  h('span',{style:{color:C.teal,fontSize:10,fontWeight:700}},wl)
+                ),
+                asym&&h('div',{style:{color:C.muted,fontSize:11,marginTop:2}},'G '+asym.gV+' / D '+asym.dV+' '+asym.unit+' · LSI '+asym.lsi+'%')
+              ),
+              h('div',{style:{display:'flex',alignItems:'center',gap:8}},
+                testStatus&&h(Badge,{status:testStatus,small:true}),
+                props.onGotoExpertTab&&h('button',{onClick:function(){props.onGotoExpertTab('kpi');},style:{background:'transparent',border:'none',color:C.teal,fontSize:11,fontWeight:600,cursor:'pointer',padding:0}},'Voir le test →')
+              )
+            )
+          );
+        })),
+
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Concordances / relations'),
+    (relatedExplan.length===0&&relatedConcord.length===0)
+      ?h(Card,{pad:16,style:{marginBottom:22}},h('div',{style:{color:C.muted,fontSize:12}},'Aucune relation documentée pour cette qualité.'))
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:8,marginBottom:22}},
+          relatedExplan.map(function(rel,i){return h(Card,{key:'e'+i,pad:14},h('div',{style:{fontSize:12,color:C.text,lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid '+C.teal}},csmCleanExplanatoryText(rel)));}),
+          relatedConcord.map(function(r,i){return h(Card,{key:'c'+i,pad:14},h('div',{style:{fontSize:12,color:C.muted,lineHeight:1.6}},r.narrative));})
+        ),
+
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Limites'),
+    (!isNonDeterminable&&!isSuspected)
+      ?h(Card,{pad:16,style:{marginBottom:22}},h('div',{style:{color:C.muted,fontSize:12}},'Aucune limite particulière signalée pour cette qualité.'))
+      :h(Card,{pad:16,style:{marginBottom:22,background:C.surface}},
+          isNonDeterminable&&h('div',{style:{color:C.muted,fontSize:12,lineHeight:1.6}},'Qualité non déterminable'+(csmNonDeterminableHasPartialEvidence(f,csm)?' · données normatives insuffisantes':'')+'. Non déterminable n\'équivaut jamais à normal.'),
+          isSuspected&&h('div',{style:{color:C.muted,fontSize:12,lineHeight:1.6}},csmSuspectedNote(f))
+        ),
+
+    h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
+      props.onGotoExpertTab&&h(Btn,{onClick:function(){props.onGotoExpertTab('kpi');}},'📊 Voir les résultats'),
+      props.onGotoExpertTab&&h(Btn,{onClick:function(){props.onGotoExpertTab('fonctions');}},'🧠 Voir l\'analyse expert')
+    )
+  );
+}
+
 function AnalyseView(props){
   var bilan=props.bilan,athlete=props.athlete;
   // initialView/initialExpertTab (Mission UX/UI V1, Phase 2) : seed d'affichage uniquement, fournis
@@ -16385,6 +16495,10 @@ function AnalyseView(props){
   // "Voir les preuves" -> 'synthese') en passant par setView('expert'), qui remonte ExpertView avec
   // ce nouvel onglet initial. Aucun recalcul : seulement quel onglet déjà existant s'affiche.
   var [expertTabTarget,setExpertTabTarget]=useState(props.initialExpertTab);
+  // openQuality (Mission UX/UI V1, Phase 4) : quelle qualité est ouverte en détail dans la vue
+  // Qualités (null = grille). Purement une sélection d'affichage, jamais un recalcul — se réinitialise
+  // naturellement à chaque remount d'AnalyseView (changement de destination dans la barre secondaire).
+  var [openQuality,setOpenQuality]=useState(null);
 
   return h('div',{style:{display:'flex',alignItems:'flex-start'}},
     h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 136px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:136,color:'#fff'}},
@@ -16616,8 +16730,15 @@ function AnalyseView(props){
       view==='synthese'&&h(SyntheseView,{bilan:bilan,athlete:athlete,res:res,pres:pres,pri:pri,
         onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
         onGotoRapport:props.onPreview}),
+      // QualitesView / QualiteDetailView (Mission UX/UI V1, Phase 4) : deuxième porte d'entrée
+      // clinique après Synthèse. openQuality bascule entre la grille et le détail d'une qualité,
+      // toujours à l'intérieur de la même vue 'qualites' (aucune nouvelle route App() nécessaire).
+      view==='qualites'&&(openQuality
+        ?h(QualiteDetailView,{f:openQuality,res:res,pres:pres,bilan:bilan,athlete:athlete,onBack:function(){setOpenQuality(null);},
+            onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');}})
+        :h(QualitesView,{res:res,pres:pres,bilan:bilan,onOpenQuality:setOpenQuality})),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
-        (mouvementAnalysis?[['synthese','Synthèse'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:expertTabTarget}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
@@ -17389,6 +17510,25 @@ function PriorityOrientationCards(props){
   );
 }
 
+// ── PREUVES PAR QUALITÉ (Mission UX/UI V1, Phase 4) ─────────────────────────────────────────────
+// functionRelTests/FunctionEvidenceChips extraits de l'onglet "Fonctions" d'ExpertView pour être
+// réutilisés à l'identique par QualitesView/QualiteDetailView (Phase 4), sans dupliquer cette
+// logique dans les deux endroits. TFM (poids test->fonction) est un référentiel constant, jamais
+// recalculé : ceci ne fait que filtrer/trier les tests actifs qui y figurent pour une qualité.
+function functionRelTests(f,td){
+  var fk=FN_KEY[f];
+  return Object.keys(TFM).filter(function(tk){return TFM[tk][fk]&&td[tk]&&td[tk].active;}).sort(function(a,b){return TFM[b][fk]-TFM[a][fk];});
+}
+function FunctionEvidenceChips(props){
+  var f=props.f,td=props.td;
+  var fk=FN_KEY[f];
+  var relTests=functionRelTests(f,td);
+  return h('div',{style:{display:'flex',gap:5,flexWrap:'wrap'}},relTests.map(function(tk){
+    var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';
+    return h('span',{key:tk,style:{padding:'2px 7px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:10}},(TBK[tk]?TBK[tk].label:tk)+' · ',h('span',{style:{color:C.teal}},wl));
+  }));
+}
+
 function ExpertView(props){
   // initialTab (Mission UX/UI V1, Phase 2) : seed d'affichage fourni par la barre secondaire
   // persistante (App()), pour faire atterrir sur le sous-onglet correspondant à la vue demandée
@@ -17563,7 +17703,10 @@ function ExpertView(props){
         )
       );
     })(),
-    tab==='fonctions'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},evFns.map(function(f){var sc=fSc[f];var fk=FN_KEY[f];var relTests=Object.keys(TFM).filter(function(tk){return TFM[tk][fk]&&td[tk]&&td[tk].active;}).sort(function(a,b){return TFM[b][fk]-TFM[a][fk];});return h(Card,{key:f,pad:14,style:{borderLeft:'3px solid '+SC[sc.status]}},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}},h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},f),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+(CONFIDENCE_LABEL[sc.confidence]||sc.confidence))),h(Badge,{status:sc.status})),h('div',{style:{display:'flex',gap:5,flexWrap:'wrap'}},relTests.map(function(tk){var w=TFM[tk][fk];var wl=w===3?'Direct':w===2?'Majeur':'Mineur';return h('span',{key:tk,style:{padding:'2px 7px',borderRadius:20,background:C.surface,border:'1px solid '+C.border,color:C.muted,fontSize:10}},(TBK[tk]?TBK[tk].label:tk)+' · ',h('span',{style:{color:C.teal}},wl));})));})),
+    // Délègue à functionRelTests/FunctionEvidenceChips (Mission UX/UI V1, Phase 4 — extraites
+    // ci-dessus, réutilisées à l'identique par QualitesView/QualiteDetailView) : rendu strictement
+    // identique à avant cette phase.
+    tab==='fonctions'&&h('div',{style:{display:'flex',flexDirection:'column',gap:10}},evFns.map(function(f){var sc=fSc[f];return h(Card,{key:f,pad:14,style:{borderLeft:'3px solid '+SC[sc.status]}},h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}},h('div',null,h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},f),h('div',{style:{color:C.muted,fontSize:10,marginTop:1}},'Couverture '+sc.coverage+'% · Confiance '+(CONFIDENCE_LABEL[sc.confidence]||sc.confidence))),h(Badge,{status:sc.status})),h(FunctionEvidenceChips,{f:f,td:td}));})),
     tab==='kpi'&&h(ResultsBrowser,{testData:td,testStatuses:tSt,athlete:athlete,athleteAge:athleteAge}),
     tab==='variables'&&(function(){
       function varMatchesQuality(v,q){
@@ -17844,20 +17987,20 @@ function App(){
     {key:'analyse',icon:'🧠',label:'Analyse',onClick:function(){setScreen(curBilan&&ca?'analyse':'analyseEmptyState');}},
     {key:'donnees',icon:'⚙',label:'Données',onClick:function(){setScreen('qualityConfig');}}
   ];
-  // Barre secondaire du bilan (Mission UX/UI V1, Phase 2 puis 3) : 7 destinations. "Synthèse" ->
-  // vue 'synthese' d'AnalyseView (SyntheseView, nouvel écran principal du bilan depuis la Phase 3 —
-  // reçoit res/pres/pri déjà calculés par AnalyseView, aucun recalcul). Les 6 autres destinations
-  // restent rattachées aux vues/onglets internes déjà existants d'AnalyseView/ExpertView, seedés en
-  // Phase 2, inchangés par la Phase 3 : "Qualités" -> onglet 'fonctions' (qualités fonctionnelles
-  // déjà affichées là), "Biomécanique" -> vue 'mouvement' existante, "Tests" -> onglet 'kpi'
-  // (Résultats, déjà un tableau de résultats lecture seule), "Body Map" -> onglet 'systemes' (vue
-  // par système musculaire, la plus proche du Body Map tant que la Phase 6 n'a pas fait de la
-  // carte elle-même une vue dédiée — limitation connue, documentée dans le rapport de phase),
-  // "Analyse Expert" -> atterrissage par défaut d'ExpertView (identique à l'ouverture actuelle
-  // d'un bilan, non régroupé avant la Phase 9), "Rapport" -> écran reportPreview déjà existant.
+  // Barre secondaire du bilan (Mission UX/UI V1, Phases 2-4) : 7 destinations. "Synthèse" -> vue
+  // 'synthese' (SyntheseView, Phase 3) et "Qualités" -> vue 'qualites' (QualitesView/
+  // QualiteDetailView, Phase 4) sont désormais de vrais écrans dédiés d'AnalyseView, qui reçoivent
+  // res/pres/pri déjà calculés — aucun recalcul. Les 5 autres destinations restent rattachées aux
+  // vues/onglets internes déjà existants d'AnalyseView/ExpertView, seedés en Phase 2 : "Biomécanique"
+  // -> vue 'mouvement' existante, "Tests" -> onglet 'kpi' (Résultats, déjà un tableau de résultats
+  // lecture seule), "Body Map" -> onglet 'systemes' (vue par système musculaire, la plus proche du
+  // Body Map tant que la Phase 6 n'a pas fait de la carte elle-même une vue dédiée — limitation
+  // connue, documentée dans le rapport de phase), "Analyse Expert" -> atterrissage par défaut
+  // d'ExpertView (identique à l'ouverture actuelle d'un bilan, non régroupé avant la Phase 9),
+  // "Rapport" -> écran reportPreview déjà existant.
   var SECONDARY_NAV=[
     {key:'synthese',label:'Synthèse',target:{screen:'analyse',view:'synthese'}},
-    {key:'qualites',label:'Qualités',target:{screen:'analyse',view:'expert',tab:'fonctions'}},
+    {key:'qualites',label:'Qualités',target:{screen:'analyse',view:'qualites'}},
     {key:'biomecanique',label:'Biomécanique',target:{screen:'analyse',view:'mouvement'}},
     {key:'tests',label:'Tests',target:{screen:'analyse',view:'expert',tab:'kpi'}},
     {key:'bodymap',label:'Body Map',target:{screen:'analyse',view:'expert',tab:'systemes'}},
