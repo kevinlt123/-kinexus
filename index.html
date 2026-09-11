@@ -186,6 +186,16 @@ var TESTS=[
   {key:'repeated_hop_bi',label:'Hop Test Bilatéral',cat:'Tests Fonctionnels',bilateral:true,kpis:[{key:'mean_height',label:'Mean Jump Height (cm)',step:0.1,dir:'max'},{key:'mean_rsi',label:'Mean RSI',step:0.01,dir:'max'},{key:'mean_peak_force',label:'Mean Peak Force (N)',step:1,dir:'max'},{key:'n_hops',label:'Nombre de sauts',step:1,dir:'max'}]},
 ];
 var TBK={};TESTS.forEach(function(t){TBK[t.key]=t;});
+// TEST_FAMILIES (Mission UX/UI V1, Phase 8, §2/§18) : hissé au niveau global depuis
+// buildSportifReport (rapport PDF, section "Les tests réalisés") — regroupement de familles déjà
+// existant et déjà utilisé pour le praticien, jamais une nouvelle taxonomie inventée pour cette
+// phase. buildSportifReport référence désormais cette même constante (délégation, valeurs
+// strictement identiques), et TestsView la réutilise pour son filtre par famille.
+var TEST_FAMILIES=[
+  {label:'Force',icon:'🏋️',cats:['Force Globale','Force Segmentaire']},
+  {label:'Puissance',icon:'⚡',cats:['Force-Vitesse','Sauts','Landing']},
+  {label:'Fonction',icon:'🎯',cats:['Tests Fonctionnels','Mobilité','Sensoriel']}
+];
 
 // ── MOTEUR BIOMÉCANIQUE (VALD CMJ) : référentiel de phase ──────────────────────────────────
 // Associe chaque variable CMJ à sa phase biomécanique (VALD ForceDecks), son tier
@@ -14943,11 +14953,8 @@ function buildSportifReport(athlete,bilan,res){
 
   // 2. Sur quoi repose cette analyse ? (les preuves)
   html+=sectionTitle(2,'Les tests réalisés',true);
-  var TEST_FAMILIES=[
-    {label:'Force',icon:'🏋️',cats:['Force Globale','Force Segmentaire']},
-    {label:'Puissance',icon:'⚡',cats:['Force-Vitesse','Sauts','Landing']},
-    {label:'Fonction',icon:'🎯',cats:['Tests Fonctionnels','Mobilité','Sensoriel']}
-  ];
+  // TEST_FAMILIES désormais globale (Mission UX/UI V1, Phase 8) — même constante, réutilisée à
+  // l'identique par TestsView (extraction, pas une deuxième taxonomie).
   var familyGroups=TEST_FAMILIES.map(function(fam){
     var items=TESTS.filter(function(test){var d=td[test.key];return d&&d.active&&fam.cats.indexOf(test.cat)>=0&&testReportState(test.key)!=='ignored';})
       .map(function(test){return{label:test.label,visibleOnly:testReportState(test.key)==='visible'};});
@@ -16904,6 +16911,10 @@ function AnalyseView(props){
   // quel que soit l'écran d'origine (Synthèse ou Qualités) — contexte athlète/bilan/qualité préservé.
   var [pourquoiQuality,setPourquoiQuality]=useState(null);
   function openPourquoi(fq){setOpenQuality(fq);setPourquoiQuality(fq);setView('qualites');}
+  // testsSelectedTest (Mission UX/UI V1, Phase 8, §14) : seed d'affichage optionnel pour TestsView
+  // — permet à un futur appelant (qualité/synthèse) d'ouvrir directement un test précis, sans
+  // nouvelle machine de routing (même state local que openQuality/pourquoiQuality ci-dessus).
+  var [testsSelectedTest]=useState(null);
 
   return h('div',{style:{display:'flex',alignItems:'flex-start'}},
     h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 136px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:136,color:'#fff'}},
@@ -16948,7 +16959,8 @@ function AnalyseView(props){
       // désormais sa propre vue dédiée (BodyMapView ci-dessous), pour ne jamais l'afficher deux fois.
       // 'biomeca' (Mission UX/UI V1, Phase 7) masqué au même titre que 'synthese'/'bodymap' : la
       // Biomécanique a désormais sa propre vue dédiée (BiomecaView ci-dessous).
-      view!=='synthese'&&view!=='bodymap'&&view!=='biomeca'&&h('div',null,
+      // 'tests' (Mission UX/UI V1, Phase 8) masqué au même titre que 'synthese'/'bodymap'/'biomeca'.
+      view!=='synthese'&&view!=='bodymap'&&view!=='biomeca'&&view!=='tests'&&h('div',null,
       h('div',{style:{marginBottom:20}},
         h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Synthèse globale'),
         h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}},
@@ -17174,8 +17186,17 @@ function AnalyseView(props){
         onOpenPourquoi:openPourquoi,
         onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
         onGotoBodyMap:function(){setView('bodymap');},onGotoRapport:props.onPreview}),
+      // TestsView (Mission UX/UI V1, Phase 8) : Tests devenu une vraie vue dédiée (couche
+      // DATA/EVIDENCE), au même niveau que Synthèse/Qualités/Body Map/Biomécanique — distincte de
+      // l'onglet Expert > Résultats (ResultsBrowser, réutilisé tel quel à l'intérieur, Phase 8 §18).
+      !pourquoiQuality&&view==='tests'&&h(TestsView,{res:res,pres:pres,bilan:bilan,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,
+        initialSelectedTest:testsSelectedTest,
+        onOpenQuality:function(f){setOpenQuality(f);setView('qualites');},
+        onOpenPourquoi:openPourquoi,
+        onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
+        onGotoRapport:props.onPreview}),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content',flexWrap:'wrap'}},
-        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['biomeca','Biomécanique'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['biomeca','Biomécanique'],['tests','Tests'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['tests','Tests'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:expertTabTarget}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
@@ -17838,7 +17859,11 @@ function ResultsBrowser(props){
   var pop=effectiveNormPop(athlete);
   var normSelections=effectiveNormSelections(athlete).normSelections;
   var activeTests=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];});
-  var [sel,setSel]=useState(activeTests[0]||null);
+  // initialSel (Mission UX/UI V1, Phase 8, §14) : sélection initiale optionnelle — permet à
+  // TestsView d'ouvrir ResultsBrowser directement sur un test précis (ex. depuis "Voir le test").
+  // Additif et rétrocompatible : comportement strictement inchangé (activeTests[0]) si absent ou
+  // si le test demandé n'est pas actif dans ce bilan — aucune nouvelle machine de routing.
+  var [sel,setSel]=useState((props.initialSel&&activeTests.indexOf(props.initialSel)>=0)?props.initialSel:(activeTests[0]||null));
   if(sel&&activeTests.indexOf(sel)<0)sel=activeTests[0]||null;
   var test=sel?TBK[sel]:null;
   var data=sel?td[sel]:null;
@@ -17889,6 +17914,169 @@ function ResultsBrowser(props){
     )
   );
 }
+
+// ── TESTS — vue dédiée « Qu'est-ce qui a été mesuré, avec quelles valeurs, quelles preuves ? »
+// (Mission UX/UI V1, Phase 8) ─────────────────────────────────────────────────────────────────────
+// Couche DATA/EVIDENCE pure : jamais un recalcul de LSI/asymétrie/statut/percentile/norme/seuil,
+// jamais une nouvelle relation clinique. Réutilise exclusivement des fonctions déjà existantes et
+// déjà appelées ailleurs pour l'affichage (testHasAnyTrialValue, pres.asymItems déjà calculé Phase
+// 4, bestVal/computeStatusWithNormsV2 — mêmes appels que KpiResultCard) et délègue à ResultsBrowser
+// (déjà existant, déjà utilisé par ExpertView > Résultats) pour le détail par variable — aucune
+// deuxième implémentation du rendu KPI. TestDetailPage (saisie/édition) n'est ni modifiée ni
+// remplacée.
+
+// testKpiUnit : unité déjà déclarée dans TBK[testKey].kpis (même regex que cmjVarUnit/
+// computeAnalysePresentation) — générique à tout test, jamais une unité inventée.
+function testKpiUnit(testKey,kpiKey){
+  var kpi=(TBK[testKey]&&TBK[testKey].kpis||[]).filter(function(k){return k.key===kpiKey;})[0];
+  if(!kpi)return'';
+  var m=kpi.label.match(/\(([^)]+)\)/);
+  return m?m[1]:'';
+}
+// testResultCardState : dérive l'état d'affichage d'UN test (jamais un calcul clinique) —
+// distingue explicitement (§4 mission) : 'not_done' (non réalisé/donnée absente), 'unclassifiable'
+// (donnée présente, aucun statut applicable), 'partial' (donnée partielle — un seul côté, ou KPI
+// principal vide), 'ok' (résultat disponible, statut/LSI déjà calculés). Unilatéral : réutilise
+// pres.asymItems (D/G/LSI déjà calculés, Phase 4) via testKey — jamais un recalcul. Bilatéral :
+// même appel que KpiResultCard (bestVal + computeStatusWithNormsV2) sur le KPI principal (kpis[0]).
+function testResultCardState(testKey,td,pres,pop,age,normSelections){
+  var test=TBK[testKey];
+  var data=td[testKey];
+  if(!test)return{state:'not_done',test:null};
+  if(!data||!data.active||!testHasAnyTrialValue(data))return{state:'not_done',test:test};
+  var kpi=test.kpis[0];
+  var unit=testKpiUnit(testKey,kpi.key);
+  if(test.bilateral){
+    var best=bestVal((data.trials||{})[kpi.key]||[],kpi.dir);
+    if(best==null)return{state:'partial',test:test,unit:unit,kpiLabel:kpi.label};
+    var status=computeStatusWithNormsV2(testKey+'_'+kpi.key,testKey,best,pop,age,normSelections).status;
+    return{state:status?'ok':'unclassifiable',test:test,value:roundStep(best,kpi.step),unit:unit,status:status,kpiLabel:kpi.label};
+  }
+  var asym=(pres.asymItems||[]).filter(function(a){return a.testKey===testKey;})[0];
+  if(asym)return{state:'ok',test:test,dV:asym.dV,gV:asym.gV,lsi:asym.lsi,unit:asym.unit,status:asym.status,kpiLabel:kpi.label};
+  var vD=bestVal(((data.D||{}).trials||{})[kpi.key]||[],kpi.dir);
+  var vG=bestVal(((data.G||{}).trials||{})[kpi.key]||[],kpi.dir);
+  return{state:'partial',test:test,dV:vD,gV:vG,unit:unit,kpiLabel:kpi.label};
+}
+function TestResultCard(props){
+  var testKey=props.testKey,st=props.st,onOpen=props.onOpen;
+  var test=st.test||TBK[testKey];
+  var label=test?test.label:testKey;
+  return h('button',{type:'button',onClick:function(){onOpen(testKey);},
+    style:{display:'flex',flexDirection:'column',gap:6,width:'100%',textAlign:'left',padding:'12px 14px',borderRadius:10,cursor:'pointer',
+      border:'1px solid '+(st.status?SC[st.status]+'50':C.border),borderLeft:'3px solid '+(st.status?SC[st.status]:C.border),background:C.card}},
+    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'}},
+      h('span',{style:{fontSize:13,fontWeight:700,color:C.text}},label),
+      st.status?h(Badge,{status:st.status,small:true}):h('span',{style:{fontSize:10,color:C.muted,fontWeight:700}},
+        st.state==='not_done'?'○ Non réalisé':st.state==='unclassifiable'?'Non classifiable':st.state==='partial'?'Donnée partielle':'')
+    ),
+    st.state==='ok'&&st.lsi==null&&st.value!=null&&h('div',{style:{fontSize:15,fontWeight:800,color:C.text}},st.value+(st.unit?' '+st.unit:'')),
+    st.state==='ok'&&st.lsi!=null&&h('div',{style:{fontSize:11.5,color:C.muted}},'D '+st.dV+' / G '+st.gV+' '+st.unit+' · LSI '+st.lsi+'%'),
+    st.state==='unclassifiable'&&st.value!=null&&h('div',{style:{fontSize:14,fontWeight:700,color:C.text}},st.value+(st.unit?' '+st.unit:'')),
+    st.state==='partial'&&(st.dV!=null||st.gV!=null)&&h('div',{style:{fontSize:11.5,color:C.muted}},(st.dV!=null?'D '+st.dV+(st.unit?' '+st.unit:''):'D —')+' / '+(st.gV!=null?'G '+st.gV+(st.unit?' '+st.unit:''):'G —')),
+    st.state==='not_done'&&h('div',{style:{fontSize:11.5,color:C.muted}},'Pas de donnée disponible')
+  );
+}
+// TestsFamilyFilter : réutilise TEST_FAMILIES (référentiel existant du rapport PDF, hissé au niveau
+// global) — jamais une nouvelle taxonomie. Compteurs dérivés directement de TESTS/testData.
+function TestsFamilyFilter(props){
+  var td=props.td,activeFamily=props.activeFamily,onSelect=props.onSelect;
+  var counts=TEST_FAMILIES.map(function(fam){
+    var testsInFam=TESTS.filter(function(t){return fam.cats.indexOf(t.cat)>=0;});
+    var realises=testsInFam.filter(function(t){return td[t.key]&&td[t.key].active&&testHasAnyTrialValue(td[t.key]);}).length;
+    return{fam:fam,total:testsInFam.length,realises:realises};
+  });
+  return h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}},
+    h('button',{type:'button',onClick:function(){onSelect(null);},'aria-pressed':!activeFamily,
+      style:{padding:'7px 14px',borderRadius:20,border:'1.5px solid '+(!activeFamily?C.teal:C.border),background:!activeFamily?C.teal+'18':C.card,color:!activeFamily?C.teal:C.text,fontSize:12,fontWeight:600,cursor:'pointer'}},'Toutes'),
+    counts.map(function(c){
+      var isActive=activeFamily===c.fam.label;
+      return h('button',{key:c.fam.label,type:'button',onClick:function(){onSelect(c.fam.label);},'aria-pressed':isActive,
+        style:{padding:'7px 14px',borderRadius:20,border:'1.5px solid '+(isActive?C.teal:C.border),background:isActive?C.teal+'18':C.card,color:isActive?C.teal:C.text,fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:6}},
+        c.fam.icon+' '+c.fam.label,
+        h('span',{style:{fontSize:10.5,color:C.muted}},'('+c.realises+'/'+c.total+')')
+      );
+    })
+  );
+}
+// TestsOverviewHeader : uniquement des compteurs directement dérivables des structures existantes
+// (§1 mission) — pres.testsCnt/testsFilledCnt (déjà calculés, Phase 4) + non-classifiables (dérivé
+// via testResultCardState ci-dessus, jamais un nouveau moteur).
+function TestsOverviewHeader(props){
+  var pres=props.pres,nonClassifiables=props.nonClassifiables;
+  return h('div',{style:{display:'flex',gap:28,flexWrap:'wrap',marginBottom:20}},
+    [['Tests réalisés',pres.testsFilledCnt],['Tests disponibles (ce bilan)',pres.testsCnt]].map(function(r){
+      return h('div',{key:r[0]},h('div',{style:{fontSize:24,fontWeight:800,color:C.text}},r[1]),h('div',{style:{fontSize:10,color:C.muted,textTransform:'uppercase',fontWeight:700,letterSpacing:'0.04em'}},r[0]));
+    }),
+    nonClassifiables>0&&h('div',null,h('div',{style:{fontSize:24,fontWeight:800,color:C.text}},nonClassifiables),h('div',{style:{fontSize:10,color:C.muted,textTransform:'uppercase',fontWeight:700,letterSpacing:'0.04em'}},'Non classifiables'))
+  );
+}
+// TestResultDetail : délègue à ResultsBrowser (déjà existant, initialSel ajouté §14 mission) pour
+// tout le détail par variable — aucune deuxième implémentation. Les liens qualité/Pourquoi
+// réutilisent TFM (référentiel test -> qualité déjà existant, jamais un nouveau mapping) filtré sur
+// les qualités réellement affichées (pres.evFns), exactement le critère déjà utilisé par
+// functionRelTests.
+function TestResultDetail(props){
+  var testKey=props.testKey,res=props.res,pres=props.pres,bilan=props.bilan,athlete=props.athlete,athleteAge=props.athleteAge,normSelections=props.normSelections;
+  var onBack=props.onBack,onOpenQuality=props.onOpenQuality,onOpenPourquoi=props.onOpenPourquoi;
+  var qualKeys=Object.keys(TFM[testKey]||{});
+  var qualLinks=qualKeys.map(function(qk){return FN_LABEL_BY_KEY[qk];}).filter(function(ql){return ql&&pres.evFns.indexOf(ql)>=0;});
+  return h('div',null,
+    h('button',{onClick:onBack,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0,marginBottom:14}},'← Retour aux tests'),
+    h(Card,{pad:18},h(ResultsBrowser,{testData:bilan.testData,athlete:athlete,athleteAge:athleteAge,testStatuses:res.testStatuses,initialSel:testKey})),
+    qualLinks.length>0&&h('div',{style:{display:'flex',gap:14,flexWrap:'wrap',marginTop:16,paddingTop:14,borderTop:'1px solid '+C.border}},
+      qualLinks.map(function(ql){return h('div',{key:ql,style:{display:'flex',gap:10,alignItems:'center'}},
+        onOpenQuality&&h('button',{onClick:function(){onOpenQuality(ql);},style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0}},'→ '+ql),
+        onOpenPourquoi&&h('button',{onClick:function(){onOpenPourquoi(ql);},style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0}},'❓ Pourquoi ?')
+      );})
+    )
+  );
+}
+function TestsView(props){
+  var res=props.res,pres=props.pres,bilan=props.bilan,athlete=props.athlete,athleteAge=props.athleteAge,normSelections=props.normSelections;
+  var td=bilan.testData||{};
+  var pop=effectiveNormPop(athlete);
+  var st1=useState(null),family=st1[0],setFamily=st1[1];
+  var st2=useState(props.initialSelectedTest||null),selectedTest=st2[0],setSelectedTest=st2[1];
+  var activeTestKeys=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];});
+  var famDef=family?TEST_FAMILIES.filter(function(f){return f.label===family;})[0]:null;
+  // Sans famille sélectionnée : uniquement les tests actifs de ce bilan (vue d'ensemble lisible).
+  // Une famille sélectionnée révèle TOUS ses tests (réalisés ou non), pour rendre visibles les
+  // tests non réalisés au sein d'une même famille (§13 mission, ex. "Y Balance ○ Non réalisé").
+  var visibleTests=famDef
+    ?TESTS.filter(function(t){return famDef.cats.indexOf(t.cat)>=0;})
+    :TESTS.filter(function(t){return activeTestKeys.indexOf(t.key)>=0;});
+  var states=visibleTests.map(function(t){return{key:t.key,st:testResultCardState(t.key,td,pres,pop,athleteAge,normSelections)};});
+  var nonClassifiables=activeTestKeys.map(function(k){return testResultCardState(k,td,pres,pop,athleteAge,normSelections);}).filter(function(s){return s.state==='unclassifiable';}).length;
+
+  if(selectedTest){
+    return h('div',{style:{maxWidth:1000}},
+      h('div',{style:{marginBottom:22}},
+        h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Tests'),
+        h('h1',{style:{margin:0,fontSize:22,fontWeight:800,color:C.text}},TBK[selectedTest]?TBK[selectedTest].label:selectedTest)
+      ),
+      h(TestResultDetail,{testKey:selectedTest,res:res,pres:pres,bilan:bilan,athlete:athlete,athleteAge:athleteAge,normSelections:normSelections,
+        onBack:function(){setSelectedTest(null);},onOpenQuality:props.onOpenQuality,onOpenPourquoi:props.onOpenPourquoi})
+    );
+  }
+  return h('div',{style:{maxWidth:1000}},
+    h('div',{style:{marginBottom:22}},
+      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Tests'),
+      h('h1',{style:{margin:0,fontSize:22,fontWeight:800,color:C.text}},'Qu\'est-ce qui a été mesuré ?')
+    ),
+    h(TestsOverviewHeader,{pres:pres,nonClassifiables:nonClassifiables}),
+    h(TestsFamilyFilter,{td:td,activeFamily:family,onSelect:setFamily}),
+    visibleTests.length===0
+      ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucun test dans cette famille.'))
+      :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12}},states.map(function(s){return h(TestResultCard,{key:s.key,testKey:s.key,st:s.st,onOpen:setSelectedTest});})),
+    h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginTop:24,paddingTop:18,borderTop:'1px solid '+C.border}},
+      props.onGotoSynthese&&h(Btn,{onClick:props.onGotoSynthese},'📋 Synthèse'),
+      props.onGotoQualites&&h(Btn,{onClick:props.onGotoQualites},'🧩 Qualités'),
+      props.onGotoRapport&&h(Btn,{onClick:props.onGotoRapport},'📄 Rapport')
+    )
+  );
+}
+
 // ── AGRÉGATION MULTI-ATHLÈTE (Mission UX/UI V1 — navigation globale) ────────────────────────────
 // Pure agrégation/tri des bilans déjà chargés (athletes[].bilans[]), pour les nouveaux écrans
 // Accueil et Bilans. Aucun nouveau calcul clinique, aucune donnée inventée : on relit exactement
@@ -18568,7 +18756,7 @@ function App(){
     {key:'synthese',label:'Synthèse',target:{screen:'analyse',view:'synthese'}},
     {key:'qualites',label:'Qualités',target:{screen:'analyse',view:'qualites'}},
     {key:'biomecanique',label:'Biomécanique',target:{screen:'analyse',view:'biomeca'}},
-    {key:'tests',label:'Tests',target:{screen:'analyse',view:'expert',tab:'kpi'}},
+    {key:'tests',label:'Tests',target:{screen:'analyse',view:'tests'}},
     {key:'bodymap',label:'Body Map',target:{screen:'analyse',view:'bodymap'}},
     {key:'rapport',label:'Rapport',target:{screen:'reportPreview'}},
     {key:'analyseexpert',label:'Analyse Expert',target:{screen:'analyse',view:'expert',tab:null}}

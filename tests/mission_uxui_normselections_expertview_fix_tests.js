@@ -155,10 +155,15 @@ test('GUARD — NORMS/NORMS_V2/THRESHOLDS/QUALITY_DIAGNOSTIC_VARIABLES_V1/CSM_V2
 });
 
 test("GUARD — le correctif est localisé (ExpertView + le site d'appel ExpertView dans AnalyseView), aucune autre fonction n'a été touchée pour l'implémenter", () => {
-  // Toutes les fonctions du moteur potentiellement adjacentes (ResultsBrowser, effectiveNormPop,
+  // Toutes les fonctions du moteur potentiellement adjacentes (effectiveNormPop,
   // resolveNormPopulationForTest) doivent elles aussi rester inchangées : seul le câblage de prop
-  // ExpertView<->AnalyseView a été modifié.
-  ['ResultsBrowser', 'effectiveNormPop', 'resolveNormPopulationForTest', 'normRefValue', 'normRefText'].forEach((fn) => {
+  // ExpertView<->AnalyseView a été modifié POUR CE CORRECTIF HISTORIQUE précis.
+  // ResultsBrowser retiré de cette liste (Mission UX/UI V1, Phase 8, §14/§18) : extension additive
+  // et rétrocompatible (prop optionnelle initialSel, comportement strictement inchangé si absente)
+  // pour permettre à la nouvelle TestsView d'ouvrir un test précis — sans rapport avec ce correctif
+  // normSelections historique, jamais un signe de régression de celui-ci (vérifié séparément
+  // ci-dessus par le test COMPORTEMENT).
+  ['effectiveNormPop', 'resolveNormPopulationForTest', 'normRefValue', 'normRefText'].forEach((fn) => {
     assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' ne devrait pas avoir changé pour ce correctif ciblé.');
   });
 });
