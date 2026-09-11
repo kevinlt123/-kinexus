@@ -62,7 +62,9 @@ test('1 — BodyMapView est définie et App() en fait la cible de la barre secon
 test("2 — AnalyseView route view==='bodymap' vers BodyMapView, sans nouvelle route App(), et masque les blocs 01-06 pour cette vue (pas de double Body Map)", () => {
   const body = extractFnBody(code, 'AnalyseView');
   assert.ok(/view==='bodymap'&&h\(BodyMapView,/.test(body), 'AnalyseView doit rendre BodyMapView pour view===\'bodymap\'.');
-  assert.ok(/view!=='synthese'&&view!=='bodymap'&&h\('div',null,/.test(body), 'Les blocs 01-06 (incluant l\'ancien Body Map statique) doivent être masqués pour view===\'bodymap\'.');
+  // Regex assouplie (Mission UX/UI V1, Phase 7) : d'autres vues dédiées (biomeca, ...) peuvent
+  // s'ajouter à la garde au fil des phases — même exigence pour 'bodymap' (jamais deux fois).
+  assert.ok(/view!=='synthese'&&(view!=='[a-zA-Z]+'&&)*h\('div',null,/.test(body)&&body.indexOf("view!=='bodymap'")>=0, 'Les blocs 01-06 (incluant l\'ancien Body Map statique) doivent être masqués pour view===\'bodymap\'.');
 });
 
 // ── 2. Structures existantes détectées : uniquement celles déjà représentées ──────────────────────

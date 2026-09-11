@@ -176,7 +176,9 @@ test('13 — Les blocs 01-06 d\'AnalyseView sont masqués pour view===\'synthese
   // view==='bodymap' (Body Map a sa propre vue dédiée, BodyMapView) — même exigence pour 'synthese'
   // (jamais affiché deux fois), condition supplémentaire tolérée.
   const analyseBody = extractFnBody(code, 'AnalyseView');
-  assert.ok(/view!=='synthese'&&(view!=='bodymap'&&)?h\('div',null,/.test(analyseBody), 'Les blocs 01-06 doivent être conditionnés à view!==\'synthese\'.');
+  // Regex assouplie (Mission UX/UI V1, Phase 7) : d'autres vues dédiées (bodymap, biomeca, ...)
+  // peuvent s'ajouter à la garde au fil des phases — même exigence pour 'synthese' (jamais deux fois).
+  assert.ok(/view!=='synthese'&&(view!=='[a-zA-Z]+'&&)*h\('div',null,/.test(analyseBody), 'Les blocs 01-06 doivent être conditionnés à view!==\'synthese\'.');
 });
 
 test('14 — ExpertView délègue (ne duplique pas) le rendu de l\'onglet Synthèse clinique/Orientations aux composants partagés réutilisés par SyntheseView', () => {

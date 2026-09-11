@@ -4800,6 +4800,30 @@ function poseSilhouetteHTML(poseKey,color,size){
     +'<circle cx="'+p.head[0]+'" cy="'+p.head[1]+'" r="7" fill="'+color+'"/>';
   return '<svg viewBox="0 0 60 90" width="'+size+'" height="'+(size*1.5)+'">'+out+'</svg>';
 }
+// BiomecaPhaseCycleStrip (Mission UX/UI V1, Phase 7, §8/§14) : extrait du bandeau de silhouettes
+// qui vivait inline dans MouvementView (aucun recalcul, mêmes 5 phases/couleurs/scores) — réutilisé
+// à l'identique par MouvementView (délégation ci-dessous) ET par la nouvelle BiomecaView. Seule
+// évolution PRÉSENTATIONNELLE (§12 mission, accessibilité) : <div onClick> devient un vrai <button>
+// natif (focusable/activable au clavier), aucun changement de logique ni de rendu visuel.
+function BiomecaPhaseCycleStrip(props){
+  var analysis=props.analysis,active=props.active,onSelect=props.onSelect;
+  var order=CMJ_PHASES;
+  return h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',padding:'0 4px 10px'}},
+    order.map(function(p){
+      var ph=analysis.phases[p];
+      var sufficient=!!(ph&&ph.sufficient);
+      var col=sufficient?phaseColor(p,analysis):C.border;
+      var isActive=p===active;
+      return h('button',{key:p,type:'button',onClick:sufficient?function(){onSelect(p);}:undefined,disabled:!sufficient,
+        'aria-pressed':isActive,'aria-label':CMJ_POSE_LABEL[p]+(sufficient?' — score '+Math.round(ph.score):' — donnée insuffisante'),
+        style:{background:'transparent',border:'none',padding:0,font:'inherit',cursor:sufficient?'pointer':'default',textAlign:'center',width:'18%',opacity:sufficient?1:.35,transform:isActive?'scale(1.12)':'scale(1)',transition:'transform .25s'}},
+        poseSilhouette(p,isActive?C.petrol:col,32),
+        h('div',{style:{fontSize:9.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',color:isActive?C.text:C.muted,marginTop:3}},CMJ_POSE_LABEL[p]),
+        sufficient&&h('div',{style:{fontSize:12,fontWeight:800,color:col,fontFamily:'monospace',marginTop:1}},Math.round(ph.score))
+      );
+    })
+  );
+}
 function MouvementView(props){
   var analysis=props.analysis;
   var order=CMJ_PHASES;
@@ -4810,20 +4834,7 @@ function MouvementView(props){
   var pri1=analysis.priorisation.priorite1,pri2=analysis.priorisation.priorite2;
   return h('div',{style:{background:C.card,border:'1px solid '+C.border,borderRadius:14,padding:'28px 30px',maxWidth:920}},
     h('div',{style:{fontSize:10,fontWeight:800,letterSpacing:'.1em',textTransform:'uppercase',color:C.muted,marginBottom:14}},'Counter Movement Jump'),
-    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',padding:'0 4px 10px'}},
-      order.map(function(p){
-        var ph=analysis.phases[p];
-        var sufficient=!!(ph&&ph.sufficient);
-        var col=sufficient?phaseColor(p,analysis):C.border;
-        var isActive=p===active;
-        return h('div',{key:p,onClick:sufficient?function(){setActive(p);}:null,
-          style:{cursor:sufficient?'pointer':'default',textAlign:'center',width:'18%',opacity:sufficient?1:.35,transform:isActive?'scale(1.12)':'scale(1)',transition:'transform .25s'}},
-          poseSilhouette(p,isActive?C.petrol:col,32),
-          h('div',{style:{fontSize:9.5,fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',color:isActive?C.text:C.muted,marginTop:3}},CMJ_POSE_LABEL[p]),
-          sufficient&&h('div',{style:{fontSize:12,fontWeight:800,color:col,fontFamily:'monospace',marginTop:1}},Math.round(ph.score))
-        );
-      })
-    ),
+    h(BiomecaPhaseCycleStrip,{analysis:analysis,active:active,onSelect:setActive}),
     h('svg',{viewBox:'0 0 1200 190',style:{width:'100%',height:'auto',display:'block',marginTop:6}},
       order.map(function(p){
         var z=CMJ_ZONE_X[p];
@@ -4863,6 +4874,276 @@ function MouvementView(props){
         ),
         pres.conclusion&&h('div',{style:{marginTop:22,paddingTop:16,borderTop:'1px solid '+C.border,fontSize:14,fontWeight:700,color:C.text}},pres.conclusion)
       )
+  );
+}
+
+// ── BIOMÉCANIQUE — vue dédiée « Comment le mouvement est-il organisé ? » (Mission UX/UI V1, Phase 7) ──
+// Couche de présentation pure : compose exclusivement des sorties déjà calculées par le Moteur
+// Biomécanique/Moteur de Cohérence/Hiérarchie de confiance/Moteur de Synthèse/Moteur de
+// Raisonnement/Moteur de Priorisation (computeMouvementAnalysis, inchangé) — aucun nouveau score,
+// aucun nouveau seuil, aucune nouvelle relation phase -> qualité. Répond à "comment le mouvement
+// est organisé", jamais à "quelle qualité est déficitaire" (Synthèse/Qualités/Pourquoi) ni "où se
+// situent les structures" (Body Map) — distinction volontaire (§10 mission).
+
+// cmjVarUnit : unité déjà déclarée dans TBK.cmj.kpis (même regex label.match(/\(([^)]+)\)/) que
+// computeAnalysePresentation) — jamais une unité inventée ; '' si absente.
+function cmjVarUnit(kpiKey){
+  var kpi=(TBK.cmj&&TBK.cmj.kpis||[]).filter(function(k){return k.key===kpiKey;})[0];
+  if(!kpi)return'';
+  var m=kpi.label.match(/\(([^)]+)\)/);
+  return m?m[1]:'';
+}
+
+// §1 — HERO : reprend tel quel analysis.syntheseBiomecanique.resume (Moteur de Synthèse
+// Biomécanique, déjà calculé) — 8 phrases déjà rédigées par le moteur, aucune recalculée ici.
+function BiomecaHero(props){
+  var resume=props.analysis.syntheseBiomecanique.resume;
+  var rows=[
+    ['Profil global',resume.niveauBiomecaniqueGlobal],
+    ['Organisation',resume.organisationBiomecanique],
+    ['Point fort',resume.principalPointFort],
+    ['Limitation principale',resume.principalFacteurLimitant],
+    ['Transition limitante',resume.transitionLimitante],
+    ['Potentiel',resume.potentielProgression],
+    ['Cohérence avec les qualités',resume.coherenceAvecLesQualites],
+    ['Confiance',resume.confianceGlobale]
+  ];
+  return h(Card,{pad:20},
+    h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:14}},'Profil biomécanique'),
+    h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:14}},
+      rows.map(function(r){return h('div',{key:r[0]},
+        h('div',{style:{color:C.muted,fontSize:9.5,fontWeight:800,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:4}},r[0]),
+        h('div',{style:{color:C.text,fontSize:12.5,lineHeight:1.5}},r[1])
+      );})
+    )
+  );
+}
+
+// §2 — ORGANISATION DU MOUVEMENT : organisation (Moteur de Synthèse, phases) + signature
+// biomécanique (profil dominant/stratégie/dominance, module Profils — indépendant, jamais
+// confondu). Présentées telles quelles, aucune nouvelle causalité clinique écrite ici.
+function BiomecaOrganizationCard(props){
+  var analysis=props.analysis;
+  var org=analysis.syntheseBiomecanique.organisation;
+  var sig=analysis.signature;
+  return h(Card,{pad:18},
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Organisation du mouvement'),
+    h('div',{style:{fontSize:14,fontWeight:700,color:C.text,marginBottom:4}},org.label),
+    h('div',{style:{fontSize:12.5,color:C.muted,lineHeight:1.6,marginBottom:sig&&sig.sufficient?14:0}},org.reason),
+    sig&&sig.sufficient&&h('div',{style:{borderTop:'1px solid '+C.border,paddingTop:12}},
+      h('div',{style:{fontSize:12.5,color:C.text,lineHeight:1.6}},sig.conclusionRelative),
+      h('div',{style:{fontSize:11.5,color:C.muted,fontStyle:'italic',marginTop:6}},sig.signature)
+    ),
+    sig&&!sig.sufficient&&h('div',{style:{fontSize:11.5,color:C.muted,fontStyle:'italic',borderTop:'1px solid '+C.border,paddingTop:12}},sig.reason)
+  );
+}
+
+// §3 — PROFIL PAR PHASE : les 5 phases du Moteur Biomécanique, telles que réellement calculées —
+// jamais de score de phase inventé, jamais de normalisation entre phases, jamais un nouveau seuil.
+// Le statut/niveau/conclusion viennent exclusivement de ph.niveau/biomecaPhaseConclusion (déjà
+// calculés). Cliquer une phase pilote la sélection pour Variables responsables (§5) ci-dessous.
+function BiomecaPhaseProfile(props){
+  var analysis=props.analysis,active=props.active,onSelect=props.onSelect;
+  return h(Card,{pad:18},
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:12}},'Profil par phase'),
+    h('div',{style:{display:'flex',flexDirection:'column',gap:8}},CMJ_PHASES.map(function(p){
+      var ph=analysis.phases[p];
+      var isActive=p===active;
+      if(!ph||!ph.sufficient){
+        return h('button',{key:p,type:'button',onClick:function(){onSelect(p);},
+          style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,width:'100%',textAlign:'left',padding:'10px 12px',borderRadius:8,cursor:'pointer',
+            border:'1px solid '+(isActive?C.teal:C.border),background:isActive?C.teal+'14':C.card}},
+          h('span',{style:{fontSize:12.5,fontWeight:700,color:C.muted}},CMJ_PHASE_LABEL[p]),
+          h('span',{style:{fontSize:10.5,fontWeight:700,color:C.muted}},'Donnée insuffisante')
+        );
+      }
+      var concl=biomecaPhaseConclusion(ph);
+      var conf=analysis.confiances[p];
+      var col=phaseColor(p,analysis);
+      var principales=(ph.entries||[]).filter(function(e){return e.tier==='principale'&&e.status==='ok';}).map(function(e){return e.valdName||e.kpiKey;});
+      return h('button',{key:p,type:'button',onClick:function(){onSelect(p);},'aria-pressed':isActive,
+        style:{display:'flex',flexDirection:'column',gap:4,width:'100%',textAlign:'left',padding:'10px 12px',borderRadius:8,cursor:'pointer',
+          border:'1px solid '+(isActive?C.teal:C.border),background:isActive?C.teal+'14':C.card}},
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}},
+          h('div',{style:{display:'flex',alignItems:'center',gap:8}},
+            h('span',{style:{width:8,height:8,borderRadius:'50%',background:col,flexShrink:0}}),
+            h('span',{style:{fontSize:12.5,fontWeight:700,color:C.text}},CMJ_PHASE_LABEL[p]),
+            h('span',{style:{fontSize:10.5,color:C.muted}},ph.niveau?ph.niveau.label:'')
+          ),
+          h('span',{style:{fontSize:12,fontWeight:800,color:col,fontFamily:'monospace'}},Math.round(ph.score))
+        ),
+        h('div',{style:{fontSize:11,color:C.muted}},concl.label+(conf&&conf.band?' · confiance '+conf.band.label.toLowerCase():'')),
+        principales.length>0&&h('div',{style:{fontSize:10.5,color:C.muted}},principales.join(', '))
+      );
+    }))
+  );
+}
+
+// §4 — PHASE LIMITANTE : met en avant EXCLUSIVEMENT la phase déjà désignée par
+// computePriorisationClinique (priorite1) — jamais une déduction locale. Réutilise
+// phasePresentation() (même fonction que MouvementView) pour headline/pourquoi/confiance/liens —
+// aucune nouvelle justification textuelle générée si le moteur n'en fournit pas.
+function BiomecaLimitingPhaseCard(props){
+  var analysis=props.analysis,onOpenQuality=props.onOpenQuality,onOpenPourquoi=props.onOpenPourquoi;
+  var pri1=analysis.priorisation.priorite1;
+  var resume=analysis.syntheseBiomecanique.resume;
+  if(!pri1){
+    return h(Card,{pad:18,style:{background:C.surface}},
+      h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:8}},'Phase limitante'),
+      h('div',{style:{fontSize:12.5,color:C.muted}},resume.principalFacteurLimitant)
+    );
+  }
+  var pres=phasePresentation(pri1.phase,analysis);
+  var transition=analysis.coherence.transitionLaPlusLimitante;
+  // CMJ_PHASE_TO_QUALITY (référentiel officiel existant) : seule Absorption (phase braking)
+  // correspond aujourd'hui à une qualité réellement calculée par functionScores — jamais une
+  // équivalence inventée pour les 4 autres libellés (§9 mission : réutiliser, jamais mapper soi-même).
+  var qualiteLabel=CMJ_PHASE_TO_QUALITY[pri1.phase];
+  var qualiteReelle=qualiteLabel&&analysis.functionScores&&analysis.functionScores[qualiteLabel]?qualiteLabel:null;
+  return h(Card,{pad:18,style:{borderLeft:'3px solid '+C.rouge}},
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:8}},'Phase limitante'),
+    h('div',{style:{fontSize:16,fontWeight:800,color:C.text,marginBottom:6}},CMJ_PHASE_LABEL[pri1.phase]),
+    h('div',{style:{fontSize:12.5,color:C.text,lineHeight:1.6,marginBottom:10}},pres.pourquoi),
+    transition&&h('div',{style:{fontSize:11.5,color:C.muted,lineHeight:1.6,marginBottom:10}},h('strong',null,'Transition limitante : '),transition.key+' — '+transition.text),
+    pres.confiance&&h('div',{style:{display:'inline-flex',alignItems:'center',gap:6,fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:100,background:C.surface,border:'1px solid '+C.border,marginBottom:10}},
+      'Confiance '+(pres.confiance.band||'').toLowerCase()+' · '+pres.confiance.composite+'%'
+    ),
+    h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginTop:6}},
+      qualiteReelle&&onOpenQuality&&h('button',{onClick:function(){onOpenQuality(qualiteReelle);},style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0}},'→ Qualité '+qualiteReelle),
+      qualiteReelle&&onOpenPourquoi&&h('button',{onClick:function(){onOpenPourquoi(qualiteReelle);},style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0}},'❓ Pourquoi ?')
+    )
+  );
+}
+
+// §5 — VARIABLES RESPONSABLES : ph.variablesResponsables (déjà filtré par le Moteur Biomécanique,
+// percentile<40) pour la phase sélectionnée — jamais un recalcul de LSI/asymétrie/seuil/score.
+function BiomecaResponsibleVariables(props){
+  var analysis=props.analysis,phaseKey=props.phaseKey,onGotoTest=props.onGotoTest;
+  var ph=analysis.phases[phaseKey];
+  if(!ph||!ph.sufficient)return null;
+  var vars=ph.variablesResponsables||[];
+  return h(Card,{pad:18},
+    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}},
+      h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800}},'Variables responsables — '+CMJ_PHASE_LABEL[phaseKey]),
+      onGotoTest&&h('button',{onClick:onGotoTest,style:{background:'transparent',border:'none',color:C.teal,fontSize:11.5,fontWeight:600,cursor:'pointer',padding:0}},'Voir le test →')
+    ),
+    vars.length===0
+      ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune variable désignée comme responsable pour cette phase (niveau non inférieur aux normes).')
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:8}},vars.map(function(v){
+          return h('div',{key:v.kpiKey,style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,padding:'8px 10px',borderRadius:8,background:C.surface,flexWrap:'wrap'}},
+            h('div',null,
+              h('div',{style:{fontSize:12.5,fontWeight:700,color:C.text}},v.valdName||v.kpiKey),
+              h('div',{style:{fontSize:10.5,color:C.muted}},v.tier==='principale'?'Variable principale':'Variable secondaire')
+            ),
+            h('div',{style:{textAlign:'right'}},
+              h('div',{style:{fontSize:12,fontWeight:700,color:C.text}},v.rawVal+(cmjVarUnit(v.kpiKey)?' '+cmjVarUnit(v.kpiKey):'')),
+              h('div',{style:{fontSize:10.5,color:C.muted}},pctlContext(v.percentile))
+            )
+          );
+        }))
+  );
+}
+
+// §6 — COHÉRENCES / INCOHÉRENCES : exclusivement le Moteur de Cohérence Inter-Phases
+// (transitions, ruptures, conclusion globale) + le Moteur de Raisonnement (croisements
+// profil/qualité, cas discordant=3, déjà classés) — jamais un diagnostic clinique construit ici.
+function BiomecaCoherenceCard(props){
+  var analysis=props.analysis;
+  var coherence=analysis.coherence;
+  var incoherencesTexte=(analysis.raisonnement.syntheseFinale.incoherencesDetectees||[]);
+  return h(Card,{pad:18},
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:8}},'Cohérences / incohérences'),
+    h('div',{style:{fontSize:12.5,color:C.text,marginBottom:10}},coherence.conclusionGlobale),
+    coherence.ruptures.length>0&&h('div',{style:{marginBottom:10}},
+      h('div',{style:{fontSize:10.5,fontWeight:800,color:C.muted,textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:6}},'Ruptures de transition'),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:6}},coherence.ruptures.map(function(r){
+        return h('div',{key:r.key,style:{fontSize:12,color:C.text,lineHeight:1.5}},'Incohérence détectée entre '+CMJ_PHASE_LABEL[r.from]+' et '+CMJ_PHASE_LABEL[r.to]+' — '+r.text);
+      }))
+    ),
+    incoherencesTexte.length>0&&h('div',null,
+      h('div',{style:{fontSize:10.5,fontWeight:800,color:C.muted,textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:6}},'Profil biomécanique vs qualité fonctionnelle'),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:6}},incoherencesTexte.map(function(t,i){return h('div',{key:i,style:{fontSize:12,color:C.muted,lineHeight:1.5}},t);}))
+    ),
+    coherence.ruptures.length===0&&incoherencesTexte.length===0&&h('div',{style:{fontSize:12,color:C.muted}},'Profil biomécanique cohérent avec l\'ensemble des transitions et croisements analysés.')
+  );
+}
+
+// §7 — AXES DE TRAVAIL : reprend tel quel raisonnement.syntheseFinale.axesDeTravail (texte déjà
+// rédigé, combine stratégie dominante + phase limitante) — un seul axe réellement produit par le
+// moteur (jamais plusieurs axes inventés), jamais transformé en prescription d'exercice.
+function BiomecaWorkAxes(props){
+  var analysis=props.analysis;
+  var sf=analysis.raisonnement.syntheseFinale;
+  var pri1=analysis.priorisation.priorite1;
+  var conf=pri1?analysis.confiances[pri1.phase]:null;
+  return h(Card,{pad:18},
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:8}},'Axes de travail'),
+    h('div',{style:{fontSize:12.5,color:C.text,lineHeight:1.65,marginBottom:10}},sf.axesDeTravail),
+    h('div',{style:{display:'flex',gap:14,flexWrap:'wrap',fontSize:11,color:C.muted}},
+      pri1&&h('span',null,h('strong',null,'Phase concernée : '),CMJ_PHASE_LABEL[pri1.phase]),
+      pri1&&(sf.variablesResponsables||[]).length>0&&h('span',null,h('strong',null,'Variables : '),sf.variablesResponsables.map(function(v){return v.valdName||v.kpiKey;}).join(', ')),
+      conf&&conf.band&&h('span',null,h('strong',null,'Confiance : '),conf.band.label.toLowerCase())
+    )
+  );
+}
+
+// DONNÉES TECHNIQUES — niveau secondaire (progressive disclosure) : dump brut des entrées de la
+// phase sélectionnée (ph.entries), replié par défaut. Aucune donnée nouvelle, uniquement le détail
+// technique déjà calculé (kpiKey/valdName/tier/rawVal/percentile/status), pour l'utilisateur expert.
+function BiomecaDataTechnique(props){
+  var analysis=props.analysis,phaseKey=props.phaseKey;
+  var [open,setOpen]=useState(false);
+  var ph=analysis.phases[phaseKey];
+  if(!ph)return null;
+  return h(Card,{pad:18},
+    h('button',{type:'button',onClick:function(){setOpen(function(v){return!v;});},'aria-expanded':open,
+      style:{background:'transparent',border:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left'}},
+      h('span',{style:{color:C.petrol,fontSize:13,fontWeight:800}},'Données techniques — '+CMJ_PHASE_LABEL[phaseKey]),
+      h('span',{style:{color:C.muted,fontSize:12}},open?'▲':'▼')
+    ),
+    open&&h('div',{style:{marginTop:12,display:'flex',flexDirection:'column',gap:6}},
+      !ph.sufficient
+        ?h('div',{style:{fontSize:12,color:C.muted}},ph.reason)
+        :(ph.entries||[]).map(function(e){
+            return h('div',{key:e.kpiKey,style:{display:'flex',justifyContent:'space-between',gap:10,fontSize:11.5,color:C.muted,borderBottom:'1px solid '+C.border,padding:'4px 0'}},
+              h('span',null,(e.valdName||e.kpiKey)+' ('+e.tier+')'),
+              h('span',null,(e.rawVal!=null?e.rawVal+(cmjVarUnit(e.kpiKey)?' '+cmjVarUnit(e.kpiKey):''):'—')+' · '+e.status+(e.percentile!=null?' · '+Math.round(e.percentile)+'e pctl':''))
+            );
+          })
+    )
+  );
+}
+
+function BiomecaView(props){
+  var analysis=props.analysis;
+  var pri1=analysis.priorisation.priorite1;
+  var defaultPhase=(pri1&&pri1.phase)||CMJ_PHASES.filter(function(p){return analysis.phases[p]&&analysis.phases[p].sufficient;})[0]||CMJ_PHASES[0];
+  var st=useState(defaultPhase),active=st[0],setActive=st[1];
+  return h('div',{style:{maxWidth:1000}},
+    h('div',{style:{marginBottom:22}},
+      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Biomécanique'),
+      h('h1',{style:{margin:0,fontSize:22,fontWeight:800,color:C.text}},'Comment le mouvement est-il organisé ?')
+    ),
+    h('div',{style:{display:'flex',flexDirection:'column',gap:16}},
+      h(BiomecaHero,{analysis:analysis}),
+      h(BiomecaOrganizationCard,{analysis:analysis}),
+      h(Card,{pad:18},
+        h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:6}},'Cycle du mouvement (CMJ)'),
+        h(BiomecaPhaseCycleStrip,{analysis:analysis,active:active,onSelect:setActive})
+      ),
+      h(BiomecaPhaseProfile,{analysis:analysis,active:active,onSelect:setActive}),
+      h(BiomecaLimitingPhaseCard,{analysis:analysis,onOpenQuality:props.onOpenQuality,onOpenPourquoi:props.onOpenPourquoi}),
+      h(BiomecaResponsibleVariables,{analysis:analysis,phaseKey:active,onGotoTest:props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');}}),
+      h(BiomecaCoherenceCard,{analysis:analysis}),
+      h(BiomecaWorkAxes,{analysis:analysis}),
+      h(BiomecaDataTechnique,{analysis:analysis,phaseKey:active})
+    ),
+    h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginTop:24,paddingTop:18,borderTop:'1px solid '+C.border}},
+      props.onGotoSynthese&&h(Btn,{onClick:props.onGotoSynthese},'📋 Synthèse'),
+      props.onGotoQualites&&h(Btn,{onClick:props.onGotoQualites},'🧩 Qualités'),
+      props.onGotoBodyMap&&h(Btn,{onClick:props.onGotoBodyMap},'🫀 Body Map'),
+      props.onGotoRapport&&h(Btn,{onClick:props.onGotoRapport},'📄 Rapport')
+    )
   );
 }
 // ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -16665,7 +16946,9 @@ function AnalyseView(props){
       // vues (Expert/Mouvement/Fil de Raisonnement/Historique), qui continuent de les voir.
       // 'bodymap' (Mission UX/UI V1, Phase 6) masqué au même titre que 'synthese' : le Body Map y a
       // désormais sa propre vue dédiée (BodyMapView ci-dessous), pour ne jamais l'afficher deux fois.
-      view!=='synthese'&&view!=='bodymap'&&h('div',null,
+      // 'biomeca' (Mission UX/UI V1, Phase 7) masqué au même titre que 'synthese'/'bodymap' : la
+      // Biomécanique a désormais sa propre vue dédiée (BiomecaView ci-dessous).
+      view!=='synthese'&&view!=='bodymap'&&view!=='biomeca'&&h('div',null,
       h('div',{style:{marginBottom:20}},
         h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Synthèse globale'),
         h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}},
@@ -16881,8 +17164,18 @@ function AnalyseView(props){
         onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
         hasMouvement:!!mouvementAnalysis,onGotoMouvement:function(){setView('mouvement');},
         onGotoRapport:props.onPreview}),
+      // BiomecaView (Mission UX/UI V1, Phase 7) : Biomécanique devenue une vraie vue dédiée
+      // ("comment le mouvement est organisé"), au même niveau que Synthèse/Qualités/Body Map —
+      // distincte de l'ancien onglet 'mouvement' (MouvementView, drill-down phase par phase par
+      // Counter Movement Jump, conservé tel quel dans le sélecteur ci-dessous pour l'usage expert).
+      !pourquoiQuality&&view==='biomeca'&&mouvementAnalysis&&h(BiomecaView,{analysis:mouvementAnalysis,
+        onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
+        onOpenQuality:function(f){setOpenQuality(f);setView('qualites');},
+        onOpenPourquoi:openPourquoi,
+        onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
+        onGotoBodyMap:function(){setView('bodymap');},onGotoRapport:props.onPreview}),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content',flexWrap:'wrap'}},
-        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['biomeca','Biomécanique'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:expertTabTarget}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
@@ -18274,7 +18567,7 @@ function App(){
   var SECONDARY_NAV=[
     {key:'synthese',label:'Synthèse',target:{screen:'analyse',view:'synthese'}},
     {key:'qualites',label:'Qualités',target:{screen:'analyse',view:'qualites'}},
-    {key:'biomecanique',label:'Biomécanique',target:{screen:'analyse',view:'mouvement'}},
+    {key:'biomecanique',label:'Biomécanique',target:{screen:'analyse',view:'biomeca'}},
     {key:'tests',label:'Tests',target:{screen:'analyse',view:'expert',tab:'kpi'}},
     {key:'bodymap',label:'Body Map',target:{screen:'analyse',view:'bodymap'}},
     {key:'rapport',label:'Rapport',target:{screen:'reportPreview'}},
