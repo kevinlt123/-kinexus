@@ -14454,6 +14454,40 @@ function wbltAsymmetryPanelInnerHtml(fSc){
     +'<div style="display:flex;align-items:center;gap:8px"><span style="width:9px;height:9px;border-radius:50%;background:'+badgeCol+';flex-shrink:0"></span><span style="font-size:8.5pt;font-weight:800;letter-spacing:0.04em;color:'+badgeCol+'">Statut asymétrie : '+statutLabel+'</span></div>'
     +'<div style="font-size:7.5pt;color:#94A3B8;margin-top:8px;font-style:italic">Information de mobilité en charge, distincte du diagnostic Mobilité (HYP-MOB-01) affiché séparément ci-dessus.</div>';
 }
+// REPORT_TITLES/reportModeForBilan/rtpChecklist (Mission UX/UI V1, Phase 9, §20/§24) : hissés au
+// niveau global depuis buildSportifReport (rapport PDF Sportif) — extraction purement technique,
+// aucun changement de rendu du PDF (buildSportifReport délègue désormais dessus, byte-identique).
+// Réutilisés à l'identique par ReportView pour que le Hero/les critères de progression du rapport
+// interactif restent exactement la même question clinique et la même checklist que le PDF de
+// référence — jamais une deuxième formulation.
+var REPORT_TITLES={rtp:'Suis-je prêt à reprendre le sport ?',preseason:'Quel est mon profil physique ?',performance:'Quels sont mes leviers de performance ?',reeducation:'Où en suis-je dans ma progression ?'};
+function reportModeForBilan(bilan){
+  if(bilan.type==='RTP')return'rtp';
+  if(bilan.type==='Suivi')return'reeducation';
+  if(bilan.type==='Performance'&&bilan.sousType==='Pré-saison')return'preseason';
+  if(bilan.type==='Performance')return'performance';
+  return'rtp'; // Screening / types non couverts : on garde le cadrage retour-au-sport par défaut.
+}
+function rtpChecklist(td,fSc){
+  var items=[];
+  var rtpKeys=['single_hop','triple_hop','crossover_hop','side_hop','slcmj','sldj'];
+  rtpKeys.forEach(function(k){
+    var d=td[k];if(!d||!d.active)return;var test=TBK[k];if(!test)return;
+    if(!test.bilateral){
+      var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);
+      var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);
+      if(lsi!=null)items.push({label:test.label.replace(/^Single Leg /,'')+' — LSI ≥ 95%',state:lsi>=95?'ok':'ko'});
+    }else{
+      var st=computeTestStatus(k,d);
+      if(st)items.push({label:test.label,state:st==='vert'?'ok':st==='jaune'?'mid':'ko'});
+    }
+  });
+  ['Contrôle Frontal','Mobilité','Absorption'].forEach(function(fn){
+    var sc=fSc[fn];if(!sc)return;
+    items.push({label:fn+' (norme)',state:sc.status==='vert'?'ok':sc.status==='jaune'?'mid':'ko'});
+  });
+  return items;
+}
 function buildSportifReport(athlete,bilan,res){
   var fSc=res.functionScores,sysSc=res.systemScores,pri=res.priorities||[],rtp=res.rtpStatus,tSt=res.testStatuses;
   // Surcharges du praticien (aperçu éditable) : priorités éditées/réordonnées, statut RTP forcé
@@ -14566,27 +14600,8 @@ function buildSportifReport(athlete,bilan,res){
   });
   lsiItems.sort(function(a,b){return a.lsi-b.lsi;});
 
-  // ── RTP checklist (réutilisé pour "Critères de progression") ──
-  function rtpChecklist(){
-    var items=[];
-    var rtpKeys=['single_hop','triple_hop','crossover_hop','side_hop','slcmj','sldj'];
-    rtpKeys.forEach(function(k){
-      var d=td[k];if(!d||!d.active)return;var test=TBK[k];if(!test)return;
-      if(!test.bilateral){
-        var kpi=test.kpis[0];var dV=bestVal(((d.D||{}).trials||{})[kpi.key]||[],kpi.dir);var gV=bestVal(((d.G||{}).trials||{})[kpi.key]||[],kpi.dir);
-        var lsi=d.lsiAuto!=null?d.lsiAuto:autoLSI(dV,gV);
-        if(lsi!=null)items.push({label:test.label.replace(/^Single Leg /,'')+' — LSI ≥ 95%',state:lsi>=95?'ok':'ko'});
-      }else{
-        var st=computeTestStatus(k,d);
-        if(st)items.push({label:test.label,state:st==='vert'?'ok':st==='jaune'?'mid':'ko'});
-      }
-    });
-    ['Contrôle Frontal','Mobilité','Absorption'].forEach(function(fn){
-      var sc=fSc[fn];if(!sc)return;
-      items.push({label:fn+' (norme)',state:sc.status==='vert'?'ok':sc.status==='jaune'?'mid':'ko'});
-    });
-    return items;
-  }
+  // rtpChecklist désormais globale (Mission UX/UI V1, Phase 9) — même fonction, réutilisée à
+  // l'identique par ReportView ; appelée ci-dessous avec (td,fSc) au lieu de la closure locale.
 
   // ── Chaîne causale (icônes + texte d'interprétation) ──
   // Normalisation architecturale (HYP_V1_CONTRACT_AND_SOURCE_OF_TRUTH.md §9/§10) : ne relie plus
@@ -14657,15 +14672,9 @@ function buildSportifReport(athlete,bilan,res){
   // ── Mode de rapport : le contenu de la section 1 s'adapte au type de bilan réellement
   // saisi (bilan.type / bilan.sousType), pas à un réglage manuel — chaque mode répond à la
   // question clinique pertinente pour ce type de bilan.
-  function resolveReportMode(){
-    if(bilan.type==='RTP')return'rtp';
-    if(bilan.type==='Suivi')return'reeducation';
-    if(bilan.type==='Performance'&&bilan.sousType==='Pré-saison')return'preseason';
-    if(bilan.type==='Performance')return'performance';
-    return'rtp'; // Screening / types non couverts : on garde le cadrage retour-au-sport par défaut.
-  }
-  var reportMode=resolveReportMode();
-  var REPORT_TITLES={rtp:'Suis-je prêt à reprendre le sport ?',preseason:'Quel est mon profil physique ?',performance:'Quels sont mes leviers de performance ?',reeducation:'Où en suis-je dans ma progression ?'};
+  // reportModeForBilan/REPORT_TITLES désormais globales (Mission UX/UI V1, Phase 9) — mêmes
+  // fonctions/constante, réutilisées à l'identique par ReportView.
+  var reportMode=reportModeForBilan(bilan);
   var fnDist={vert:[],jaune:[],orange:[],rouge:[]};
   evFns.forEach(function(f){var st=fSc[f].status;if(fnDist[st])fnDist[st].push(f);});
   var distStatus=fnDist.rouge.length?'rouge':fnDist.orange.length?'orange':fnDist.jaune.length?'jaune':'vert';
@@ -14684,7 +14693,7 @@ function buildSportifReport(athlete,bilan,res){
         reeducEvolution={delta:Math.round(reeducCurAvg-reeducPrevAvg),prevDate:reeducPrev.date};
       }
     }
-    var reeducChecklist=rtpChecklist();
+    var reeducChecklist=rtpChecklist(td,fSc);
     objectifsAtteints=reeducChecklist.filter(function(it){return it.state==='ok';});
     objectifsRestants=reeducChecklist.filter(function(it){return it.state!=='ok';});
   }
@@ -15078,7 +15087,7 @@ function buildSportifReport(athlete,bilan,res){
 
   // Informations pratiques — niveau 3 : très discret, faible contraste, ne doit pas attirer l'œil ; pas de numéro de section
   html+=subtleHeader('Informations pratiques',true);
-  var checklist=rtpChecklist();
+  var checklist=rtpChecklist(td,fSc);
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">';
   html+=panelL3(
     '<div style="display:flex;align-items:center;gap:6px;margin-bottom:9px"><span style="font-size:10.5pt;opacity:0.7">📅</span><span style="font-size:7pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em">Prochaine évaluation conseillée</span></div>'
@@ -16960,7 +16969,8 @@ function AnalyseView(props){
       // 'biomeca' (Mission UX/UI V1, Phase 7) masqué au même titre que 'synthese'/'bodymap' : la
       // Biomécanique a désormais sa propre vue dédiée (BiomecaView ci-dessous).
       // 'tests' (Mission UX/UI V1, Phase 8) masqué au même titre que 'synthese'/'bodymap'/'biomeca'.
-      view!=='synthese'&&view!=='bodymap'&&view!=='biomeca'&&view!=='tests'&&h('div',null,
+      // 'rapport' (Mission UX/UI V1, Phase 9) masqué au même titre que les autres vues dédiées.
+      view!=='synthese'&&view!=='bodymap'&&view!=='biomeca'&&view!=='tests'&&view!=='rapport'&&h('div',null,
       h('div',{style:{marginBottom:20}},
         h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Synthèse globale'),
         h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}},
@@ -17195,8 +17205,18 @@ function AnalyseView(props){
         onOpenPourquoi:openPourquoi,
         onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
         onGotoRapport:props.onPreview}),
+      // ReportView (Mission UX/UI V1, Phase 9) : Rapport devenu une vraie vue interactive
+      // (composition des sorties/composants déjà existants), distincte de l'écran reportPreview
+      // (PDF figé/partageable, buildSportifReport, atteignable via [Télécharger le PDF] ci-dessous).
+      !pourquoiQuality&&view==='rapport'&&h(ReportView,{res:res,pres:pres,pri:pri,bilan:bilan,athlete:athlete,mouvementAnalysis:mouvementAnalysis,
+        onOpenQuality:function(f){setOpenQuality(f);setView('qualites');},
+        onOpenPourquoi:openPourquoi,
+        onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
+        onGotoBodyMap:function(){setView('bodymap');},onGotoBiomeca:function(){setView('biomeca');},onGotoTests:function(){setView('tests');},
+        onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
+        onDownloadPdf:props.onPreview}),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content',flexWrap:'wrap'}},
-        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['biomeca','Biomécanique'],['tests','Tests'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['tests','Tests'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['biomeca','Biomécanique'],['tests','Tests'],['rapport','Rapport'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['tests','Tests'],['rapport','Rapport'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:expertTabTarget}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
@@ -18077,6 +18097,212 @@ function TestsView(props){
   );
 }
 
+// ── RAPPORT — vue de synthèse finale interactive (Mission UX/UI V1, Phase 9) ─────────────────────
+// « Quel est le bilan complet, compréhensible rapidement, partageable et traçable ? » Compose
+// EXCLUSIVEMENT des sorties et composants déjà existants et déjà validés par les phases
+// précédentes — jamais un nouveau raisonnement clinique, jamais une deuxième Body Map/logique de
+// qualité/logique de biomécanique/logique de tests. Le PDF (buildSportifReport) reste le
+// référentiel figé/partageable ; ce Rapport en reprend la même hiérarchie de contenu (Hero+RTP+Body
+// Map -> Déficits -> Synthèse clinique -> Qualités -> Tests -> Asymétries -> Chaîne causale -> Plan
+// de prise en charge/RTP), rendue interactive et progressive plutôt que figée sur une page.
+//
+// Réutilisation exacte par section (audit Phase 9) :
+//  1. Hero        : REPORT_TITLES[reportModeForBilan(bilan)] (même question clinique que le PDF,
+//                   hissée depuis buildSportifReport) + BilanStatusCards (Phase 3, déjà réutilisé
+//                   par SyntheseView) pour Retour au sport/Risque global/Déficits/Évolution.
+//  2. Body Map    : composant BodyMap (Phase 6) en version compacte + lien vers BodyMapView complète.
+//  3. Déficits    : PriorityOrientationCards (Phase 3, déjà réutilisé par SyntheseView).
+//  4. Synthèse    : CsmObjectifiedCard/CsmSuspectedCard (Phase 3) — mêmes cartes, jamais une
+//                   deuxième formulation du statut objectivé/suspecté.
+//  5. Qualités    : QualityCard (Phase 4, grille), même carte (statut/preuves/relations/accès détail)
+//                   qu'utilisée par QualitesView.
+//  6. Biomécanique: BiomecaHero (Phase 7, résumé exécutif déjà rédigé par le moteur) + lien BiomecaView.
+//  7. Tests       : TEST_FAMILIES (référentiel PDF, hissé Phase 8) + compteurs pres.testsCnt/
+//                   testsFilledCnt (Phase 4) + lien TestsView — jamais un nouveau classement de tests.
+//  8. Relations   : CsmRelationsCards (Phase 3) — respecte exactement explanatoryHypotheses
+//                   (relation documentée, texte via csmCleanExplanatoryText) vs concordant_no_relation
+//                   (narrative), jamais fusionnées ni reformulées en causalité.
+//  9. Axes        : BiomecaWorkAxes (Phase 7, texte déjà rédigé par le moteur de raisonnement).
+// 10. Limites     : CsmNonDeterminableCard + CsmLimitationsCard (Phase 3) — obligatoire, jamais masquée.
+// 11. Retour au sport : res.rtpStatus (déjà calculé) + rtpChecklist (référentiel PDF, hissé Phase 9),
+//                   mêmes critères que la section "Plan de prise en charge" du PDF.
+// 12. Données techniques : compteurs bruts déjà dérivables (mêmes expressions que buildSportifReport),
+//                   section repliée par défaut.
+function ReportBilanIdentityHero(props){
+  var bilan=props.bilan,athlete=props.athlete,res=props.res;
+  var mode=reportModeForBilan(bilan);
+  var dateStr=new Date(bilan.date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  return h(Card,{pad:20},
+    h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:6}},bilan.type+' · '+bilan.sousType+' · '+dateStr),
+    h('h1',{style:{margin:'0 0 14px',fontSize:22,fontWeight:800,color:C.text}},REPORT_TITLES[mode]),
+    h(BilanStatusCards,{res:res,pres:props.pres,bilan:bilan})
+  );
+}
+function ReportSectionTitle(props){
+  return h('h2',{style:{color:C.petrol,fontSize:13,fontWeight:800,letterSpacing:'0.01em',margin:'28px 0 12px'}},props.children);
+}
+function ReportBodyMapSummary(props){
+  var res=props.res,onGotoBodyMap=props.onGotoBodyMap;
+  return h(Card,{pad:18},
+    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}},
+      h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},'Body Map musculaire'),
+      onGotoBodyMap&&h('button',{onClick:onGotoBodyMap,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0}},'Voir le Body Map complet →')
+    ),
+    h('div',{style:{display:'flex',justifyContent:'center'}},h(BodyMap,{systemScores:res.systemScores,size:260}))
+  );
+}
+function ReportQualitesSummary(props){
+  var res=props.res,pres=props.pres,bilan=props.bilan,onOpenQuality=props.onOpenQuality;
+  return h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12}},
+    pres.evFns.map(function(f){return h(QualityCard,{key:f,f:f,res:res,bilan:bilan,onOpen:onOpenQuality});})
+  );
+}
+function ReportBiomecaSummary(props){
+  var analysis=props.analysis,onGotoBiomeca=props.onGotoBiomeca;
+  if(!analysis){
+    return h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Biomécanique non disponible (aucun CMJ actif pour ce bilan).'));
+  }
+  return h('div',null,
+    h(BiomecaHero,{analysis:analysis}),
+    onGotoBiomeca&&h('div',{style:{marginTop:10}},h('button',{onClick:onGotoBiomeca,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0}},'Voir la biomécanique complète →'))
+  );
+}
+// ReportTestsSummary : compteurs + répartition par famille déjà existants (TEST_FAMILIES/pres),
+// jamais un nouveau classement clinique des tests — le détail par test reste dans TestsView.
+function ReportTestsSummary(props){
+  var td=props.bilan.testData||{},pres=props.pres,onGotoTests=props.onGotoTests;
+  var famCounts=TEST_FAMILIES.map(function(fam){
+    var testsInFam=TESTS.filter(function(t){return fam.cats.indexOf(t.cat)>=0;});
+    var realises=testsInFam.filter(function(t){return td[t.key]&&td[t.key].active&&testHasAnyTrialValue(td[t.key]);}).length;
+    return{fam:fam,realises:realises,total:testsInFam.length};
+  });
+  return h(Card,{pad:18},
+    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}},
+      h('div',{style:{color:C.text,fontWeight:700,fontSize:13}},pres.testsFilledCnt+' test'+(pres.testsFilledCnt>1?'s':'')+' réalisé'+(pres.testsFilledCnt>1?'s':'')+' sur '+pres.testsCnt+' actif'+(pres.testsCnt>1?'s':'')),
+      onGotoTests&&h('button',{onClick:onGotoTests,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0}},'Voir tous les tests →')
+    ),
+    h('div',{style:{display:'flex',gap:16,flexWrap:'wrap'}},famCounts.map(function(c){
+      return h('div',{key:c.fam.label,style:{fontSize:12,color:C.muted}},c.fam.icon+' '+c.fam.label+' : '+c.realises+'/'+c.total);
+    }))
+  );
+}
+// ReportRetourSportCard : res.rtpStatus déjà calculé + rtpChecklist (référentiel PDF "Plan de prise
+// en charge", hissé Phase 9) — jamais une nouvelle décision RTS, jamais une clearance inventée.
+function ReportRetourSportCard(props){
+  var res=props.res,bilan=props.bilan;
+  var rtp=res.rtpStatus;
+  var checklist=rtpChecklist(bilan.testData||{},res.functionScores);
+  return h(Card,{pad:18},
+    h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:10}},'Retour au sport'),
+    !rtp
+      ?h('div',{style:{color:C.muted,fontSize:12,marginBottom:14}},'Aucun test RTP actif — statut non déterminable.')
+      :h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:14}},
+          h('div',{style:{fontSize:26,fontWeight:900,color:SC[rtp.status]}},rtp.ratio+'%'),
+          h('div',null,
+            h(Badge,{status:rtp.status}),
+            h('div',{style:{color:C.muted,fontSize:11,marginTop:4}},'Tests RTP : '+rtp.passCount+'/'+rtp.totalCount)
+          )
+        ),
+    h('div',{style:{color:C.muted,fontSize:10.5,fontWeight:800,textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:8}},'Critères de progression'),
+    checklist.length===0
+      ?h('div',{style:{color:C.muted,fontSize:12}},'Activez des tests RTP pour définir des critères.')
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},checklist.map(function(it,i){
+          var col=it.state==='ok'?C.vert:it.state==='mid'?C.jaune:C.rouge;
+          return h('div',{key:i,style:{display:'flex',alignItems:'center',gap:8,fontSize:12}},
+            h('span',{style:{width:8,height:8,borderRadius:'50%',background:col,flexShrink:0}}),
+            h('span',{style:{color:C.text}},it.label)
+          );
+        }))
+  );
+}
+// ReportTechnicalDetails : compteurs bruts directement dérivables (mêmes expressions que
+// buildSportifReport), repliés par défaut (§12/§15 mission — niveau 3, jamais nécessaire pour
+// comprendre le rapport).
+function ReportTechnicalDetails(props){
+  var bilan=props.bilan,athlete=props.athlete;
+  var [open,setOpen]=useState(false);
+  var td=bilan.testData||{};
+  var activeTestCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active;}).length;
+  var variableCount=Object.keys(td).filter(function(k){return td[k]&&td[k].active&&TBK[k];}).reduce(function(s,k){return s+TBK[k].kpis.length;},0);
+  var normLbl=athlete.normPopulation?((NORM_POPULATIONS.find(function(p){return p.key===athlete.normPopulation;})||{}).label||athlete.normPopulation):'Seuils génériques';
+  return h(Card,{pad:18},
+    h('button',{type:'button',onClick:function(){setOpen(function(v){return!v;});},'aria-expanded':open,
+      style:{background:'transparent',border:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',gap:8,width:'100%',textAlign:'left'}},
+      h('span',{style:{color:C.petrol,fontSize:13,fontWeight:800}},'Données techniques'),
+      h('span',{style:{color:C.muted,fontSize:12}},open?'▲':'▼')
+    ),
+    open&&h('div',{style:{marginTop:12,display:'flex',flexDirection:'column',gap:6,fontSize:12,color:C.muted}},
+      h('div',null,activeTestCount+' test'+(activeTestCount>1?'s':'')+' actif'+(activeTestCount>1?'s':'')+' · '+variableCount+' variable'+(variableCount>1?'s':'')+' analysée'+(variableCount>1?'s':'')),
+      h('div',null,'Référentiel normatif : '+normLbl)
+    )
+  );
+}
+function ReportView(props){
+  var res=props.res,pres=props.pres,pri=props.pri,bilan=props.bilan,athlete=props.athlete,mouvementAnalysis=props.mouvementAnalysis;
+  var csm=res.clinicalSynthesis;
+  return h('div',{style:{maxWidth:1000}},
+    h('div',{style:{marginBottom:22}},
+      h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:3}},'Rapport'),
+      h('h1',{style:{margin:0,fontSize:22,fontWeight:800,color:C.text}},'Bilan complet')
+    ),
+    h(ReportBilanIdentityHero,{bilan:bilan,athlete:athlete,res:res,pres:pres}),
+
+    h(ReportSectionTitle,null,'Body Map'),
+    h(ReportBodyMapSummary,{res:res,onGotoBodyMap:props.onGotoBodyMap}),
+
+    h(ReportSectionTitle,null,'Déficits à investiguer'),
+    h(PriorityOrientationCards,{pri:pri,res:res}),
+
+    h(ReportSectionTitle,null,'Synthèse clinique'),
+    !csm
+      ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Synthèse non disponible.'))
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+          h(CsmObjectifiedCard,{res:res,onOpenPourquoi:props.onOpenPourquoi}),
+          h(CsmSuspectedCard,{res:res,onOpenPourquoi:props.onOpenPourquoi})
+        ),
+
+    h(ReportSectionTitle,null,'Qualités fonctionnelles'),
+    h(ReportQualitesSummary,{res:res,pres:pres,bilan:bilan,onOpenQuality:props.onOpenQuality}),
+
+    h(ReportSectionTitle,null,'Biomécanique'),
+    h(ReportBiomecaSummary,{analysis:mouvementAnalysis,onGotoBiomeca:props.onGotoBiomeca}),
+
+    h(ReportSectionTitle,null,'Tests / preuves'),
+    h(ReportTestsSummary,{bilan:bilan,pres:pres,onGotoTests:props.onGotoTests}),
+
+    csm&&h(React.Fragment,null,
+      h(ReportSectionTitle,null,'Relations / cohérences'),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:10}},h(CsmRelationsCards,{res:res}))
+    ),
+
+    mouvementAnalysis&&h(React.Fragment,null,
+      h(ReportSectionTitle,null,'Axes de progression'),
+      h(BiomecaWorkAxes,{analysis:mouvementAnalysis})
+    ),
+
+    h(ReportSectionTitle,null,'Limites / données manquantes'),
+    csm
+      ?h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
+          h(CsmNonDeterminableCard,{res:res}),
+          h(CsmLimitationsCard,{res:res})
+        )
+      :h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Aucune limite disponible.')),
+
+    h(ReportSectionTitle,null,'Retour au sport'),
+    h(ReportRetourSportCard,{res:res,bilan:bilan}),
+
+    h(ReportSectionTitle,null,'Données techniques'),
+    h(ReportTechnicalDetails,{bilan:bilan,athlete:athlete}),
+
+    h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',marginTop:28,paddingTop:18,borderTop:'1px solid '+C.border}},
+      props.onGotoSynthese&&h(Btn,{onClick:props.onGotoSynthese},'📋 Synthèse'),
+      props.onGotoQualites&&h(Btn,{onClick:props.onGotoQualites},'🧩 Qualités'),
+      props.onGotoExpertTab&&h(Btn,{onClick:function(){props.onGotoExpertTab(null);}},'🧠 Analyse Expert'),
+      props.onDownloadPdf&&h(Btn,{primary:true,onClick:props.onDownloadPdf},'⬇ Télécharger le PDF')
+    )
+  );
+}
+
 // ── AGRÉGATION MULTI-ATHLÈTE (Mission UX/UI V1 — navigation globale) ────────────────────────────
 // Pure agrégation/tri des bilans déjà chargés (athletes[].bilans[]), pour les nouveaux écrans
 // Accueil et Bilans. Aucun nouveau calcul clinique, aucune donnée inventée : on relit exactement
@@ -18758,7 +18984,7 @@ function App(){
     {key:'biomecanique',label:'Biomécanique',target:{screen:'analyse',view:'biomeca'}},
     {key:'tests',label:'Tests',target:{screen:'analyse',view:'tests'}},
     {key:'bodymap',label:'Body Map',target:{screen:'analyse',view:'bodymap'}},
-    {key:'rapport',label:'Rapport',target:{screen:'reportPreview'}},
+    {key:'rapport',label:'Rapport',target:{screen:'analyse',view:'rapport'}},
     {key:'analyseexpert',label:'Analyse Expert',target:{screen:'analyse',view:'expert',tab:null}}
   ];
   function goSecondary(item){setSecondaryView(item.key);setNavNonce(function(n){return n+1;});setScreen(item.target.screen);}
