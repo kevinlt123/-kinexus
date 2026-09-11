@@ -88,8 +88,14 @@ test("5 — functionRelTests/FunctionEvidenceChips sont extraits d'ExpertView et
   assert.ok(!/TFM\)\.filter\(function\(tk\)\{return TFM\[tk\]\[fk\]/.test(expertBody), "ExpertView ne doit plus contenir le filtre TFM inline (déplacé dans functionRelTests).");
   const qcBody = extractFnBody(code, 'QualityCard');
   assert.ok(qcBody.includes('functionRelTests(f,bilan.testData||{})'), 'QualityCard doit réutiliser functionRelTests pour compter les preuves.');
+  // Relogé (Mission UX/UI V1, Phase 5, §10) : la liste des preuves de QualiteDetailView vit
+  // désormais dans PreuvesPrincipalesCard, extraite pour être réutilisée à l'identique par la
+  // nouvelle PourquoiView — même exigence sémantique (functionRelTests réutilisé, jamais dupliqué),
+  // seule la localisation du corps de fonction change.
   const qdBody = extractFnBody(code, 'QualiteDetailView');
-  assert.ok(qdBody.includes('functionRelTests(f,td)'), 'QualiteDetailView doit réutiliser functionRelTests pour lister les preuves.');
+  assert.ok(qdBody.includes('h(PreuvesPrincipalesCard,'), 'QualiteDetailView doit déléguer à PreuvesPrincipalesCard pour lister les preuves.');
+  const ppBody = extractFnBody(code, 'PreuvesPrincipalesCard');
+  assert.ok(ppBody.includes('functionRelTests(f,td)'), 'PreuvesPrincipalesCard doit réutiliser functionRelTests pour lister les preuves.');
 });
 
 test('6 — functionRelTests filtre sur TFM (référentiel constant) et testData actif — même logique exacte qu\'avant cette phase, jamais un nouveau seuil', () => {
@@ -109,23 +115,33 @@ test("7 — L'enrichissement testKey des asymItems (computeAnalysePresentation) 
   assert.ok(!baseFnBody.includes('testKey:test.key'), 'Pré-requis : testKey ne devait pas exister avant cette phase (sinon ce n\'est pas un ajout net).');
 });
 
-test('8 — QualiteDetailView associe les preuves D/G/LSI via testKey (pres.asymItems), jamais un recalcul de LSI/asymétrie', () => {
-  const body = extractFnBody(code, 'QualiteDetailView');
-  assert.ok(body.includes("pres.asymItems.filter(function(a){return a.testKey===tk;})"), 'QualiteDetailView doit retrouver le D/G/LSI déjà calculé via testKey, jamais recalculer autoLSI/lsiSt.');
-  assert.ok(!/autoLSI\(|lsiSt\(/.test(body), 'QualiteDetailView ne doit jamais appeler autoLSI/lsiSt elle-même.');
+// Relogé (Mission UX/UI V1, Phase 5, §10) : tests 8/9/10 vérifiaient des blocs qui vivent désormais
+// dans PreuvesPrincipalesCard/ConcordancesRelationsCard/LimitesCard — extraits de QualiteDetailView
+// pour devenir l'UNIQUE implémentation partagée avec la nouvelle PourquoiView. Même exigence
+// sémantique exacte qu'avant cette phase, seule la fonction inspectée change.
+test('8 — QualiteDetailView (via PreuvesPrincipalesCard) associe les preuves D/G/LSI via testKey (pres.asymItems), jamais un recalcul de LSI/asymétrie', () => {
+  const qdBody = extractFnBody(code, 'QualiteDetailView');
+  assert.ok(qdBody.includes('h(PreuvesPrincipalesCard,'), 'QualiteDetailView doit déléguer à PreuvesPrincipalesCard.');
+  const body = extractFnBody(code, 'PreuvesPrincipalesCard');
+  assert.ok(body.includes("pres.asymItems.filter(function(a){return a.testKey===tk;})"), 'PreuvesPrincipalesCard doit retrouver le D/G/LSI déjà calculé via testKey, jamais recalculer autoLSI/lsiSt.');
+  assert.ok(!/autoLSI\(|lsiSt\(/.test(body), 'PreuvesPrincipalesCard ne doit jamais appeler autoLSI/lsiSt elle-même.');
 });
 
 // ── 5. Concordances/relations : jamais transformées en causalité, toujours scopées à la qualité ──
-test('9 — Concordances/relations sont filtrées par les champs déjà existants (explains/explained pour les hypothèses, qualityA/qualityB pour les concordances), jamais un nouveau critère', () => {
-  const body = extractFnBody(code, 'QualiteDetailView');
+test('9 — Concordances/relations (via ConcordancesRelationsCard) sont filtrées par les champs déjà existants (explains/explained pour les hypothèses, qualityA/qualityB pour les concordances), jamais un nouveau critère', () => {
+  const qdBody = extractFnBody(code, 'QualiteDetailView');
+  assert.ok(qdBody.includes('h(ConcordancesRelationsCard,'), 'QualiteDetailView doit déléguer à ConcordancesRelationsCard.');
+  const body = extractFnBody(code, 'ConcordancesRelationsCard');
   assert.ok(body.includes("rel.explains===f||rel.explained===f"), 'Le filtre des hypothèses explicatives doit utiliser explains/explained (champs déjà produits par computeHypClinicalSynthesis01).');
   assert.ok(body.includes("r.level==='concordant_no_relation'&&(r.qualityA===f||r.qualityB===f)"), 'Le filtre des concordances doit utiliser level/qualityA/qualityB (champs déjà produits).');
   assert.ok(body.includes('csmCleanExplanatoryText(rel)'), 'Les hypothèses explicatives doivent être formatées via csmCleanExplanatoryText existant (jamais un nouveau texte causal).');
 });
 
 // ── 6. Limites : qualité non déterminable / suspectée, jamais confondues ────────────────────────
-test('10 — Limites distingue non-déterminable (csm.nonDeterminable) et suspectée (csm.suspected), réutilise csmNonDeterminableHasPartialEvidence/csmSuspectedNote existants', () => {
-  const body = extractFnBody(code, 'QualiteDetailView');
+test('10 — Limites (via LimitesCard) distingue non-déterminable (csm.nonDeterminable) et suspectée (csm.suspected), réutilise csmNonDeterminableHasPartialEvidence/csmSuspectedNote existants', () => {
+  const qdBody = extractFnBody(code, 'QualiteDetailView');
+  assert.ok(qdBody.includes('h(LimitesCard,'), 'QualiteDetailView doit déléguer à LimitesCard.');
+  const body = extractFnBody(code, 'LimitesCard');
   assert.ok(body.includes("(csm.nonDeterminable||[]).some(function(n){return n.quality===f;})"), 'isNonDeterminable doit être dérivé de csm.nonDeterminable.');
   assert.ok(body.includes("(csm.suspected||[]).some(function(s){return s.quality===f;})"), 'isSuspected doit être dérivé de csm.suspected.');
   assert.ok(body.includes('csmNonDeterminableHasPartialEvidence(f,csm)') && body.includes('csmSuspectedNote(f)'), 'Doit réutiliser les helpers existants, jamais une nouvelle formulation.');

@@ -85,8 +85,11 @@ test('4 — SyntheseView affiche le Profil global via FunctionGaugeCard, sur pre
 // ── 3. Distinction déficitaire / suspectée / non déterminable ───────────────────────────────────
 test('5 — Ce qui ressort utilise CsmObjectifiedCard (csm.objectified) ET CsmSuspectedCard (csm.suspected) séparément — jamais fusionnés', () => {
   const body = extractFnBody(code, 'SyntheseView');
-  assert.ok(/h\(CsmObjectifiedCard,\{res:res\}\)/.test(body), 'CsmObjectifiedCard manquant dans "Ce qui ressort".');
-  assert.ok(/h\(CsmSuspectedCard,\{res:res\}\)/.test(body), 'CsmSuspectedCard manquant dans "Ce qui ressort".');
+  // Regex assouplie (Mission UX/UI V1, Phase 5) : CsmObjectifiedCard/CsmSuspectedCard reçoivent
+  // désormais aussi onOpenPourquoi (câblage du bouton "Pourquoi ?", §9/§10) — même exigence
+  // sémantique (res:res transmis, les deux cartes distinctes), tolérante à des props additionnelles.
+  assert.ok(/h\(CsmObjectifiedCard,\{res:res[,}]/.test(body), 'CsmObjectifiedCard manquant dans "Ce qui ressort".');
+  assert.ok(/h\(CsmSuspectedCard,\{res:res[,}]/.test(body), 'CsmSuspectedCard manquant dans "Ce qui ressort".');
 });
 
 test('6 — CsmObjectifiedCard lit exclusivement csm.objectified, CsmSuspectedCard exclusivement csm.suspected (aucun mélange)', () => {

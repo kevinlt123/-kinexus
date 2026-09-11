@@ -16314,8 +16314,8 @@ function SyntheseView(props){
     !csm
       ?h(Card,{pad:16},h('div',{style:{color:C.muted,fontSize:12}},'Synthèse non disponible.'))
       :h('div',{style:{display:'flex',flexDirection:'column',gap:10}},
-          h(CsmObjectifiedCard,{res:res}),
-          h(CsmSuspectedCard,{res:res})
+          h(CsmObjectifiedCard,{res:res,onOpenPourquoi:props.onOpenPourquoi}),
+          h(CsmSuspectedCard,{res:res,onOpenPourquoi:props.onOpenPourquoi})
         ),
     pres.asymItems.length>0&&h('div',{style:{marginTop:14}},
       h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}},'Asymétries majeures'),
@@ -16383,28 +16383,106 @@ function QualitesView(props){
   );
 }
 
-function QualiteDetailView(props){
-  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onBack=props.onBack;
-  var td=bilan.testData||{};
+// ── POURQUOI ? — raisonnement clinique complet d'une qualité (Mission UX/UI V1, Phase 5) ─────────
+// UNE SEULE implémentation (§10 mission), ouverte à l'identique depuis SyntheseView et
+// QualiteDetailView (voir onOpenPourquoi câblé par AnalyseView). Compose exclusivement des blocs
+// déjà existants et déjà validés : ConclusionCard/PreuvesPrincipalesCard/ConcordancesRelationsCard/
+// LimitesCard (extraits de QualiteDetailView, Phase 4, ci-dessus — même lecture de res.clinicalSynthesis,
+// aucun recalcul), CsmV2HierarchyCard (lecture pure de res.clinicalSynthesisV2.clinicalEvidenceHierarchy,
+// déjà calculée par Mission AD/§2 — les libellés ci-dessous ne font que nommer en français les 6
+// niveaux déjà distingués par le moteur, sans en inventer un 7e) et CsmV2RaisonnementCard (réutilise
+// littéralement csmV2ReportPrincipalDeficitCardHtml, la même fonction qui produit déjà le Compte
+// rendu clinique CSM V2 d'ExpertView et des exports PDF — même vocabulaire Objectivé/Expliqué
+// [Contributif]/Associé [Associé]/Reste incertain/À vérifier, jamais une causalité reformulée).
+var CSM_V2_HIERARCHY_LEVEL_LABELS=[
+  ['level1_diagnostic','Preuve diagnostique directe'],
+  ['level2_confirmation','Confirmation (graduation)'],
+  ['level3_explanation','Explication (mécanisme)'],
+  ['level4_relation','Relation avec une autre qualité'],
+  ['level5_bridge','Association (mesure commune)'],
+  ['level6_chain','Chaîne fonctionnelle']
+];
+var CSM_V2_HIERARCHY_VERDICT_LABEL={
+  DIAGNOSTIC_OBJECTIVE:'Preuve diagnostique objectivée',
+  AUCUNE_PREUVE_DIAGNOSTIQUE:'Aucune preuve diagnostique directe',
+  QUALITE_PRESERVEE:'Qualité préservée',
+  NON_DETERMINABLE_SANS_DONNEE:'Non déterminable, faute de données'
+};
+function CsmV2HierarchyCard(props){
+  var f=props.f,res=props.res;
+  var csmV2=res.clinicalSynthesisV2;
+  var hier=csmV2&&csmV2.clinicalEvidenceHierarchy&&csmV2.clinicalEvidenceHierarchy[f];
+  if(!hier)return null;
+  return h('div',null,
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Hiérarchie de preuve'),
+    h(Card,{pad:16,style:{marginBottom:22}},
+      h('div',{style:{color:C.text,fontSize:12,fontWeight:700,marginBottom:10}},CSM_V2_HIERARCHY_VERDICT_LABEL[hier.verdict]||hier.verdict),
+      h('div',{style:{display:'flex',flexDirection:'column',gap:6}},CSM_V2_HIERARCHY_LEVEL_LABELS.map(function(lv){
+        var lvl=hier[lv[0]];
+        return h('div',{key:lv[0],style:{display:'flex',alignItems:'center',gap:8,fontSize:11.5}},
+          h('span',{style:{width:14,textAlign:'center',color:lvl&&lvl.present?C.vert:C.muted}},lvl&&lvl.present?'✓':'—'),
+          h('span',{style:{color:lvl&&lvl.present?C.text:C.muted}},lv[1])
+        );
+      }))
+    )
+  );
+}
+function CsmV2RaisonnementCard(props){
+  var f=props.f,res=props.res;
+  var csmV2=res.clinicalSynthesisV2;
+  if(!csmV2||!csmV2.clinicalProfile||!csmV2.clinicalProfile[f])return null;
+  return h('div',null,
+    h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Raisonnement (CSM V2)'),
+    h(Card,{pad:2,style:{marginBottom:22,overflow:'hidden'}},
+      h('div',{dangerouslySetInnerHTML:{__html:csmV2ReportPrincipalDeficitCardHtml(1,f,csmV2)}})
+    )
+  );
+}
+function PourquoiView(props){
+  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onBack=props.onBack,onGotoExpertTab=props.onGotoExpertTab;
   var sc=res.functionScores[f]||null;
   var status=sc?sc.status:null;
-  var csm=res.clinicalSynthesis;
-  var relTests=functionRelTests(f,td);
-  var relatedExplan=csm?(csm.explanatoryHypotheses||[]).filter(function(rel){return rel.explains===f||rel.explained===f;}):[];
-  var relatedConcord=csm?(csm.relationships||[]).filter(function(r){return r.level==='concordant_no_relation'&&(r.qualityA===f||r.qualityB===f);}):[];
-  var isNonDeterminable=csm&&(csm.nonDeterminable||[]).some(function(n){return n.quality===f;});
-  var isSuspected=csm&&(csm.suspected||[]).some(function(s){return s.quality===f;});
   return h('div',{style:{maxWidth:900}},
-    h('button',{onClick:onBack,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0,marginBottom:16}},'← Retour aux qualités'),
-    h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:20}},
+    h('button',{onClick:onBack,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0,marginBottom:16}},'← Retour'),
+    h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:6}},
       h('div',{style:{width:40,height:40,borderRadius:'50%',background:C.surface,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0}},FN_ICON[f]||'●'),
       h('h1',{style:{margin:0,fontSize:21,fontWeight:800,color:C.text,textTransform:'uppercase',flex:1}},f),
       status?h(Badge,{status:status}):h('span',{style:{color:C.muted,fontSize:12,fontWeight:700,padding:'4px 11px',borderRadius:20,border:'1px solid '+C.border}},'Non déterminable')
     ),
+    h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:22}},'Pourquoi ?'),
 
+    h(ConclusionCard,{f:f,res:res}),
+    h(PreuvesPrincipalesCard,{f:f,res:res,pres:pres,bilan:bilan,onGotoExpertTab:onGotoExpertTab}),
+    h(CsmV2HierarchyCard,{f:f,res:res}),
+    h(CsmV2RaisonnementCard,{f:f,res:res}),
+    h(ConcordancesRelationsCard,{f:f,res:res}),
+    h(LimitesCard,{f:f,res:res}),
+
+    h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
+      onGotoExpertTab&&h(Btn,{onClick:function(){onGotoExpertTab('kpi');}},'📊 Voir le test'),
+      onGotoExpertTab&&h(Btn,{onClick:function(){onGotoExpertTab('variables');}},'📁 Voir les données'),
+      onGotoExpertTab&&h(Btn,{onClick:function(){onGotoExpertTab('csmv2');}},'🔬 Analyse expert')
+    )
+  );
+}
+
+// ConclusionCard/PreuvesPrincipalesCard/ConcordancesRelationsCard/LimitesCard (Mission UX/UI V1,
+// Phase 5, §10) : extraites tel quel du corps de QualiteDetailView (Phase 4, aucun changement de
+// rendu) pour devenir l'UNIQUE implémentation du raisonnement présenté au praticien, réutilisée à
+// l'identique par QualiteDetailView (délégation ci-dessous) ET par la nouvelle PourquoiView — jamais
+// une deuxième version du même contenu.
+function ConclusionCard(props){
+  var f=props.f,res=props.res;
+  return h('div',null,
     h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Synthèse'),
-    h(Card,{pad:14,style:{marginBottom:22}},h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},csmSafeQualityNote(f,csm))),
-
+    h(Card,{pad:14,style:{marginBottom:22}},h('div',{style:{color:C.text,fontSize:13,lineHeight:1.6}},csmSafeQualityNote(f,res.clinicalSynthesis)))
+  );
+}
+function PreuvesPrincipalesCard(props){
+  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onGotoExpertTab=props.onGotoExpertTab;
+  var td=bilan.testData||{};
+  var relTests=functionRelTests(f,td);
+  return h('div',null,
     h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Preuves principales'),
     relTests.length===0
       ?h(Card,{pad:16,style:{marginBottom:22}},h('div',{style:{color:C.muted,fontSize:12}},'Aucune preuve — test complémentaire à envisager pour cette qualité.'))
@@ -16423,31 +16501,67 @@ function QualiteDetailView(props){
               ),
               h('div',{style:{display:'flex',alignItems:'center',gap:8}},
                 testStatus&&h(Badge,{status:testStatus,small:true}),
-                props.onGotoExpertTab&&h('button',{onClick:function(){props.onGotoExpertTab('kpi');},style:{background:'transparent',border:'none',color:C.teal,fontSize:11,fontWeight:600,cursor:'pointer',padding:0}},'Voir le test →')
+                onGotoExpertTab&&h('button',{onClick:function(){onGotoExpertTab('kpi');},style:{background:'transparent',border:'none',color:C.teal,fontSize:11,fontWeight:600,cursor:'pointer',padding:0}},'Voir le test →')
               )
             )
           );
-        })),
-
+        }))
+  );
+}
+function ConcordancesRelationsCard(props){
+  var f=props.f,res=props.res;
+  var csm=res.clinicalSynthesis;
+  var relatedExplan=csm?(csm.explanatoryHypotheses||[]).filter(function(rel){return rel.explains===f||rel.explained===f;}):[];
+  var relatedConcord=csm?(csm.relationships||[]).filter(function(r){return r.level==='concordant_no_relation'&&(r.qualityA===f||r.qualityB===f);}):[];
+  return h('div',null,
     h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Concordances / relations'),
     (relatedExplan.length===0&&relatedConcord.length===0)
       ?h(Card,{pad:16,style:{marginBottom:22}},h('div',{style:{color:C.muted,fontSize:12}},'Aucune relation documentée pour cette qualité.'))
       :h('div',{style:{display:'flex',flexDirection:'column',gap:8,marginBottom:22}},
           relatedExplan.map(function(rel,i){return h(Card,{key:'e'+i,pad:14},h('div',{style:{fontSize:12,color:C.text,lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid '+C.teal}},csmCleanExplanatoryText(rel)));}),
           relatedConcord.map(function(r,i){return h(Card,{key:'c'+i,pad:14},h('div',{style:{fontSize:12,color:C.muted,lineHeight:1.6}},r.narrative));})
-        ),
-
+        )
+  );
+}
+function LimitesCard(props){
+  var f=props.f,res=props.res;
+  var csm=res.clinicalSynthesis;
+  var isNonDeterminable=csm&&(csm.nonDeterminable||[]).some(function(n){return n.quality===f;});
+  var isSuspected=csm&&(csm.suspected||[]).some(function(s){return s.quality===f;});
+  return h('div',null,
     h('div',{style:{color:C.petrol,fontSize:13,fontWeight:800,marginBottom:10}},'Limites'),
     (!isNonDeterminable&&!isSuspected)
       ?h(Card,{pad:16,style:{marginBottom:22}},h('div',{style:{color:C.muted,fontSize:12}},'Aucune limite particulière signalée pour cette qualité.'))
       :h(Card,{pad:16,style:{marginBottom:22,background:C.surface}},
           isNonDeterminable&&h('div',{style:{color:C.muted,fontSize:12,lineHeight:1.6}},'Qualité non déterminable'+(csmNonDeterminableHasPartialEvidence(f,csm)?' · données normatives insuffisantes':'')+'. Non déterminable n\'équivaut jamais à normal.'),
           isSuspected&&h('div',{style:{color:C.muted,fontSize:12,lineHeight:1.6}},csmSuspectedNote(f))
-        ),
+        )
+  );
+}
+function QualiteDetailView(props){
+  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onBack=props.onBack;
+  var sc=res.functionScores[f]||null;
+  var status=sc?sc.status:null;
+  return h('div',{style:{maxWidth:900}},
+    h('button',{onClick:onBack,style:{background:'transparent',border:'none',color:C.teal,fontSize:12,fontWeight:600,cursor:'pointer',padding:0,marginBottom:16}},'← Retour aux qualités'),
+    h('div',{style:{display:'flex',alignItems:'center',gap:12,marginBottom:20}},
+      h('div',{style:{width:40,height:40,borderRadius:'50%',background:C.surface,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0}},FN_ICON[f]||'●'),
+      h('h1',{style:{margin:0,fontSize:21,fontWeight:800,color:C.text,textTransform:'uppercase',flex:1}},f),
+      status?h(Badge,{status:status}):h('span',{style:{color:C.muted,fontSize:12,fontWeight:700,padding:'4px 11px',borderRadius:20,border:'1px solid '+C.border}},'Non déterminable')
+    ),
+
+    h(ConclusionCard,{f:f,res:res}),
+    h(PreuvesPrincipalesCard,{f:f,res:res,pres:pres,bilan:bilan,onGotoExpertTab:props.onGotoExpertTab}),
+    h(ConcordancesRelationsCard,{f:f,res:res}),
+    h(LimitesCard,{f:f,res:res}),
 
     h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
       props.onGotoExpertTab&&h(Btn,{onClick:function(){props.onGotoExpertTab('kpi');}},'📊 Voir les résultats'),
-      props.onGotoExpertTab&&h(Btn,{onClick:function(){props.onGotoExpertTab('fonctions');}},'🧠 Voir l\'analyse expert')
+      props.onGotoExpertTab&&h(Btn,{onClick:function(){props.onGotoExpertTab('fonctions');}},'🧠 Voir l\'analyse expert'),
+      // [Pourquoi ?] (Mission UX/UI V1, Phase 5, §9) : seule porte d'entrée vers le parcours complet
+      // conclusion->preuves->hiérarchie de preuve->raisonnement CSM V2->relations->limites. Même
+      // callback que celui câblé depuis SyntheseView (App()/AnalyseView) — une seule PourquoiView.
+      props.onOpenPourquoi&&h(Btn,{primary:true,onClick:function(){props.onOpenPourquoi(f);}},'❓ Pourquoi ?')
     )
   );
 }
@@ -16499,6 +16613,13 @@ function AnalyseView(props){
   // Qualités (null = grille). Purement une sélection d'affichage, jamais un recalcul — se réinitialise
   // naturellement à chaque remount d'AnalyseView (changement de destination dans la barre secondaire).
   var [openQuality,setOpenQuality]=useState(null);
+  // pourquoiQuality (Mission UX/UI V1, Phase 5) : quelle qualité affiche son parcours "Pourquoi ?"
+  // complet (PourquoiView), null = aucun. openPourquoi() fixe systématiquement openQuality+view sur
+  // la même qualité/'qualites' avant d'ouvrir PourquoiView, pour que [Retour] (qui se contente de
+  // vider pourquoiQuality) ramène toujours sur QualiteDetailView de cette qualité (§9 mission),
+  // quel que soit l'écran d'origine (Synthèse ou Qualités) — contexte athlète/bilan/qualité préservé.
+  var [pourquoiQuality,setPourquoiQuality]=useState(null);
+  function openPourquoi(fq){setOpenQuality(fq);setPourquoiQuality(fq);setView('qualites');}
 
   return h('div',{style:{display:'flex',alignItems:'flex-start'}},
     h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 136px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:136,color:'#fff'}},
@@ -16727,16 +16848,26 @@ function AnalyseView(props){
       // recalcul), et deux callbacks de navigation qui restent internes à AnalyseView (aucune
       // nouvelle route App() nécessaire) : onGotoExpertTab bascule vers Expert avec l'onglet
       // demandé, onGotoRapport réutilise le même onPreview déjà câblé pour le bouton sidebar.
-      view==='synthese'&&h(SyntheseView,{bilan:bilan,athlete:athlete,res:res,pres:pres,pri:pri,
+      // !pourquoiQuality (Mission UX/UI V1, Phase 5) : PourquoiView prend le pas sur Synthèse/Qualités
+      // quand une qualité est ouverte en "Pourquoi ?" — évite un double rendu superposé, jamais un
+      // changement du contenu de SyntheseView/QualiteDetailView elles-mêmes.
+      !pourquoiQuality&&view==='synthese'&&h(SyntheseView,{bilan:bilan,athlete:athlete,res:res,pres:pres,pri:pri,
         onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
-        onGotoRapport:props.onPreview}),
+        onGotoRapport:props.onPreview,onOpenPourquoi:openPourquoi}),
       // QualitesView / QualiteDetailView (Mission UX/UI V1, Phase 4) : deuxième porte d'entrée
       // clinique après Synthèse. openQuality bascule entre la grille et le détail d'une qualité,
       // toujours à l'intérieur de la même vue 'qualites' (aucune nouvelle route App() nécessaire).
-      view==='qualites'&&(openQuality
+      !pourquoiQuality&&view==='qualites'&&(openQuality
         ?h(QualiteDetailView,{f:openQuality,res:res,pres:pres,bilan:bilan,athlete:athlete,onBack:function(){setOpenQuality(null);},
-            onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');}})
+            onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},onOpenPourquoi:openPourquoi})
         :h(QualitesView,{res:res,pres:pres,bilan:bilan,onOpenQuality:setOpenQuality})),
+      // PourquoiView (Mission UX/UI V1, Phase 5) : parcours complet "Pourquoi ?" d'une qualité,
+      // atteignable depuis SyntheseView ET QualiteDetailView (même callback openPourquoi ci-dessus).
+      // [Retour] vide seulement pourquoiQuality — openQuality/view restent sur 'qualites' pointés sur
+      // la même qualité, donc [Retour] ramène toujours sur QualiteDetailView (§9 mission).
+      pourquoiQuality&&h(PourquoiView,{f:pourquoiQuality,res:res,pres:pres,bilan:bilan,athlete:athlete,
+        onBack:function(){setPourquoiQuality(null);},
+        onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');}}),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content'}},
         (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
@@ -17424,23 +17555,25 @@ function BilansGlobalView(props){
 // csmCleanExplanatoryText, csmSafeText, CSM_STATE_LABEL) — aucun recalcul, aucune nouvelle règle.
 function CsmObjectifiedCard(props){
   var csm=props.res.clinicalSynthesis;
+  var onOpenPourquoi=props.onOpenPourquoi;
   if(!csm)return null;
   return h(Card,{pad:14},
     h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités objectivement déficitaires'),
     csm.objectified.length===0
       ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune — aucun déficit n\'est objectivé avec les données actuellement disponibles.')
-      :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.objectified.map(function(o){return h('div',{key:o.quality,style:{display:'flex',alignItems:'center',gap:8}},h(Badge,{status:o.status,small:true}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},o.quality),h('span',{style:{color:C.muted,fontSize:11}},CSM_STATE_LABEL[o.state]||o.state));}))
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.objectified.map(function(o){return h('div',{key:o.quality,style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}},h(Badge,{status:o.status,small:true}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},o.quality),h('span',{style:{color:C.muted,fontSize:11}},CSM_STATE_LABEL[o.state]||o.state),onOpenPourquoi&&h('button',{onClick:function(){onOpenPourquoi(o.quality);},style:{background:'transparent',border:'none',color:C.teal,fontSize:11,fontWeight:600,cursor:'pointer',padding:0,marginLeft:'auto'}},'Pourquoi ? →'));}))
   );
 }
 function CsmSuspectedCard(props){
   var csm=props.res.clinicalSynthesis;
+  var onOpenPourquoi=props.onOpenPourquoi;
   if(!csm)return null;
   return h(Card,{pad:14},
     h('div',{style:{color:C.text,fontWeight:700,fontSize:13,marginBottom:8}},'Qualités suspectées (preuve partielle)'),
     h('div',{style:{color:C.muted,fontSize:11,marginBottom:8,fontStyle:'italic'}},'Un signal existe, mais la convergence diagnostique n\'est pas suffisante pour retenir le déficit — ni normal, ni confirmé, ni non déterminable.'),
     csm.suspected.length===0
       ?h('div',{style:{color:C.muted,fontSize:12}},'Aucune.')
-      :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.suspected.map(function(s){return h('div',{key:s.quality,style:{display:'flex',alignItems:'center',gap:8}},h('span',{style:{width:8,height:8,borderRadius:'50%',background:C.jaune,flexShrink:0}}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},s.quality),h('span',{style:{color:C.muted,fontSize:11}},csmSuspectedNote(s.quality)));}))
+      :h('div',{style:{display:'flex',flexDirection:'column',gap:6}},csm.suspected.map(function(s){return h('div',{key:s.quality,style:{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}},h('span',{style:{width:8,height:8,borderRadius:'50%',background:C.jaune,flexShrink:0}}),h('span',{style:{color:C.text,fontSize:12,fontWeight:600}},s.quality),h('span',{style:{color:C.muted,fontSize:11}},csmSuspectedNote(s.quality)),onOpenPourquoi&&h('button',{onClick:function(){onOpenPourquoi(s.quality);},style:{background:'transparent',border:'none',color:C.teal,fontSize:11,fontWeight:600,cursor:'pointer',padding:0,marginLeft:'auto'}},'Pourquoi ? →'));}))
   );
 }
 function CsmNonDeterminableCard(props){
