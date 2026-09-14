@@ -209,10 +209,41 @@ test('21 — GUARD — Aucun nouveau score/seuil/norme : NORMS/NORMS_V2/THRESHOL
 });
 
 // ── 15. Non-régression des vues des phases précédentes ────────────────────────────────────────────
-test('22 — Non-régression : SyntheseView/QualitesView/QualiteDetailView/BiomecaView/TestsView/BodyMapView/ExpertView restent BYTE-IDENTIQUES vs baseline (abe4d8a)', () => {
-  ['SyntheseView', 'QualitesView', 'QualiteDetailView', 'BiomecaView', 'TestsView', 'BodyMapView', 'ExpertView'].forEach((fn) => {
-    assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' a changé — cette phase ne doit pas modifier les vues des phases précédentes.');
+// Relaxé en Phase 10 (Mission UX/UI V1, "AUDIT + INTÉGRATION UX GLOBALE") : QualiteDetailView/
+// BiomecaView/BodyMapView reçoivent désormais légitimement un onGotoTest (câblage du mécanisme
+// "Voir le test" de la Phase 8, resté mort jusqu'ici) en plus de leurs props existantes — un
+// changement de câblage de navigation strictement présentationnel (jamais un recalcul/nouvelle
+// logique clinique, couvert par les GUARDs ci-dessous). SyntheseView/QualitesView/TestsView/
+// ExpertView, dont le corps propre n'est pas touché par cette correction (seul le SITE D'APPEL dans
+// AnalyseView change pour onGotoRapport), restent BYTE-IDENTIQUES.
+test('22 — Non-régression : SyntheseView/QualitesView/TestsView/ExpertView restent BYTE-IDENTIQUES vs baseline (abe4d8a) ; QualiteDetailView/BiomecaView/BodyMapView ne diffèrent que par l\'ajout du câblage onGotoTest (Phase 10)', () => {
+  ['SyntheseView', 'QualitesView', 'TestsView', 'ExpertView'].forEach((fn) => {
+    assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' a changé — cette vue n\'est pas concernée par les corrections de navigation Phase 10.');
   });
+  assert.strictEqual(
+    extractFnBody(code, 'QualiteDetailView'),
+    extractFnBody(baseCode, 'QualiteDetailView').replace(
+      "h(PreuvesPrincipalesCard,{f:f,res:res,pres:pres,bilan:bilan,onGotoExpertTab:props.onGotoExpertTab}),",
+      "h(PreuvesPrincipalesCard,{f:f,res:res,pres:pres,bilan:bilan,onGotoExpertTab:props.onGotoExpertTab,onGotoTest:props.onGotoTest}),"
+    ),
+    'QualiteDetailView contient un changement au-delà de l\'ajout de onGotoTest autorisé par la Phase 10.'
+  );
+  assert.strictEqual(
+    extractFnBody(code, 'BiomecaView'),
+    extractFnBody(baseCode, 'BiomecaView').replace(
+      "h(BiomecaResponsibleVariables,{analysis:analysis,phaseKey:active,onGotoTest:props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');}}),",
+      "h(BiomecaResponsibleVariables,{analysis:analysis,phaseKey:active,onGotoTest:props.onGotoTest?function(){props.onGotoTest('cmj');}:(props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');})}),"
+    ),
+    'BiomecaView contient un changement au-delà de l\'ajout de onGotoTest autorisé par la Phase 10.'
+  );
+  assert.strictEqual(
+    extractFnBody(code, 'BodyMapView'),
+    extractFnBody(baseCode, 'BodyMapView').replace(
+      "onGotoTests:props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');},\n              onOpenQuality:props.onOpenQuality})",
+      "onGotoTests:props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');},\n              onGotoTest:props.onGotoTest,\n              onOpenQuality:props.onOpenQuality})"
+    ),
+    'BodyMapView contient un changement au-delà de l\'ajout de onGotoTest autorisé par la Phase 10.'
+  );
 });
 
 test('23 — Non-régression : le sélecteur interne d\'AnalyseView propose la nouvelle destination "Rapport" sans supprimer aucune destination existante', () => {

@@ -167,7 +167,12 @@ test('12 — SyntheseView expose des boutons de navigation vers Analyse Expert e
   assert.ok(/onGotoRapport/.test(synthBody), 'SyntheseView doit exposer un point de navigation vers le Rapport (onGotoRapport).');
   const analyseBody = extractFnBody(code, 'AnalyseView');
   assert.ok(/onGotoExpertTab:function\(tab\)\{setExpertTabTarget\(tab\);setView\('expert'\);\}/.test(analyseBody), 'onGotoExpertTab doit rester une navigation interne à AnalyseView (setView), sans nouvelle route App().');
-  assert.ok(/onGotoRapport:props\.onPreview/.test(analyseBody), 'onGotoRapport doit réutiliser props.onPreview déjà câblé par App() (aucun nouveau chemin).');
+  // Relaxé en Phase 10 (Mission UX/UI V1, "Boutons Rapport") : onGotoRapport bascule désormais vers
+  // ReportView (setView('rapport')), et non plus directement le PDF (props.onPreview) — cohérent
+  // avec la barre secondaire persistante dont la destination "Rapport" pointe vers ReportView
+  // depuis la Phase 9. Le PDF reste atteignable, mais DEPUIS ReportView (onDownloadPdf:props.onPreview,
+  // inchangé), jamais un second chemin parallèle.
+  assert.ok(/onGotoRapport:function\(\)\{setView\('rapport'\);\}/.test(analyseBody), 'onGotoRapport doit basculer vers ReportView (setView(\'rapport\')), pas directement le PDF.');
 });
 
 // ── 8. Aucune duplication critique ───────────────────────────────────────────────────────────────

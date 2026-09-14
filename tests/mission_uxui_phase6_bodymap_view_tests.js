@@ -155,7 +155,12 @@ test('14 — [Voir les tests] réutilise onGotoExpertTab(\'kpi\') (vue Tests exi
   assert.ok(/h\(BodyMapView,\{res:res,pres:pres,bilan:bilan,athlete:athlete,/.test(analyseBody), 'AnalyseView doit transmettre res/pres/bilan/athlete (contexte complet) à BodyMapView.');
   assert.ok(analyseBody.includes("onOpenQuality:function(f){setOpenQuality(f);setView('qualites');}"), 'La navigation vers une qualité doit réutiliser openQuality/view=\'qualites\', comme QualitesView (Phase 4), pas une nouvelle route.');
   const detailBody = extractFnBody(code, 'BodyMapStructureDetail');
-  assert.ok(detailBody.includes('onGotoTests&&activeTests.length>0&&h(Btn,{onClick:onGotoTests}'), '[Voir les tests] doit être présent et piloté par onGotoTests (kpi, vue existante).');
+  // Relaxé en Phase 10 (Mission UX/UI V1, "Voir le test") : quand exactement un test actif est
+  // identifiable pour la structure (activeTests.length===1), [Voir les tests] ouvre directement ce
+  // test via onGotoTest (mécanisme Phase 8 initialSelectedTest) plutôt que la vue Tests générique —
+  // onGotoTests (kpi) reste le repli quand plusieurs tests coexistent (ambiguïté).
+  assert.ok(detailBody.includes('effGoto&&activeTests.length>0&&h(Btn,{onClick:effGoto}'), '[Voir les tests] doit être présent, piloté par onGotoTest quand un seul test est identifiable, sinon par onGotoTests (kpi).');
+  assert.ok(detailBody.includes('var singleTest=activeTests.length===1?activeTests[0]:null;'), '[Voir les tests] ne doit jamais présélectionner un test de façon ambiguë (plusieurs tests actifs).');
 });
 
 // ── 9. Aucune modification clinique (HYP/CSM V2/NORMS/THRESHOLDS/mappings ForceDecks) ─────────────

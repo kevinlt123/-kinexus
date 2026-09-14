@@ -5143,7 +5143,7 @@ function BiomecaView(props){
       ),
       h(BiomecaPhaseProfile,{analysis:analysis,active:active,onSelect:setActive}),
       h(BiomecaLimitingPhaseCard,{analysis:analysis,onOpenQuality:props.onOpenQuality,onOpenPourquoi:props.onOpenPourquoi}),
-      h(BiomecaResponsibleVariables,{analysis:analysis,phaseKey:active,onGotoTest:props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');}}),
+      h(BiomecaResponsibleVariables,{analysis:analysis,phaseKey:active,onGotoTest:props.onGotoTest?function(){props.onGotoTest('cmj');}:(props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');})}),
       h(BiomecaCoherenceCard,{analysis:analysis}),
       h(BiomecaWorkAxes,{analysis:analysis}),
       h(BiomecaDataTechnique,{analysis:analysis,phaseKey:active})
@@ -16739,7 +16739,7 @@ function CsmV2RaisonnementCard(props){
   );
 }
 function PourquoiView(props){
-  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onBack=props.onBack,onGotoExpertTab=props.onGotoExpertTab;
+  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onBack=props.onBack,onGotoExpertTab=props.onGotoExpertTab,onGotoTest=props.onGotoTest;
   var sc=res.functionScores[f]||null;
   var status=sc?sc.status:null;
   return h('div',{style:{maxWidth:900}},
@@ -16752,7 +16752,7 @@ function PourquoiView(props){
     h('div',{style:{color:C.teal,fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:22}},'Pourquoi ?'),
 
     h(ConclusionCard,{f:f,res:res}),
-    h(PreuvesPrincipalesCard,{f:f,res:res,pres:pres,bilan:bilan,onGotoExpertTab:onGotoExpertTab}),
+    h(PreuvesPrincipalesCard,{f:f,res:res,pres:pres,bilan:bilan,onGotoExpertTab:onGotoExpertTab,onGotoTest:onGotoTest}),
     h(CsmV2HierarchyCard,{f:f,res:res}),
     h(CsmV2RaisonnementCard,{f:f,res:res}),
     h(ConcordancesRelationsCard,{f:f,res:res}),
@@ -16779,7 +16779,7 @@ function ConclusionCard(props){
   );
 }
 function PreuvesPrincipalesCard(props){
-  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onGotoExpertTab=props.onGotoExpertTab;
+  var f=props.f,res=props.res,pres=props.pres,bilan=props.bilan,onGotoExpertTab=props.onGotoExpertTab,onGotoTest=props.onGotoTest;
   var td=bilan.testData||{};
   var relTests=functionRelTests(f,td);
   return h('div',null,
@@ -16801,7 +16801,7 @@ function PreuvesPrincipalesCard(props){
               ),
               h('div',{style:{display:'flex',alignItems:'center',gap:8}},
                 testStatus&&h(Badge,{status:testStatus,small:true}),
-                onGotoExpertTab&&h('button',{onClick:function(){onGotoExpertTab('kpi');},style:{background:'transparent',border:'none',color:C.teal,fontSize:11,fontWeight:600,cursor:'pointer',padding:0}},'Voir le test →')
+                (onGotoTest||onGotoExpertTab)&&h('button',{onClick:function(){onGotoTest?onGotoTest(tk):onGotoExpertTab('kpi');},style:{background:'transparent',border:'none',color:C.teal,fontSize:11,fontWeight:600,cursor:'pointer',padding:0}},'Voir le test →')
               )
             )
           );
@@ -16851,7 +16851,7 @@ function QualiteDetailView(props){
     ),
 
     h(ConclusionCard,{f:f,res:res}),
-    h(PreuvesPrincipalesCard,{f:f,res:res,pres:pres,bilan:bilan,onGotoExpertTab:props.onGotoExpertTab}),
+    h(PreuvesPrincipalesCard,{f:f,res:res,pres:pres,bilan:bilan,onGotoExpertTab:props.onGotoExpertTab,onGotoTest:props.onGotoTest}),
     h(ConcordancesRelationsCard,{f:f,res:res}),
     h(LimitesCard,{f:f,res:res}),
 
@@ -16920,10 +16920,12 @@ function AnalyseView(props){
   // quel que soit l'écran d'origine (Synthèse ou Qualités) — contexte athlète/bilan/qualité préservé.
   var [pourquoiQuality,setPourquoiQuality]=useState(null);
   function openPourquoi(fq){setOpenQuality(fq);setPourquoiQuality(fq);setView('qualites');}
-  // testsSelectedTest (Mission UX/UI V1, Phase 8, §14) : seed d'affichage optionnel pour TestsView
-  // — permet à un futur appelant (qualité/synthèse) d'ouvrir directement un test précis, sans
+  // testsSelectedTest (Mission UX/UI V1, Phase 8, §14 ; câblé Phase 10, "Voir le test") : seed
+  // d'affichage optionnel pour TestsView — permet à un appelant (qualité/synthèse/biomécanique/
+  // Body Map) d'ouvrir directement un test précis quand il est identifiable sans ambiguïté, sans
   // nouvelle machine de routing (même state local que openQuality/pourquoiQuality ci-dessus).
-  var [testsSelectedTest]=useState(null);
+  var [testsSelectedTest,setTestsSelectedTest]=useState(null);
+  function goToTest(tk){setTestsSelectedTest(tk);setView('tests');}
 
   return h('div',{style:{display:'flex',alignItems:'flex-start'}},
     h('div',{style:{width:230,flexShrink:0,background:'linear-gradient(180deg,'+C.petrol+',#0F2836)',minHeight:'calc(100vh - 136px)',padding:'22px 16px',boxSizing:'border-box',position:'sticky',top:136,color:'#fff'}},
@@ -17157,19 +17159,20 @@ function AnalyseView(props){
       // destination affichée pour view==='synthese' — reçoit res/pres/pri déjà calculés (aucun
       // recalcul), et deux callbacks de navigation qui restent internes à AnalyseView (aucune
       // nouvelle route App() nécessaire) : onGotoExpertTab bascule vers Expert avec l'onglet
-      // demandé, onGotoRapport réutilise le même onPreview déjà câblé pour le bouton sidebar.
+      // demandé, onGotoRapport bascule vers ReportView (Phase 9), pas directement le PDF (câblage
+      // corrigé Phase 10 §"Boutons Rapport" — le PDF reste atteignable DEPUIS ReportView).
       // !pourquoiQuality (Mission UX/UI V1, Phase 5) : PourquoiView prend le pas sur Synthèse/Qualités
       // quand une qualité est ouverte en "Pourquoi ?" — évite un double rendu superposé, jamais un
       // changement du contenu de SyntheseView/QualiteDetailView elles-mêmes.
       !pourquoiQuality&&view==='synthese'&&h(SyntheseView,{bilan:bilan,athlete:athlete,res:res,pres:pres,pri:pri,
         onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
-        onGotoRapport:props.onPreview,onOpenPourquoi:openPourquoi}),
+        onGotoRapport:function(){setView('rapport');},onOpenPourquoi:openPourquoi}),
       // QualitesView / QualiteDetailView (Mission UX/UI V1, Phase 4) : deuxième porte d'entrée
       // clinique après Synthèse. openQuality bascule entre la grille et le détail d'une qualité,
       // toujours à l'intérieur de la même vue 'qualites' (aucune nouvelle route App() nécessaire).
       !pourquoiQuality&&view==='qualites'&&(openQuality
         ?h(QualiteDetailView,{f:openQuality,res:res,pres:pres,bilan:bilan,athlete:athlete,onBack:function(){setOpenQuality(null);},
-            onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},onOpenPourquoi:openPourquoi})
+            onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},onGotoTest:goToTest,onOpenPourquoi:openPourquoi})
         :h(QualitesView,{res:res,pres:pres,bilan:bilan,onOpenQuality:setOpenQuality})),
       // PourquoiView (Mission UX/UI V1, Phase 5) : parcours complet "Pourquoi ?" d'une qualité,
       // atteignable depuis SyntheseView ET QualiteDetailView (même callback openPourquoi ci-dessus).
@@ -17177,25 +17180,27 @@ function AnalyseView(props){
       // la même qualité, donc [Retour] ramène toujours sur QualiteDetailView (§9 mission).
       pourquoiQuality&&h(PourquoiView,{f:pourquoiQuality,res:res,pres:pres,bilan:bilan,athlete:athlete,
         onBack:function(){setPourquoiQuality(null);},
-        onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');}}),
+        onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},onGotoTest:goToTest}),
       // BodyMapView (Mission UX/UI V1, Phase 6) : Body Map devenu une vraie vue de navigation, au
       // même niveau que Synthèse/Qualités (pas un encart secondaire des blocs 01-06 ci-dessus).
       !pourquoiQuality&&view==='bodymap'&&h(BodyMapView,{res:res,pres:pres,bilan:bilan,athlete:athlete,
         onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
+        onGotoTest:goToTest,
         onOpenQuality:function(f){setOpenQuality(f);setView('qualites');},
         onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
         hasMouvement:!!mouvementAnalysis,onGotoMouvement:function(){setView('mouvement');},
-        onGotoRapport:props.onPreview}),
+        onGotoRapport:function(){setView('rapport');}}),
       // BiomecaView (Mission UX/UI V1, Phase 7) : Biomécanique devenue une vraie vue dédiée
       // ("comment le mouvement est organisé"), au même niveau que Synthèse/Qualités/Body Map —
       // distincte de l'ancien onglet 'mouvement' (MouvementView, drill-down phase par phase par
       // Counter Movement Jump, conservé tel quel dans le sélecteur ci-dessous pour l'usage expert).
       !pourquoiQuality&&view==='biomeca'&&mouvementAnalysis&&h(BiomecaView,{analysis:mouvementAnalysis,
         onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
+        onGotoTest:goToTest,
         onOpenQuality:function(f){setOpenQuality(f);setView('qualites');},
         onOpenPourquoi:openPourquoi,
         onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
-        onGotoBodyMap:function(){setView('bodymap');},onGotoRapport:props.onPreview}),
+        onGotoBodyMap:function(){setView('bodymap');},onGotoRapport:function(){setView('rapport');}}),
       // TestsView (Mission UX/UI V1, Phase 8) : Tests devenu une vraie vue dédiée (couche
       // DATA/EVIDENCE), au même niveau que Synthèse/Qualités/Body Map/Biomécanique — distincte de
       // l'onglet Expert > Résultats (ResultsBrowser, réutilisé tel quel à l'intérieur, Phase 8 §18).
@@ -17204,7 +17209,7 @@ function AnalyseView(props){
         onOpenQuality:function(f){setOpenQuality(f);setView('qualites');},
         onOpenPourquoi:openPourquoi,
         onGotoSynthese:function(){setView('synthese');},onGotoQualites:function(){setView('qualites');},
-        onGotoRapport:props.onPreview}),
+        onGotoRapport:function(){setView('rapport');}}),
       // ReportView (Mission UX/UI V1, Phase 9) : Rapport devenu une vraie vue interactive
       // (composition des sorties/composants déjà existants), distincte de l'écran reportPreview
       // (PDF figé/partageable, buildSportifReport, atteignable via [Télécharger le PDF] ci-dessous).
@@ -17395,7 +17400,7 @@ function BodyMapStructureList(props){
 // Indirecte -> formulation prudente (§9 mission), jamais reformulée en lien causal.
 function BodyMapStructureDetail(props){
   var sys=props.sys,res=props.res,pres=props.pres,bilan=props.bilan;
-  var onGotoTests=props.onGotoTests,onOpenQuality=props.onOpenQuality,onClose=props.onClose;
+  var onGotoTests=props.onGotoTests,onGotoTest=props.onGotoTest,onOpenQuality=props.onOpenQuality,onClose=props.onClose;
   var td=bilan.testData||{};
   var status=res.systemScores[sys];
   var label=MM_SYSTEM_DISPLAY[sys]||sys;
@@ -17443,7 +17448,14 @@ function BodyMapStructureDetail(props){
       :h('div',{style:{display:'flex',flexDirection:'column',gap:4,marginBottom:14}},activeTests.map(function(tk){
           return h('div',{key:tk,style:{color:C.text,fontSize:12}},TBK[tk]?TBK[tk].label:tk);
         })),
-    onGotoTests&&activeTests.length>0&&h(Btn,{onClick:onGotoTests},'📊 Voir les tests')
+    (function(){
+      // Voir les tests (mission Phase 10, "Voir le test") : quand exactement un test actif est
+      // identifiable pour cette structure, on ouvre directement ce test dans TestsView (goToTest)
+      // plutôt que la liste générique — jamais d'ouverture ambiguë quand plusieurs tests coexistent.
+      var singleTest=activeTests.length===1?activeTests[0]:null;
+      var effGoto=(singleTest&&onGotoTest)?function(){onGotoTest(singleTest);}:onGotoTests;
+      return effGoto&&activeTests.length>0&&h(Btn,{onClick:effGoto},'📊 Voir les tests');
+    })()
   );
 }
 function BodyMapView(props){
@@ -17464,6 +17476,7 @@ function BodyMapView(props){
         selected
           ?h(BodyMapStructureDetail,{sys:selected,res:res,pres:pres,bilan:bilan,onClose:function(){setSelected(null);},
               onGotoTests:props.onGotoExpertTab&&function(){props.onGotoExpertTab('kpi');},
+              onGotoTest:props.onGotoTest,
               onOpenQuality:props.onOpenQuality})
           :h(Card,{pad:20},h('div',{style:{color:C.muted,fontSize:12.5,lineHeight:1.6}},'Sélectionnez une structure dans la liste pour afficher son détail (statut, données D/G/LSI, qualités et tests associés).'))
       )
