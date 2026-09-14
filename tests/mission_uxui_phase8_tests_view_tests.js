@@ -175,10 +175,18 @@ test('18 — GUARD — Aucune nouvelle relation clinique : SYSTEM_TESTS/TFM/TEST
   });
 });
 
-test('19 — GUARD — Aucun recalcul : bestVal/computeStatusWithNormsV2/autoLSI/lsiSt/applyThr/computeAnalysePresentation restent BYTE-IDENTIQUES vs baseline (37bfcb4)', () => {
-  ['bestVal', 'computeStatusWithNormsV2', 'autoLSI', 'lsiSt', 'applyThr', 'computeAnalysePresentation', 'testHasAnyTrialValue', 'testCompletion'].forEach((fn) => {
+test('19 — GUARD — Aucun recalcul : bestVal/computeStatusWithNormsV2/autoLSI/lsiSt/applyThr/testHasAnyTrialValue/testCompletion restent BYTE-IDENTIQUES vs baseline (37bfcb4) ; computeAnalysePresentation ne diffère que par la correction Phase 11 du riskLevel', () => {
+  ['bestVal', 'computeStatusWithNormsV2', 'autoLSI', 'lsiSt', 'applyThr', 'testHasAnyTrialValue', 'testCompletion'].forEach((fn) => {
     assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' a changé — interdit par cette mission (§19).');
   });
+  // Relaxé en Phase 11 (Mission UX/UI V1, §2) : bug de présentation pré-existant (pri.length?'FAIBLE':'FAIBLE'
+  // — même valeur dans les deux branches — affichait "FAIBLE" même sans aucune donnée) corrigé via
+  // bilanHasRealData, jamais un recalcul de test/norme/LSI.
+  const OLD = "  // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).\n  var riskLevel=pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':pri.length?'FAIBLE':'FAIBLE';\n  var riskCol=riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;\n  var riskSub=pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';";
+  const NEW = "  // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).\n  // CORRECTIF (Mission UX/UI V1, Phase 11, §2) : pri.length?'FAIBLE':'FAIBLE' renvoyait la même\n  // valeur dans les deux branches — un bilan sans AUCUNE donnée (pri vide faute de mesure, jamais\n  // faute de déficit) affichait \"FAIBLE\" en vert, indiscernable d'un bilan réellement propre.\n  // bilanHasRealData (déjà utilisé plus bas pour canValidate) distingue les deux cas sans recalcul\n  // clinique : \"Non évalué\" (neutre, jamais positif) quand aucune donnée n'existe.\n  var hasRealData=bilanHasRealData(bilan.testData||{});\n  var riskLevel=!hasRealData?'Non évalué':pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':'FAIBLE';\n  var riskCol=!hasRealData?C.muted:riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;\n  var riskSub=!hasRealData?'Aucune donnée disponible pour ce bilan':pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';";
+  const base = extractFnBody(baseCode, 'computeAnalysePresentation');
+  assert.ok(base.includes(OLD), 'Pré-requis : bloc riskLevel attendu absent de la baseline (test à corriger).');
+  assert.strictEqual(extractFnBody(code, 'computeAnalysePresentation'), base.replace(OLD, NEW), 'computeAnalysePresentation contient un changement au-delà de la correction Phase 11 du riskLevel.');
 });
 
 test('20 — GUARD — Aucun nouveau seuil/norme : NORMS/NORMS_V2/THRESHOLDS inchangés vs baseline (37bfcb4)', () => {
@@ -212,7 +220,9 @@ test('24 — Non-régression : ExpertView reste inchangée, et le sélecteur int
   assert.strictEqual(extractFnBody(code, 'ExpertView'), extractFnBody(baseCode, 'ExpertView'), 'ExpertView ne doit pas être modifiée par cette phase.');
   const analyseBody = extractFnBody(code, 'AnalyseView');
   assert.ok(analyseBody.includes("['tests','Tests']"), 'Le sélecteur interne doit proposer la nouvelle destination Tests.');
-  assert.ok(analyseBody.includes("['expert','Expert']"), 'L\'onglet Expert doit rester accessible, non supprimé.');
+  // Libellé harmonisé en Phase 11 ('Expert' -> 'Analyse Expert', §1) : même clé/destination 'expert',
+  // seul le texte affiché change pour matcher la barre secondaire persistante.
+  assert.ok(analyseBody.includes("['expert','Analyse Expert']"), 'L\'onglet Expert doit rester accessible, non supprimé.');
 });
 
 // ── 13. Responsive ────────────────────────────────────────────────────────────────────────────────

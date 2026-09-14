@@ -177,8 +177,16 @@ test('GUARD — Les 8 moteurs HYP-XX-01 et computeCsmV2/computeHypClinicalSynthe
   });
 });
 
-test('GUARD — computeAnalysePresentation (source de pres.asymItems) reste BYTE-IDENTIQUE vs baseline (61924dc)', () => {
-  assert.strictEqual(extractFnBody(code, 'computeAnalysePresentation'), extractFnBody(baseCode, 'computeAnalysePresentation'), 'computeAnalysePresentation a changé — le Body Map ne doit consommer que des D/G/LSI déjà calculés par cette fonction inchangée.');
+// Relaxé en Phase 11 (Mission UX/UI V1, §2 "Cohérence des statuts") : computeAnalysePresentation
+// corrige un bug de présentation pré-existant (riskLevel valait 'FAIBLE' même sans AUCUNE donnée,
+// indiscernable d'un bilan réellement propre) — jamais un recalcul de D/G/LSI/asymItems, que
+// pres.asymItems continue de consommer à l'identique.
+test('GUARD — computeAnalysePresentation ne diffère de la baseline (61924dc) que par la correction Phase 11 du riskLevel/riskCol/riskSub sur bilan sans donnée ; pres.asymItems (D/G/LSI) reste intact', () => {
+  const OLD = "  // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).\n  var riskLevel=pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':pri.length?'FAIBLE':'FAIBLE';\n  var riskCol=riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;\n  var riskSub=pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';";
+  const NEW = "  // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).\n  // CORRECTIF (Mission UX/UI V1, Phase 11, §2) : pri.length?'FAIBLE':'FAIBLE' renvoyait la même\n  // valeur dans les deux branches — un bilan sans AUCUNE donnée (pri vide faute de mesure, jamais\n  // faute de déficit) affichait \"FAIBLE\" en vert, indiscernable d'un bilan réellement propre.\n  // bilanHasRealData (déjà utilisé plus bas pour canValidate) distingue les deux cas sans recalcul\n  // clinique : \"Non évalué\" (neutre, jamais positif) quand aucune donnée n'existe.\n  var hasRealData=bilanHasRealData(bilan.testData||{});\n  var riskLevel=!hasRealData?'Non évalué':pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':'FAIBLE';\n  var riskCol=!hasRealData?C.muted:riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;\n  var riskSub=!hasRealData?'Aucune donnée disponible pour ce bilan':pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';";
+  const base = extractFnBody(baseCode, 'computeAnalysePresentation');
+  assert.ok(base.includes(OLD), 'Pré-requis : bloc riskLevel attendu absent de la baseline (test à corriger).');
+  assert.strictEqual(extractFnBody(code, 'computeAnalysePresentation'), base.replace(OLD, NEW), 'computeAnalysePresentation contient un changement au-delà de la correction Phase 11 du riskLevel — le Body Map doit continuer à consommer des D/G/LSI/asymItems inchangés.');
 });
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

@@ -154,10 +154,18 @@ test('16 — Rapport -> Biomécanique -> retour -> Rapport : BiomecaView expose 
 });
 
 // ── 17-19. Aucune modification clinique (GUARDS) ───────────────────────────────────────────────────
-test('17 — GUARD — computeMoteur/computeCsmV2/computeHypClinicalSynthesis01/computeMouvementAnalysis/computePriorisationClinique/computeAnalysePresentation restent BYTE-IDENTIQUES vs baseline (9a2a749)', () => {
-  ['computeMoteur', 'computeCsmV2', 'computeHypClinicalSynthesis01', 'computeMouvementAnalysis', 'computePriorisationClinique', 'computeAnalysePresentation'].forEach((fn) => {
+test('17 — GUARD — computeMoteur/computeCsmV2/computeHypClinicalSynthesis01/computeMouvementAnalysis/computePriorisationClinique restent BYTE-IDENTIQUES vs baseline (9a2a749) ; computeAnalysePresentation ne diffère que par la correction Phase 11 du riskLevel', () => {
+  ['computeMoteur', 'computeCsmV2', 'computeHypClinicalSynthesis01', 'computeMouvementAnalysis', 'computePriorisationClinique'].forEach((fn) => {
     assert.strictEqual(extractFnBody(code, fn), extractFnBody(baseCode, fn), fn + ' a changé — cette phase est UX/intégration uniquement.');
   });
+  // Relaxé rétroactivement en Phase 11 (Mission UX/UI V1, §2) : bug de présentation pré-existant
+  // (riskLevel valait 'FAIBLE' même sans aucune donnée) corrigé via bilanHasRealData, jamais un
+  // recalcul clinique — cette assertion Phase 10 n'a plus vocation à bloquer cette correction.
+  const OLD = "  // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).\n  var riskLevel=pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':pri.length?'FAIBLE':'FAIBLE';\n  var riskCol=riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;\n  var riskSub=pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';";
+  const NEW = "  // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).\n  // CORRECTIF (Mission UX/UI V1, Phase 11, §2) : pri.length?'FAIBLE':'FAIBLE' renvoyait la même\n  // valeur dans les deux branches — un bilan sans AUCUNE donnée (pri vide faute de mesure, jamais\n  // faute de déficit) affichait \"FAIBLE\" en vert, indiscernable d'un bilan réellement propre.\n  // bilanHasRealData (déjà utilisé plus bas pour canValidate) distingue les deux cas sans recalcul\n  // clinique : \"Non évalué\" (neutre, jamais positif) quand aucune donnée n'existe.\n  var hasRealData=bilanHasRealData(bilan.testData||{});\n  var riskLevel=!hasRealData?'Non évalué':pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':'FAIBLE';\n  var riskCol=!hasRealData?C.muted:riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;\n  var riskSub=!hasRealData?'Aucune donnée disponible pour ce bilan':pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';";
+  const base = extractFnBody(baseCode, 'computeAnalysePresentation');
+  assert.ok(base.includes(OLD), 'Pré-requis : bloc riskLevel attendu absent de la baseline (test à corriger).');
+  assert.strictEqual(extractFnBody(code, 'computeAnalysePresentation'), base.replace(OLD, NEW), 'computeAnalysePresentation contient un changement au-delà de la correction Phase 11 du riskLevel.');
 });
 test('18 — GUARD — NORMS/NORMS_V2/THRESHOLDS/TFM/SYSTEM_TESTS/CMJ_PHASE_TO_QUALITY/STR_QUAL_DETAIL/TEST_FAMILIES/CSM_V2_CLINICAL_VARIABLE_MATRIX restent deep-equal vs baseline (9a2a749)', () => {
   ['NORMS', 'NORMS_V2', 'THRESHOLDS', 'TFM', 'SYSTEM_TESTS', 'CMJ_PHASE_TO_QUALITY', 'STR_QUAL_DETAIL', 'TEST_FAMILIES', 'CSM_V2_CLINICAL_VARIABLE_MATRIX'].forEach((key) => {

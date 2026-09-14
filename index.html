@@ -16434,9 +16434,15 @@ function computeAnalysePresentation(bilan,athlete,athleteAge,res){
   var evFns=DISPLAYED_FUNCTIONS.filter(function(f){return res.functionScores[f];});
 
   // Risque global : dérivé de la sévérité des priorités d'intervention (aucun chiffre inventé).
-  var riskLevel=pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':pri.length?'FAIBLE':'FAIBLE';
-  var riskCol=riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;
-  var riskSub=pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';
+  // CORRECTIF (Mission UX/UI V1, Phase 11, §2) : pri.length?'FAIBLE':'FAIBLE' renvoyait la même
+  // valeur dans les deux branches — un bilan sans AUCUNE donnée (pri vide faute de mesure, jamais
+  // faute de déficit) affichait "FAIBLE" en vert, indiscernable d'un bilan réellement propre.
+  // bilanHasRealData (déjà utilisé plus bas pour canValidate) distingue les deux cas sans recalcul
+  // clinique : "Non évalué" (neutre, jamais positif) quand aucune donnée n'existe.
+  var hasRealData=bilanHasRealData(bilan.testData||{});
+  var riskLevel=!hasRealData?'Non évalué':pri.some(function(p){return p.status==='rouge';})?'ÉLEVÉ':pri.some(function(p){return p.status==='orange';})?'MODÉRÉ':'FAIBLE';
+  var riskCol=!hasRealData?C.muted:riskLevel==='ÉLEVÉ'?C.rouge:riskLevel==='MODÉRÉ'?C.orange:C.vert;
+  var riskSub=!hasRealData?'Aucune donnée disponible pour ce bilan':pri.length===0?'Aucun facteur limitant identifié':pri.length===1?'1 facteur limitant identifié':pri.length+' facteurs limitants identifiés';
 
   // Évolution vs dernier bilan : delta de score fonctionnel moyen (FN_GAUGE_PCT) vs le bilan précédent du même athlète.
   var evolution=null;
@@ -16972,7 +16978,11 @@ function AnalyseView(props){
       // Biomécanique a désormais sa propre vue dédiée (BiomecaView ci-dessous).
       // 'tests' (Mission UX/UI V1, Phase 8) masqué au même titre que 'synthese'/'bodymap'/'biomeca'.
       // 'rapport' (Mission UX/UI V1, Phase 9) masqué au même titre que les autres vues dédiées.
-      view!=='synthese'&&view!=='bodymap'&&view!=='biomeca'&&view!=='tests'&&view!=='rapport'&&h('div',null,
+      // 'qualites' (Mission UX/UI V1, Phase 11, §9 "Doublons") : CORRECTIF — cet oubli de la Phase 4
+      // faisait apparaître les Blocs 01-06 (dont un résumé "Synthèse globale"/Body Map/Synthèse
+      // clinique quasi identique) AU-DESSUS de la grille QualitesView, dupliquant son propre contenu.
+      // Masqué au même titre que les autres vues dédiées ci-dessus, aucun changement de contenu.
+      view!=='synthese'&&view!=='bodymap'&&view!=='biomeca'&&view!=='tests'&&view!=='rapport'&&view!=='qualites'&&h('div',null,
       h('div',{style:{marginBottom:20}},
         h('div',{style:{color:C.muted,fontSize:10,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:12}},'01 · Synthèse globale'),
         h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:14}},
@@ -17221,7 +17231,11 @@ function AnalyseView(props){
         onGotoExpertTab:function(tab){setExpertTabTarget(tab);setView('expert');},
         onDownloadPdf:props.onPreview}),
       h('div',{style:{display:'flex',background:C.surface,borderRadius:8,padding:3,border:'1px solid '+C.border,marginBottom:16,width:'fit-content',flexWrap:'wrap'}},
-        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['biomeca','Biomécanique'],['tests','Tests'],['rapport','Rapport'],['expert','Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['tests','Tests'],['rapport','Rapport'],['expert','Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
+        // Libellé 'Expert' -> 'Analyse Expert' (Mission UX/UI V1, Phase 11, §1 "Cohérence de la
+        // navigation") : CORRECTIF cosmétique — cette même destination (view==='expert') était déjà
+        // nommée "Analyse Expert" par la barre secondaire persistante (SECONDARY_NAV) ; seul le
+        // libellé change ici, aucune clé/route/fonction renommée.
+        (mouvementAnalysis?[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['biomeca','Biomécanique'],['tests','Tests'],['rapport','Rapport'],['expert','Analyse Expert'],['mouvement','Mouvement'],['raisonnementClinique','Fil de Raisonnement'],['historique','Historique']]:[['synthese','Synthèse'],['qualites','Qualités'],['bodymap','Body Map'],['tests','Tests'],['rapport','Rapport'],['expert','Analyse Expert'],['historique','Historique']]).map(function(v){return h('button',{key:v[0],onClick:function(){setView(v[0]);},style:{padding:'5px 11px',borderRadius:6,border:'none',background:view===v[0]?C.petrol:'transparent',color:view===v[0]?C.text:C.muted,fontSize:11,fontWeight:600,cursor:'pointer'}},v[1]);})
       ),
       view==='expert'&&h(ExpertView,{res:res,evFns:evFns,testData:bilan.testData,questData:bilan.questData,athlete:athlete,athleteAge:athleteAge,normSelections:effNormSel,initialTab:expertTabTarget}),
       view==='mouvement'&&mouvementAnalysis&&h(MouvementView,{analysis:mouvementAnalysis}),
